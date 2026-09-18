@@ -1,7 +1,15 @@
 {
   "atlas_version": "0.1.0",
   "cloud_tools": [],
-  "customized_files": {},
+  "customized_files": {
+    ".claude/hooks/atlas/atlas_guard/git_policy.py": {
+      "adopted_at": "2026-09-18T23:20:01Z",
+      "approval": "approved by Paul MacFarlane in the 2026-09-18 Atlas setup session; no tracker ticket (local-markdown tracker)",
+      "approver": "Paul MacFarlane",
+      "canonical": "ddf275f43cd6d9657078016a8cd1daa387db48379897bd59c8f61203feee8e38",
+      "hash": "e6357bce84a8d48aee1fed5271ac128a1d1bbb1b367181e28f1b19ed4dc24342"
+    }
+  },
   "guardrails_mode": "full",
   "guardrails_off_authorization": null,
   "hook_activation": {
@@ -21,7 +29,7 @@
     ".claude/hooks/atlas/atlas_guard/config.py": "d73dabfabecd0d7603e2aa2b1ba7081718e662c9cfaff4fa13553744104af98e",
     ".claude/hooks/atlas/atlas_guard/engine.py": "a19ba0d6a5df62fe419d2037f3817e72b9fb2e9000130c15035b25c6689a082b",
     ".claude/hooks/atlas/atlas_guard/file_policy.py": "3e9a1f3ceb220178e1f995f9f4d93afa065fd641ceabaf08a752e2c5a5985726",
-    ".claude/hooks/atlas/atlas_guard/git_policy.py": "ddf275f43cd6d9657078016a8cd1daa387db48379897bd59c8f61203feee8e38",
+    ".claude/hooks/atlas/atlas_guard/git_policy.py": "e6357bce84a8d48aee1fed5271ac128a1d1bbb1b367181e28f1b19ed4dc24342",
     ".claude/hooks/atlas/atlas_guard/host_policy.py": "d36aa22b7dc20442cc9dc7dbc1ab283b31a11dbb8fadfade435b8f2394272ec4",
     ".claude/hooks/atlas/atlas_guard/mcp_policy.py": "3d610d49ff1b1684c94120b0aa929a80554443bb6f6e74d8a24710561bc6bb1f",
     ".claude/hooks/atlas/atlas_guard/secrets.py": "6e3b13f6688bff5a5a34b4f1aa74733cff808e460151b8123fe703adfeacfca9",

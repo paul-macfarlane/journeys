@@ -209,8 +209,11 @@ def build_git_command(subcommand: str, config: list[str], args: list[str]) -> Gi
 
 
 GUARDED_CONFIG_PREFIXES = ("credential", "core.hookspath", "remote.", "url.")
+# Sanctioned customization: `add` is permitted so agents can wire up a new
+# remote. Repointing or dropping an EXISTING remote stays human-only, because
+# that silently redirects pushes a previous review already trusted.
 REMOTE_MUTATIONS = frozenset(
-    {"add", "remove", "rename", "rm", "set-branches", "set-head", "set-url"}
+    {"remove", "rename", "rm", "set-branches", "set-head", "set-url"}
 )
 PATHSPEC_POSITIONALS = frozenset({".", "./", ".."})
 
