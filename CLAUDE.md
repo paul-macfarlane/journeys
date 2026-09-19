@@ -19,7 +19,7 @@ Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/ag
 
 Atlas workspace: **journeys**. Confirmed repositories:
 
-- `journeys` at `.`; base `main`; source host `local`.
+- `journeys` at `.`; base `main`; source host `github`.
 
 When isolation or parallel delivery benefits from worktrees, they live beneath
 `.claude/worktrees/<work-package>/<repository-id>/`. The frontier
@@ -30,16 +30,21 @@ repository keeps its own base SHA, branch, verification result, and pull request
 
 ## Repository framing
 
-**journeys** — Greenfield repository. Purpose not yet defined by the team; replace this sentence once it is.
+**journeys** — A platform for authoring and running branching, text-based journeys: authors build a graph of steps and choices, publish immutable versions, and participants walk them anonymously. See `CONTEXT.md` for vocabulary.
 
 ### Structure
 
-- `docs/agents/` — Agent-facing tracker, triage-label, and domain guidance
+- `CONTEXT.md` — Domain glossary; use its terms in all agent output
+- `docs/adr/` — Architecture decision records
+- `docs/agents/` — Agent-facing tracker, triage-label, planning, testing, tooling, and guardrail guidance
+- `.scratch/<feature-slug>/` — Committed specs, decisions, and ticket files (local markdown tracker)
 
 ### Repository-specific rules
 
-- No stack has been chosen yet: there are no runnable, test, or lint commands in this repository.
-- No git remote is configured, so pull requests are opened by a human rather than by a command.
+- Stack is decided but no application code exists yet: Next.js 16 App Router, pnpm, Drizzle + Neon Postgres, better-auth, Tailwind v4 + shadcn, Vitest + Playwright, deployed on Vercel. Mirror `paul-macfarlane/paulitakes` conventions.
+- No lint, test, or build commands are recorded until the Foundation ticket lands; rerun Atlas setup afterward so commands stop being reported unavailable.
+- The legacy `paul-macfarlane/journey` repository is a private read-only reference; seed real content by scraping the live site, not by importing Twine.
+- Never place participant Responses or real run data in proof artifacts; use seeded or fixture journeys.
 
 ## Atlas repository workflow
 

@@ -33,10 +33,10 @@ rereading this guide.
   package. It intentionally contains only the latest work package's evidence.
 - For UI screenshots and videos, use one directory per test name beneath the
   proof-artifact root. Rerunning a test replaces that test directory.
-- Visual/browser behavior: Not applicable yet: this repository has no UI or browser surface. Do not manufacture screenshots or video. Once a UI exists, screenshot is the default, one subdirectory per test name, and video only when motion, timing, or a multi-step interaction cannot be proved by a still image..
+- Visual/browser behavior: Not applicable yet: no UI exists. Once it does, screenshot is the default, one subdirectory per test name; video only for the canvas editor or other multi-step interactions a still image cannot prove..
 - Integration and non-UI behavior: Committed machine-readable report or captured test output, once any test command exists..
-- External integration: Real-target smoke result, once a deployed surface exists..
-- Sensitive data: Sanitize before storage. No real customer data in any proof artifact..
+- External integration: Vercel preview-deployment smoke result, once a deployed surface exists..
+- Sensitive data: Sanitize before storage. Never include participant Responses or real run data; use seeded or fixture journeys only..
 - Any screenshot, video, test report, captured output, or other artifact cited as
   `PASS` evidence is saved beneath `test-results` and committed
   on the feature branch. The PR links to the committed path; it never describes

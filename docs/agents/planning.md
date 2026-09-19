@@ -13,9 +13,11 @@ invoked skill.
 | Classification | Trigger | Required consideration |
 |---|---|---|
 | Atlas recommendation | Ticket lacks a clear problem, outcome, or bounded decision | Return to /grill-with-docs, Wayfinder, /to-spec, or /to-tickets as appropriate. |
-| unresolved question | Any work that assumes a language, framework, or runtime | No stack has been chosen for this repository. Resolve the stack with a human before planning work that depends on it, then rerun Atlas setup so commands stop being reported unavailable. |
-| unresolved question | Any work that assumes what this repository is for | The repository purpose is not yet defined. Confirm it with a human rather than inferring it from the name. |
-| discovered repository fact | Work that would need a pull request | No git remote is configured. Prepare the branch and ask a human to open the pull request; do not claim a PR was opened. |
+| confirmed team policy | Any work that assumes a language, framework, or runtime | Next.js 16 App Router, React 19, TypeScript, pnpm; Drizzle + Neon Postgres (`@neondatabase/serverless` in prod, `pg` + docker-compose locally); better-auth (Google + Discord); Tailwind v4 + shadcn; zod 4; TanStack Query; Vitest + Playwright; Vercel. Mirror `paul-macfarlane/paulitakes` conventions. |
+| confirmed team policy | Any work that names a domain concept | Use the vocabulary in `CONTEXT.md` (Journey, Project, Step, Choice, Ending, Outcome, Draft, Published Version, Run, Prompt, Response, Member, Theme). Do not bake the migrant-healthcare example into the model. |
+| confirmed team policy | Any work touching the journey graph, publishing, or runs | Published Versions are immutable; Runs pin to the version they started on; the Draft is the only mutable copy. Read `docs/adr/` and `.scratch/journeys-platform/decisions.md`. |
+| discovered repository fact | Work that would need a pull request | Open it with `gh pr create --base main --head <feature-branch>`; a human merges. |
+| unresolved question | Work that depends on lint, test, typecheck, build, or e2e commands | None are recorded until the Foundation ticket lands. Rerun Atlas setup afterward; do not invent commands. |
 
 Classifications have distinct authority: confirmed team policy is mandatory;
 Atlas recommendations are proposals; discovered repository facts are evidence;

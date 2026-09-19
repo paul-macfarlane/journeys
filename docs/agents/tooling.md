@@ -11,7 +11,12 @@ third-party library documentation.
 
 | Plugin | Status | Why it applies | Use when | Prerequisites | Install or state |
 |---|---|---|---|---|---|
-| None | unavailable | No applicable plugin confirmed | — | none | — |
+| `context7` | installed | Next.js 16, Drizzle, better-auth, React Flow, and Tiptap are version-sensitive dependencies. | Checking current, version-specific library behavior before planning or implementing against it. | none | active |
+| `vercel` | installed | Vercel is the deployment target. | Reading deployment, preview URL, and runtime log state. Mutating operations stay denied by the guard; deploys happen via git push. | none | active |
+| `playwright` | recommended | Installed in the plugin cache but not enabled; e2e is in scope once a UI exists. | Driving the demo-path e2e flow after the participant runner exists. Enable the plugin first. | none | `/plugin install playwright@claude-plugins-official` |
+| `github` | recommended | The repository remote is hosted on GitHub; `gh` CLI already covers PR creation. | Only if issue or PR reads via MCP are wanted; requires OAuth in an interactive session. | none | `/plugin install github@claude-plugins-official` |
+| `typescript-lsp` | recommended | TypeScript is the confirmed stack; a prior install attempt did not register. | Navigating and editing TypeScript with language-server diagnostics. | typescript-language-server | `/plugin install typescript-lsp@claude-plugins-official` |
+| `pyright-lsp` | declined | Python was detected only from Atlas's own guard hooks, not project code. | — | pyright-langserver | `/plugin install pyright-lsp@claude-plugins-official` |
 
 `installed` means setup verified the plugin is enabled and any named binary is
 available. `recommended` means the repository signals match but installation
