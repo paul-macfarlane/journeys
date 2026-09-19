@@ -1,30 +1,50 @@
 # AC-6 / AC-2 / AC-3a — Playwright e2e suite (dedicated database journeys_e2e, own server on port 3100)
-commit: 88a9f1f  date: 2026-09-19T18:24:29Z  environment: local docker journeys-db on localhost:5436; DATABASE_URL passed explicitly and re-derived to journeys_e2e by the harness
+commit: afbddef  date: 2026-09-19T21:15:17Z  environment: local docker journeys-db on localhost:5436; DATABASE_URL passed explicitly and re-derived to journeys_e2e by the harness
 $ pnpm test:e2e
 
 > journeys@0.1.0 test:e2e <repo>
 > playwright test
 
-◇ injected env (7) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (7) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
 ◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
 [e2e] database: journeys_e2e on localhost:5436
 ◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
 
-Running 4 tests using 4 workers
+Running 6 tests using 5 workers
 
-◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
 ◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
-◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
-◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
-◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
 ◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
-◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
-  ✓  1 [chromium] › e2e/landing.spec.ts:3:5 › landing page shows the product and sign-in, with no projects link while signed out (576ms)
-  ✓  2 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (415ms)
-  ✓  3 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (1.3s)
-  ✓  4 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (2.2s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+[WebServer] [browser] Base UI: A component that acts as a button expected a native <button> because the `nativeButton` prop is true. Rendering a non-<button> removes native button semantics, which can impact forms and accessibility. Use a real <button> in the `render` prop, or set `nativeButton` to `false`.
+[WebServer]     at Button (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?15:68:464)
+[WebServer]     at LandingPage (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?5:422:480) 
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✓  1 [chromium] › e2e/landing.spec.ts:3:5 › landing page explains the product and offers a single sign-in link while signed out (405ms)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+[WebServer] [browser] Base UI: A component that acts as a button expected a native <button> because the `nativeButton` prop is true. Rendering a non-<button> removes native button semantics, which can impact forms and accessibility. Use a real <button> in the `render` prop, or set `nativeButton` to `false`.
+[WebServer]     at Button (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?15:68:464)
+[WebServer]     at LandingPage (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?5:422:480) 
+[WebServer] [browser] Base UI: A component that acts as a button expected a native <button> because the `nativeButton` prop is true. Rendering a non-<button> removes native button semantics, which can impact forms and accessibility. Use a real <button> in the `render` prop, or set `nativeButton` to `false`.
+[WebServer]     at Button (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?15:68:464)
+[WebServer]     at LandingPage (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?5:422:480) 
+  ✓  2 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (952ms)
+  ✓  6 [chromium] › e2e/sign-in.spec.ts:37:5 › a signed-in Author visiting /sign-in is sent to their projects (668ms)
+  ✓  4 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (1.1s)
+  ✓  3 [chromium] › e2e/sign-in.spec.ts:13:5 › sign-in page offers Google and Discord with their logos (1.8s)
+[WebServer] [browser] Base UI: A component that acts as a button expected a native <button> because the `nativeButton` prop is true. Rendering a non-<button> removes native button semantics, which can impact forms and accessibility. Use a real <button> in the `render` prop, or set `nativeButton` to `false`.
+[WebServer]     at Button (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?77:68:464)
+[WebServer]     at LandingPage (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?68:422:480) 
+[WebServer] [browser] Base UI: A component that acts as a button expected a native <button> because the `nativeButton` prop is true. Rendering a non-<button> removes native button semantics, which can impact forms and accessibility. Use a real <button> in the `render` prop, or set `nativeButton` to `false`.
+[WebServer]     at Button (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?15:68:464)
+[WebServer]     at LandingPage (about://React/Server/file://<repo>/.next/dev/server/chunks/ssr/%5Broot-of-the-server%5D__0bnvk7q._.js?5:422:480) 
+  ✓  5 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (2.5s)
 
-  4 passed (5.4s)
+  6 passed (5.6s)
 exit: 0
 
 $ grep -n "reuseExistingServer\|BETTER_AUTH_URL\|DATABASE_URL\|next dev -p" playwright.config.ts
@@ -36,7 +56,7 @@ $ grep -n "reuseExistingServer\|BETTER_AUTH_URL\|DATABASE_URL\|next dev -p" play
 $ docker exec journeys-db psql -U postgres -d journeys -c "select count(*) as dev_users from \"user\"" ; same on journeys_e2e after cleanup
  dev_users 
 -----------
-         0
+         1
 (1 row)
 
  e2e_users_after_cleanup 
@@ -49,5 +69,6 @@ $ find test-results -name "*.png" | sort
 test-results/landing/landing.png
 test-results/projects-empty/projects-empty.png
 test-results/projects-signed-out-redirect/projects-signed-out-redirect.png
+test-results/sign-in/sign-in.png
 test-results/sign-out/sign-out.png
 $ lsof -iTCP:3100 -sTCP:LISTEN (expect empty)

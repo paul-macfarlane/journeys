@@ -1,5 +1,5 @@
 # AC-1 — fresh clone following README reaches a running app
-commit: 88a9f1f  date: 2026-09-19T18:24:48Z  environment: clone into scratch dir named journeys (compose project name matches, so pnpm db:up adopts the running journeys-db on 5436)
+commit: afbddef  date: 2026-09-19T21:15:37Z  environment: clone into scratch dir named journeys (compose project name matches, so pnpm db:up adopts the running journeys-db on 5436)
 note: .env.local cannot be written by the agent (guarded secret path); the README's env step is replaced by passing the same variables inline with placeholder OAuth values and a generated secret. pnpm-lock.yaml is copied from the working tree because it is not yet committed.
 $ git clone --branch feat/01-foundation <repo> journeys && cp pnpm-lock.yaml journeys/
 cloned
@@ -7,7 +7,7 @@ $ pnpm install --frozen-lockfile
 │   to run scripts.                                                            │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-Done in 4.1s using pnpm v10.33.0
+Done in 4.3s using pnpm v10.33.0
 exit: 0
 $ pnpm db:up
  Container journeys-db Running 
@@ -15,11 +15,10 @@ $ pnpm db:up
  Container journeys-db Healthy 
 exit: 0
 $ pnpm db:migrate
-◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
 Using 'pg' driver for database querying
 [⣷] applying migrations...[2K[1G[✓] migrations applied successfully!exit: 0
 $ pnpm dev (env inline) ; curl /
 GET / -> 200
-Sign in with Google
 - Local:         http://localhost:3000
-✓ Ready in 297ms
+✓ Ready in 303ms

@@ -1,5 +1,5 @@
 # AC-3b post-check (local) — social sign-in start returns the provider authorize URL with the local callback
-commit: 88a9f1f  date: 2026-09-19T18:24:48Z  environment: dev server on http://localhost:3000 with the values in .env.local (OAuth client values never printed)
+commit: afbddef  date: 2026-09-19T21:15:37Z  environment: dev server on http://localhost:3000 with the values in .env.local (OAuth client values never printed)
 
 $ POST /api/auth/sign-in/social provider=google
 authorize: https://accounts.google.com/o/oauth2/v2/auth
