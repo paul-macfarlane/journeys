@@ -21,7 +21,7 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 - [x] Create a Neon project `journeys` (any region near you).
 - [x] Copy the pooled connection string into Vercel env `DATABASE_URL` for **Production** and **Preview**.
 - [x] Recommended: create a Neon branch `staging` and use *its* pooled connection string for the **Preview** environment instead, so staging and PR previews never touch production data.
-- [ ] Local dev uses docker-compose Postgres on host port 5434, so no Neon string is needed in `.env.local` unless you want to point local at Neon.
+- [x] Local dev uses docker-compose Postgres on host port 5434, so no Neon string is needed in `.env.local` unless you want to point local at Neon.
 
 ## 3. Google OAuth (better-auth)
 
@@ -29,7 +29,7 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 - [x] Authorized redirect URIs:
   - `http://localhost:3000/api/auth/callback/google`
   - `https://journeys-ten-virid.vercel.app/api/auth/callback/google`
-  - [ x `https://staging-journeys-ten-virid.vercel.app/api/auth/callback/google` (add after §9)
+  - [x] `https://staging-journeys-ten-virid.vercel.app/api/auth/callback/google` (add after §9)
 - [x] Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Vercel (Production) and `.env.local`.
 - [x] Also set them for **Preview** (see §9).
 - Note: Google does not accept wildcard redirect URIs, so ephemeral PR preview URLs will never have working Google sign-in. Staging (a fixed domain) does. Accept this for the hackathon.
@@ -59,8 +59,8 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 
 - [x] Node 24 and pnpm 10 present (verified 2026-09-18).
 - [x] Docker present (verified 2026-09-18) — used for local Postgres via docker-compose (host port 5434; 5432/5433 are taken).
-- [ ] Optional: `pnpm add -g typescript-language-server typescript` then `/plugin install typescript-lsp@claude-plugins-official` for LSP diagnostics in Claude Code.
-- [ ] Optional: enable the already-installed `playwright` plugin so agents can drive e2e runs.
+- [x] Optional: `pnpm add -g typescript-language-server typescript` then `/plugin install typescript-lsp@claude-plugins-official` for LSP diagnostics in Claude Code.
+- [x] Optional: enable the already-installed `playwright` plugin so agents can drive e2e runs.
 
 ## 8. Redirect URIs to revisit after first deploy
 
@@ -73,10 +73,10 @@ Env validation runs at build/boot, so every preview deployment needs a full set
 of values. Rather than placeholders, give the Preview environment real values
 that point at a fixed staging domain.
 
-- [ ] Create and push a long-lived `staging` branch from `main`: `git checkout -b staging main && git push -u origin staging`.
-- [ ] In Vercel → `journeys` → Settings → Domains, add a domain (`staging-journeys-ten-virid.vercel.app`) and assign it to the git branch `staging`. Record it at the top of this file.
-- [ ] In Vercel → Settings → Environment Variables, set for the **Preview** environment: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` (same values as Production), `BETTER_AUTH_URL` = the staging URL, and confirm `BETTER_AUTH_SECRET` and `DATABASE_URL` are already present for Preview (§2, §5).
-- [ ] Add the staging callback URLs to Google (§3) and Discord (§4).
+- [x] Create and push a long-lived `staging` branch from `main`: `git checkout -b staging main && git push -u origin staging`.
+- [x] In Vercel → `journeys` → Settings → Domains, add a domain (`staging-journeys-ten-virid.vercel.app`) and assign it to the git branch `staging`. Record it at the top of this file.
+- [x] In Vercel → Settings → Environment Variables, set for the **Preview** environment: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` (same values as Production), `BETTER_AUTH_URL` = the staging URL, and confirm `BETTER_AUTH_SECRET` and `DATABASE_URL` are already present for Preview (§2, §5).
+- [x] Add the staging callback URLs to Google (§3) and Discord (§4).
 - Expected result: PR preview deployments build green; sign-in works on the staging domain; it is not expected to work on ephemeral PR preview URLs.
 
 ## 10. Sign in once before seeding (unblocks ticket 04)
@@ -84,7 +84,7 @@ that point at a fixed staging domain.
 The seed script attaches the seed Project to an *existing* account and never
 creates user rows, so better-auth owns account linking end to end.
 
-- [ ] After ticket 01 is deployed, sign in once with Google or Discord as `pauljosephmacfarlane@gmail.com` on **local** (`http://localhost:3000`) and on **production** (and staging if you want the seed there too).
+- [x] After ticket 01 is deployed, sign in once with Google or Discord as `pauljosephmacfarlane@gmail.com` on **local** (`http://localhost:3000`) and on **production** (and staging if you want the seed there too).
 - Expected result: a user row with that email exists in each database the seed will run against. Post-check: after seeding, sign in again and the seed Project appears in your projects list.
 
 ## Expected `.env.example` (agents keep this file; you fill `.env.local`)
