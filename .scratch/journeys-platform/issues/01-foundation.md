@@ -75,3 +75,35 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 - Worker-reported run (context, not proof): 4/4 e2e specs passed against `journeys_e2e on localhost:5436`; dev database untouched.
 - Parallelism re-check against real diffs: D1 and D2 both touched `.github/workflows/ci.yml` and `README.md` (D2 appended to both) — the predicted `package.json`/`pnpm-lock.yaml` collision did not materialize because D2 added no dependencies, but the shared-file overlap on ci.yml/README confirms sequential was the right structure.
 - Both deliverables integrated; next: aggregate code review, then aggregate verification. `pnpm-lock.yaml` still awaits Paul's commit.
+
+### [AI CODE REVIEW] 2026-09-19 — aggregate review of `0ed317e..88a9f1f`
+
+Two fresh reviewers (frontier model) read the complete diff, one per axis; the orchestrator adjudicated every candidate by reading the cited hunks. No blocking finding remains. Status moved `in-progress` → `ai-review` for this review, then to `ready-for-human` after verification and PR creation (see [CLOSEOUT]).
+
+**Axis 1 — technical implementation and spec conformity.** AC coverage judged by the reviewer: AC-1, AC-2, AC-4, AC-5, AC-6 satisfied by the diff; AC-3 split (automated halves satisfied, real OAuth human-gated); AC-7 and AC-9 human-gated; AC-8 partial (dead link, fixed). Verified against installed packages: the hand-rolled cookie signature is byte-identical to better-auth 1.7.5's `makeSignature`; the two session cookie names in `src/proxy.ts` are exactly the two better-auth emits; Next 16.2.10 honours `proxy.ts`.
+
+| # | Severity | Paths | Disposition |
+|---|---|---|---|
+| T-F1 README links non-existent `docs/adr/` | non-blocking | README.md | resolved (orchestrator fix: reworded) |
+| T-F2 migration-before-deploy ordering claimed but not enforced | non-blocking | migrate.yml, README.md, human-prerequisites §11 | resolved (wording: no ordering guarantee; migrations stay backward-compatible) |
+| T-F3 `closePools()` ends a pool shared across spec files in a worker | non-blocking | e2e/setup/session.ts | resolved (lazily recreated pool) |
+| T-F4 e2e DB guard checks name only; `getE2eDatabaseUrl` not pure | non-blocking | e2e/setup/global-setup.ts, e2e-env.ts | resolved (non-local host refused unless `E2E_DATABASE_URL`; override is a parameter) |
+| T-F5 `QueryProvider` never mounted | non-blocking | src/components/query-provider.tsx | resolved (removed) |
+| T-F6 CI runs on PRs only | non-blocking | ci.yml | resolved (also on push to staging/main) |
+| T-F7 better-auth caret range vs hand-rolled signer; thin unit coverage | non-blocking | package.json, session.ts | deviation approved: caret mirrors paulitakes; a breaking bump fails the e2e suite loudly enough; more unit seams arrive with ticket 02 |
+| T-F8 sign-in buttons shown to a signed-in Author | non-blocking | src/app/page.tsx | resolved (buttons only when signed out) |
+| T-F9 prerequisites and `E2E_DATABASE_URL` undocumented | non-blocking | README.md | resolved |
+
+**Axis 2 — coding standards.** Conforms: ESLint/Prettier/tsconfig/components.json/postcss byte-identical to paulitakes; `.gitignore`/`.prettierignore` narrowed so `test-results/` stays committable; husky chain implemented as approved; `server-only`/`"use client"` boundaries correct; `proxy.ts` not `middleware.ts`; no guardrail file touched, no `--no-verify`, no secret literals; product copy uses CONTEXT.md vocabulary.
+
+| # | Severity | Paths | Disposition |
+|---|---|---|---|
+| S-F1 dead `QueryProvider` (reviewer: blocking) | adjudicated non-blocking | src/components/query-provider.tsx | resolved (removed) |
+| S-F2 four stack packages unreferenced | non-blocking | package.json | deviation approved: confirmed team-policy stack (TanStack Query, react-hook-form, resolvers, lucide via shadcn) pre-installed; consumed by later tickets |
+| S-F3 no evidence committed yet | non-blocking | test-results/ | resolved (verification commit) |
+| S-F4 `user` vocabulary in harness identifiers/comments | non-blocking | e2e/** | resolved (Author) |
+| S-F5 `@/` import order in two components | non-blocking | sign-in-buttons.tsx, sign-out-button.tsx | resolved |
+| S-F6 missing import-group blank line in shadcn files | non-blocking | ui/button.tsx, ui/card.tsx | resolved |
+| S-F7 flat `src/lib` vs paulitakes' per-area folders | non-blocking | src/lib/* | deviation approved: regroup when ticket 02 adds a second area |
+
+**Cross-cutting design judgment (orchestrator):** single repository, no cross-repository seams. The e2e harness duplicates the better-auth instance rather than importing the server module (forced by `server-only`); acceptable for Foundation, revisit if the auth config grows options the harness must mirror. Remaining risks: the lockfile is committed by hand; PR previews never build on Vercel (approved); deployed migrations depend on GitHub secrets not yet set (§11).
