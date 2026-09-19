@@ -1,0 +1,3 @@
+# No package in this repo needs a dependency's install script to run, so none
+# are approved. Adding one is a deliberate decision, not a convenience.
+onlyBuiltDependencies: []
