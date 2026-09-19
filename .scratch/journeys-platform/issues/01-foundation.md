@@ -1,8 +1,8 @@
 # 01: Foundation
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None (can start immediately) — but gated on the human prerequisites below
-Owner:
+Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-19
 Parent: `.scratch/journeys-platform/spec.md`
 
 **What to build:** An Author can open the deployed site, read a landing page that says what Journeys is, sign in with Google or Discord, and land on an empty "your projects" page. Everything later tickets build on exists and is proven: database, auth, deploy, local dev loop, and the test harness for both seams.
