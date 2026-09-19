@@ -32,8 +32,8 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 **Repository delivery:** `journeys`, base `staging` @ `0ed317e`, branch `feat/01-foundation`, direct checkout, no worktrees. Sequential structure: D1 → D2. Parallelism rejected because both deliverables predictably edit `package.json`, `pnpm-lock.yaml`, `.gitignore`, `README.md`, and `src/db/*`; re-checked at closeout.
 
 **Resolved technical decisions (execution, not contract changes):**
-- Local Postgres host port: **5435** (5434 is already bound by the running `paulitakes-db` container on this machine; `.env.example` updated to match). Confirmed with Paul before dispatch.
-- Deployed migrations: `pnpm build` runs `drizzle-kit migrate` before `next build`, so every Vercel build (Preview, staging, Production) migrates its own `DATABASE_URL`. No extra CI secrets required.
+- Local Postgres host port: **5435** (5434 is already bound by the running `paulitakes-db` container on this machine; `.env.example` updated to match). Confirmed by Paul 2026-09-19; Paul updates `.env.local` to port 5435.
+- Deployed migrations (Paul's choice, 2026-09-19): a GitHub Actions workflow mirroring paulitakes `migrate.yml` runs `drizzle-kit migrate` on push to `staging` and `main` against a `DATABASE_URL` GitHub secret per branch environment; CI (`ci.yml`) runs lint/typecheck/test/build on PRs. New human prerequisite recorded as `human-prerequisites.md` §11. Vercel builds do not migrate.
 - `cacheComponents` stays off in Foundation; auth-aware pages render dynamically.
 - Routes: `/` landing (static copy + Google/Discord sign-in buttons, lists nothing); `/projects` requires a session (server-side `getSession`; `src/proxy.ts` cookie-presence redirect as UX only); signed-out → `/`.
 - better-auth tables (`user`, `session`, `account`, `verification`) in `src/db/schema.ts`; `drizzle/` migrations committed; `db` client selects `@neondatabase/serverless` when `VERCEL` is set, else `pg`.

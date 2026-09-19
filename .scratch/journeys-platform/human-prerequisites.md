@@ -99,3 +99,12 @@ DISCORD_CLIENT_ID=
 DISCORD_CLIENT_SECRET=
 ANTHROPIC_API_KEY=
 ```
+
+## 11. GitHub secrets for deployed migrations (added 2026-09-19 by the Foundation work package)
+
+Migrations for Neon run from a GitHub Actions workflow (`.github/workflows/migrate.yml`), not from Vercel builds, per Paul's choice during ticket 01.
+
+- [ ] In GitHub → `paul-macfarlane/journeys` → Settings → Environments, create environments `staging` and `production`.
+- [ ] Add secret `DATABASE_URL` to each: the Neon `staging` branch pooled string for `staging`, the Neon main pooled string for `production`.
+- Expected result: pushes to `staging` and `main` apply pending migrations before Vercel finishes building. Post-check: the workflow run is green and sign-in works on the corresponding URL.
+- Local Postgres now listens on host port **5435** (5434 is used by paulitakes-db). Update `DATABASE_URL` in `.env.local` to `postgresql://postgres:postgres@localhost:5435/journeys`.
