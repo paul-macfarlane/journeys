@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 // The landing page explains the product and offers sign-in. It deliberately
 // lists no projects and no journeys: discovery is link-only. Provider
@@ -44,13 +45,14 @@ export default async function LandingPage() {
             Go to your projects
           </Link>
         ) : (
-          <Button
-            size="lg"
-            className="self-start"
-            render={<Link href="/sign-in" />}
+          // A real link styled as a button: Base UI's Button would either warn
+          // about a non-native element or stamp role="button" on the anchor.
+          <Link
+            href="/sign-in"
+            className={cn(buttonVariants({ size: "lg" }), "self-start")}
           >
             Sign in
-          </Button>
+          </Link>
         )}
       </div>
     </main>
