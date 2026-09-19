@@ -125,7 +125,9 @@
       "Bash(tofu untaint*)",
       "Bash(*tofu untaint*)",
       "Bash(git push origin main*)",
-      "Bash(git push -u origin main*)"
+      "Bash(git push -u origin main*)",
+      "Bash(git push origin staging*)",
+      "Bash(git push -u origin staging*)"
     ]
   }
 }
