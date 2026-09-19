@@ -1,0 +1,150 @@
+# Journeys platform — decisions from the 2026-09-18 grill
+
+Status: settled (shared understanding confirmed by Paul, 2026-09-18)
+Source: `/grill-with-docs` session. This file is the durable record of what was
+decided; `spec.md` (next step, via `/to-spec`) turns it into a work contract.
+Vocabulary is defined in `/CONTEXT.md` — use those terms.
+
+## Product
+
+- A general platform for authoring and running branching, text-based journeys.
+  The three migrant-healthcare empathy cases on the legacy site
+  (journey-stories.netlify.app) are one example use, not the domain.
+- Legacy repo `paul-macfarlane/journey` (private, Astro static, Twine-derived)
+  stays live and untouched as a reference. Agents cannot read it (404).
+- Legacy facts (crawled from the live site): journeys are 36–64 steps with
+  6–9 endings each; mostly linear "Next" steps plus 2–3-way choices; **no**
+  participant input anywhere; step bodies contain headings, lists, italics,
+  and ~20 images with Creative Commons credit lines.
+
+## Timebox and approach
+
+- Hackathon: 2026-09-18 → Fri 2026-09-25, a few hours/day, solo.
+- Scope is not capped to fit the time. Work is strictly prioritized so the
+  high-priority items land (see Priority order).
+
+## Repository and stack
+
+- Build in `paul-macfarlane/journeys` (this repo). Remote: GitHub, `main`
+  protected, PRs via `gh pr create`, human merges.
+- Next.js 16 App Router, React 19, TypeScript, pnpm.
+- Drizzle ORM + Neon Postgres (`@neondatabase/serverless` in prod; `pg` +
+  docker-compose Postgres locally).
+- better-auth with Google + Discord (always both), copied from `paulitakes`.
+- Tailwind v4, shadcn (`base-nova`, neutral, lucide), zod 4, react-hook-form,
+  TanStack Query, next-themes.
+- Vercel AI SDK (`ai` v6) for AI features.
+- Vitest (unit; mandatory on graph validation and publish) + Playwright
+  (bounded to the demo path: author publishes → participant completes →
+  analytics shows it).
+- Vercel: preview deploys + `main`. No staging environment for now.
+- Mirror `paul-macfarlane/paulitakes` for ESLint/Prettier/husky/lint-staged
+  and project layout. `picksleagues` (TanStack Router + Hono) is NOT the
+  template — not needed for this UI.
+- React Flow (`@xyflow/react`, MIT — not paywalled) + `dagre` auto-layout for
+  the canvas. Tiptap (MIT) for rich text.
+
+## Domain / graph contract
+
+- Pure directed graph. **No participant state/variables** (choices that set
+  values read later). Reserve nullable `choice.condition` / `choice.effect`
+  columns; build nothing for them.
+- One Start per journey. Steps have rich-text content and 0+ Choices.
+- Ending = step with no choices; every ending has exactly one Outcome.
+- Outcome: journey-scoped, author-defined, stable id + free text label
+  (renameable without breaking analytics).
+- Validation at publish: exactly one start; every choice resolves to an
+  existing step; every step reachable from start; every ending has an outcome.
+- Step content: Tiptap JSON, rendered server-side to sanitized HTML with
+  Tiptap's renderer (do not round-trip through a Markdown pipeline).
+  Allowed marks: headings, bold/italic, lists, links, image-by-URL as a Tiptap
+  node with a required `credit` attribute. No uploads (post-hackathon).
+- Prompt: optional free-text question on a step, with an optional/required
+  flag. `prompt.type` discriminator exists but only `free_text` is accepted.
+  Responses are stored per Run, readable by authors in a per-step list,
+  never shown to participants. Authors see a one-line notice that responses
+  are anonymous and should not request identifying information.
+
+## Publishing and versions
+
+- One mutable Draft per journey. Publish = validate + snapshot into an
+  immutable Published Version stored as **one JSON document**.
+- Exactly one Published Version is live at a time. Earlier versions are kept
+  (runs point at them; restore reads them) but never publicly reachable.
+- Unpublish → public URL shows "this journey is unavailable"; in-flight runs
+  are abandoned.
+- Version list is in scope; "restore as new draft" is in scope but last in
+  priority.
+- Public URL: `/j/{journey-slug}`. No project slug in participant URLs.
+- Preview: authors walk the Draft in the participant runner; no Run recorded.
+
+## People and permissions
+
+- Authors sign in (better-auth). Participants are anonymous with a
+  pseudonymous run id in a cookie; no participant accounts.
+- Projects have flat Members: every member can do everything, including add
+  members by email of an existing account and delete the project. The
+  creator is just the first member. `member.role` column exists, defaults to
+  `member`, is never read. No invite emails, no per-journey permissions,
+  last-write-wins on the draft.
+
+## Runs and analytics
+
+- Run = `{ versionId, path: stepId[], startedAt, endedAt?, outcomeId? }` plus a
+  separate response table. **No event table.**
+- Analytics, in scope: numbers overlaid on the canvas (choice %, outcome
+  counts, abandonment per step) + outcome distribution chart + per-step
+  Response list. Nothing else.
+
+## Themes
+
+- Curated presets (~6) + optional accent color; project default with
+  per-journey override; applies to the participant runner only. Reserve a
+  nullable custom-tokens JSON column for future custom themes.
+
+## Canvas / editor
+
+- Always auto-layout (dagre). Click a step → side panel edits it; adding a
+  choice in the panel creates the edge. No drag-to-connect, no persisted
+  x/y positions in MVP. Reserve nullable position columns for later.
+
+## AI
+
+- MVP: AI *authoring* only — generate a new draft journey (steps, choices,
+  outcomes) from a prompt via structured output into the Draft for review.
+- Step-level rewrite ("make this step more X") only if time allows.
+- Full AI graph editing is out. AI never touches Published Versions.
+
+## Seeding real content
+
+- No Twine importer. Write a throwaway scraper against the live Netlify site
+  to seed case-3 (36 steps) into the new schema. Hackathon demo uses real
+  content.
+
+## Priority order (vertical, demo-able slices)
+
+1. Foundation — deployed Next.js app, Neon + Drizzle, better-auth, project +
+   journey CRUD, docker-compose, lint/test/build commands, README, rerun
+   `/atlas:setup-atlas` to record commands.
+2. Graph contract + validation.
+3. Seed scraper (case-3).
+4. Participant runner + runs on a published version.
+5. Publish / version (draft → validate → snapshot → stable URL; unpublish).
+6. Visual editor (canvas + side-panel editing + Tiptap).
+7. Analytics (canvas overlay + outcome chart + responses list).
+8. Themes.
+9. Prompts / Responses.
+10. Members.
+11. AI authoring (step rewrite if time).
+12. Version restore.
+
+## Explicitly out (hackathon)
+
+State/variables, Twine importer, image uploads, real-time co-editing, roles,
+select-type prompts, full AI graph editing, staging environment, per-version
+public URLs, custom theme editor, manual canvas layout.
+
+## Pending
+
+- ADR-0001: graph stored as one validated JSON document per draft/version
+  (vs relational steps/choices). Approved in principle; not yet written.

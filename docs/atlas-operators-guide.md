@@ -20,7 +20,7 @@ what Atlas will write on a ticket later, while it does the work.
 | Item | Value |
 |---|---|
 | Workspace name | journeys |
-| What this repository is for | Greenfield repository. Purpose not yet defined by the team; replace this sentence once it is. |
+| What this repository is for | A platform for authoring and running branching, text-based journeys: authors build a graph of steps and choices, publish immutable versions, and participants walk them anonymously. See `CONTEXT.md` for vocabulary. |
 | Folder for proof of work | `test-results` |
 
 Atlas may change the repositories below, and nothing else.

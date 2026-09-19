@@ -107,7 +107,7 @@ Available to claim: Status: is not claimed, no Blocked by: line lists an unresol
 
 | Repository | Path | Source host | Base branch | PR creation command |
 |---|---|---|---|---|
-| `journeys` | `.` | local | `main` | `echo 'No git remote is configured for journeys: a human opens the pull request by hand. Add a remote and rerun Atlas setup to replace this.' && exit 1` |
+| `journeys` | `.` | github | `main` | `gh pr create --base main --head <feature-branch>` |
 
 Open one PR per affected repository.
 
