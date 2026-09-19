@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [staging, main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Same major as Neon and docker-compose.yml.
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: journeys
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d journeys"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/journeys
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-in-any-deployed-env
+      BETTER_AUTH_URL: http://localhost:3000
+      # Sign-in is never exercised in CI; env validation just requires these.
+      GOOGLE_CLIENT_ID: ci-dummy
+      GOOGLE_CLIENT_SECRET: ci-dummy
+      DISCORD_CLIENT_ID: ci-dummy
+      DISCORD_CLIENT_SECRET: ci-dummy
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
+      - run: pnpm format:check
+
+      - run: pnpm typecheck
+
+      # Validates that the committed migrations apply cleanly to a fresh
+      # database, before anything else touches it.
+      - run: pnpm db:migrate
+
+      - run: pnpm test
+
+      # Catches production-compile-only failures (prerender errors, invalid
+      # route exports) that lint, typecheck and dev mode can't see.
+      - run: pnpm build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # Starts its own Next server on its own port against its own
+      # `journeys_e2e` database (derived from this job's DATABASE_URL) — see
+      # e2e/setup/. Never touches the service database above.
+      - run: pnpm test:e2e

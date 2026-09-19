@@ -1,0 +1,28 @@
+import { expect, test } from "@playwright/test";
+
+test("landing page explains the product and offers a single sign-in link while signed out", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", { name: "Journeys", level: 1 }),
+  ).toBeVisible();
+
+  // One entry point: the provider choice lives on /sign-in, not here.
+  await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    "href",
+    "/sign-in",
+  );
+  await expect(page.getByRole("button", { name: /Sign in with/ })).toHaveCount(
+    0,
+  );
+
+  // Signed out: the page never links to /projects.
+  await expect(page.locator('a[href="/projects"]')).toHaveCount(0);
+
+  await page.screenshot({
+    path: "test-results/landing/landing.png",
+    fullPage: true,
+  });
+});

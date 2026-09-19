@@ -1,0 +1,3 @@
+# Chains to the Atlas pre-push guardrail (see .husky/pre-commit). exec keeps
+# this hook's stdin — the ref list git pipes in — attached to the Atlas hook.
+exec .githooks/pre-push "$@"

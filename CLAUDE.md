@@ -19,7 +19,7 @@ Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/ag
 
 Atlas workspace: **journeys**. Confirmed repositories:
 
-- `journeys` at `.`; base `main`; source host `github`.
+- `journeys` at `.`; base `staging` (PRs target `staging`; humans promote `staging` → `main`); source host `github`.
 
 When isolation or parallel delivery benefits from worktrees, they live beneath
 `.claude/worktrees/<work-package>/<repository-id>/`. The frontier
@@ -38,11 +38,23 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `docs/adr/` — Architecture decision records
 - `docs/agents/` — Agent-facing tracker, triage-label, planning, testing, tooling, and guardrail guidance
 - `.scratch/<feature-slug>/` — Committed specs, decisions, and ticket files (local markdown tracker)
+- `src/app/` — Next.js 16 App Router routes, layouts, and the better-auth route handler
+- `src/components/` — shadcn/ui primitives and app components
+- `src/db/` — Drizzle schema and database client (Neon in deployments, `pg` locally)
+- `src/lib/` — Shared server and client helpers, including startup env validation
+- `drizzle/` — Committed Drizzle migrations; applied by CI and the Migrate workflow, never by Vercel builds
+- `e2e/` — Playwright specs plus setup that provisions the dedicated `journeys_e2e` database and server on port 3100
+- `test-results/` — Committed proof artifacts: one directory per e2e test name plus captured command output
+- `.github/workflows/` — CI (lint, format, typecheck, migrate, unit, build, e2e) and Migrate (per-branch Drizzle migrations)
 
 ### Repository-specific rules
 
-- Stack is decided but no application code exists yet: Next.js 16 App Router, pnpm, Drizzle + Neon Postgres, better-auth, Tailwind v4 + shadcn, Vitest + Playwright, deployed on Vercel. Mirror `paul-macfarlane/paulitakes` conventions.
-- No lint, test, or build commands are recorded until the Foundation ticket lands; rerun Atlas setup afterward so commands stop being reported unavailable.
+- Stack: Next.js 16 App Router, React 19, TypeScript, pnpm 10, Drizzle + Neon Postgres (`pg` + docker-compose locally on host port 5436), better-auth (Google + Discord), Tailwind v4 + shadcn, zod 4, TanStack Query, Vitest + Playwright, Vercel. Mirror `paul-macfarlane/paulitakes` conventions.
+- The Foundation ticket has landed. Use the commands in `docs/agents/testing.md`; CI runs the same commands on every pull request and on every push to `staging` and `main`.
+- Vercel builds never run migrations. The `Migrate` GitHub Action applies Drizzle migrations on push to `staging` and `main`, and it starts alongside the Vercel build with no ordering guarantee, so every migration must stay compatible with the previously deployed code.
+- There are no pull-request preview deployments: Vercel's Ignored Build Step skips every branch except `staging` and `main`. Deployed verification happens on the staging domain after a PR merges.
+- `pnpm test:e2e` provisions its own `journeys_e2e` database and starts its own Next server on port 3100; it never reuses `pnpm dev` or the dev database. Specs sign in by minting a real better-auth session, never by driving OAuth or mocking better-auth.
+- Never commit `pnpm-lock.yaml` from an agent session; lockfile commits are human-only.
 - The legacy `paul-macfarlane/journey` repository is a private read-only reference; seed real content by scraping the live site, not by importing Twine.
 - Never place participant Responses or real run data in proof artifacts; use seeded or fixture journeys.
 
@@ -118,7 +130,7 @@ reread planning, tracker, triage, domain, testing, or tooling guidance.
 
 ## Atlas guardrails
 
-- Protected branches by repository: `journeys:main`. Changes land through each repository's configured PR.
+- Protected branches by repository: `journeys:main`, `journeys:staging`. Changes land through each repository's configured PR, always based on `staging`.
 - Never merge a PR. Follow `docs/agents/issue-tracker.md` for human-only tracker actions.
 - Never read or write live secret files. Use `.example` or `.template` files and ask a human to populate live values out of band.
 - Never force-push, bypass hooks, destroy uncommitted work, repoint remotes, or weaken guardrails.

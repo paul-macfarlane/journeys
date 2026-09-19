@@ -13,11 +13,16 @@ invoked skill.
 | Classification | Trigger | Required consideration |
 |---|---|---|
 | Atlas recommendation | Ticket lacks a clear problem, outcome, or bounded decision | Return to /grill-with-docs, Wayfinder, /to-spec, or /to-tickets as appropriate. |
-| confirmed team policy | Any work that assumes a language, framework, or runtime | Next.js 16 App Router, React 19, TypeScript, pnpm; Drizzle + Neon Postgres (`@neondatabase/serverless` in prod, `pg` + docker-compose locally); better-auth (Google + Discord); Tailwind v4 + shadcn; zod 4; TanStack Query; Vitest + Playwright; Vercel. Mirror `paul-macfarlane/paulitakes` conventions. |
+| confirmed team policy | Any work that assumes a language, framework, or runtime | Next.js 16 App Router, React 19, TypeScript, pnpm 10; Drizzle + Neon Postgres (`@neondatabase/serverless` in deployments, `pg` + docker-compose locally on host port 5436); better-auth (Google + Discord); Tailwind v4 + shadcn; zod 4; TanStack Query; Vitest + Playwright; Vercel. Mirror `paul-macfarlane/paulitakes` conventions. |
 | confirmed team policy | Any work that names a domain concept | Use the vocabulary in `CONTEXT.md` (Journey, Project, Step, Choice, Ending, Outcome, Draft, Published Version, Run, Prompt, Response, Member, Theme). Do not bake the migrant-healthcare example into the model. |
 | confirmed team policy | Any work touching the journey graph, publishing, or runs | Published Versions are immutable; Runs pin to the version they started on; the Draft is the only mutable copy. Read `docs/adr/` and `.scratch/journeys-platform/decisions.md`. |
-| discovered repository fact | Work that would need a pull request | Open it with `gh pr create --base main --head <feature-branch>`; a human merges. |
-| unresolved question | Work that depends on lint, test, typecheck, build, or e2e commands | None are recorded until the Foundation ticket lands. Rerun Atlas setup afterward; do not invent commands. |
+| confirmed team policy | Work that would need a pull request | Open it with `gh pr create --base staging --head <feature-branch>`; a human merges, and a human promotes `staging` to `main`. Agents never target `main` and never commit `pnpm-lock.yaml`. |
+| confirmed team policy | Work that depends on lint, format, typecheck, unit, build, or e2e commands | Use the verified commands in `docs/agents/testing.md` (`pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test:e2e`). CI runs the same set plus `pnpm db:migrate` against a fresh Postgres 18; do not invent other commands. |
+| discovered repository fact | Schema or migration changes | Generate a migration with `pnpm db:generate` and commit it under `drizzle/`. The Migrate workflow and the Vercel build start from the same push with no ordering guarantee, so plan forward-only migrations that stay compatible with the previously deployed code, plus rollback and data verification. `pnpm db:push` is dev-only. |
+| discovered repository fact | Deployment or release changes | Deploys happen via git push: `staging` deploys to the stable staging domain and `main` is production; there are no PR preview deployments. Plan rollout, rollback, and the post-merge staging smoke check; Vercel mutations stay denied to agents. |
+| discovered repository fact | Authentication, authorization, or security changes | better-auth with Google and Discord OAuth; participants are anonymous and never authenticate. Plan threat, privilege, privacy, and audit impacts, and keep e2e sign-in on the real-session minting helper rather than OAuth or mocks. |
+| confirmed team policy | End-to-end test changes | Specs live in `e2e/`, run against the dedicated `journeys_e2e` database and a self-started server on port 3100, and write one full-page screenshot per test to `test-results/<test-name>/<test-name>.png` as PASS evidence. |
+| Atlas recommendation | User-interface changes | Confirm accessibility, responsive behavior, screenshot evidence from the e2e suite, and end-to-end coverage; use `frontend-design` and shadcn conventions. |
 
 Classifications have distinct authority: confirmed team policy is mandatory;
 Atlas recommendations are proposals; discovered repository facts are evidence;
@@ -41,7 +46,7 @@ tickets from unresolved material.
 
 ## Review and publication
 
-Red-team policy: Required for high-risk work and for any plan that materially establishes or changes this repository's architecture. Given the repository is greenfield, the first architectural plan qualifies..
+Red-team policy: Required for high-risk work and for any plan that materially establishes or changes this repository's architecture, including the journey graph model, publishing, runs, auth, or the migration/deploy path.
 
 Storage: **tracker**. Drafts before approval:
 **false**. A repository spec uses

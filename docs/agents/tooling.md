@@ -12,10 +12,10 @@ third-party library documentation.
 | Plugin | Status | Why it applies | Use when | Prerequisites | Install or state |
 |---|---|---|---|---|---|
 | `context7` | installed | Next.js 16, Drizzle, better-auth, React Flow, and Tiptap are version-sensitive dependencies. | Checking current, version-specific library behavior before planning or implementing against it. | none | active |
-| `vercel` | installed | Vercel is the deployment target. | Reading deployment, preview URL, and runtime log state. Mutating operations stay denied by the guard; deploys happen via git push. | none | active |
-| `playwright` | recommended | Installed in the plugin cache but not enabled; e2e is in scope once a UI exists. | Driving the demo-path e2e flow after the participant runner exists. Enable the plugin first. | none | `/plugin install playwright@claude-plugins-official` |
-| `github` | recommended | The repository remote is hosted on GitHub; `gh` CLI already covers PR creation. | Only if issue or PR reads via MCP are wanted; requires OAuth in an interactive session. | none | `/plugin install github@claude-plugins-official` |
-| `typescript-lsp` | recommended | TypeScript is the confirmed stack; a prior install attempt did not register. | Navigating and editing TypeScript with language-server diagnostics. | typescript-language-server | `/plugin install typescript-lsp@claude-plugins-official` |
+| `vercel` | installed | Vercel is the deployment target. | Reading deployment, staging domain, and runtime log state. Mutating operations stay denied by the guard; deploys happen via git push. | none | active |
+| `playwright` | installed | Playwright e2e suite exists in `e2e/`; the plugin was installed at user scope on 2026-09-19. `pnpm test:e2e` works without it. | Driving ad-hoc browser checks or capturing extra UI evidence outside the committed e2e suite. | none | active |
+| `typescript-lsp` | installed | TypeScript is the confirmed stack; `typescript-language-server` 6.0.0 is on PATH and the plugin was installed at user scope on 2026-09-19. | Navigating and editing TypeScript with language-server diagnostics. | typescript-language-server | active |
+| `github` | recommended | The repository remote is hosted on GitHub; the `gh` CLI already covers PR creation and a GitHub MCP connector is configured but unauthorized. | Only if issue or PR reads via MCP are wanted; requires OAuth in an interactive session. | none | `/plugin install github@claude-plugins-official` |
 | `pyright-lsp` | declined | Python was detected only from Atlas's own guard hooks, not project code. | — | pyright-langserver | `/plugin install pyright-lsp@claude-plugins-official` |
 
 `installed` means setup verified the plugin is enabled and any named binary is

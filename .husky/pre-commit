@@ -1,0 +1,5 @@
+# husky owns core.hooksPath, so the Atlas hooks in .githooks/ are no longer
+# run by git directly — every husky hook chains to its counterpart so the
+# guardrails still fire. Keep the exec last: it hands over the exit status.
+pnpm exec lint-staged
+exec .githooks/pre-commit "$@"

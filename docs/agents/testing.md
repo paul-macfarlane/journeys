@@ -5,7 +5,7 @@ This document is the authoritative repository policy for verification commands,
 acceptance evidence, and `PASS`, `FAIL`, `BLOCKED`, and `SKIPPED` verdict
 semantics.
 
-Run surface: **no run surface**.
+Run surface: **local + deployed**.
 
 Read this guide while planning acceptance criteria, Definition of Done,
 fixtures, and verification. Resolve the applicable commands and evidence rules
@@ -16,13 +16,16 @@ rereading this guide.
 
 | Check | Command | Coverage | When | Status |
 |---|---|---|---|---|
-| unit | `` | Unit behavior | During implementation and before PR | unavailable |
-| lint | `` | Static suspect-code checks | Before PR | unavailable |
-| format | `` | Code layout | Before lint | unavailable |
-| typecheck | `` | Type consistency | During implementation and before PR | unavailable |
-| build | `` | Buildability | Before PR | unavailable |
-| e2e | `` | End-to-end behavior | Before PR | unavailable |
-| run | `` | Local run surface | Manual verification | unavailable |
+| unit | `pnpm test` | Vitest unit tests under `src/**/*.test.{ts,tsx}` (no database needed) | During implementation and before PR | verified |
+| lint | `pnpm lint` | ESLint (next + prettier config) | Before PR; lint-staged also runs it on staged files at commit | verified |
+| format | `pnpm format` | Prettier write over the repository | Before lint; keep reformatting within task scope | verified |
+| format:check | `pnpm format:check` | Prettier check (what CI runs) | Before PR | verified |
+| typecheck | `pnpm typecheck` | `tsc --noEmit` type consistency | During implementation and before PR | verified |
+| build | `pnpm build` | Next.js production build; catches prerender and route-export errors dev mode cannot see | Before PR | verified |
+| migrate | `pnpm db:migrate` | Applies committed Drizzle migrations to the local Postgres (docker `pnpm db:up` on host port 5436); CI runs it against a fresh database | After any schema change and before PR | verified |
+| e2e | `pnpm test:e2e` | Playwright suite in `e2e/` against the dedicated `journeys_e2e` database and a self-started server on port 3100; requires Docker Postgres up and `pnpm exec playwright install chromium` | Before PR | verified |
+| run | `pnpm dev` | Local development server on http://localhost:3000 against the docker Postgres | Manual verification | inferred |
+| db:up | `pnpm db:up` | Starts the local Postgres 18 container on host port 5436 | Before migrate, e2e, or run when the container is not up | inferred |
 
 `verified` means the command ran successfully here. `inferred` means configuration names it but setup did not execute it. `unavailable` is an explicit gap.
 
@@ -33,10 +36,10 @@ rereading this guide.
   package. It intentionally contains only the latest work package's evidence.
 - For UI screenshots and videos, use one directory per test name beneath the
   proof-artifact root. Rerunning a test replaces that test directory.
-- Visual/browser behavior: Not applicable yet: no UI exists. Once it does, screenshot is the default, one subdirectory per test name; video only for the canvas editor or other multi-step interactions a still image cannot prove..
-- Integration and non-UI behavior: Committed machine-readable report or captured test output, once any test command exists..
-- External integration: Vercel preview-deployment smoke result, once a deployed surface exists..
-- Sensitive data: Sanitize before storage. Never include participant Responses or real run data; use seeded or fixture journeys only..
+- Visual/browser behavior: Screenshot is the default: each e2e spec writes a full-page screenshot to `test-results/<test-name>/<test-name>.png`, one subdirectory per test name. Video only for the canvas editor or other multi-step interactions a still image cannot prove. `test-results/playwright/` is Playwright's git-ignored scratch output and is never PASS evidence..
+- Integration and non-UI behavior: Captured command output committed as `test-results/ac-<n>-<slug>.txt`, one file per acceptance criterion, plus the Vitest result line..
+- External integration: Post-merge smoke result against the Vercel staging deployment (there are no PR preview deployments); production is checked after a human promotes `staging` to `main`..
+- Sensitive data: Sanitize before storage. Never include participant Responses, real run data, `.env.local` values, or OAuth credentials; use seeded or fixture journeys only..
 - Any screenshot, video, test report, captured output, or other artifact cited as
   `PASS` evidence is saved beneath `test-results` and committed
   on the feature branch. The PR links to the committed path; it never describes

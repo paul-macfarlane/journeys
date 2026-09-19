@@ -27,7 +27,7 @@ Atlas may change the repositories below, and nothing else.
 
 | Repository | Path | Base branch |
 |---|---|---|
-| `journeys` | `.` | `main` |
+| `journeys` | `.` | `staging` |
 
 A *base branch* is the line of work that new work starts from. Atlas starts
 each new branch from it. Atlas opens one pull request for each repository it
@@ -40,13 +40,16 @@ Atlas runs these commands to prove that a change works.
 
 | Check | Command | What it covers | When it runs | Status |
 |---|---|---|---|---|
-| unit | `` | Unit behavior | During implementation and before PR | unavailable |
-| lint | `` | Static suspect-code checks | Before PR | unavailable |
-| format | `` | Code layout | Before lint | unavailable |
-| typecheck | `` | Type consistency | During implementation and before PR | unavailable |
-| build | `` | Buildability | Before PR | unavailable |
-| e2e | `` | End-to-end behavior | Before PR | unavailable |
-| run | `` | Local run surface | Manual verification | unavailable |
+| unit | `pnpm test` | Vitest unit tests under `src/**/*.test.{ts,tsx}` (no database needed) | During implementation and before PR | verified |
+| lint | `pnpm lint` | ESLint (next + prettier config) | Before PR; lint-staged also runs it on staged files at commit | verified |
+| format | `pnpm format` | Prettier write over the repository | Before lint; keep reformatting within task scope | verified |
+| format:check | `pnpm format:check` | Prettier check (what CI runs) | Before PR | verified |
+| typecheck | `pnpm typecheck` | `tsc --noEmit` type consistency | During implementation and before PR | verified |
+| build | `pnpm build` | Next.js production build; catches prerender and route-export errors dev mode cannot see | Before PR | verified |
+| migrate | `pnpm db:migrate` | Applies committed Drizzle migrations to the local Postgres (docker `pnpm db:up` on host port 5436); CI runs it against a fresh database | After any schema change and before PR | verified |
+| e2e | `pnpm test:e2e` | Playwright suite in `e2e/` against the dedicated `journeys_e2e` database and a self-started server on port 3100; requires Docker Postgres up and `pnpm exec playwright install chromium` | Before PR | verified |
+| run | `pnpm dev` | Local development server on http://localhost:3000 against the docker Postgres | Manual verification | inferred |
+| db:up | `pnpm db:up` | Starts the local Postgres 18 container on host port 5436 | Before migrate, e2e, or run when the container is not up | inferred |
 
 `verified` means setup ran the command here and it worked. `inferred` means the
 repository names the command, but setup did not run it. `unavailable` means the
