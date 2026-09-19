@@ -1,0 +1,26 @@
+# AC-5 — husky + lint-staged run on commit (captured from the review-fix commit 7976999, later amended to 88a9f1f for a typing fix; Atlas hooks chained after lint-staged)
+⋯ Backing up original state…
+✔ Done backing up original state (da44d64)!
+⋯ Running tasks for staged files…
+    *.{ts,tsx,js,jsx,mjs,cjs} — 9 files
+      ⋯ eslint --fix
+      ⋯ prettier --write
+    *.{json,md,css,yml,yaml} — 3 files
+      ⋯ prettier --write
+
+✔ prettier --write
+✔ eslint --fix
+✔ prettier --write
+
+✔ Done running tasks for staged files!
+⋯ Staging changes from tasks…
+✔ Done staging changes from tasks!
+⋯ Cleaning up temporary files…
+✔ Done cleaning up temporary files!
+[90m2:22PM[0m [32mINF[0m [1m0 commits scanned.[0m
+[90m2:22PM[0m [32mINF[0m [1mscanned ~3962 bytes (3.96 KB) in 34.6ms[0m
+[90m2:22PM[0m [32mINF[0m [1mno leaks found[0m
+[feat/01-foundation 7976999] fix: address aggregate review findings
+ 13 files changed, 91 insertions(+), 65 deletions(-)
+ delete mode 100644 src/components/query-provider.tsx
+exit: 0

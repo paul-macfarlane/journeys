@@ -14,3 +14,29 @@
 .env
 .env.*
 !.env.example
+
+# dependencies
+node_modules
+
+# next.js
+.next
+out
+build
+
+# testing
+coverage
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+
+# misc
+.DS_Store
+
+# playwright. Note the narrow test-results path: only Playwright's scratch
+# output is ignored, because committed evidence lives under test-results/.
+/playwright-report/
+/test-results/playwright/

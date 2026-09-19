@@ -1,0 +1,20 @@
+# build/generated output
+.next
+node_modules
+drizzle
+pnpm-lock.yaml
+playwright-report
+# Only Playwright's scratch output — committed evidence under test-results/
+# is formatted like any other tracked file.
+test-results/playwright
+
+# Atlas-managed files. These are written and refreshed by the Atlas tooling
+# and its guardrails; reformatting them here would fight that tooling.
+# Team-authored docs (docs/adr, README) are formatted normally.
+.atlas
+.claude
+.githooks
+.scratch
+CLAUDE.md
+docs/agents
+docs/atlas-operators-guide.md

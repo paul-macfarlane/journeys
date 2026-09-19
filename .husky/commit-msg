@@ -1,0 +1,2 @@
+# Chains to the Atlas commit-message guardrail (see .husky/pre-commit).
+exec .githooks/commit-msg "$@"
