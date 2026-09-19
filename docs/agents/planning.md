@@ -16,7 +16,7 @@ invoked skill.
 | confirmed team policy | Any work that assumes a language, framework, or runtime | Next.js 16 App Router, React 19, TypeScript, pnpm; Drizzle + Neon Postgres (`@neondatabase/serverless` in prod, `pg` + docker-compose locally); better-auth (Google + Discord); Tailwind v4 + shadcn; zod 4; TanStack Query; Vitest + Playwright; Vercel. Mirror `paul-macfarlane/paulitakes` conventions. |
 | confirmed team policy | Any work that names a domain concept | Use the vocabulary in `CONTEXT.md` (Journey, Project, Step, Choice, Ending, Outcome, Draft, Published Version, Run, Prompt, Response, Member, Theme). Do not bake the migrant-healthcare example into the model. |
 | confirmed team policy | Any work touching the journey graph, publishing, or runs | Published Versions are immutable; Runs pin to the version they started on; the Draft is the only mutable copy. Read `docs/adr/` and `.scratch/journeys-platform/decisions.md`. |
-| discovered repository fact | Work that would need a pull request | Open it with `gh pr create --base main --head <feature-branch>`; a human merges. |
+| confirmed team policy | Work that would need a pull request | Open it with `gh pr create --base staging --head <feature-branch>`; a human merges, and a human promotes `staging` to `main`. Agents never target `main`. |
 | unresolved question | Work that depends on lint, test, typecheck, build, or e2e commands | None are recorded until the Foundation ticket lands. Rerun Atlas setup afterward; do not invent commands. |
 
 Classifications have distinct authority: confirmed team policy is mandatory;

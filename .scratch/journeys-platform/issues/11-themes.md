@@ -9,7 +9,7 @@ Parent: `.scratch/journeys-platform/spec.md`
 
 - [ ] Preset picker and accent color on Project settings; override toggle + picker on Journey settings.
 - [ ] Runner and Project page reflect the effective Theme (Journey override wins); editor is unchanged.
-- [ ] Presets are readable in light and dark system settings (no unreadable text on any preset) — screenshot evidence per preset under `test-results/`.
+- [ ] Every preset passes WCAG AA contrast (axe `color-contrast` rule via `@axe-core/playwright`) on the runner start screen, a Step, and the Project page, in light and dark — screenshot evidence per preset under `test-results/`.
 - [ ] Seam B: set a preset → open the runner → assert the theme attribute/class.
 
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`.

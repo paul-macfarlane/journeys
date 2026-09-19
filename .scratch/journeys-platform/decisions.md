@@ -41,7 +41,7 @@ Vocabulary is defined in `/CONTEXT.md` — use those terms.
 - Mirror `paul-macfarlane/paulitakes` for ESLint/Prettier/husky/lint-staged
   and project layout. `picksleagues` (TanStack Router + Hono) is NOT the
   template — not needed for this UI.
-- React Flow (`@xyflow/react`, MIT — not paywalled) + `dagre` auto-layout for
+- React Flow (`@xyflow/react`, MIT — not paywalled) + `@dagrejs/dagre` auto-layout for
   the canvas. Tiptap (MIT) for rich text.
 
 ## Domain / graph contract
@@ -175,3 +175,18 @@ public URLs, custom theme editor, manual canvas layout.
 
 - ADR-0001: graph stored as one validated JSON document per draft/version
   (vs relational steps/choices). Approved in principle; not yet written.
+
+## Amendments after red-team (2026-09-19, confirmed by Paul)
+
+- Staging: a long-lived `staging` branch with a stable Vercel domain now exists
+  alongside `main` and PR previews; the Preview environment carries full env
+  values so preview builds pass validation. Supersedes "no staging" above.
+- Seeding requires Paul's account to exist (he signs in once first); the seed
+  never creates user rows.
+- Back navigation stays; publish-time validation rejects cycles so "go back"
+  and "take a Choice" are never ambiguous. `allow_back` stays reserved.
+- Sanitization constrains link/image URLs to http(s); Preview is Member-only;
+  Published Versions record `publishedBy`; Run cookies are per-journey.
+- Publish-immutability is proven in Seam B (database), not Seam A.
+- AI structured output uses an array-shaped projection of the graph schema.
+- Priority order: publish (4) before runner (5), matching ticket dependencies.

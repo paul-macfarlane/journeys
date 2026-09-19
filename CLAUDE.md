@@ -19,7 +19,7 @@ Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/ag
 
 Atlas workspace: **journeys**. Confirmed repositories:
 
-- `journeys` at `.`; base `main`; source host `github`.
+- `journeys` at `.`; base `staging` (PRs target `staging`; humans promote `staging` → `main`); source host `github`.
 
 When isolation or parallel delivery benefits from worktrees, they live beneath
 `.claude/worktrees/<work-package>/<repository-id>/`. The frontier
@@ -118,7 +118,7 @@ reread planning, tracker, triage, domain, testing, or tooling guidance.
 
 ## Atlas guardrails
 
-- Protected branches by repository: `journeys:main`. Changes land through each repository's configured PR.
+- Protected branches by repository: `journeys:main`, `journeys:staging`. Changes land through each repository's configured PR, always based on `staging`.
 - Never merge a PR. Follow `docs/agents/issue-tracker.md` for human-only tracker actions.
 - Never read or write live secret files. Use `.example` or `.template` files and ask a human to populate live values out of band.
 - Never force-push, bypass hooks, destroy uncommitted work, repoint remotes, or weaken guardrails.
