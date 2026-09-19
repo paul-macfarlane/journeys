@@ -112,5 +112,5 @@ Migrations for Neon run from a GitHub Actions workflow (`.github/workflows/migra
 
 Ticket 01 installs husky, which takes over `core.hooksPath` and chains to the Atlas hooks in `.githooks/`.
 
-- [ ] After merging ticket 01, rerun `/atlas:setup-atlas` and record the hook activation decision as `chain` (approved by Paul on 2026-09-19 in the ticket 01 session). The same rerun records the lint/test/build commands as `verified` (AC-9).
+- [x] After merging ticket 01, rerun `/atlas:setup-atlas` and record the hook activation decision as `chain` (approved by Paul on 2026-09-19 in the ticket 01 session). The same rerun records the lint/test/build commands as `verified` (AC-9).
 - Expected result: Atlas verification reports the `.githooks` checks active through husky rather than displaced.
