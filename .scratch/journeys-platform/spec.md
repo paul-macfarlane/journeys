@@ -1,0 +1,258 @@
+# Journeys platform — MVP spec
+
+Status: ready-for-agent
+Source: `decisions.md` (2026-09-18 grill, confirmed by Paul). Vocabulary: `/CONTEXT.md`.
+Timebox: hackathon, 2026-09-18 → 2026-09-25. Scope is prioritized, not capped (see Further Notes).
+
+## Problem Statement
+
+The current Journey site is three hand-built branching stories compiled from Twine into a static Astro site. Anyone who wants to add, edit, or reorder a step has to edit exported JSON and redeploy. There is no way to see the shape of a journey — 36 to 64 steps with 6 to 9 endings — except by clicking through it. Nothing records how participants move through a journey or which endings they reach, so the people who wrote the stories cannot tell whether they work. Only one person can practically author, and the product is welded to one subject (migrant healthcare) even though the same mechanic — read a step, make a choice, live with the consequence — is useful far beyond it.
+
+## Solution
+
+A platform where signed-in Authors build Journeys as a visible graph of Steps and Choices, publish immutable versions to a stable public URL, and watch anonymous Participants' Runs accumulate into analytics drawn directly on that graph. Journeys live in Projects that Members share; each Project has a public page listing its published Journeys, and that page or a Journey's own URL is how participants arrive — discovery is link-only. Real content from the legacy site is seeded in so the platform is demonstrated on a journey people already know, not a toy.
+
+## User Stories
+
+### Authentication and projects
+
+1. As an Author, I want to sign in with Google or Discord, so that I do not have to manage another password.
+2. As an Author, I want to create a Project with a name, so that I have a place to group related Journeys.
+3. As an Author, I want to see a list of the Projects I am a Member of, so that I can find my work.
+4. As an Author, I want to rename a Project, so that its name can evolve with its content.
+5. As a Member, I want to delete a Project I belong to, so that abandoned work does not clutter the list.
+6. As a Participant, I want to open a published Journey without creating an account, so that nothing stands between me and the story.
+6a. As a visitor, I want the site root to explain what Journeys is and offer sign-in for Authors, so that a trimmed URL never looks broken.
+6b. As an Author, I want to give a Project a URL slug and a rich-text description (e.g. context, learning objectives, references), so that it can be presented to participants as a set.
+6c. As a Participant, I want to open a Project's public page and see its published Journeys listed, so that I can find "all three cases" from one link.
+6d. As a Participant, I want unpublished or never-published Journeys to be absent from the Project page, so that I only see what is ready.
+
+### Journeys and drafts
+
+7. As an Author, I want to create a Journey inside a Project with a title and URL slug, so that it has an identity before it has content.
+8. As an Author, I want to see all Journeys in a Project with their publish state (never published / published / unpublished), so that I know what participants can currently reach.
+9. As an Author, I want a new Journey to come with a single Start step already in place, so that I am never staring at an empty graph.
+10. As an Author, I want every edit to go to the Draft and never to the live Published Version, so that I can work in progress without breaking what participants see.
+11. As an Author, I want my Draft saved as I work, so that I never lose edits.
+12. As an Author, I want to rename a Journey or change its slug before first publish, so that I can fix early mistakes.
+12a. As an Author, I want to give a Journey a short description (e.g. "Goal: Cross the border."), so that the Project page and the runner's start screen can say what it is about.
+12b. As a Member, I want to delete a Journey after a confirmation, so that abandoned or duplicate journeys go away; its Runs and Responses go with it.
+
+### Steps and content
+
+13. As an Author, I want to add a Step, so that the journey grows.
+14. As an Author, I want to give a Step a title and rich-text content with headings, bold, italic, lists, and links, so that the writing reads like a story, not a form.
+15. As an Author, I want to add an image to a Step by pasting a URL, so that a step can carry a photo without an upload pipeline.
+16. As an Author, I want every image to require a credit line, so that Creative Commons attribution is never forgotten.
+17. As an Author, I want to delete a Step, and see which Choices pointed at it become broken, so that deletion is safe and visible.
+18. As an Author, I want to edit content with a WYSIWYG editor and never see Markdown or HTML, so that non-technical authors can use it.
+
+### Choices and graph structure
+
+19. As an Author, I want to add a Choice to a Step with label text and a target Step, so that participants have somewhere to go.
+20. As an Author, I want to create the target Step in the same action as the Choice, so that building a branch is one motion.
+21. As an Author, I want to reorder Choices on a Step, so that the most natural option reads first.
+22. As an Author, I want to change which Step a Choice points to, so that I can restructure without deleting.
+23. As an Author, I want a Step with zero Choices to be treated as an Ending, so that endings are structural, not a separate thing I configure.
+24. As an Author, I want to designate which Step is the Start, so that the journey has one unambiguous beginning.
+
+### Outcomes
+
+25. As an Author, I want to define Outcomes for a Journey as short free-text labels (e.g. "Reached care", "Death", "Deported"), so that endings can be grouped by meaning.
+26. As an Author, I want every Ending to require exactly one Outcome, so that analytics can always say what happened.
+27. As an Author, I want to rename an Outcome without losing its history, so that wording can improve after runs exist.
+28. As an Author, I want to see how many Endings map to each Outcome, so that I notice an Outcome nothing reaches.
+
+### Visual editor (canvas)
+
+29. As an Author, I want to see the whole Journey as a graph of Steps connected by Choices, so that I can understand its shape at a glance.
+30. As an Author, I want the graph laid out automatically, so that I never arrange boxes by hand.
+31. As an Author, I want to click a Step on the canvas and edit it in a side panel, so that navigating and editing are the same gesture.
+32. As an Author, I want the Start visually distinct and Endings visually distinct, colored by Outcome, so that structure is readable without reading text.
+33. As an Author, I want validation problems highlighted on the canvas (unreachable Steps, broken Choices, Endings missing an Outcome), so that I fix problems where they are.
+34. As an Author, I want to pan and zoom a 60-step graph and still find things, so that real-sized journeys stay usable.
+35. As an Author, I want to add a Step from the canvas, so that I do not have to leave the map to grow it.
+
+### Validation, preview, and publishing
+
+36. As an Author, I want to run validation on demand and see a list of problems, so that I know what blocks publishing.
+37. As an Author, I want validation to check: exactly one Start; every Choice targets an existing Step; every Step is reachable from Start; every Ending has an Outcome; so that a published journey can never dead-end unexpectedly.
+38. As an Author, I want to Preview the Draft exactly as a Participant would see it, so that I can test before publishing.
+39. As an Author, I want Preview to record no Run, so that my testing does not pollute analytics.
+40. As an Author, I want to Publish, and have publishing refuse if validation fails, so that the live journey is always coherent.
+41. As an Author, I want Publish to create an immutable Published Version and make it the one live version, so that participants see a consistent whole.
+42. As an Author, I want continued Draft edits after publishing to leave the live version untouched, so that I can iterate safely.
+43. As an Author, I want to Unpublish a Journey so that its public URL shows an "unavailable" page, so that I can take content down.
+44. As an Author, I want a list of Published Versions with publish time and version number, so that I can see the history.
+45. As an Author, I want to restore an older Published Version as a new Draft, so that I can undo a bad direction.
+
+### Participant runner
+
+46. As a Participant, I want to open a Journey at a stable short URL, so that it can be shared or put on a QR code.
+46a. As a Participant, I want a start screen showing the Journey's title and description before the first Step, so that I know what I am about to do.
+47. As a Participant, I want to read a Step and see its Choices as clear buttons, so that the experience is simple.
+48. As a Participant, I want the runner to be readable on a phone, so that it works in a classroom or waiting room.
+49. As a Participant, I want to reach an Ending and clearly see that the journey is over, so that the consequence lands.
+50. As a Participant, I want a way to start over from an Ending, so that I can explore a different path.
+50a. As a Participant, I want to go back to the previous Step and choose differently, so that I am not locked into a mis-tap.
+50b. As a Participant, I want the browser back button and an in-app Back control to behave the same, so that navigation feels native.
+50c. As a Participant, I want a refresh to return me to my current Step, so that I do not lose my place.
+51. As a Participant, I want my Run to stay on the version I started, even if the Author publishes mid-run, so that the story does not change under me.
+52. As a Participant, I want a Journey that has been unpublished to tell me plainly that it is unavailable, so that I am not confused by an error.
+53. As a Participant, I want to be anonymous, so that I can engage honestly with difficult content.
+
+### Prompts and responses
+
+54. As an Author, I want to attach an optional free-text Prompt to a Step, so that I can ask participants to reflect at a moment that matters.
+55. As an Author, I want to mark a Prompt required or optional, so that I can decide whether reflection gates progress.
+56. As a Participant, I want to answer a Prompt in a text box before choosing, so that I can record my reaction.
+57. As a Participant, I want to skip an optional Prompt, so that I am not forced to write.
+58. As an Author, I want to read all Responses to a Prompt in a plain list, so that I learn what participants felt at that step.
+59. As an Author, I want a notice reminding me that Responses are anonymous and should not ask for identifying information, so that I do not collect what I should not.
+60. As a Participant, I want my Responses never shown to other participants, so that I can be candid.
+
+### Analytics
+
+61. As an Author, I want to see, on the canvas, the percentage of participants who took each Choice, so that I know which decisions people make.
+62. As an Author, I want to see, on each Ending, how many Runs reached it, so that I see where journeys actually end.
+63. As an Author, I want to see which Steps participants abandon on, so that I can find where the story loses them.
+64. As an Author, I want a chart of Runs by Outcome, so that I can say "40% of participants died" instead of "ending #25 was reached 40 times".
+65. As an Author, I want analytics scoped to one Published Version at a time, so that edits do not muddy historical numbers.
+66. As an Author, I want counts of Runs started and completed, so that I have the basic denominator.
+66a. As a Member, I want analytics and Responses visible only to the Project's Members, so that participant data is not public.
+
+### Members
+
+67. As a Member, I want to add another Author to my Project by their account email, so that we can collaborate.
+68. As a Member, I want to see who else is a Member of a Project, so that I know who can edit.
+69. As a Member, I want to remove a Member, so that access can be revoked.
+70. As a Member, I want all Members to have equal ability, so that collaboration has no permission friction.
+70a. As a Member, I want the system to refuse removing the last Member, so that a Project can never be orphaned.
+
+### Themes
+
+71. As an Author, I want to pick a Theme for a Project from a small set of curated presets, so that the runner looks intentional without design work.
+72. As an Author, I want to set an optional accent color on top of the preset, so that a project can carry a signature color.
+73. As an Author, I want a Journey to override its Project's Theme, so that one journey in a set can feel different.
+74. As a Participant, I want the Theme applied to the runner, so that the story has a mood.
+75. As an Author, I want the authoring UI unaffected by Themes, so that the editor stays consistent.
+
+### AI authoring
+
+76. As an Author, I want to describe a Journey in a paragraph and receive a generated Draft of Steps, Choices, and Outcomes, so that I start from something instead of nothing.
+77. As an Author, I want the generated Draft to appear on the canvas for review before anything is published, so that AI proposes and I decide.
+78. As an Author, I want generation to respect the graph contract (one Start, endings with Outcomes, resolvable Choices), so that generated drafts are publishable with edits.
+79. As an Author, I want to ask AI to rewrite one Step's text with an instruction (e.g. "more urgent"), so that I can polish without retyping.
+80. As an Author, I want AI never to touch a Published Version, so that participants are never exposed to unreviewed content.
+80a. As an Author, I want AI features simply hidden when the platform has no AI key configured, so that a missing key is never an error I see.
+
+### Seeded content
+
+81. As an Author, I want the platform pre-loaded with at least one real legacy journey (case-3, 36 steps), so that the demo is credible.
+82. As an Author, I want seeded content to carry its images and credit lines, so that it is not visibly poorer than the legacy site.
+
+## Implementation Decisions
+
+### Stack (confirmed team policy)
+
+Next.js 16 App Router, React 19, TypeScript, pnpm. Drizzle ORM on Neon Postgres in deployed environments and on a docker-compose Postgres locally. better-auth with Google and Discord, both always enabled. Tailwind v4 with shadcn, zod 4, react-hook-form, TanStack Query, next-themes. Vercel AI SDK for AI features. Vitest and Playwright. Deployed on Vercel with preview deployments and `main`; no staging environment. Project layout, lint, format, and hook conventions mirror `paul-macfarlane/paulitakes`. The canvas uses React Flow (`@xyflow/react`, MIT) with dagre auto-layout. Rich text uses Tiptap.
+
+### Domain model
+
+- **Project** has a title, a globally unique slug (auto-generated from the title, editable), a rich-text description (Tiptap JSON, same allowed node set as Steps), and many **Members** (user references). Membership is flat; every Member can do everything. A `role` column exists, defaults to `member`, and is never read in MVP.
+- **Journey** belongs to one Project; has title, a short plain-text description, slug (globally unique, auto-generated from the title, editable until first publish and frozen afterward), a Draft, an optional pointer to the live Published Version, and a publish state derivable from that pointer.
+- **Draft** and **Published Version** each store the graph as **one validated JSON document** (see Graph document). The Draft is mutable; Published Versions are immutable rows with a version number and publish timestamp. A Journey has at most one live version at a time; earlier versions are retained, never publicly reachable, and used for Run pinning and restore.
+- **Outcome** is journey-scoped, with a stable id and a free-text label. Outcomes live in the graph document so a Published Version carries the outcome labels as they were at publish time; analytics group by outcome id.
+- **Run** is pinned to one Published Version and stores an ordered array of step ids (the path — always the participant's *current linear route* from Start, see Back navigation), a count of backtracks, started-at, optional ended-at, and optional outcome id. There is **no event table**; every metric is computed from paths. A pseudonymous participant id from a cookie is stored so repeat starts can be distinguished from distinct participants, but it is never linked to any account.
+- **Response** is stored in its own table keyed by Run and step id, holding the free-text answer.
+- **Theme** is a preset id plus an optional accent color, stored on Project with an optional override on Journey. A nullable custom-tokens JSON column is reserved and unused.
+
+### Graph document
+
+The graph document is the contract everything else depends on (priority 2). It contains: a schema version; the Start step id; a map of Steps by stable id, each with title, Tiptap-JSON content, ordered Choices, and an optional Prompt; a map of Outcomes by stable id; and for Endings (steps with no Choices) an outcome id. Each Choice has a stable id, label, and target step id, plus reserved nullable `condition` and `effect` fields that nothing reads. Each Prompt has a `type` discriminator that accepts only `free_text` in MVP, a label, and a required flag. Step positions on the canvas are not stored; nullable position fields are reserved for a future manual-layout mode.
+
+The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Choice target exists; every Step is reachable from Start; every Ending has an Outcome that exists. Validation returns a structured list of problems with step or choice ids so the canvas can highlight them.
+
+Content is stored as Tiptap JSON and rendered to sanitized HTML on the server with Tiptap's renderer. The allowed node and mark set is fixed: paragraph, headings, bold, italic, bullet and ordered lists, links, and an image node whose attributes are a URL and a required `credit`. Nothing is round-tripped through Markdown.
+
+### Deletion
+
+Deleting a Journey or a Project is a hard delete after an explicit confirmation; it cascades to Drafts, Published Versions, Runs, and Responses. There is no soft delete, archive, or undo in MVP. A Project cannot lose its last Member.
+
+### Publishing
+
+Publish = validate the Draft → refuse with problems, or copy the document into a new Published Version row with the next version number → point the Journey's live pointer at it. Unpublish clears the live pointer; the version row remains. Restore copies a chosen Published Version's document into the Draft, replacing it. Preview renders the Draft through the same runner components but never creates a Run.
+
+### Public pages and discovery
+
+The site root is a static landing page describing the product with an Author sign-in; it lists nothing. Each Project has a public page at `/p/{project-slug}` rendering its description and its currently published Journeys (live pointer set), in the Project's Theme. There is no search, index, or cross-project browsing: discovery is link-only, via a Project URL, a Journey URL, or a QR code the Author generates from either. Publishing a Journey is what makes it public and listed; there is no separate visibility flag.
+
+### Public URL and runner
+
+Participants use `/j/{journey-slug}`. The runner resolves the slug to the live Published Version at Run start and pins the Run to that version id; all subsequent steps read from the pinned version, not the live pointer. An unpublished slug renders an "unavailable" page. The runner shows a start screen (title, description, "Begin") before the Start step. Each step has its own URL, `/j/{slug}/{step-id}`, so the browser back button works; an in-app Back control does the same thing. The Run id lives in a cookie, so refresh resumes at the current step.
+
+**Back navigation.** Participants may go back and choose differently. The Run's path is always the *current linear route*: choosing appends the target step id; navigating to a step already in the path truncates the path to that step and increments a backtrack counter; navigating to a step not in the path is refused and redirects to the current step. Reaching an Ending sets ended-at and outcome id; going back from an Ending clears them. Analytics therefore describe where participants ended up, not every detour; the backtrack count is stored for future use but not surfaced in MVP. A per-journey `allow_back` setting is reserved in the graph document (default true, not exposed in the UI) so authors can later lock participants into consequences.
+
+A Run whose last step is not an Ending and has no ended-at is an abandonment for analytics purposes.
+
+### Analytics
+
+All analytics are computed per Published Version from Run paths: choice take-rate (runs whose path contains step A followed by step B, over runs that visited A), ending counts, outcome distribution, abandonment per step (runs whose path ends at that step without ended-at), starts, and completions. The canvas overlay reuses the same graph rendering as the editor with numbers on edges and nodes. Responses are listed per step with no participant identifiers.
+
+### Members and auth
+
+Authors authenticate via better-auth. Any signed-in user can create a Project and becomes its first Member. A Member adds another by the email of an existing account; there are no invitation emails or pending states. Draft edits are last-write-wins with no locking.
+
+### Canvas
+
+Auto-layout only via dagre; the canvas is a navigable map, not a drawing surface. Selecting a node opens a side panel that edits title, content, Prompt, Outcome (for Endings), and Choices; adding a Choice in the panel creates the edge. Adding a target Step from a Choice creates the node. Validation problems and analytics numbers are both rendered as decorations on the same graph.
+
+### AI
+
+Provider: Anthropic Claude via the Vercel AI SDK's Anthropic provider, model `claude-opus-5` with adaptive thinking, using structured output constrained to the graph document schema. The API key is an environment variable populated out of band; agents never read live secret files. When the key is absent the AI entry points are hidden and every other feature works unchanged.
+
+Authoring generates a full graph document from a prompt using structured output constrained to the graph schema, writes it into the Draft (replacing an empty Draft or, if non-empty, after confirmation), and returns the author to the canvas. Step rewrite generates replacement Tiptap-JSON content for one step from an instruction and the current content. Neither operation can read or write a Published Version.
+
+### Seeding
+
+A throwaway scraper reads the live legacy site's prerendered step pages for case-3, converts them into a graph document (step titles, content with images and credits, choices, endings), assigns Outcomes by hand-written mapping, validates, and inserts the Journey as a Draft in a seed Project. The script takes an Author email argument (Paul's account for now), creates that user's record if it does not exist yet so the Project has a Member, and is idempotent so it can be rerun. Seeded images hotlink the legacy site's URLs; acceptable because that site stays live, but fragile and noted as such. It is a development script, not a product feature.
+
+### Reserved-for-future columns and fields
+
+Documented so nobody removes them: `member.role`; `choice.condition` and `choice.effect`; `prompt.type` accepting only `free_text`; nullable step position fields; nullable custom theme tokens.
+
+## Testing Decisions
+
+A good test exercises behavior a user or author would observe and never asserts on internal structure, storage layout, or component internals. Two seams, agreed with the owner:
+
+**Seam A — the graph domain module (Vitest, pure).** Everything that can silently corrupt content is a pure function over the graph document and Run paths, and is tested without a database:
+
+- Validation: each rule independently (multiple Starts, missing Start, dangling Choice target, unreachable Step, Ending without Outcome, Outcome id not defined) and the success case on a real-sized fixture (the seeded case-3 document once it exists).
+- Publish snapshot: the Published Version document equals the validated Draft; a subsequent Draft edit does not alter it.
+- Runner transition: given a version document, a current step, and a Choice id, the next step is the Choice's target; an invalid Choice id is rejected; reaching an Ending yields its Outcome.
+- Analytics aggregation: given a set of Run paths, choice take-rates, ending counts, outcome distribution, abandonment per step, starts, and completions match hand-computed expectations, including edge cases (zero runs, all abandoned, runs pinned to a different version excluded).
+- Content sanitization: disallowed nodes and marks are stripped; image nodes without a credit are rejected.
+
+**Seam B — the demo path (Playwright, browser).** Authentication in e2e never drives OAuth. Following the pattern already used in `picksleagues` (and, in a simpler form, `paulitakes`): a helper mints a real better-auth session through better-auth's own internal adapter (create user, create session), signs the session token the way better-auth does (standard-alphabet base64 HMAC-SHA256 of the token with `BETTER_AUTH_SECRET`, percent-encoded, cookie name `better-auth.session_token`), and adds that cookie to the Playwright browser context. Tests run against a dedicated e2e database created and migrated in Playwright's global setup, with `BETTER_AUTH_URL` pointed at the e2e server so better-auth's origin check passes. No test-only auth provider, no mock identity provider, no `storageState` files; each browser context signs in as a freshly minted Author so tests are independent. Real Google/Discord client values must still exist in the environment because env validation requires them, but they are never exercised.
+
+One end-to-end flow against the running app with a minted Author session and the e2e database: sign in → create Project and Journey → add Steps and Choices in the side panel → define an Outcome and assign it to an Ending → Preview → Publish → open `/j/{slug}` as an anonymous Participant in a fresh context → complete a Run → return as Author and see the Run in analytics → edit the Draft and publish version 2 → confirm the earlier Run still reports against version 1 and the public URL now serves version 2. A second, shorter flow covers Unpublish → "unavailable" page.
+
+Not tested separately: server actions and route handlers in isolation. They are thin glue between A and B and are covered by B.
+
+Prior art: `paulitakes` colocates Vitest unit tests next to modules and keeps Playwright specs in an `e2e/` directory; follow that layout. The session-minting helper is modeled on `picksleagues`' e2e setup (`mintSession`/`signInAs` over better-auth's internal adapter, dedicated e2e database in global setup). Evidence policy per `docs/agents/testing.md`: Playwright screenshots under `test-results/<test-name>/`, cleared per work package; fixture journeys only, never real Responses.
+
+## Out of Scope
+
+Participant state or variables (Choices that set values later Steps read); conditional or scripted logic; a Twine importer or general Twine compatibility; image upload or hosting; real-time collaborative editing; roles or per-journey permissions; invitation emails; select or multi-select Prompts or any form builder; full AI graph editing or AI diffs of an existing graph; per-version public URLs; a staging environment; custom theme editors; manual canvas layout; participant accounts; soft delete, archive, or undo; rate limiting or abuse protection on Runs; a mobile-optimized editor (the editor is desktop-only; the runner and Project page are mobile-first); surfacing backtrack counts or per-journey lock-in in the UI; public discovery, search, a directory, or a marketplace (discovery is link-only); unlisted or private journeys or any per-journey visibility control beyond published/unpublished; migrating the legacy deployment. The legacy site stays live and untouched.
+
+## Further Notes
+
+**Priority order.** Work is delivered as vertical, demo-able slices in this order; if time runs out, whatever is below the line is simply not built: 1 Foundation (deployed app, database, auth, Project and Journey CRUD, docker-compose, lint/test/build commands, README, rerun Atlas setup to record commands) → 2 Graph contract and validation → 3 Seed scraper → 4 Participant runner, Runs, landing page, and public Project page → 5 Publish, versions, unpublish → 6 Visual editor → 7 Analytics → 8 Themes → 9 Prompts and Responses → 10 Members → 11 AI authoring (step rewrite if time) → 12 Version restore.
+
+**Human prerequisites.** Foundation cannot be completed by an agent alone: Neon database, Vercel project, Google and Discord OAuth apps, and an Anthropic API key are provisioned by Paul. The checklist is `human-prerequisites.md` beside this spec; ticket 1 lists them as human-gated criteria.
+
+**Pending ADR.** ADR-0001, "graph stored as one validated JSON document per Draft and Published Version rather than relational step and choice rows," was approved in principle during the grill and should be written in `docs/adr/` as part of ticket 2. Consequence recorded there: analytics derive from Run paths and the version document; if relational querying is ever needed, the version boundary is where it is introduced.
+
+**Legacy facts that shaped this spec.** The live site's journeys have 36–64 steps and 6–9 endings; most steps are linear with a single "Next"; a minority branch two or three ways; there is no participant input anywhere; step bodies contain headings, lists, italics, and about twenty Creative Commons images with credit lines. The legacy repository is private and unreadable by agents; the live site is the only content source.
+
+**Demo.** Author creates a small journey on the canvas, publishes v1, a participant on a phone completes it via QR code, the author shows the run on the canvas overlay, edits and publishes v2, and shows the run still pinned to v1 — then opens the seeded case-3 journey to show the platform holding real-sized content.

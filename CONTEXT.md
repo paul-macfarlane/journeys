@@ -9,8 +9,8 @@ A single branching, text-based experience a participant walks through from a sta
 _Avoid_: Story, case, module, game
 
 **Project**:
-A named grouping of journeys that is owned and collaborated on as a unit.
-_Avoid_: Collection, workspace, case set
+A named grouping of journeys that is owned and collaborated on as a unit, and presented to participants as a set through its public page.
+_Avoid_: Collection, workspace, case set, course
 
 **Author**:
 A signed-in person who creates and edits journeys within a project they belong to.
@@ -53,8 +53,12 @@ An immutable snapshot of a journey's draft created by publishing. At most one is
 _Avoid_: Release, revision, snapshot
 
 **Run**:
-One participant's walk through one published version, from start to an ending or abandonment. Pinned to the version it began on.
+One participant's walk through one published version, from start to an ending or abandonment. Pinned to the version it began on; its path is the participant's current route, not every detour.
 _Avoid_: Session, playthrough, attempt
+
+**Backtrack**:
+A participant returning to an earlier step in their run to choose differently.
+_Avoid_: Undo, rewind
 
 ## Participation
 

@@ -78,6 +78,33 @@ Vocabulary is defined in `/CONTEXT.md` — use those terms.
 - Public URL: `/j/{journey-slug}`. No project slug in participant URLs.
 - Preview: authors walk the Draft in the participant runner; no Run recorded.
 
+## Discovery and public pages (added 2026-09-18, Q23–Q26)
+
+- Site root: landing page + Author sign-in. Lists nothing.
+- Project has a slug and rich-text description and a public page at
+  `/p/{project-slug}` listing its published journeys (the legacy `/journeys`
+  page, generalized).
+- Published = public and listed. No unlisted/private journeys, no visibility
+  flag.
+- Discovery is link-only: Project URL, Journey URL, or a QR code. No search,
+  index, or marketplace.
+
+## Gap round (added 2026-09-19, Q27–Q33)
+
+- Delete Journey: supported, hard delete with confirm, cascades runs/responses.
+  No soft delete.
+- Back navigation: allowed. URL per step; path = current linear route (back
+  truncates, backtrack counter stored); reserved `allow_back` flag for later.
+- Journey gets a short description; runner has a start screen.
+- Playwright auth: mint a real better-auth session via the internal adapter
+  and a hand-signed `better-auth.session_token` cookie (picksleagues pattern),
+  dedicated e2e database in global setup. No OAuth, no test-only provider.
+- AI: Anthropic `claude-opus-5` via Vercel AI SDK Anthropic provider; key is
+  an env var populated out of band; features hidden when absent.
+- Seeded case-3 owned by Paul (pauljosephmacfarlane@gmail.com); script is
+  idempotent and takes the email as an argument.
+- Human prerequisites tracked in `human-prerequisites.md`.
+
 ## People and permissions
 
 - Authors sign in (better-auth). Participants are anonymous with a
