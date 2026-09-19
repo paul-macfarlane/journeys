@@ -107,9 +107,9 @@ Available to claim: Status: is not claimed, no Blocked by: line lists an unresol
 
 | Repository | Path | Source host | Base branch | PR creation command |
 |---|---|---|---|---|
-| `journeys` | `.` | github | `main` | `gh pr create --base main --head <feature-branch>` |
+| `journeys` | `.` | github | `staging` | `gh pr create --base staging --head <feature-branch>` |
 
-Open one PR per affected repository.
+Open one PR per affected repository. PRs target `staging` first; a human promotes `staging` to `main` (production) with a separate human-opened PR. Never open a PR against `main`.
 
 The tracker and source host may differ. Never infer tracker operations from the
 source host.
