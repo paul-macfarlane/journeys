@@ -1,6 +1,6 @@
 # 01: Foundation
 
-Status: in-progress
+Status: ready-for-human
 Blocked by: None (can start immediately) — but gated on the human prerequisites below
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-19
 Parent: `.scratch/journeys-platform/spec.md`
@@ -107,3 +107,36 @@ Two fresh reviewers (frontier model) read the complete diff, one per axis; the o
 | S-F7 flat `src/lib` vs paulitakes' per-area folders | non-blocking | src/lib/* | deviation approved: regroup when ticket 02 adds a second area |
 
 **Cross-cutting design judgment (orchestrator):** single repository, no cross-repository seams. The e2e harness duplicates the better-auth instance rather than importing the server module (forced by `server-only`); acceptable for Foundation, revisit if the auth config grows options the harness must mirror. Remaining risks: the lockfile is committed by hand; PR previews never build on Vercel (approved); deployed migrations depend on GitHub secrets not yet set (§11).
+
+### [CLOSEOUT] 2026-09-19 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/6 (base `staging`, head `feat/01-foundation`). Status `in-progress` → `ai-review` → `ready-for-human`.
+
+**Repository delivery `journeys`:** base `staging` @ `0ed317e`, direct checkout, no worktrees. Parallelism re-check against real diffs: D1 and D2 overlapped on `.github/workflows/ci.yml` and `README.md`; the predicted `package.json`/lockfile overlap did not materialize (D2 added no dependency). Sequential was right, for a narrower reason than predicted.
+
+**Deliverables:**
+- D1 app scaffold, database, auth, pages — atlas-worker on `opus` — `94e5105` (44 files; lockfile excluded, see below).
+- D2 Playwright harness — atlas-worker on `sonnet` — `8c9ca7c`.
+- Orchestrator: review fixes `88a9f1f`, evidence `852b857`, tracker records.
+
+**Verified run command:** `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e` — all exit 0 at `88a9f1f`.
+
+**Criterion verdicts (evidence under `test-results/`, committed in `852b857`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 dev boot; fresh clone via README | PASS | `ac-1-fresh-clone.txt` (env values passed inline because the agent cannot write `.env.local`; lockfile copied from the working tree) |
+| AC-2 landing page | PASS | `ac-2-landing.txt`, `landing/landing.png` |
+| AC-3a empty projects page for a signed-in Author; signed-out redirect | PASS | `ac-6-e2e.txt`, `projects-empty/`, `projects-signed-out-redirect/`, `sign-out/` |
+| AC-3b real Google/Discord sign-in local + production | BLOCKED (human gate) | local post-check PASS in `ac-3b-oauth-start.txt`: both providers return their authorize URL with the local callback. Paul signs in; post-check `select provider_id from account` |
+| AC-4 schema + migrations on an empty database | PASS | `ac-4-migrate.txt` (at `b8b9db3`; `src/db`/`drizzle` unchanged since) |
+| AC-5 commands exist and pass; husky + lint-staged | PASS | `ac-5-commands.txt`, `ac-5-husky-commit.txt` |
+| AC-6 Vitest real test; Playwright minted-session spec; global setup, own port, env override | PASS | `ac-6-e2e.txt` (6 unit tests; 4 e2e specs; `[e2e] database: journeys_e2e on localhost:5436`) |
+| AC-7a PR preview builds green | SKIPPED (approved) | `ac-7-vercel-preview.txt`: Vercel Ignored Build Step cancels every branch except `staging`/`main` (Paul: keep) |
+| AC-7b staging domain and production deploy | BLOCKED (human gate) | after merge/promotion; post-check curl of both URLs |
+| AC-8 README | PASS | `ac-8-readme.txt` |
+| AC-9 `/atlas:setup-atlas` rerun after merge | BLOCKED (human follow-up) | note in PR body; also re-records `hook_activation: chain` |
+
+**Deviations (all approved by Paul on 2026-09-19 unless noted):** port 5436; husky chain; migrations via GitHub Action (§11 secrets); Vercel previews skipped; `pnpm-lock.yaml` committed by hand because the Atlas plugin's `pre-commit-secret-scrub` denies agent commits containing lockfile integrity hashes — a narrow allowlist is proposed as a separate task in `atlas-plugins`; Paul's conversational "disable the rule" was not applied. Orchestrator inline fixes are listed in [AI CODE REVIEW].
+
+**Human follow-ups:** (1) commit `pnpm-lock.yaml` on this branch; (2) `.env.local` → port 5436; (3) sign in with both providers locally and, after merge, on staging/production; (4) rerun `/atlas:setup-atlas` after merge; (5) GitHub secrets from §11.
