@@ -9,3 +9,8 @@
 !test-results/
 !test-results/**
 # atlas-v3:gitignore:end
+
+# Environment files: only the template is tracked.
+.env
+.env.*
+!.env.example
