@@ -140,3 +140,9 @@ Two fresh reviewers (frontier model) read the complete diff, one per axis; the o
 **Deviations (all approved by Paul on 2026-09-19 unless noted):** port 5436; husky chain; migrations via GitHub Action (§11 secrets); Vercel previews skipped; `pnpm-lock.yaml` committed by hand because the Atlas plugin's `pre-commit-secret-scrub` denies agent commits containing lockfile integrity hashes — a narrow allowlist is proposed as a separate task in `atlas-plugins`; Paul's conversational "disable the rule" was not applied. Orchestrator inline fixes are listed in [AI CODE REVIEW].
 
 **Human follow-ups:** (1) commit `pnpm-lock.yaml` on this branch; (2) `.env.local` → port 5436; (3) sign in with both providers locally and, after merge, on staging/production; (4) rerun `/atlas:setup-atlas` after merge; (5) GitHub secrets from §11.
+
+### [PROGRESS] 2026-09-19 — PR feedback from Paul applied
+
+- Sign-in moved to a dedicated `/sign-in` page reached from a single "Sign in" button on the landing page; the provider buttons now use Google's and Discord's own logos and button branding (Google light/dark spec, Discord blurple). `src/proxy.ts` sends a signed-in Author from `/sign-in` to `/projects`; the page also checks the session server-side.
+- e2e: landing spec asserts the single link and no provider buttons; new `sign-in.spec.ts` covers the branded page (logos present, screenshot `test-results/sign-in/`) and the signed-in redirect. 6/6 specs pass; lint, format, typecheck, unit, build green.
+- AC-2 ("offers sign-in") and AC-3 still hold; no contract change.

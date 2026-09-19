@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-import { SignInButtons } from "@/components/sign-in-buttons";
+import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
 
 // The landing page explains the product and offers sign-in. It deliberately
-// lists no projects and no journeys: discovery is link-only.
+// lists no projects and no journeys: discovery is link-only. Provider
+// choice lives on /sign-in so the landing page has one call to action.
 export default async function LandingPage() {
   const session = await getSession();
 
@@ -43,7 +44,13 @@ export default async function LandingPage() {
             Go to your projects
           </Link>
         ) : (
-          <SignInButtons />
+          <Button
+            size="lg"
+            className="self-start"
+            render={<Link href="/sign-in" />}
+          >
+            Sign in
+          </Button>
         )}
       </div>
     </main>

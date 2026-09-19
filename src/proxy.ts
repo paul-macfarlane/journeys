@@ -14,12 +14,18 @@ function hasSessionCookie(request: NextRequest): boolean {
 }
 
 export function proxy(request: NextRequest) {
-  if (!hasSessionCookie(request)) {
+  const { pathname } = request.nextUrl;
+  const signedIn = hasSessionCookie(request);
+
+  if (pathname === "/sign-in" && signedIn) {
+    return NextResponse.redirect(new URL("/projects", request.url));
+  }
+  if (pathname.startsWith("/projects") && !signedIn) {
     return NextResponse.redirect(new URL("/", request.url));
   }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/projects/:path*"],
+  matcher: ["/sign-in", "/projects/:path*"],
 };
