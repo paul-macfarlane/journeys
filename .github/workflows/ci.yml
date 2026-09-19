@@ -58,3 +58,16 @@ jobs:
       # Catches production-compile-only failures (prerender errors, invalid
       # route exports) that lint, typecheck and dev mode can't see.
       - run: pnpm build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # Starts its own Next server on its own port against its own
+      # `journeys_e2e` database (derived from this job's DATABASE_URL) — see
+      # e2e/setup/. Never touches the service database above.
+      - run: pnpm test:e2e

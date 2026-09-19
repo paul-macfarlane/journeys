@@ -65,6 +65,26 @@ secret exists the job logs a notice and exits green.
 [`CI`](.github/workflows/ci.yml) runs lint, format, typecheck, migrations,
 tests, and a production build on every pull request.
 
+## End-to-end tests
+
+`pnpm test:e2e` runs the Playwright suite in `e2e/`. It never touches your
+dev database or a running `pnpm dev`:
+
+- Global setup creates and migrates a dedicated `journeys_e2e` database
+  (derived from `DATABASE_URL` by swapping the database name) and logs the
+  database name it ran against.
+- The suite starts its own Next server on port 3100 — never port 3000 —
+  with `DATABASE_URL` and `BETTER_AUTH_URL` overridden to match, and never
+  reuses an already-running server.
+- Specs sign in by minting a real better-auth session directly (through
+  better-auth's internal adapter) rather than driving OAuth; there is no
+  test-only auth provider and no mocking of better-auth.
+
+Each spec writes a full-page screenshot as pass evidence to
+`test-results/<test-name>/<test-name>.png`.
+
+First run: `pnpm exec playwright install chromium` to download the browser.
+
 ## Git hooks
 
 Husky owns `core.hooksPath`, and each husky hook chains to its counterpart in
