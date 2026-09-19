@@ -35,7 +35,6 @@ export default async function LandingPage() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <SignInButtons />
         {session ? (
           <Link
             href="/projects"
@@ -43,7 +42,9 @@ export default async function LandingPage() {
           >
             Go to your projects
           </Link>
-        ) : null}
+        ) : (
+          <SignInButtons />
+        )}
       </div>
     </main>
   );

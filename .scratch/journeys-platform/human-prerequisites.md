@@ -105,7 +105,7 @@ ANTHROPIC_API_KEY=
 Migrations for Neon run from a GitHub Actions workflow (`.github/workflows/migrate.yml`), not from Vercel builds, per Paul's choice during ticket 01.
 
 - [ ] In GitHub → `paul-macfarlane/journeys` → Settings → Secrets and variables → Actions, add repository secrets `STAGING_DATABASE_URL` (Neon `staging` branch pooled string) and `PROD_DATABASE_URL` (Neon main pooled string). Until a secret exists the workflow logs a notice and exits green without migrating.
-- Expected result: pushes to `staging` and `main` apply pending migrations before Vercel finishes building. Post-check: the workflow run is green and sign-in works on the corresponding URL.
+- Expected result: pushes to `staging` and `main` apply pending migrations shortly after the push (no ordering guarantee against the Vercel build, so migrations must stay compatible with the previously deployed code). Post-check: the workflow run is green and sign-in works on the corresponding URL.
 - Local Postgres now listens on host port **5436** (5434 is used by paulitakes-db, 5435 by the h2 console). Update `DATABASE_URL` in `.env.local` to `postgresql://postgres:postgres@localhost:5436/journeys`.
 
 ## 12. Re-record git hook activation after merge (added 2026-09-19)

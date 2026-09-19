@@ -21,12 +21,22 @@ async function ensureDatabase(databaseUrl: string): Promise<void> {
   const dbName = url.pathname.replace(/^\//, "");
 
   // A run against the dev database must never look like a pass: this suite
-  // mints and deletes users against whatever database it's pointed at, so a
+  // mints and deletes Authors against whatever database it's pointed at, so a
   // name-derivation bug pointing it at `journeys` would both corrupt real
   // data and let that bug pass silently.
   if (dbName !== E2E_DATABASE_NAME) {
     throw new Error(
       `ensureDatabase: expected database "${E2E_DATABASE_NAME}", got "${dbName}" — refusing to run against it`,
+    );
+  }
+
+  // The name is derived from whatever DATABASE_URL is in scope, so a shell
+  // exporting a Neon/staging URL would otherwise get a `journeys_e2e` created
+  // on that server. Only an explicit E2E_DATABASE_URL may point off-box.
+  const isLocal = ["localhost", "127.0.0.1"].includes(url.hostname);
+  if (!isLocal && !process.env.E2E_DATABASE_URL) {
+    throw new Error(
+      `ensureDatabase: refusing to create "${dbName}" on non-local host "${url.hostname}" — set E2E_DATABASE_URL explicitly to run e2e elsewhere`,
     );
   }
 

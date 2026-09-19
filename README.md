@@ -10,10 +10,13 @@ live with the consequence.
 Next.js 16 App Router · TypeScript · Tailwind v4 + shadcn/ui · Drizzle ·
 Neon Postgres (Docker locally) · Better Auth · Vitest + Playwright · Vercel.
 
-Domain vocabulary is in [`CONTEXT.md`](CONTEXT.md); decisions live in
-[`docs/adr/`](docs/adr/).
+Domain vocabulary is in [`CONTEXT.md`](CONTEXT.md). Architecture decision
+records will live in `docs/adr/` from the first recorded decision onward.
 
 ## Local setup
+
+Prerequisites: Node 22 or newer, pnpm 10 (`corepack enable` picks up the
+pinned version), and Docker running.
 
 ```bash
 pnpm install
@@ -61,9 +64,14 @@ Vercel builds never run migrations. The
 migrations on push to `staging` and `main`, using the `STAGING_DATABASE_URL`
 and `PROD_DATABASE_URL` repository secrets — one secret per branch, with no
 fallback, so `main` can never migrate the staging database. Until a branch's
-secret exists the job logs a notice and exits green.
+secret exists the job logs a notice and exits green. The Action and the
+Vercel build start from the same push with no ordering guarantee, so every
+migration must stay compatible with the previously deployed code.
 [`CI`](.github/workflows/ci.yml) runs lint, format, typecheck, migrations,
-tests, and a production build on every pull request.
+tests, a production build, and the e2e suite on every pull request and on
+every push to `staging` and `main`. Vercel's Ignored Build Step skips
+branches other than `staging` and `main`, so there are no PR preview
+deployments.
 
 ## End-to-end tests
 
@@ -84,6 +92,8 @@ Each spec writes a full-page screenshot as pass evidence to
 `test-results/<test-name>/<test-name>.png`.
 
 First run: `pnpm exec playwright install chromium` to download the browser.
+Set `E2E_DATABASE_URL` to point the suite at a database elsewhere; without it
+the harness refuses any non-local host.
 
 ## Git hooks
 

@@ -20,13 +20,15 @@ export const E2E_DATABASE_NAME = "journeys_e2e";
  * The dev `DATABASE_URL` with its database name swapped for the dedicated
  * e2e one — derived rather than hardcoded so it follows whichever host and
  * port the rest of the repo already points at (Docker locally, the CI
- * service container). Pure so it can be exercised directly.
- * `E2E_DATABASE_URL` overrides it outright for anyone who needs to point
- * somewhere else entirely.
+ * service container). Pure: the optional override is a parameter, so the
+ * function can be exercised directly. `loadE2eEnv` passes `E2E_DATABASE_URL`
+ * for anyone who needs to point somewhere else entirely.
  */
-export function getE2eDatabaseUrl(devDatabaseUrl: string): string {
-  const fromEnv = process.env.E2E_DATABASE_URL;
-  if (fromEnv) return fromEnv;
+export function getE2eDatabaseUrl(
+  devDatabaseUrl: string,
+  override: string | undefined = undefined,
+): string {
+  if (override) return override;
 
   const url = new URL(devDatabaseUrl);
   url.pathname = `/${E2E_DATABASE_NAME}`;
@@ -40,7 +42,7 @@ export function getE2eDatabaseUrl(devDatabaseUrl: string): string {
  *
  * Called by `playwright.config.ts` (to build `webServer.env`), by global
  * setup (to create and migrate the database), and by the spec-side session
- * helper (which opens its own connection to mint and clean up users).
+ * helper (which opens its own connection to mint and clean up Authors).
  */
 export function loadE2eEnv(): { databaseUrl: string } {
   config({ path: ".env.local" });
@@ -52,7 +54,10 @@ export function loadE2eEnv(): { databaseUrl: string } {
     );
   }
 
-  const databaseUrl = getE2eDatabaseUrl(devDatabaseUrl);
+  const databaseUrl = getE2eDatabaseUrl(
+    devDatabaseUrl,
+    process.env.E2E_DATABASE_URL,
+  );
   process.env.DATABASE_URL = databaseUrl;
   // better-auth rejects a state-changing request whose Origin doesn't match
   // its configured base URL, and the e2e server runs on its own port.

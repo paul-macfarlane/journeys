@@ -25,18 +25,36 @@ if (!secret) {
   throw new Error("session helper: BETTER_AUTH_SECRET is not set");
 }
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle(pool, { schema });
+// Created lazily and recreated after `closePools()`: Playwright reuses a
+// worker process across spec files, so a pool ended by one file's `afterAll`
+// must not poison the next file that mints an Author.
+let pool: pg.Pool | null = null;
+let auth: ReturnType<typeof createAuth> | null = null;
 
-const auth = betterAuth({
-  baseURL: E2E_BASE_URL,
-  secret,
-  database: drizzleAdapter(db, { provider: "pg", schema }),
-});
+function getPool(): pg.Pool {
+  pool ??= new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  return pool;
+}
+
+function createAuth() {
+  return betterAuth({
+    baseURL: E2E_BASE_URL,
+    secret,
+    database: drizzleAdapter(drizzle(getPool(), { schema }), {
+      provider: "pg",
+      schema,
+    }),
+  });
+}
+
+function getAuth() {
+  auth ??= createAuth();
+  return auth;
+}
 
 const SESSION_COOKIE_NAME = "better-auth.session_token";
 
-export type MintedUser = { id: string; email: string; name: string };
+export type MintedAuthor = { id: string; email: string; name: string };
 
 export type MintedCookie = {
   name: string;
@@ -74,13 +92,13 @@ function signSessionToken(token: string, tokenSecret: string): string {
 /**
  * Mints a real better-auth session through better-auth's own internal
  * adapter — no OAuth, no test-only auth provider. Each call creates a
- * distinct user (unique email), so tests that mint independently never
+ * distinct Author (unique email), so tests that mint independently never
  * collide.
  */
 export async function mintSession(
   overrides: MintOverrides = {},
-): Promise<{ user: MintedUser; cookie: MintedCookie }> {
-  const ctx = await auth.$context;
+): Promise<{ user: MintedAuthor; cookie: MintedCookie }> {
+  const ctx = await getAuth().$context;
 
   const user = await ctx.internalAdapter.createUser(
     {
@@ -115,7 +133,7 @@ export async function mintSession(
 export async function signInAs(
   context: BrowserContext,
   overrides?: MintOverrides,
-): Promise<MintedUser> {
+): Promise<MintedAuthor> {
   const { user, cookie } = await mintSession(overrides);
   await context.addCookies([cookie]);
   return user;
@@ -126,12 +144,20 @@ export async function signInAs(
  * runs rather than being torn down after each. Cascades to session rows via
  * the schema's `ON DELETE CASCADE`.
  */
-export async function cleanup(userIds: string[]): Promise<void> {
-  if (userIds.length === 0) return;
-  await pool.query('DELETE FROM "user" WHERE id = ANY($1::text[])', [userIds]);
+export async function cleanup(authorIds: string[]): Promise<void> {
+  if (authorIds.length === 0) return;
+  await getPool().query('DELETE FROM "user" WHERE id = ANY($1::text[])', [
+    authorIds,
+  ]);
 }
 
-/** Closes the helper's own database connection once a spec file is done. */
+/**
+ * Closes the helper's own database connection once a spec file is done. Safe
+ * to call from every spec file: the next mint in this worker reconnects.
+ */
 export async function closePools(): Promise<void> {
-  await pool.end();
+  const current = pool;
+  pool = null;
+  auth = null;
+  await current?.end();
 }

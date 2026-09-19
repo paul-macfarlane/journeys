@@ -3,10 +3,10 @@ import { expect, test } from "@playwright/test";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
-const mintedUserIds: string[] = [];
+const mintedAuthorIds: string[] = [];
 
 test.afterAll(async () => {
-  await cleanup(mintedUserIds);
+  await cleanup(mintedAuthorIds);
   await closePools();
 });
 
@@ -28,7 +28,7 @@ test("signed-in visit to /projects shows the empty projects state", async ({
   context,
 }) => {
   const author = await signInAs(context);
-  mintedUserIds.push(author.id);
+  mintedAuthorIds.push(author.id);
 
   await page.goto("/projects");
 
@@ -52,7 +52,7 @@ test("signing out returns to the landing page, and /projects redirects again", a
   context,
 }) => {
   const author = await signInAs(context);
-  mintedUserIds.push(author.id);
+  mintedAuthorIds.push(author.id);
 
   await page.goto("/projects");
   await page.getByRole("button", { name: "Sign out" }).click();
