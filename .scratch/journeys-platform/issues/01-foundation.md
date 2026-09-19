@@ -40,6 +40,7 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 - Env validated once with zod in `src/lib/env.ts` (DATABASE_URL, BETTER_AUTH_SECRET ≥32, BETTER_AUTH_URL, both OAuth pairs required; ANTHROPIC_API_KEY optional).
 - Playwright: `e2e/`, own server `next dev -p 3100`, `reuseExistingServer: false`, `webServer.env` overrides `DATABASE_URL` (→ `journeys_e2e`, created + migrated + name logged in global setup) and `BETTER_AUTH_URL`; `outputDir` `test-results/playwright` (gitignored, failure-only); PASS screenshots written explicitly to `test-results/<test-name>/`.
 - `packageManager` pinned to the installed `pnpm@10.33.0`; Node ≥ 22.
+- Git hooks (Paul's approval, 2026-09-19): husky owns `core.hooksPath` (`.husky/_`) and **chains** to the Atlas hooks — `.husky/pre-commit` runs `pnpm exec lint-staged` then execs `.githooks/pre-commit`; `.husky/commit-msg` and `.husky/pre-push` exec their `.githooks` counterparts with arguments and stdin passed through. Paul re-records `hook_activation` as `chain` when rerunning `/atlas:setup-atlas` after merge (AC-9).
 
 **Deliverables:**
 - **D1 — App scaffold, database, auth, landing and projects pages.** Next 16 + tooling mirrored from paulitakes (ESLint/Prettier/husky/lint-staged/components.json/tsconfig), docker-compose, Drizzle schema + migration, better-auth server/client/route, env schema + Vitest unit test, `/` and `/projects`, README. Proves AC-1, AC-2, AC-3a, AC-4, AC-5 (all but `test:e2e`), AC-6 (unit), AC-8.

@@ -104,7 +104,13 @@ ANTHROPIC_API_KEY=
 
 Migrations for Neon run from a GitHub Actions workflow (`.github/workflows/migrate.yml`), not from Vercel builds, per Paul's choice during ticket 01.
 
-- [ ] In GitHub → `paul-macfarlane/journeys` → Settings → Environments, create environments `staging` and `production`.
-- [ ] Add secret `DATABASE_URL` to each: the Neon `staging` branch pooled string for `staging`, the Neon main pooled string for `production`.
+- [ ] In GitHub → `paul-macfarlane/journeys` → Settings → Secrets and variables → Actions, add repository secrets `STAGING_DATABASE_URL` (Neon `staging` branch pooled string) and `PROD_DATABASE_URL` (Neon main pooled string). Until a secret exists the workflow logs a notice and exits green without migrating.
 - Expected result: pushes to `staging` and `main` apply pending migrations before Vercel finishes building. Post-check: the workflow run is green and sign-in works on the corresponding URL.
 - Local Postgres now listens on host port **5435** (5434 is used by paulitakes-db). Update `DATABASE_URL` in `.env.local` to `postgresql://postgres:postgres@localhost:5435/journeys`.
+
+## 12. Re-record git hook activation after merge (added 2026-09-19)
+
+Ticket 01 installs husky, which takes over `core.hooksPath` and chains to the Atlas hooks in `.githooks/`.
+
+- [ ] After merging ticket 01, rerun `/atlas:setup-atlas` and record the hook activation decision as `chain` (approved by Paul on 2026-09-19 in the ticket 01 session). The same rerun records the lint/test/build commands as `verified` (AC-9).
+- Expected result: Atlas verification reports the `.githooks` checks active through husky rather than displaced.
