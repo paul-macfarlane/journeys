@@ -1,0 +1,14 @@
+# AC-3b post-check (local) — social sign-in start returns the provider authorize URL with the local callback
+commit: 88a9f1f  date: 2026-09-19T18:24:48Z  environment: dev server on http://localhost:3000 with the values in .env.local (OAuth client values never printed)
+
+$ POST /api/auth/sign-in/social provider=google
+authorize: https://accounts.google.com/o/oauth2/v2/auth
+redirect_uri: ['http://localhost:3000/api/auth/callback/google']
+client_id present: True
+
+$ POST /api/auth/sign-in/social provider=discord
+authorize: https://discord.com/api/oauth2/authorize
+redirect_uri: ['http://localhost:3000/api/auth/callback/discord']
+client_id present: True
+
+staging/production post-check: pending human merge (AC-7b); see [CLOSEOUT].

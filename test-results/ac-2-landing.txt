@@ -1,0 +1,14 @@
+# AC-2 — landing page at / (dev server, real .env.local, DATABASE_URL -> localhost:5436/journeys)
+commit: 88a9f1f  date: 2026-09-19T18:24:48Z
+$ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/
+200
+$ curl -s http://localhost:3000/ | grep -o (product copy and sign-in controls)
+Participants are anonymous
+Sign in with Discord
+Sign in with Google
+graph of steps and choices
+immutable snapshot
+$ curl -s http://localhost:3000/ | grep -c "href=\"/projects\"" (expect 0 while signed out)
+0
+$ curl -s -o /dev/null -w "%{http_code} %{redirect_url}" http://localhost:3000/projects (signed out)
+307 http://localhost:3000/

@@ -1,0 +1,53 @@
+# AC-6 / AC-2 / AC-3a — Playwright e2e suite (dedicated database journeys_e2e, own server on port 3100)
+commit: 88a9f1f  date: 2026-09-19T18:24:29Z  environment: local docker journeys-db on localhost:5436; DATABASE_URL passed explicitly and re-derived to journeys_e2e by the harness
+$ pnpm test:e2e
+
+> journeys@0.1.0 test:e2e <repo>
+> playwright test
+
+◇ injected env (7) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+[e2e] database: journeys_e2e on localhost:5436
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+Running 4 tests using 4 workers
+
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✓  1 [chromium] › e2e/landing.spec.ts:3:5 › landing page shows the product and sign-in, with no projects link while signed out (576ms)
+  ✓  2 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (415ms)
+  ✓  3 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (1.3s)
+  ✓  4 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (2.2s)
+
+  4 passed (5.4s)
+exit: 0
+
+$ grep -n "reuseExistingServer\|BETTER_AUTH_URL\|DATABASE_URL\|next dev -p" playwright.config.ts
+32:    command: `pnpm exec next dev -p ${E2E_PORT}`,
+38:    reuseExistingServer: false,
+45:      DATABASE_URL: databaseUrl,
+46:      BETTER_AUTH_URL: E2E_BASE_URL,
+
+$ docker exec journeys-db psql -U postgres -d journeys -c "select count(*) as dev_users from \"user\"" ; same on journeys_e2e after cleanup
+ dev_users 
+-----------
+         0
+(1 row)
+
+ e2e_users_after_cleanup 
+-------------------------
+                       0
+(1 row)
+
+
+$ find test-results -name "*.png" | sort
+test-results/landing/landing.png
+test-results/projects-empty/projects-empty.png
+test-results/projects-signed-out-redirect/projects-signed-out-redirect.png
+test-results/sign-out/sign-out.png
+$ lsof -iTCP:3100 -sTCP:LISTEN (expect empty)
