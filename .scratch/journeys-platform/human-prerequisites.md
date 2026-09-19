@@ -74,7 +74,7 @@ of values. Rather than placeholders, give the Preview environment real values
 that point at a fixed staging domain.
 
 - [ ] Create and push a long-lived `staging` branch from `main`: `git checkout -b staging main && git push -u origin staging`.
-- [ ] In Vercel → `journeys` → Settings → Domains, add a domain (e.g. `journeys-staging.vercel.app`) and assign it to the git branch `staging`. Record it at the top of this file.
+- [ ] In Vercel → `journeys` → Settings → Domains, add a domain (`staging-journeys-ten-virid.vercel.app`) and assign it to the git branch `staging`. Record it at the top of this file.
 - [ ] In Vercel → Settings → Environment Variables, set for the **Preview** environment: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` (same values as Production), `BETTER_AUTH_URL` = the staging URL, and confirm `BETTER_AUTH_SECRET` and `DATABASE_URL` are already present for Preview (§2, §5).
 - [ ] Add the staging callback URLs to Google (§3) and Discord (§4).
 - Expected result: PR preview deployments build green; sign-in works on the staging domain; it is not expected to work on ephemeral PR preview URLs.
