@@ -6,6 +6,7 @@ import { firstIssue, type ActionResult } from "@/lib/action-result";
 import { saveDraft, validateDraft } from "@/db/drafts";
 import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
+import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
@@ -123,8 +124,8 @@ export type ValidateDraftActionResult =
  * Publish-time validation of a Journey's Draft as it stands, as something a
  * caller can ask for: an empty problem list means the Draft could be
  * published. Nothing in the UI calls this yet — ticket 08's editor is what
- * shows the problems, and ticket 05's publish is what refuses on them — but
- * the operation exists and is authorized now rather than later.
+ * will show the problems as an Author works, while `publishJourneyAction`
+ * below is what refuses on them.
  */
 export async function validateDraftAction(
   projectId: string,
@@ -136,4 +137,82 @@ export async function validateDraftAction(
   if (!problems) return { ok: false, error: "That journey no longer exists" };
 
   return { ok: true, problems };
+}
+
+/**
+ * A refused publish carries every problem with the Draft, so an Author sees
+ * the whole list rather than the first one.
+ */
+export type PublishJourneyActionResult =
+  | { ok: true; versionNumber: number }
+  | { ok: false; error: string; problems?: PublishProblem[] };
+
+/**
+ * Publishes a Journey's Draft as its next Published Version. A Draft that
+ * fails publish-time validation is refused and nothing is written.
+ */
+export async function publishJourneyAction(
+  projectId: string,
+  journeyId: string,
+): Promise<PublishJourneyActionResult> {
+  const session = await requireSession();
+
+  const published = await publishDraft(projectId, journeyId, session.user.id);
+  // Not a Member (or no such Journey/Project): same answer as the page's
+  // 404.
+  if (!published) return { ok: false, error: "That journey no longer exists" };
+  if (!published.ok) {
+    return {
+      ok: false,
+      error: "This journey can't be published yet",
+      problems: published.problems,
+    };
+  }
+
+  revalidateJourneyPaths();
+  return { ok: true, versionNumber: published.versionNumber };
+}
+
+/** Clears a Journey's live pointer. Every Published Version stays. */
+export async function unpublishJourneyAction(
+  projectId: string,
+  journeyId: string,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  const unpublished = await unpublishJourney(
+    projectId,
+    journeyId,
+    session.user.id,
+  );
+  if (!unpublished) {
+    return { ok: false, error: "That journey no longer exists" };
+  }
+
+  revalidateJourneyPaths();
+  return { ok: true, id: journeyId };
+}
+
+/**
+ * Replaces the Draft with a Published Version's document. The version is
+ * untouched, and so is whatever participants are walking.
+ */
+export async function restoreVersionAction(
+  projectId: string,
+  journeyId: string,
+  versionId: string,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  const restored = await restoreVersion(
+    projectId,
+    journeyId,
+    versionId,
+    session.user.id,
+  );
+  // A version of another Journey answers like a Journey that isn't there.
+  if (!restored) return { ok: false, error: "That version no longer exists" };
+
+  revalidateJourneyPaths();
+  return { ok: true, id: journeyId };
 }

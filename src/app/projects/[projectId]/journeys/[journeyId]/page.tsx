@@ -5,8 +5,11 @@ import { DeleteJourneyDialog } from "@/components/journeys/delete-journey-dialog
 import { DraftSummary } from "@/components/journeys/draft-summary";
 import { EditJourneyDialog } from "@/components/journeys/edit-journey-dialog";
 import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
+import { PublishControls } from "@/components/journeys/publish-controls";
+import { VersionList } from "@/components/journeys/version-list";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
+import { listVersionsForMember } from "@/db/versions";
 import { requireSession } from "@/lib/session";
 
 export default async function JourneyPage({
@@ -32,6 +35,15 @@ export default async function JourneyPage({
   const draft = await getDraftForMember(projectId, journeyId, session.user.id);
   if (!draft) notFound();
 
+  // Null only for a non-Member, which the check above already answered; an
+  // empty list is a Journey that has never been published.
+  const versions = await listVersionsForMember(
+    projectId,
+    journeyId,
+    session.user.id,
+  );
+  if (!versions) notFound();
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
       <div>
@@ -48,7 +60,7 @@ export default async function JourneyPage({
           <h1 className="text-2xl font-semibold tracking-tight">
             {journey.title}
           </h1>
-          <JourneyStatusBadge />
+          <JourneyStatusBadge publishState={journey.publishState} />
         </div>
         <div className="flex items-center gap-2">
           <EditJourneyDialog
@@ -69,7 +81,19 @@ export default async function JourneyPage({
         <p className="text-muted-foreground">{journey.description}</p>
       ) : null}
 
+      <PublishControls
+        projectId={projectId}
+        journeyId={journey.id}
+        publishState={journey.publishState}
+      />
+
       <DraftSummary draft={draft} />
+
+      <VersionList
+        projectId={projectId}
+        journeyId={journey.id}
+        versions={versions}
+      />
     </main>
   );
 }
