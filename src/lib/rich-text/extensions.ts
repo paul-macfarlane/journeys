@@ -3,14 +3,18 @@ import Image from "@tiptap/extension-image";
 import StarterKit from "@tiptap/starter-kit";
 
 /**
- * The one Tiptap extension set the whole app shares: the runner renders
- * stored rich text with it, and the editor (ticket 08) will produce rich
- * text with it, so the two can never disagree about what a document holds.
- * Deliberately no `server-only` — both sides import it.
+ * The two Tiptap extension sets the app shares: `richTextExtensions` is what
+ * the runner renders stored rich text with, and `editorExtensions` is what
+ * the editor (ticket 08) produces rich text with, so the two can never
+ * disagree about what a document holds. Deliberately no `server-only` — both
+ * sides import this file.
  *
- * The set is the closed one `@/lib/graph/content` describes: paragraph,
- * headings, bold, italic, bullet and ordered lists, links, and an image with
- * a required credit. Everything else StarterKit would bring is switched off.
+ * Both close over the same allowed set `@/lib/graph/content` describes:
+ * paragraph, headings, bold, italic, bullet and ordered lists, links, and an
+ * image with a required credit. Everything else StarterKit would bring is
+ * switched off. `editorExtensions` additionally leaves undo/redo, the drop
+ * cursor, and the gap cursor enabled — editing conveniences that emit no
+ * content of their own, so the closed content set stays the same either way.
  */
 
 /**
@@ -39,24 +43,38 @@ export const CreditedImage = Image.extend({
   },
 });
 
+/**
+ * The StarterKit options both extension sets share. `richTextExtensions`
+ * additionally disables undo/redo, the drop cursor, and the gap cursor, since
+ * the runner never edits.
+ */
+const sharedStarterKitOptions = {
+  blockquote: false,
+  code: false,
+  codeBlock: false,
+  hardBreak: false,
+  horizontalRule: false,
+  strike: false,
+  underline: false,
+  listKeymap: false,
+  trailingNode: false,
+  link: {
+    openOnClick: false,
+    HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
+  },
+} as const;
+
 export const richTextExtensions = [
   StarterKit.configure({
-    blockquote: false,
-    code: false,
-    codeBlock: false,
-    hardBreak: false,
-    horizontalRule: false,
-    strike: false,
-    underline: false,
+    ...sharedStarterKitOptions,
     dropcursor: false,
     gapcursor: false,
     undoRedo: false,
-    listKeymap: false,
-    trailingNode: false,
-    link: {
-      openOnClick: false,
-      HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
-    },
   }),
+  CreditedImage,
+];
+
+export const editorExtensions = [
+  StarterKit.configure(sharedStarterKitOptions),
   CreditedImage,
 ];
