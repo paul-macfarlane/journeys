@@ -1,4 +1,4 @@
-# DoD-1 (rework after PR #15 review) — 2026-09-20T22:45:22Z
+# DoD-1 (second rework after PR #15 review) — 2026-09-20T23:07:45Z
 
 $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint
 
@@ -37,8 +37,8 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  Test Files  6 passed (6)
       Tests  111 passed (111)
-   Start at  18:45:27
-   Duration  437ms (transform 308ms, setup 0ms, import 819ms, tests 89ms, environment 0ms)
+   Start at  19:07:53
+   Duration  450ms (transform 304ms, setup 0ms, import 802ms, tests 89ms, environment 0ms)
 
 exit 0
 
@@ -59,7 +59,7 @@ $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm build
   Generating static pages using 9 workers (1/5) 
   Generating static pages using 9 workers (2/5) 
   Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 83ms
+✓ Generating static pages using 9 workers (5/5) in 88ms
   Finalizing page optimization ...
 
 Route (app)
