@@ -118,3 +118,10 @@ Remaining risks: the last-Member trigger refuses deleting a `user` who is a sole
 **Deviations:** shadcn components vendored from registry JSON instead of the CLI (which wanted a new `cn` dependency; lockfile is human-only) — approved during D1 acceptance; `dod-3-last-member.txt` (D1 evidence) landed in the D2 commit; non-Member calls to server actions directly are untested per the spec's Testing Decisions (approved in review); ADR-0001 stays with ticket 03. Ticket 01 claimed as a resolved blocker while still `ready-for-human` (see the execution plan's availability note).
 
 **Human follow-ups:** (1) merge, watch the Migrate action, then the DoD-4 smoke on staging; (2) move ticket 01 to `done` if you agree it is; (3) your uncommitted `human-prerequisites.md` edit on the `staging` checkout is untouched — commit it when convenient; (4) note the trigger refuses deleting a `user` who is a sole Member (documented, out of scope).
+
+### [PROGRESS] 2026-09-19 — PR feedback from Paul applied
+
+- Data access moved from `src/lib` to `src/db` (`projects.ts`, `journeys.ts`, `errors.ts`); `src/lib` now holds only pure, client-safe logic. `CLAUDE.md` structure lines updated to say so.
+- `renameProject` / `renameProjectAction` / `RenameProjectDialog` renamed to `editProject` / `editProjectAction` / `EditProjectDialog`; the button reads "Edit", matching the Journey dialog.
+- Verified run command rerun at `7c39e44`, all exit 0; evidence under `test-results/` refreshed from that run (migrate-fresh and trigger evidence unchanged in substance; `drizzle/` and `src/db/schema.ts` untouched by the refactor).
+- Open question from Paul on whether slugs should be Author-editable at all (AC-2/AC-5 wording) — awaiting his decision; see the conversation.

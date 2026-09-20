@@ -1,4 +1,4 @@
-# DoD-1 — committed migrations applied to an empty database at 9d92364
+# DoD-1 — committed migrations applied to an empty database at 7c39e44
 $ createdb journeys_verify (empty) && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_verify pnpm db:migrate
 
 > journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys

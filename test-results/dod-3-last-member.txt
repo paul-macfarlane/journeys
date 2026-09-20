@@ -1,4 +1,4 @@
-# DoD-3 — a Project cannot lose its last Member (trigger from drizzle/0001) at 9d92364
+# DoD-3 — a Project cannot lose its last Member (trigger from drizzle/0001) at 7c39e44
 # Target: docker journeys-db (postgres:18), database journeys_verify freshly migrated (0000, 0001, 0002) — see dod-1-migrate-fresh.txt
 $ psql journeys_verify
 INSERT INTO "user" (id, name, email) VALUES ('u1', 'Author One', 'one@example.com'), ('u2', 'Author Two', 'two@example.com');
