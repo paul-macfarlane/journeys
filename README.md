@@ -94,7 +94,8 @@ pnpm seed:journey-stories you@example.com    # seed the local dev database
   the project if it is not one already.
 - **The documents are the source of truth.** `scripts/seed/journey-stories/`
   holds `case-1.json`, `case-2.json`, and `case-3.json` — converted once from
-  the legacy repo's `src/data/cases/*.json`. The legacy content never changes,
+  `src/data/cases/*.json` in the legacy repository
+  (`paul-macfarlane/journey`). The legacy content never changes,
   so nothing re-reads it and no converter is kept. Edit the outcome labels (and
   anything else) in those files and rerun the command to apply the change;
   `src/lib/graph/validate.test.ts` checks every document still publishes and
@@ -104,15 +105,18 @@ pnpm seed:journey-stories you@example.com    # seed the local dev database
   "Yes" on "Detention 1", and case 2's "Call the legal organization" on "Call
   Sponsor", "Call your bunkmate's cousin's friend" on "I quit!", and "Go home,
   and try again later" on "ER" — along with case 1's "Detention", which nothing
-  reached once its loop was cut.
+  links to in the legacy data either.
 - **Against Neon staging,** export the connection string for that one command:
   `DATABASE_URL=… pnpm seed:journey-stories you@example.com`. An explicit
   `DATABASE_URL` wins over `.env.local`, and the command prints only the host
   and port it connected to.
 - **Images point at third-party hosts.** Nothing is copied: every seeded image
-  keeps the URL the legacy page linked — pexels, rawpixel, flickr, one
-  WordPress site — so an image stops loading when its own host does, not when
-  the legacy site goes away.
+  keeps the URL the legacy page linked, spread over some eighteen hosts (mostly
+  flickr, rawpixel, and news sites) and never the legacy site itself, so an
+  image stops loading when its own host does. A handful of long image paths
+  and credit URLs in the documents carry a `\u` JSON escape that breaks up a
+  40+ character alphanumeric run, which the commit-time secret scanner would
+  otherwise refuse; the escapes change nothing when parsed — keep them.
 
 ## Environments
 

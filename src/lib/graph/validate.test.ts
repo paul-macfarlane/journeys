@@ -329,13 +329,15 @@ describe("validateForPublish", () => {
  * site's cases — `pnpm seed:journey-stories` writes exactly these as the
  * Drafts of the three Journey Stories Journeys — so what they must keep being
  * is a Journey that publishes: one Start, no loops, every Ending tagged with
- * an Outcome the document defines. Parsed through the schema rather than
- * trusted, and the counts are the legacy content's own.
+ * an Outcome the document defines. Each is parsed through the schema inside
+ * the test that needs it rather than at module load, so a hand-edit that
+ * breaks one document fails that document's tests and nothing else. The
+ * counts are the legacy content's own.
  */
 const journeyStories = [
   {
     name: "Case 1",
-    document: graphDocumentSchema.parse(case1Document),
+    source: case1Document,
     startStepId: "step-42",
     steps: 46,
     choices: 69,
@@ -345,17 +347,17 @@ const journeyStories = [
   },
   {
     name: "Case 2",
-    document: graphDocumentSchema.parse(case2Document),
+    source: case2Document,
     startStepId: "step-63",
     steps: 64,
     choices: 102,
     endings: 9,
-    outcomes: 4,
+    outcomes: 5,
     images: 15,
   },
   {
     name: "Case 3",
-    document: graphDocumentSchema.parse(case3Document),
+    source: case3Document,
     startStepId: "step-7",
     steps: 36,
     choices: 50,
@@ -365,14 +367,24 @@ const journeyStories = [
   },
 ];
 
+function documentOf(source: unknown): GraphDocument {
+  return graphDocumentSchema.parse(source);
+}
+
 describe("the seeded Journey Stories documents", () => {
-  it.each(journeyStories)("$name is publishable", ({ document }) => {
-    expect(validateForPublish(document)).toEqual([]);
+  it.each(journeyStories)("$name parses as a graph document", ({ source }) => {
+    expect(() => documentOf(source)).not.toThrow();
+  });
+
+  it.each(journeyStories)("$name is publishable", ({ source }) => {
+    expect(validateForPublish(documentOf(source))).toEqual([]);
   });
 
   it.each(journeyStories)(
     "$name starts at the Preface",
-    ({ document, startStepId }) => {
+    ({ source, startStepId }) => {
+      const document = documentOf(source);
+
       expect(document.startStepId).toBe(startStepId);
       expect(document.steps[startStepId].title).toBe("Preface");
     },
@@ -380,8 +392,8 @@ describe("the seeded Journey Stories documents", () => {
 
   it.each(journeyStories)(
     "$name holds every Step and Choice the legacy case has",
-    ({ document, steps: stepCount, choices: choiceCount }) => {
-      const steps = Object.values(document.steps);
+    ({ source, steps: stepCount, choices: choiceCount }) => {
+      const steps = Object.values(documentOf(source).steps);
 
       expect(steps).toHaveLength(stepCount);
       expect(steps.flatMap((step) => step.choices)).toHaveLength(choiceCount);
@@ -390,7 +402,8 @@ describe("the seeded Journey Stories documents", () => {
 
   it.each(journeyStories)(
     "$name tags every Ending with an Outcome it defines",
-    ({ document, endings: endingCount, outcomes: outcomeCount }) => {
+    ({ source, endings: endingCount, outcomes: outcomeCount }) => {
+      const document = documentOf(source);
       const endings = Object.values(document.steps).filter((step) =>
         isEnding(step),
       );
@@ -405,8 +418,8 @@ describe("the seeded Journey Stories documents", () => {
 
   it.each(journeyStories)(
     "$name credits every image and links it over http(s)",
-    ({ document, images: imageCount }) => {
-      const images = Object.values(document.steps).flatMap((step) =>
+    ({ source, images: imageCount }) => {
+      const images = Object.values(documentOf(source).steps).flatMap((step) =>
         step.content.content.filter((block) => block.type === "image"),
       );
 

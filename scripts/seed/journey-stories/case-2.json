@@ -3540,7 +3540,7 @@
       },
       "choices": [],
       "prompt": null,
-      "outcomeId": "outcome-died-in-detention",
+      "outcomeId": "outcome-died-working",
       "position": null
     },
     "step-60": {
@@ -3788,6 +3788,10 @@
     "outcome-died-after-deportation": {
       "id": "outcome-died-after-deportation",
       "label": "Died after deportation"
+    },
+    "outcome-died-working": {
+      "id": "outcome-died-working",
+      "label": "Died of a workplace injury after release"
     },
     "outcome-reached-doctor": {
       "id": "outcome-reached-doctor",

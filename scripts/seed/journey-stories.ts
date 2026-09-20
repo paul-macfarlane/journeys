@@ -7,11 +7,12 @@
  * legacy site, and the converter was not kept. To rename an Outcome, edit the
  * label in the document and rerun this command.
  *
- * Images keep the third-party URLs the legacy pages linked (pexels, rawpixel,
- * flickr, a WordPress site), so one stops loading when its own host does. One
- * long base64 image path is written with a `\u` JSON escape so the file text
- * carries no 40+ character alphanumeric run — the Atlas commit-time secret
- * scrub refuses those. The escape is content-preserving; keep it when editing.
+ * Images keep the third-party URLs the legacy pages linked — some eighteen
+ * hosts, none of them the legacy site — so one stops loading when its own host
+ * does. A dozen strings across the three documents (long image paths and two
+ * credit URLs) carry a `\u` JSON escape that breaks up a 40+ character
+ * alphanumeric run, which the Atlas commit-time secret scrub would refuse.
+ * The escapes are content-preserving; keep them when editing.
  */
 
 import { config } from "dotenv";
@@ -32,7 +33,7 @@ const PROJECT_TITLE = "Journey Stories";
 
 // Fixed ids are the whole of the idempotency: a rerun updates these rows in
 // place, so there is only ever one seed Project and three seed Journeys.
-const CASES = [
+const SEED_JOURNEYS = [
   {
     journeyId: "00000000-5eed-4000-8000-000000000011",
     title: "Case 1",
@@ -84,10 +85,11 @@ async function main(): Promise<void> {
   const db = drizzle(pool, { schema });
 
   try {
+    // better-auth stores emails lowercased; a pasted argument may not be.
     const [author] = await db
       .select({ id: schema.user.id })
       .from(schema.user)
-      .where(eq(schema.user.email, email))
+      .where(eq(schema.user.email, email.trim().toLowerCase()))
       .limit(1);
     if (author === undefined) {
       console.error(
@@ -99,13 +101,13 @@ async function main(): Promise<void> {
 
     // Already in stored shape, so read strictly; publish-time validation is
     // what makes them worth seeding at all.
-    const journeys = CASES.map((one) => ({
-      ...one,
-      document: graphDocumentSchema.parse(one.source),
+    const journeys = SEED_JOURNEYS.map((journey) => ({
+      ...journey,
+      document: graphDocumentSchema.parse(journey.source),
     }));
-    const problems = journeys.flatMap((one) =>
-      validateForPublish(one.document).map(
-        (problem) => `${one.title}: ${problem.message}`,
+    const problems = journeys.flatMap((journey) =>
+      validateForPublish(journey.document).map(
+        (problem) => `${journey.title}: ${problem.message}`,
       ),
     );
     if (problems.length > 0) {
@@ -131,40 +133,40 @@ async function main(): Promise<void> {
         .values({ projectId: PROJECT_ID, userId: author.id })
         .onConflictDoNothing();
 
-      for (const one of journeys) {
+      for (const journey of journeys) {
         await tx
           .insert(schema.journey)
           .values({
-            id: one.journeyId,
+            id: journey.journeyId,
             projectId: PROJECT_ID,
-            title: one.title,
-            description: one.description,
+            title: journey.title,
+            description: journey.description,
           })
           .onConflictDoUpdate({
             target: schema.journey.id,
             set: {
               projectId: PROJECT_ID,
-              title: one.title,
-              description: one.description,
+              title: journey.title,
+              description: journey.description,
               updatedAt: now,
             },
           });
         await tx
           .insert(schema.draft)
-          .values({ journeyId: one.journeyId, document: one.document })
+          .values({ journeyId: journey.journeyId, document: journey.document })
           .onConflictDoUpdate({
             target: schema.draft.journeyId,
-            set: { document: one.document, updatedAt: now },
+            set: { document: journey.document, updatedAt: now },
           });
       }
     });
 
-    for (const one of journeys) {
-      const steps = Object.values(one.document.steps);
+    for (const journey of journeys) {
+      const steps = Object.values(journey.document.steps);
       const choices = steps.flatMap((step) => step.choices);
       const endings = steps.filter((step) => isEnding(step));
       console.log(
-        `${one.title}: ${steps.length} steps, ${choices.length} choices, ${endings.length} endings, ${Object.keys(one.document.outcomes).length} outcomes`,
+        `${journey.title}: ${steps.length} steps, ${choices.length} choices, ${endings.length} endings, ${Object.keys(journey.document.outcomes).length} outcomes`,
       );
     }
     console.log(`Project: ${PROJECT_TITLE} (${PROJECT_ID})`);
@@ -175,8 +177,10 @@ async function main(): Promise<void> {
 }
 
 // `process.exitCode` rather than `process.exit`: this output is captured as
-// evidence, and exiting outright can cut a pending write off.
+// evidence, and exiting outright can cut a pending write off. The whole error
+// is printed, stack included: for a development-only command the stack is the
+// useful part.
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(error);
   process.exitCode = 1;
 });
