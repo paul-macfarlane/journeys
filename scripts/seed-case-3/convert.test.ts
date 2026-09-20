@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildGraphDocument, convertStepPage } from "./convert";
-import type { OutcomeMapping, StepPage } from "./convert";
+import type { OutcomeMapping, ScrapedStep } from "./convert";
 
 /**
  * The converter's seam: legacy page HTML in, the pieces of a graph document
@@ -226,6 +226,47 @@ describe("convertStepPage", () => {
     expect(converted.title).toBe("Wow");
   });
 
+  it("reads a figure inside the narrative once, as an image", () => {
+    const converted = convertStepPage(
+      stepPage(
+        header("The Horses") +
+          narrative(
+            "<p>Ten years ago you set out.</p>" +
+              '<figure class="m-0"><img src="https://example.test/horses.jpg" loading="lazy"><figcaption class="text-faint">Photo - Image by Steven Lilley, CC BY-SA 2.0</figcaption></figure>',
+          ),
+      ),
+    );
+
+    // Two blocks, not three: the credit line is the image's credit and not
+    // also a paragraph of the narrative.
+    expect(converted.content.content).toEqual([
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "Ten years ago you set out." }],
+      },
+      {
+        type: "image",
+        attrs: {
+          src: "https://example.test/horses.jpg",
+          credit: "Photo - Image by Steven Lilley, CC BY-SA 2.0",
+          alt: null,
+        },
+      },
+    ]);
+  });
+
+  it("refuses a page with no <h1> rather than seeding an untitled Step", () => {
+    expect(() =>
+      convertStepPage(stepPage(narrative("<p>A day.</p>"))),
+    ).toThrowError(/<h1>/);
+  });
+
+  it("refuses a page with no narrative rather than seeding an empty Step", () => {
+    expect(() => convertStepPage(stepPage(header("Preface")))).toThrowError(
+      /narrative/,
+    );
+  });
+
   it("keeps headings and lists the other legacy cases use", () => {
     const converted = convertStepPage(
       stepPage(
@@ -283,11 +324,11 @@ describe("convertStepPage", () => {
   });
 });
 
-function page(
+function scrapedStep(
   step: number,
   title: string,
   choices: Array<{ label: string; targetStep: number }>,
-): StepPage {
+): ScrapedStep {
   return {
     step,
     title,
@@ -306,18 +347,18 @@ const mapping: OutcomeMapping = {
   endings: [{ step: 3, title: "Wow", outcomeId: "outcome-good-control" }],
 };
 
-const pages: StepPage[] = [
-  page(1, "Preface", [{ label: "Next", targetStep: 2 }]),
-  page(2, "In the ER", [
+const scrapedSteps: ScrapedStep[] = [
+  scrapedStep(1, "Preface", [{ label: "Next", targetStep: 2 }]),
+  scrapedStep(2, "In the ER", [
     { label: "Wait", targetStep: 3 },
     { label: "Leave", targetStep: 3 },
   ]),
-  page(3, "Wow", []),
+  scrapedStep(3, "Wow", []),
 ];
 
 describe("buildGraphDocument", () => {
   it("gives every Step and Choice a readable id and names the Start", () => {
-    const built = buildGraphDocument(pages, mapping, 1);
+    const built = buildGraphDocument(scrapedSteps, mapping, 1);
 
     expect(built.ok).toBe(true);
     if (!built.ok) return;
@@ -347,7 +388,7 @@ describe("buildGraphDocument", () => {
   });
 
   it("tags each Ending with the Outcome the mapping gives it, and no other Step", () => {
-    const built = buildGraphDocument(pages, mapping, 1);
+    const built = buildGraphDocument(scrapedSteps, mapping, 1);
 
     expect(built.ok).toBe(true);
     if (!built.ok) return;
@@ -365,7 +406,11 @@ describe("buildGraphDocument", () => {
   });
 
   it("refuses to build when a scraped Ending is missing from the mapping", () => {
-    const built = buildGraphDocument(pages, { ...mapping, endings: [] }, 1);
+    const built = buildGraphDocument(
+      scrapedSteps,
+      { ...mapping, endings: [] },
+      1,
+    );
 
     expect(built.ok).toBe(false);
     if (built.ok) return;
@@ -374,7 +419,7 @@ describe("buildGraphDocument", () => {
 
   it("refuses to build when the mapping names a Step that is not an Ending", () => {
     const built = buildGraphDocument(
-      pages,
+      scrapedSteps,
       {
         ...mapping,
         endings: [
@@ -392,7 +437,7 @@ describe("buildGraphDocument", () => {
 
   it("refuses to build when the mapping names an Outcome that does not exist", () => {
     const built = buildGraphDocument(
-      pages,
+      scrapedSteps,
       {
         outcomes: mapping.outcomes,
         endings: [{ step: 3, title: "Wow", outcomeId: "outcome-typo" }],
@@ -405,8 +450,51 @@ describe("buildGraphDocument", () => {
     expect(built.problems.join("\n")).toContain("outcome-typo");
   });
 
+  it("refuses to build when the mapping defines one Outcome id twice", () => {
+    const built = buildGraphDocument(
+      scrapedSteps,
+      {
+        outcomes: [
+          ...mapping.outcomes,
+          { id: "outcome-good-control", label: "Reached good control" },
+        ],
+        endings: mapping.endings,
+      },
+      1,
+    );
+
+    // Silently keeping the last of the two would rename an Outcome by
+    // accident, which is exactly what this mapping file exists to control.
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.problems.join("\n")).toContain("outcome-good-control");
+    expect(built.problems.join("\n")).toContain("more than once");
+  });
+
+  it("refuses to build when the mapping gives one Ending two entries", () => {
+    const built = buildGraphDocument(
+      scrapedSteps,
+      {
+        outcomes: [
+          ...mapping.outcomes,
+          { id: "outcome-died", label: "Died of complications" },
+        ],
+        endings: [
+          ...mapping.endings,
+          { step: 3, title: "Wow", outcomeId: "outcome-died" },
+        ],
+      },
+      1,
+    );
+
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.problems.join("\n")).toContain("step 3");
+    expect(built.problems.join("\n")).toContain("more than once");
+  });
+
   it("refuses to build when the Start names a Step that was not scraped", () => {
-    const built = buildGraphDocument(pages, mapping, 7);
+    const built = buildGraphDocument(scrapedSteps, mapping, 7);
 
     expect(built.ok).toBe(false);
     if (built.ok) return;

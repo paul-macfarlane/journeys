@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type {
   Block,
   BulletList,
@@ -26,7 +28,11 @@ import type { Choice, GraphDocument, Step } from "@/lib/graph/document";
  * legacy site's own words for those things are not used here.
  */
 
-/** The graph document caps a Step title; legacy titles are far shorter. */
+/**
+ * The Step title cap. `src/lib/graph/document.ts` is the source of truth
+ * (`title: z.string().max(200)`); this restates it so a converted title is
+ * trimmed here rather than rejected there. Legacy titles are far shorter.
+ */
 const MAX_TITLE_LENGTH = 200;
 
 /** Legacy step hrefs, with or without the trailing slash the host redirects to. */
@@ -489,6 +495,13 @@ function blocksFrom(nodes: HtmlNode[]): Block[] {
       continue;
     }
 
+    // A figure inside the narrative is already read as an image block by
+    // `imageBlocksFrom`; reading it here too would repeat its credit line as
+    // a paragraph.
+    if (node.tag === "figure" || node.tag === "figcaption") {
+      continue;
+    }
+
     if (node.tag === "ul" || node.tag === "ol") {
       const items = listItemsFrom(node);
       if (items.length > 0) {
@@ -547,8 +560,8 @@ export type ConvertedStepPage = {
   choices: ScrapedChoice[];
 };
 
-/** A converted page that still knows which legacy step number it came from. */
-export type StepPage = ConvertedStepPage & { step: number };
+/** A converted Step that still knows which legacy step number it came from. */
+export type ScrapedStep = ConvertedStepPage & { step: number };
 
 function choicesFrom(main: HtmlElement): ScrapedChoice[] {
   const decision = findElement(
@@ -580,21 +593,24 @@ export function convertStepPage(html: string): ConvertedStepPage {
   }
 
   const heading = findElement(main.children, byTag("h1"));
+  if (heading === null) {
+    throw new Error("The legacy page has no <h1>; its markup has changed");
+  }
+
   const narrative = findElement(main.children, (element) =>
     hasClass(element, "narrative"),
   );
+  if (narrative === null) {
+    throw new Error(
+      'The legacy page has no <div class="narrative">; its markup has changed',
+    );
+  }
 
   return {
-    title:
-      heading === null
-        ? ""
-        : collapseText(textOf(heading)).slice(0, MAX_TITLE_LENGTH),
+    title: collapseText(textOf(heading)).slice(0, MAX_TITLE_LENGTH),
     content: {
       type: "doc",
-      content: [
-        ...(narrative === null ? [] : blocksFrom(narrative.children)),
-        ...imageBlocksFrom(main),
-      ],
+      content: [...blocksFrom(narrative.children), ...imageBlocksFrom(main)],
     },
     choices: choicesFrom(main),
   };
@@ -604,77 +620,117 @@ export function convertStepPage(html: string): ConvertedStepPage {
 // The whole document
 // ---------------------------------------------------------------------------
 
-/** The hand-written mapping in `outcomes.json`, which a human edits. */
-export type OutcomeMapping = {
-  outcomes: Array<{ id: string; label: string }>;
-  endings: Array<{ step: number; title: string; outcomeId: string }>;
-};
+/**
+ * The hand-written mapping in `outcomes.json`, which a human edits. Parsed
+ * rather than trusted: the file is edited by hand, so the seed says what is
+ * wrong with it instead of failing somewhere further down.
+ */
+export const outcomeMappingSchema = z.object({
+  outcomes: z.array(
+    z.object({ id: z.string().min(1), label: z.string().min(1) }),
+  ),
+  endings: z.array(
+    z.object({
+      step: z.number().int().positive(),
+      title: z.string(),
+      outcomeId: z.string().min(1),
+    }),
+  ),
+});
+
+export type OutcomeMapping = z.infer<typeof outcomeMappingSchema>;
 
 export type BuildResult =
   | { ok: true; document: GraphDocument; warnings: string[] }
   | { ok: false; problems: string[]; warnings: string[] };
 
 /** Readable ids, so a person can read the stored document and the fixture. */
-export function stepIdOf(step: number): string {
+function stepIdOf(step: number): string {
   return `step-${step}`;
 }
 
-export function choiceIdOf(step: number, position: number): string {
+function choiceIdOf(step: number, position: number): string {
   return `${stepIdOf(step)}-choice-${position}`;
 }
 
 /**
- * Assembles the scraped pages and the hand-written Outcome mapping into one
+ * Assembles the scraped Steps and the hand-written Outcome mapping into one
  * graph document. Refuses rather than guesses: an Ending the mapping does not
- * cover, a mapped Step that still has Choices, and an Outcome id naming
- * nothing are all reported together so one run shows every edit `outcomes.json`
- * needs.
+ * cover, a mapped Step that still has Choices, an Outcome id naming nothing,
+ * and a duplicated Outcome or Ending entry are all reported together so one
+ * run shows every edit `outcomes.json` needs.
  */
 export function buildGraphDocument(
-  pages: StepPage[],
+  scrapedSteps: ScrapedStep[],
   mapping: OutcomeMapping,
   startStep: number,
 ): BuildResult {
   const problems: string[] = [];
   const warnings: string[] = [];
 
-  const ordered = [...pages].sort((left, right) => left.step - right.step);
-  const byStep = new Map(ordered.map((page) => [page.step, page]));
-  const outcomeIds = new Set(mapping.outcomes.map((outcome) => outcome.id));
-  const mapped = new Map(mapping.endings.map((entry) => [entry.step, entry]));
+  const ordered = [...scrapedSteps].sort(
+    (left, right) => left.step - right.step,
+  );
+  const byStepNumber = new Map(
+    ordered.map((scraped) => [scraped.step, scraped]),
+  );
 
-  if (!byStep.has(startStep)) {
+  // Built entry by entry rather than with `new Map(...)`, which would
+  // silently keep only the last of a repeated id or step.
+  const outcomeIds = new Set<string>();
+  for (const outcome of mapping.outcomes) {
+    if (outcomeIds.has(outcome.id)) {
+      problems.push(
+        `outcomes.json defines the outcome "${outcome.id}" more than once`,
+      );
+      continue;
+    }
+    outcomeIds.add(outcome.id);
+  }
+
+  const mapped = new Map<number, (typeof mapping.endings)[number]>();
+  for (const entry of mapping.endings) {
+    if (mapped.has(entry.step)) {
+      problems.push(
+        `outcomes.json maps step ${entry.step} more than once; one ending has one outcome`,
+      );
+      continue;
+    }
+    mapped.set(entry.step, entry);
+  }
+
+  if (!byStepNumber.has(startStep)) {
     problems.push(
       `The start ${stepIdOf(startStep)} was not scraped, so the journey has no start step`,
     );
   }
 
-  for (const page of ordered) {
-    if (page.choices.length === 0 && !mapped.has(page.step)) {
+  for (const scraped of ordered) {
+    if (scraped.choices.length === 0 && !mapped.has(scraped.step)) {
       problems.push(
-        `Ending "${page.title}" (step ${page.step}) is missing from outcomes.json`,
+        `Ending "${scraped.title}" (step ${scraped.step}) is missing from outcomes.json`,
       );
     }
-    for (const choice of page.choices) {
-      if (!byStep.has(choice.targetStep)) {
+    for (const choice of scraped.choices) {
+      if (!byStepNumber.has(choice.targetStep)) {
         problems.push(
-          `Step ${page.step} has a choice leading to step ${choice.targetStep}, which was not scraped`,
+          `Step ${scraped.step} has a choice leading to step ${choice.targetStep}, which was not scraped`,
         );
       }
     }
   }
 
-  for (const entry of mapping.endings) {
-    const page = byStep.get(entry.step);
-    if (page === undefined) {
+  for (const entry of mapped.values()) {
+    const scraped = byStepNumber.get(entry.step);
+    if (scraped === undefined) {
       problems.push(
         `outcomes.json maps step ${entry.step}, which was not scraped`,
       );
       continue;
     }
-    if (page.choices.length > 0) {
+    if (scraped.choices.length > 0) {
       problems.push(
-        `outcomes.json maps step ${entry.step} ("${page.title}"), which still has choices and so is not an ending`,
+        `outcomes.json maps step ${entry.step} ("${scraped.title}"), which still has choices and so is not an ending`,
       );
     }
     if (!outcomeIds.has(entry.outcomeId)) {
@@ -682,9 +738,9 @@ export function buildGraphDocument(
         `outcomes.json maps step ${entry.step} to the outcome "${entry.outcomeId}", which it does not define`,
       );
     }
-    if (page.choices.length === 0 && page.title !== entry.title) {
+    if (scraped.choices.length === 0 && scraped.title !== entry.title) {
       warnings.push(
-        `outcomes.json calls step ${entry.step} "${entry.title}"; the legacy site now calls it "${page.title}"`,
+        `outcomes.json calls step ${entry.step} "${entry.title}"; the legacy site now calls it "${scraped.title}"`,
       );
     }
   }
@@ -694,22 +750,22 @@ export function buildGraphDocument(
   }
 
   const steps: Record<string, Step> = {};
-  for (const page of ordered) {
-    const choices: Choice[] = page.choices.map((choice, index) => ({
-      id: choiceIdOf(page.step, index + 1),
+  for (const scraped of ordered) {
+    const choices: Choice[] = scraped.choices.map((choice, index) => ({
+      id: choiceIdOf(scraped.step, index + 1),
       label: choice.label,
       targetStepId: stepIdOf(choice.targetStep),
       condition: null,
       effect: null,
     }));
 
-    steps[stepIdOf(page.step)] = {
-      id: stepIdOf(page.step),
-      title: page.title.slice(0, MAX_TITLE_LENGTH),
-      content: page.content,
+    steps[stepIdOf(scraped.step)] = {
+      id: stepIdOf(scraped.step),
+      title: scraped.title,
+      content: scraped.content,
       choices,
       prompt: null,
-      outcomeId: mapped.get(page.step)?.outcomeId ?? null,
+      outcomeId: mapped.get(scraped.step)?.outcomeId ?? null,
       position: null,
     };
   }

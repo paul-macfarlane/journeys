@@ -17,10 +17,9 @@ import outcomesMapping from "../../../scripts/seed-case-3/outcomes.json";
 /**
  * The second success case is not hand-authored: it is the real case-3 Journey
  * the seed script writes, read back from the fixture it emits. Parsed through
- * the schema rather than trusted, and cast to `unknown` first so TypeScript
- * reads it as JSON rather than inferring a 36-Step literal type.
+ * the schema rather than trusted.
  */
-const case3: GraphDocument = graphDocumentSchema.parse(case3Fixture as unknown);
+const case3: GraphDocument = graphDocumentSchema.parse(case3Fixture);
 
 const emptyContent: Content = { type: "doc", content: [{ type: "paragraph" }] };
 
@@ -335,11 +334,12 @@ describe("validateForPublish", () => {
 });
 
 /**
- * What the seed script actually produced, measured against the legacy site as
- * it was crawled on 2026-09-20: 36 Steps entered at "Preface", 50 Choices, and
- * 6 Endings, each tagged with the Outcome `scripts/seed-case-3/outcomes.json`
- * gives it. These numbers come from the site, not from the document, so a
- * scrape that quietly lost half the journey fails here.
+ * A regression lock on the committed fixture: what the seed script produced
+ * from the legacy site as it was crawled on 2026-09-20 — 36 Steps entered at
+ * "Preface", 50 Choices, and 6 Endings, each tagged with the Outcome
+ * `scripts/seed-case-3/outcomes.json` gives it. These assertions read the
+ * committed fixture, so they only change when someone reruns the seed with
+ * `--write-fixture`; the check against the live site is `e2e/seed-case-3.spec.ts`.
  */
 describe("the seeded case-3 journey", () => {
   const steps = Object.values(case3.steps);

@@ -13,8 +13,13 @@ import * as schema from "@/db/schema";
 import { isEnding, prepareDocumentForWrite } from "@/lib/graph/document";
 import { validateForPublish } from "@/lib/graph/validate";
 
-import { buildGraphDocument, convertStepPage } from "./convert";
-import type { OutcomeMapping, StepPage } from "./convert";
+import { readArguments, USAGE } from "./arguments";
+import {
+  buildGraphDocument,
+  convertStepPage,
+  outcomeMappingSchema,
+} from "./convert";
+import type { ScrapedStep } from "./convert";
 import { serializeFixture } from "./fixture";
 import {
   SEED_JOURNEY_DESCRIPTION,
@@ -30,9 +35,10 @@ import { CASE_3_START_STEP, scrapeCase3 } from "./scrape";
  * Seeds the legacy site's case 3 as a Journey Draft in a seed Project.
  *
  * Development only, and deliberately throwaway: it scrapes the markup the
- * legacy Astro site emits today (see `convert.ts`), and the images it seeds
- * hotlink that site rather than being copied anywhere — they break the day
- * the legacy host goes away, which is acceptable only because it stays live.
+ * legacy Astro site emits today (see `convert.ts`). Nothing is copied — every
+ * seeded image points at the third-party host the legacy page itself linked
+ * (pexels, rawpixel, flickr, one WordPress site), so an image stops loading
+ * when its own host does, not when the legacy site goes away.
  *
  * `outcomes.json` beside this file is the hand-written map from each legacy
  * Ending to an Outcome; it is the file a human edits to rename an Outcome,
@@ -45,17 +51,7 @@ import { CASE_3_START_STEP, scrapeCase3 } from "./scrape";
  * in is better-auth's job, never this script's.
  */
 
-const USAGE = "Usage: pnpm seed:case-3 <author-email> [--write-fixture]";
-
 const FIXTURE_PATH = "src/lib/graph/fixtures/case-3.json";
-
-type Arguments = { email: string; writeFixture: boolean };
-
-function readArguments(argv: string[]): Arguments | null {
-  const email = argv.find((argument) => !argument.startsWith("--"));
-  if (email === undefined || email.length === 0) return null;
-  return { email, writeFixture: argv.includes("--write-fixture") };
-}
 
 /** Host and port only: a connection string carries a password. */
 function describeDatabase(databaseUrl: string): string {
@@ -63,11 +59,22 @@ function describeDatabase(databaseUrl: string): string {
   return `${url.hostname}:${url.port === "" ? "5432" : url.port}`;
 }
 
-async function run(): Promise<number> {
+async function main(): Promise<number> {
   const parsed = readArguments(process.argv.slice(2));
   if (parsed === null) {
     console.error(USAGE);
     return 2;
+  }
+
+  // Before anything else: a hand-edited mapping that is the wrong shape
+  // should be named here, not read as `undefined` halfway through a build.
+  const mapping = outcomeMappingSchema.safeParse(outcomesMapping);
+  if (!mapping.success) {
+    console.error("outcomes.json is not in the expected shape:");
+    for (const issue of mapping.error.issues) {
+      console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
+    }
+    return 1;
   }
 
   // No override, exactly like `drizzle.config.ts`: an explicit DATABASE_URL
@@ -90,7 +97,7 @@ async function run(): Promise<number> {
     // Before scraping: a run that is going to be refused should not spend a
     // minute on the legacy site first.
     const authors = await db
-      .select({ id: schema.user.id, name: schema.user.name })
+      .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.email, parsed.email));
     const author = authors[0];
@@ -107,14 +114,14 @@ async function run(): Promise<number> {
     const fetched = await scrapeCase3();
     console.log(`Read ${fetched.length} pages.`);
 
-    const pages: StepPage[] = fetched.map((page) => ({
+    const scrapedSteps: ScrapedStep[] = fetched.map((page) => ({
       step: page.step,
       ...convertStepPage(page.html),
     }));
 
     const built = buildGraphDocument(
-      pages,
-      outcomesMapping as OutcomeMapping,
+      scrapedSteps,
+      mapping.data,
       CASE_3_START_STEP,
     );
     for (const warning of built.warnings) {
@@ -212,18 +219,22 @@ async function run(): Promise<number> {
     );
     console.log(`Project ${SEED_PROJECT_ID} "${SEED_PROJECT_TITLE}"`);
     console.log(`Journey ${SEED_JOURNEY_ID} "${SEED_JOURNEY_TITLE}"`);
-    console.log(`Member ${author.name} <${parsed.email}>`);
+    // The email only: the Author's display name is a person's name, and this
+    // output is captured as evidence.
+    console.log(`Member: ${parsed.email}`);
     return 0;
   } finally {
     await pool.end();
   }
 }
 
-run()
+// `process.exitCode` rather than `process.exit`: the e2e spec reads this
+// process's piped stdout, and exiting outright can cut a pending write off.
+main()
   .then((code) => {
-    process.exit(code);
+    process.exitCode = code;
   })
   .catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : error);
-    process.exit(1);
+    process.exitCode = 1;
   });

@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 
 import { expect, test } from "@playwright/test";
 
-import { graphDocumentSchema } from "@/lib/graph/document";
+import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
 
 import {
   SEED_JOURNEY_ID,
@@ -79,6 +79,24 @@ function countSeedProjects(): Promise<Array<{ count: string }>> {
   );
 }
 
+/**
+ * By title, not by id: a second run that failed to be idempotent would insert
+ * a *new* Project row, which a count on the fixed primary key can never see.
+ */
+function countProjectsTitled(): Promise<Array<{ count: string }>> {
+  return queryE2eDatabase<{ count: string }>(
+    'SELECT count(*)::text AS count FROM "project" WHERE title = $1',
+    [SEED_PROJECT_TITLE],
+  );
+}
+
+function countJourneysTitled(): Promise<Array<{ count: string }>> {
+  return queryE2eDatabase<{ count: string }>(
+    'SELECT count(*)::text AS count FROM "journey" WHERE project_id = $1 AND title = $2',
+    [SEED_PROJECT_ID, SEED_JOURNEY_TITLE],
+  );
+}
+
 async function deleteSeedProject(): Promise<void> {
   // Cascades the Member, the Journey, and the Journey's Draft.
   await queryE2eDatabase('DELETE FROM "project" WHERE id = $1', [
@@ -123,6 +141,8 @@ test("seed-case-3", async ({ page, context }) => {
   expect(reseeded.code, reseeded.output).toBe(0);
 
   expect(await countSeedProjects()).toEqual([{ count: "1" }]);
+  expect(await countProjectsTitled()).toEqual([{ count: "1" }]);
+  expect(await countJourneysTitled()).toEqual([{ count: "1" }]);
   expect(
     await queryE2eDatabase('SELECT id FROM "journey" WHERE id = $1', [
       SEED_JOURNEY_ID,
@@ -141,8 +161,17 @@ test("seed-case-3", async ({ page, context }) => {
   );
   expect(drafts).toHaveLength(1);
   const draft = graphDocumentSchema.parse(drafts[0].document);
-  expect(Object.keys(draft.steps)).toHaveLength(36);
+  const steps = Object.values(draft.steps);
+  expect(steps).toHaveLength(36);
   expect(draft.startStepId).toBe("step-7");
+
+  // The shape of the live case, asserted where the scrape actually happens:
+  // markup that changed under the converter shows up here as a lost Choice or
+  // a Step that stopped being an Ending, not as a fixture that still passes.
+  expect(steps.flatMap((step) => step.choices)).toHaveLength(50);
+  expect(steps.filter((step) => isEnding(step)).map((step) => step.id)).toEqual(
+    ["step-10", "step-20", "step-29", "step-30", "step-35", "step-36"],
+  );
 
   // What the Author signed in as that email now sees.
   await page.goto("/projects");

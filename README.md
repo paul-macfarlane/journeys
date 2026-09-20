@@ -106,11 +106,12 @@ pnpm seed:case-3 you@example.com --write-fixture    # …and rewrite the test fi
   `DATABASE_URL=… pnpm seed:case-3 you@example.com`. An explicit `DATABASE_URL`
   wins over `.env.local`, and the script prints only the host and port it
   connected to.
-- **Images hotlink the legacy site.** Nothing is copied: every seeded image
-  points at the URL the legacy page used, so the seeded journey's images break
-  if that host goes away. The scraper itself is throwaway — it reads the markup
-  the legacy Astro build emits today and is not maintained against changes to
-  it.
+- **Images point at third-party hosts.** Nothing is copied: every seeded image
+  keeps the URL the legacy page linked — pexels, rawpixel, flickr, one
+  WordPress site — so an image stops loading when its own host does, not when
+  the legacy site goes away. The scraper itself is throwaway — it reads the
+  markup the legacy Astro build emits today and is not maintained against
+  changes to it.
 
 ## Environments
 

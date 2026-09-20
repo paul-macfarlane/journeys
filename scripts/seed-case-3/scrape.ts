@@ -12,7 +12,7 @@
  * today and is not maintained against changes to it.
  */
 
-export const LEGACY_ORIGIN = "https://journey-stories.netlify.app";
+const LEGACY_ORIGIN = "https://journey-stories.netlify.app";
 
 /** The entry Step of case 3 — "Preface", which is not step 1. */
 export const CASE_3_START_STEP = 7;
@@ -29,11 +29,11 @@ const STEP_LINK = /href="\/journeys\/case-3\/(\d+)\/?"/g;
 
 export type FetchedStepPage = { step: number; html: string };
 
-export function stepUrl(step: number): string {
+function stepUrl(step: number): string {
   return `${LEGACY_ORIGIN}/journeys/case-3/${step}`;
 }
 
-export async function fetchStepPage(step: number): Promise<FetchedStepPage> {
+async function fetchStepPage(step: number): Promise<FetchedStepPage> {
   const response = await fetch(stepUrl(step), { redirect: "follow" });
   if (!response.ok) {
     throw new Error(
@@ -54,13 +54,16 @@ function linkedStepsIn(html: string): number[] {
 /**
  * Walks out from the entry Step, a bounded batch at a time, until every page
  * reachable through case-3 links has been read. Returns them in step order.
+ *
+ * `requested` holds every step the crawl has already asked for, including the
+ * ones in the batch currently in flight — a step that has been popped off the
+ * frontier but not yet answered is in neither `fetched` nor `frontier`, so
+ * testing those two alone would fetch it a second time.
  */
-export async function scrapeCase3(
-  options: { start?: number; onPage?: (step: number) => void } = {},
-): Promise<FetchedStepPage[]> {
-  const start = options.start ?? CASE_3_START_STEP;
+export async function scrapeCase3(): Promise<FetchedStepPage[]> {
   const fetched = new Map<number, FetchedStepPage>();
-  let frontier = [start];
+  const requested = new Set<number>([CASE_3_START_STEP]);
+  let frontier = [CASE_3_START_STEP];
 
   while (frontier.length > 0) {
     const batch = frontier.slice(0, CONCURRENCY);
@@ -69,11 +72,10 @@ export async function scrapeCase3(
     const pages = await Promise.all(batch.map((step) => fetchStepPage(step)));
     for (const page of pages) {
       fetched.set(page.step, page);
-      options.onPage?.(page.step);
       for (const linked of linkedStepsIn(page.html)) {
-        if (!fetched.has(linked) && !frontier.includes(linked)) {
-          frontier.push(linked);
-        }
+        if (requested.has(linked)) continue;
+        requested.add(linked);
+        frontier.push(linked);
       }
     }
   }
