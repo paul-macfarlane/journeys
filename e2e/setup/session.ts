@@ -166,6 +166,23 @@ export async function cleanup(authorIds: string[]): Promise<void> {
 }
 
 /**
+ * Reads or seeds rows a spec cannot reach through the browser — a Draft's
+ * stored document is the first of them: the Journey page renders a summary of
+ * it, not the document itself, so proving what was written (and writing a
+ * real-sized one to render) has to go straight at the row.
+ *
+ * Runs on the helper's own lazily created pool, so `closePools()` closes this
+ * too and a spec never opens a connection of its own.
+ */
+export async function queryE2eDatabase<T extends object>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const result = await getPool().query<T>(text, params);
+  return result.rows;
+}
+
+/**
  * Closes the helper's own database connection once a spec file is done. Safe
  * to call from every spec file: the next mint in this worker reconnects.
  */

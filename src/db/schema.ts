@@ -1,16 +1,19 @@
 // Drizzle schema. The first four tables are Better Auth's own, managed
 // through its Drizzle adapter — column names and types are the adapter's
 // contract, not ours, so nothing there is extended. Journeys' own domain
-// tables follow, each landing with its ticket; Project and Member are here,
-// and Journey, Draft, Published Version, Run and Response follow later.
+// tables follow, each landing with its ticket; Project, Member, Journey and
+// Draft are here, and Published Version, Run and Response follow later.
 
 import {
   boolean,
+  jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
+
+import type { GraphDocument } from "@/lib/graph/document";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -132,10 +135,10 @@ export const member = pgTable(
 // `/projects/<project-id>/journeys/<journey-id>`, and publicly at
 // `/j/<journey-id>` once ticket 06 builds the runner.
 //
-// There is no live-version pointer or draft here yet. Publish state is
-// derived, not stored: ticket 05 adds the pointer a Journey needs to have
-// ever been published, and ticket 03 adds its Draft. Until then every
-// Journey reads as "Never published".
+// A Journey's Draft is the `draft` row below, created with it. There is no
+// live-version pointer yet: publish state is derived, not stored, and ticket
+// 05 adds the pointer a Journey needs to have ever been published. Until then
+// every Journey reads as "Never published".
 export const journey = pgTable("journey", {
   id: text("id")
     .primaryKey()
@@ -148,6 +151,26 @@ export const journey = pgTable("journey", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// A Draft: the single mutable working copy of a Journey. One per Journey —
+// the primary key is the Journey's own id, so a second Draft cannot be
+// written down — and it goes when the Journey does.
+//
+// The document column holds the whole graph of steps and choices as one JSON
+// value. Its shape is owned by `src/lib/graph/document.ts`, not by Postgres
+// (see `docs/adr/0001-graph-as-one-json-document.md`): the database stores
+// jsonb and the application validates it on the way in and on the way out.
+// The row is created with the Journey, and migration 0002 backfills one for
+// every Journey that predates this table.
+export const draft = pgTable("draft", {
+  journeyId: text("journey_id")
+    .primaryKey()
+    .references(() => journey.id, { onDelete: "cascade" }),
+  document: jsonb("document").$type<GraphDocument>().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

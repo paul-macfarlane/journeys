@@ -6,7 +6,8 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { journey, member, project } from "@/db/schema";
+import { draft, journey, member, project } from "@/db/schema";
+import { createDraftDocument } from "@/lib/graph/document";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
@@ -44,25 +45,34 @@ export async function listJourneysForProject(
 }
 
 /**
- * Creates a Journey inside a Project. The caller is responsible for having
- * already confirmed the Author is a Member of `projectId` — every action
- * that calls this resolves the Project through `getProjectForMember` first,
- * which is where that check lives.
+ * Creates a Journey inside a Project, with the Draft every Journey has: one
+ * Start Step and nothing else. Both rows in one transaction, because a
+ * Journey without a Draft is a Journey an Author could never author.
+ *
+ * The caller is responsible for having already confirmed the Author is a
+ * Member of `projectId` — every action that calls this resolves the Project
+ * through `getProjectForMember` first, which is where that check lives.
  */
 export async function createJourney(
   projectId: string,
   input: { title: string; description: string },
 ): Promise<JourneySummary> {
-  const [created] = await db
-    .insert(journey)
-    .values({
-      projectId,
-      title: input.title,
-      description: input.description,
-    })
-    .returning(journeyColumns);
+  return db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(journey)
+      .values({
+        projectId,
+        title: input.title,
+        description: input.description,
+      })
+      .returning(journeyColumns);
 
-  return created;
+    await tx
+      .insert(draft)
+      .values({ journeyId: created.id, document: createDraftDocument() });
+
+    return created;
+  });
 }
 
 /**
