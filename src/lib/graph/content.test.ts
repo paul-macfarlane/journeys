@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  contentSchema,
-  sanitizeContent,
-  sanitizeDocument,
-} from "@/lib/graph/content";
-import type { GraphDocument } from "@/lib/graph/document";
+import { contentSchema, sanitizeContent } from "@/lib/graph/content";
 
 /**
  * A Step's rich text that already satisfies every rule. The sanitizer has
@@ -503,98 +498,5 @@ describe("sanitizeContent", () => {
     );
 
     expect(() => contentSchema.parse(sanitized(hostile))).not.toThrow();
-  });
-});
-
-/** A Draft whose Steps hold exactly the rich text a test hands it. */
-function documentWith(...stepContents: unknown[]): GraphDocument {
-  const steps = stepContents.map((content, index) => ({
-    id: `step-0${index + 1}`,
-    title: `Step ${index + 1}`,
-    content,
-    choices: [],
-    prompt: null,
-    outcomeId: null,
-    position: null,
-  }));
-
-  return {
-    schemaVersion: 1,
-    startStepId: "step-01",
-    allowBack: true,
-    steps: Object.fromEntries(steps.map((step) => [step.id, step])),
-    outcomes: {},
-  } as unknown as GraphDocument;
-}
-
-describe("sanitizeDocument", () => {
-  it("cleans the content of every Step", () => {
-    const document = documentWith(
-      docOf(
-        { type: "blockquote", content: [{ type: "text", text: "Gone" }] },
-        { type: "paragraph", content: [{ type: "text", text: "First" }] },
-      ),
-      docOf({
-        type: "paragraph",
-        content: [
-          {
-            type: "text",
-            text: "Second",
-            marks: [{ type: "strike" }, { type: "italic" }],
-          },
-        ],
-      }),
-    );
-
-    const result = sanitizeDocument(document);
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.document.steps["step-01"].content).toEqual(
-        docOf({
-          type: "paragraph",
-          content: [{ type: "text", text: "First" }],
-        }),
-      );
-      expect(result.document.steps["step-02"].content).toEqual(
-        docOf({
-          type: "paragraph",
-          content: [
-            { type: "text", text: "Second", marks: [{ type: "italic" }] },
-          ],
-        }),
-      );
-    }
-  });
-
-  it("refuses the write and names the Step whose image has no credit", () => {
-    const document = documentWith(
-      docOf({ type: "paragraph", content: [{ type: "text", text: "Fine" }] }),
-      docOf({
-        type: "image",
-        attrs: { src: "https://example.test/lamp.jpg" },
-      }),
-    );
-
-    expect(sanitizeDocument(document)).toEqual({
-      ok: false,
-      error: "Every image needs a credit",
-      stepId: "step-02",
-    });
-  });
-
-  it("leaves the rest of the Draft alone", () => {
-    const document = documentWith(
-      docOf({ type: "paragraph", content: [{ type: "text", text: "Fine" }] }),
-    );
-
-    const result = sanitizeDocument(document);
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.document.startStepId).toBe("step-01");
-      expect(result.document.steps["step-01"].title).toBe("Step 1");
-      expect(result.document.allowBack).toBe(true);
-    }
   });
 });

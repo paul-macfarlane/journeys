@@ -79,6 +79,8 @@ describe("validateForPublish", () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0].code).toBe("missing-start");
+    // The pointer names nothing, so there is no Step id to hand the canvas.
+    expect(problems[0].stepId).toBeUndefined();
   });
 
   it("does not call every Step unreachable when the Start is missing", () => {
@@ -289,7 +291,7 @@ describe("validateForPublish", () => {
     expect(problems[1].choiceId).toBeUndefined();
   });
 
-  it("reports problems in Step order, so the list is stable", () => {
+  it("reports problems grouped by rule and then in Step order, so the list is stable", () => {
     const document = graph([
       step("step-start", [
         choice("choice-a", "step-two"),

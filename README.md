@@ -46,8 +46,8 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   journeys inside it, with a dialog to create one. Members only; anyone else
   gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
-  title and description, delete it, and see its Draft — the steps it holds,
-  which is the Start, which are Endings (editing arrives later). Members of
+  title and description, delete it, and see its draft — the steps it holds,
+  which is the start, which are endings (editing arrives later). Members of
   the project only; anyone else gets a 404.
 - `/j/<journey-id>` — reserved for the public participant runner (not built
   yet).

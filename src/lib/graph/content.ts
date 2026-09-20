@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-// Type-only: the graph document's schema reaches into this module for
-// `contentSchema`, so a value import here would close a loop.
-import type { GraphDocument } from "@/lib/graph/document";
-
 /**
  * A Step's rich text, stored exactly as Tiptap/ProseMirror emits it: a `doc`
  * holding a list of blocks. Deliberately no `server-only` — the editor, the
@@ -355,29 +351,4 @@ export function sanitizeContent(input: unknown): SanitizeContentResult {
     }
     throw error;
   }
-}
-
-export type SanitizeDocumentResult =
-  | { ok: true; document: GraphDocument }
-  | { ok: false; error: string; stepId: string };
-
-/**
- * Cleans the rich text of every Step in a Draft. The first Step whose content
- * is refused aborts the whole write and is named, so the Author is sent to
- * the Step that needs fixing rather than to the Draft as a whole.
- */
-export function sanitizeDocument(
-  document: GraphDocument,
-): SanitizeDocumentResult {
-  const steps: GraphDocument["steps"] = {};
-
-  for (const [stepId, step] of Object.entries(document.steps)) {
-    const result = sanitizeContent(step.content);
-    if (!result.ok) {
-      return { ok: false, error: result.error, stepId };
-    }
-    steps[stepId] = { ...step, content: result.content };
-  }
-
-  return { ok: true, document: { ...document, steps } };
 }

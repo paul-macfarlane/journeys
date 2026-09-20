@@ -69,7 +69,7 @@ export default async function JourneyPage({
         <p className="text-muted-foreground">{journey.description}</p>
       ) : null}
 
-      <DraftSummary document={draft} />
+      <DraftSummary draft={draft} />
     </main>
   );
 }

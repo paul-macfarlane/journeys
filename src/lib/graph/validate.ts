@@ -7,8 +7,9 @@ import { isEnding } from "@/lib/graph/document";
  * still working, and must not break at the moment it becomes a Published
  * Version that participants walk.
  *
- * Pure and deterministic: the same document always produces the same list, in
- * Step order, so a canvas can render it without sorting.
+ * Pure and deterministic: the same document always produces the same list,
+ * grouped by rule and, within a rule, in Step order, so a canvas can render it
+ * without sorting.
  */
 
 export type PublishProblemCode =
@@ -67,10 +68,10 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
   // Step that exists".
   const startExists = document.steps[document.startStepId] !== undefined;
   if (!startExists) {
+    // No `stepId`: the pointer names nothing, so there is no Step to select.
     problems.push({
       code: "missing-start",
       message: "This journey has no start step",
-      stepId: document.startStepId,
     });
   }
 

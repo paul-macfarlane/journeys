@@ -41,9 +41,12 @@ document.
   Outcome id. A Step carries its title, its rich text, its ordered Choices, an
   optional Prompt, an Outcome id when it is an Ending, and a reserved canvas
   position.
-- **Structural validation runs at every write.** `graphDocumentSchema` is the
-  only way a document enters storage, so a stored document is always a
-  well-formed one. A write goes through `prepareDocumentForWrite`, which reads
+- **Structural validation runs at every write.** Every document that arrives
+  from outside enters storage through `graphDocumentSchema`; the two writes the
+  application makes on its own — a new Journey's Draft and migration 0002's
+  backfill — write the shape `createDraftDocument()` builds. A stored document
+  is therefore always a well-formed one. A write from the editor goes through
+  `prepareDocumentForWrite`, which reads
   the incoming document loosely, sanitizes every Step's rich text, and then
   parses the result strictly, so what is stored is always the sanitized shape
   even when the editor or a paste hands us something the contract does not
@@ -56,8 +59,9 @@ document.
   Version is not.
 - **Rich text is sanitized on the way in.** `sanitizeContent` runs server-side
   at every write, allowing only the small set of blocks and marks the editor
-  can produce, requiring a credit on every image, and refusing any link or
-  image URL that is not an absolute `http(s)` address.
+  can produce, stripping any link or image whose URL is not an absolute
+  `http(s)` address (the text of a stripped link stays), and refusing the write
+  outright only when an image has no credit.
 - **Outcomes live inside the document.** A Published Version therefore carries
   its own Outcome labels, so a Run analysed a year later is grouped by the
   labels that were true when it was walked.

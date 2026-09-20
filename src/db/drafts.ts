@@ -66,10 +66,16 @@ export type SaveDraftResult =
   | null;
 
 /**
- * Stores a Draft's document. The only write path there is for one: every
- * caller comes through here, so every stored document has been through
- * `prepareDocumentForWrite` (loose parse, sanitize, strict parse) and nothing
- * reaches the column that the contract would refuse to read back.
+ * Stores a Draft's document. The only path that accepts a document from
+ * outside: `createJourney` and migration 0002's backfill write the shape
+ * `createDraftDocument()` builds, and everything else comes through here, so
+ * every stored document has been through `prepareDocumentForWrite` (loose
+ * parse, sanitize, strict parse) and nothing reaches the column that the
+ * contract would refuse to read back.
+ *
+ * Written as an upsert: a Journey created in the moment between the Vercel
+ * build going live and migration 0002 running has no Draft row yet, and its
+ * first save must create one rather than update nothing and report success.
  *
  * Null when the Author is not a Member of the Journey's Project, or there is
  * no such Journey under it — the same answer, so neither leaks the other.
@@ -88,10 +94,11 @@ export async function saveDraft(
   const prepared = prepareDocumentForWrite(input);
   if (!prepared.ok) return prepared;
 
+  const saved = { document: prepared.document, updatedAt: new Date() };
   await db
-    .update(draft)
-    .set({ document: prepared.document, updatedAt: new Date() })
-    .where(eq(draft.journeyId, existing.id));
+    .insert(draft)
+    .values({ journeyId: existing.id, ...saved })
+    .onConflictDoUpdate({ target: draft.journeyId, set: saved });
 
   return { ok: true, document: prepared.document };
 }

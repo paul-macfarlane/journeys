@@ -1,9 +1,10 @@
+import { Badge } from "@/components/ui/badge";
 import { isEnding, type GraphDocument } from "@/lib/graph/document";
 
 /**
  * A Draft at a glance: how much of a Journey there is, and what shape it is
  * in. Read-only — the editor that changes any of it arrives with ticket 08 —
- * so this renders the document it is handed and nothing more.
+ * so this renders the Draft it is handed and nothing more.
  */
 
 /** "1 step", "44 steps": the count and the noun that agrees with it. */
@@ -11,20 +12,11 @@ function counted(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-/** The Journey status badge's styling, applied to a Step's own labels. */
-function StepBadge({ children }: { children: string }) {
-  return (
-    <span className="inline-flex w-fit shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">
-      {children}
-    </span>
-  );
-}
-
-export function DraftSummary({ document }: { document: GraphDocument }) {
-  const steps = Object.values(document.steps);
+export function DraftSummary({ draft }: { draft: GraphDocument }) {
+  const steps = Object.values(draft.steps);
   const summary = [
     counted(steps.length, "step"),
-    counted(Object.keys(document.outcomes).length, "outcome"),
+    counted(Object.keys(draft.outcomes).length, "outcome"),
   ].join(" · ");
 
   return (
@@ -46,10 +38,8 @@ export function DraftSummary({ document }: { document: GraphDocument }) {
             {/* A brand-new Draft's one Step is both the Start and an Ending,
                 and says so: it is where a participant would begin and, with
                 no choices on it yet, where they would stop. */}
-            {step.id === document.startStepId ? (
-              <StepBadge>Start</StepBadge>
-            ) : null}
-            {isEnding(step) ? <StepBadge>Ending</StepBadge> : null}
+            {step.id === draft.startStepId ? <Badge>Start</Badge> : null}
+            {isEnding(step) ? <Badge>Ending</Badge> : null}
             {step.choices.length > 0 ? (
               <span className="text-muted-foreground text-sm">
                 {counted(step.choices.length, "choice")}
