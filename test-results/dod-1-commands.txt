@@ -1,0 +1,50 @@
+# DoD-1 — verified run command at 9d92364 (local: docker journeys-db postgres:18 on 5436; e2e against journeys_e2e on port 3100)
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> eslint
+
+
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> tsc --noEmit
+
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+✓ Compiled successfully in 3.2s
+Route (app)
+├ ○ /_not-found
+├ ƒ /projects
+├ ƒ /projects/[projectSlug]
+├ ƒ /projects/[projectSlug]/journeys/[journeySlug]
+└ ƒ /sign-in
+
+> journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
+> playwright test
+
+[e2e] database: journeys_e2e on localhost:5436
+
+Running 14 tests using 5 workers
+
+  ✓   1 [chromium] › e2e/landing.spec.ts:3:5 › landing page explains the product and offers a single sign-in link while signed out (620ms)
+  ✓   6 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (641ms)
+  ✓   7 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (824ms)
+  ✓   5 [chromium] › e2e/projects-and-journeys.spec.ts:44:5 › project-create (3.5s)
+  ✓   2 [chromium] › e2e/projects-and-journeys.spec.ts:223:5 › journey-create (3.9s)
+  ✓   8 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (2.3s)
+  ✓  11 [chromium] › e2e/sign-in.spec.ts:13:5 › sign-in page offers Google and Discord with their logos (878ms)
+  ✓   4 [chromium] › e2e/projects-and-journeys.spec.ts:120:5 › project-rename (6.1s)
+  ✓  12 [chromium] › e2e/sign-in.spec.ts:37:5 › a signed-in Author visiting /sign-in is sent to their projects (890ms)
+  ✓   9 [chromium] › e2e/projects-and-journeys.spec.ts:73:5 › project-non-member (4.1s)
+  ✓   3 [chromium] › e2e/projects-and-journeys.spec.ts:340:5 › project-delete-cascade (8.0s)
+  ✓  13 [chromium] › e2e/projects-and-journeys.spec.ts:193:5 › project-delete (2.6s)
+  ✓  10 [chromium] › e2e/projects-and-journeys.spec.ts:258:5 › journey-edit-and-delete (6.4s)
+  ✓  14 [chromium] › e2e/projects-and-journeys.spec.ts:375:5 › author-flow (2.9s)
+
+  14 passed (14.6s)
+EXIT=0
