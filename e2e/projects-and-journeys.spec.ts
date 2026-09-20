@@ -1,0 +1,387 @@
+import { randomUUID } from "node:crypto";
+
+import { expect, test, type Page } from "@playwright/test";
+
+import { E2E_BASE_URL } from "./setup/e2e-env";
+import { cleanup, closePools, signInAs } from "./setup/session";
+
+/**
+ * Seam B for ticket 02: an Author's Projects (and the Journeys inside them)
+ * driven entirely through the browser.
+ *
+ * Every test mints its own Author, so tests never see each other's Projects,
+ * and the e2e database keeps nothing between runs.
+ */
+
+const mintedAuthorIds: string[] = [];
+
+test.afterAll(async () => {
+  await cleanup(mintedAuthorIds);
+  await closePools();
+});
+
+/**
+ * The e2e database is shared across runs, so every title carries a suffix
+ * that keeps a spec's list filtering exact. Hex only, so a title never
+ * accidentally reads as another run's.
+ */
+function uniqueSuffix(): string {
+  return randomUUID().replace(/-/g, "").slice(0, 8);
+}
+
+/** The shape of a `crypto.randomUUID()` id, which is every address now. */
+const ID_PATTERN = "[0-9a-f-]{36}";
+
+/**
+ * A Project and a Journey are addressed by their id, and a spec cannot know
+ * one before the app hands it back: every id here is read out of the href
+ * the page rendered.
+ */
+function idFromHref(href: string | null, prefix: string): string {
+  const value = href ?? "";
+  expect(value).toMatch(new RegExp(`^${prefix}${ID_PATTERN}$`));
+  return value.slice(prefix.length);
+}
+
+async function createProject(page: Page, title: string): Promise<string> {
+  await page.getByRole("button", { name: "New project" }).click();
+  await page.getByLabel("Title").fill(title);
+  await page.getByRole("button", { name: "Create project" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  const item = page.getByRole("listitem").filter({ hasText: title });
+  await expect(item).toHaveCount(1);
+
+  return idFromHref(
+    await item.getByRole("link").getAttribute("href"),
+    "/projects/",
+  );
+}
+
+async function createJourney(
+  page: Page,
+  projectId: string,
+  title: string,
+  description = "",
+): Promise<string> {
+  await page.getByRole("button", { name: "New journey" }).click();
+  await page.getByLabel("Title").fill(title);
+  if (description) {
+    await page.getByLabel("Description").fill(description);
+  }
+  await page.getByRole("button", { name: "Create journey" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  const item = page.getByRole("listitem").filter({ hasText: title });
+  await expect(item).toHaveCount(1);
+
+  return idFromHref(
+    await item.getByRole("link").getAttribute("href"),
+    `/projects/${projectId}/journeys/`,
+  );
+}
+
+test("project-create", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const title = `Refugee Health ${suffix}`;
+
+  await page.goto("/projects");
+  await expect(page.getByText("No projects yet")).toBeVisible();
+
+  const projectId = await createProject(page, title);
+
+  // Listed for the Author who created it, as a link to its id.
+  const projectLink = page.getByRole("link").filter({ hasText: title });
+  await expect(projectLink).toHaveAttribute(
+    "href",
+    new RegExp(`^/projects/${ID_PATTERN}$`),
+  );
+  await expect(projectLink).toHaveAttribute("href", `/projects/${projectId}`);
+
+  await projectLink.click();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+
+  await page.goto("/projects");
+  await page.screenshot({
+    path: "test-results/project-create/project-create.png",
+    fullPage: true,
+  });
+});
+
+test("project-non-member", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const title = `Clinic Access ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, title);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // A second Author, in a browser context of their own, so nothing of the
+  // first Author's session leaks across.
+  const strangerContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+  try {
+    const stranger = await signInAs(strangerContext);
+    mintedAuthorIds.push(stranger.id);
+
+    const strangerPage = await strangerContext.newPage();
+    const response = await strangerPage.goto(`/projects/${projectId}`);
+
+    // Not a Member: the same 404 an Author gets for an id that never
+    // existed, and no sign of the Project's title anywhere on it.
+    expect(response?.status()).toBe(404);
+    await expect(strangerPage.getByText(title)).toHaveCount(0);
+
+    // The Journey inside it is just as invisible, even to an Author holding
+    // both ids.
+    const journeyResponse = await strangerPage.goto(
+      `/projects/${projectId}/journeys/${journeyId}`,
+    );
+    expect(journeyResponse?.status()).toBe(404);
+    await expect(strangerPage.getByText(journeyTitle)).toHaveCount(0);
+
+    await strangerPage.screenshot({
+      path: "test-results/project-non-member/project-non-member.png",
+      fullPage: true,
+    });
+  } finally {
+    await strangerContext.close();
+  }
+});
+
+test("project-rename", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const title = `Refugee Health ${suffix}`;
+  const renamedTitle = `Refugee Care ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, title);
+
+  await page.goto(`/projects/${projectId}`);
+
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Title").fill(renamedTitle);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  // The id is the address, so a rename never moves the Project's URL.
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
+
+  await page.screenshot({
+    path: "test-results/project-rename/project-rename.png",
+    fullPage: true,
+  });
+
+  // And the new title is what the Author's list shows.
+  await page.goto("/projects");
+  await expect(
+    page.getByRole("listitem").filter({ hasText: renamedTitle }),
+  ).toHaveCount(1);
+  await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+});
+
+test("project-delete", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const title = `Clinic Access ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, title);
+
+  await page.goto(`/projects/${projectId}`);
+  await page.getByRole("button", { name: "Delete project" }).click();
+
+  // Nothing is gone until the Author confirms it.
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);
+  await expect(page.getByText(title)).toHaveCount(0);
+
+  const response = await page.goto(`/projects/${projectId}`);
+  expect(response?.status()).toBe(404);
+
+  await page.screenshot({
+    path: "test-results/project-delete/project-delete.png",
+    fullPage: true,
+  });
+});
+
+test("journey-create", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const description =
+    "A family decides whether to cross at night or wait for daylight.";
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    journeyTitle,
+    description,
+  );
+
+  // Listed for its Project, as a link to its id under the Project's own.
+  const journeyItem = page
+    .getByRole("listitem")
+    .filter({ hasText: journeyTitle });
+  await expect(journeyItem.getByRole("link")).toHaveAttribute(
+    "href",
+    `/projects/${projectId}/journeys/${journeyId}`,
+  );
+  await expect(journeyItem.getByText(description)).toBeVisible();
+  await expect(journeyItem.getByText("Never published")).toBeVisible();
+
+  await page.screenshot({
+    path: "test-results/journey-create/journey-create.png",
+    fullPage: true,
+  });
+});
+
+test("journey-edit-and-delete", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const renamedTitle = `Night Crossing ${suffix}`;
+  const renamedDescription = "Updated: the family waits for a guide.";
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  await page.goto(journeyPath);
+
+  // Renaming a Journey leaves its address alone.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Title").fill(renamedTitle);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);
+
+  // Editing the description shows it back on the journey page.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Description").fill(renamedDescription);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByText(renamedDescription)).toBeVisible();
+
+  await page.screenshot({
+    path: "test-results/journey-edit-and-delete/journey-edit-and-delete.png",
+    fullPage: true,
+  });
+
+  // Delete, with confirmation.
+  await page.getByRole("button", { name: "Delete journey" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
+  await expect(page.getByText(renamedTitle)).toHaveCount(0);
+
+  const response = await page.goto(journeyPath);
+  expect(response?.status()).toBe(404);
+});
+
+test("project-delete-cascade", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Clinic Access ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);
+
+  const journeyResponse = await page.goto(
+    `/projects/${projectId}/journeys/${journeyId}`,
+  );
+  expect(journeyResponse?.status()).toBe(404);
+
+  const projectResponse = await page.goto(`/projects/${projectId}`);
+  expect(projectResponse?.status()).toBe(404);
+
+  await page.screenshot({
+    path: "test-results/project-delete-cascade/project-delete-cascade.png",
+    fullPage: true,
+  });
+});
+
+test("author-flow", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const renamedTitle = `Night Crossing ${suffix}`;
+
+  // Seam B, AC-6: create Project → create Journey → rename → delete, in one
+  // continuous flow, one Author, one browser context.
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  await page.goto(journeyPath);
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Title").fill(renamedTitle);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);
+  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+
+  await page.getByRole("button", { name: "Delete journey" }).click();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
+  await expect(page.getByText(renamedTitle)).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);
+  await expect(page.getByText(projectTitle)).toHaveCount(0);
+
+  await page.screenshot({
+    path: "test-results/author-flow/author-flow.png",
+    fullPage: true,
+  });
+});

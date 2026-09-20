@@ -1,4 +1,28 @@
-# AC-1..AC-6 — pnpm test:e2e at a99258f (database journeys_e2e on localhost:5436, server on port 3100). Screenshots: test-results/<test-name>/<test-name>.png
+# DoD-1 — verified run command at a99258f (local: docker journeys-db postgres:18 on 5436; e2e against journeys_e2e on port 3100)
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> eslint
+
+
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> tsc --noEmit
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+✓ Compiled successfully in 3.7s
+Route (app)
+├ ○ /_not-found
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+└ ƒ /sign-in
 
 > journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
 > playwright test
@@ -23,3 +47,4 @@ Running 14 tests using 5 workers
   ✓  14 [chromium] › e2e/projects-and-journeys.spec.ts:347:5 › author-flow (2.8s)
 
   14 passed (19.1s)
+EXIT=0

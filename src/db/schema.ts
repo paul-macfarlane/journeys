@@ -1,9 +1,16 @@
-// Drizzle schema. These four tables are Better Auth's own, managed through
-// its Drizzle adapter — column names and types are the adapter's contract,
-// not ours, so nothing here is extended. Journeys' domain tables (Project,
-// Journey, Draft, Published Version, Run, Response) land with their tickets.
+// Drizzle schema. The first four tables are Better Auth's own, managed
+// through its Drizzle adapter — column names and types are the adapter's
+// contract, not ours, so nothing there is extended. Journeys' own domain
+// tables follow, each landing with its ticket; Project and Member are here,
+// and Journey, Draft, Published Version, Run and Response follow later.
 
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -67,6 +74,77 @@ export const verification = pgTable("verification", {
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// A Project: a named grouping of Journeys, owned and collaborated on by its
+// Members. Text ids generated in the application, matching better-auth's own
+// id style above. The id is the Project's address: `/projects/<id>`, which
+// nothing else names, so an Author renames a Project freely and its URL
+// never moves.
+export const project = pgTable("project", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// A Member: an Author who belongs to a Project. All Members are equal, so
+// `role` is written (defaulting to "member") and never read — it exists so
+// adding a distinction later needs no migration of existing rows.
+//
+// The domain migration also installs a BEFORE DELETE trigger enforcing that a
+// Project never loses its last Member. Two consequences, both deliberate:
+// deleting a Project still works (its row is already gone when the member
+// rows cascade), while deleting a `user` who is some Project's only Member
+// is refused — delete or hand over those Projects first. Drizzle snapshots
+// don't track triggers, so the statement lives only in the migration file.
+export const member = pgTable(
+  "member",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.userId] })],
+);
+
+// A Journey: a graph of steps and choices, authored inside one Project.
+// Like a Project, a Journey is addressed by its id — inside the Project at
+// `/projects/<project-id>/journeys/<journey-id>`, and publicly at
+// `/j/<journey-id>` once ticket 06 builds the runner.
+//
+// There is no live-version pointer or draft here yet. Publish state is
+// derived, not stored: ticket 05 adds the pointer a Journey needs to have
+// ever been published, and ticket 03 adds its Draft. Until then every
+// Journey reads as "Never published".
+export const journey = pgTable("journey", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -35,6 +35,19 @@ documented in
 [`.scratch/journeys-platform/human-prerequisites.md`](.scratch/journeys-platform/human-prerequisites.md).
 Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 
+## Routes
+
+- `/` and `/sign-in` — the landing page and the Google/Discord sign-in.
+- `/projects` — the signed-in author's projects, with a dialog to create one.
+- `/projects/<project-id>` — one project: rename it, delete it, and see the
+  journeys inside it, with a dialog to create one. Members only; anyone else
+  gets a 404.
+- `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
+  title and description, or delete it. Members of the project only; anyone
+  else gets a 404.
+- `/j/<journey-id>` — reserved for the public participant runner (not built
+  yet).
+
 ## Commands
 
 | Command                           | What it does                                   |

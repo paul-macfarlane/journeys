@@ -1,0 +1,90 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+
+import { firstIssue, type ActionResult } from "@/lib/action-result";
+import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
+import { getProjectForMember } from "@/db/projects";
+import { requireSession } from "@/lib/session";
+import {
+  createJourneySchema,
+  updateJourneySchema,
+} from "@/lib/validation/journey";
+
+/**
+ * Server actions behind the Journey dialogs, mirroring
+ * `@/app/projects/actions`.
+ *
+ * Each one is a public endpoint, so each re-reads the session and re-parses
+ * its input rather than trusting the form that called it. They return an
+ * `ActionResult` the dialog can render inline.
+ */
+
+export type JourneyActionResult = ActionResult;
+
+function revalidateJourneyPaths() {
+  revalidatePath("/projects/[projectId]", "page");
+  revalidatePath("/projects/[projectId]/journeys/[journeyId]", "page");
+}
+
+export async function createJourneyAction(
+  projectId: string,
+  input: unknown,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  const parsed = createJourneySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error.issues) };
+  }
+
+  // Membership check: an Author who is not a Member of this Project cannot
+  // create a Journey inside it.
+  const project = await getProjectForMember(projectId, session.user.id);
+  if (!project) {
+    return { ok: false, error: "That project no longer exists" };
+  }
+
+  const created = await createJourney(project.id, parsed.data);
+  revalidateJourneyPaths();
+  return { ok: true, id: created.id };
+}
+
+export async function updateJourneyAction(
+  projectId: string,
+  journeyId: string,
+  input: unknown,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  const parsed = updateJourneySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error.issues) };
+  }
+
+  const updated = await updateJourney(
+    projectId,
+    journeyId,
+    parsed.data,
+    session.user.id,
+  );
+  // Not a Member (or no such Journey/Project): same answer as the page's
+  // 404.
+  if (!updated) return { ok: false, error: "That journey no longer exists" };
+
+  revalidateJourneyPaths();
+  return { ok: true, id: updated.id };
+}
+
+export async function deleteJourneyAction(
+  projectId: string,
+  journeyId: string,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  const deleted = await deleteJourney(projectId, journeyId, session.user.id);
+  if (!deleted) return { ok: false, error: "That journey no longer exists" };
+
+  revalidateJourneyPaths();
+  return { ok: true, id: journeyId };
+}

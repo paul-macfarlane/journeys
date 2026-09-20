@@ -190,3 +190,11 @@ public URLs, custom theme editor, manual canvas layout.
 - Publish-immutability is proven in Seam B (database), not Seam A.
 - AI structured output uses an array-shaped projection of the graph schema.
 - Priority order: publish (4) before runner (5), matching ticket dependencies.
+
+## Amendment after PR #10 review (2026-09-19, decided by Paul)
+
+- Slugs dropped. Projects and Journeys are addressed by id everywhere:
+  `/projects/{project-id}`, `/projects/{project-id}/journeys/{journey-id}`,
+  public `/j/{journey-id}` and `/p/{project-id}`. Authors edit a title (and
+  a Journey description), never an address. Supersedes every "slug" line
+  above and the "slug frozen at first publish" rule.

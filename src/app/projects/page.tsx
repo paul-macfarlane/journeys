@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { SignOutButton } from "@/components/sign-out-button";
 import {
   Card,
@@ -8,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { listProjectsForAuthor } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -16,6 +19,7 @@ export const metadata: Metadata = {
 
 export default async function ProjectsPage() {
   const session = await requireSession();
+  const projects = await listProjectsForAuthor(session.user.id);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
@@ -28,19 +32,39 @@ export default async function ProjectsPage() {
             Signed in as {session.user.name}
           </p>
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-2">
+          <NewProjectDialog />
+          <SignOutButton />
+        </div>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>No projects yet</CardTitle>
-          <CardDescription>
-            Projects you create or are added to as a member will appear here,
-            each holding its own journeys.
-          </CardDescription>
-        </CardHeader>
-        <CardContent />
-      </Card>
+      {projects.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No projects yet</CardTitle>
+            <CardDescription>
+              Projects you create or are added to as a member will appear here,
+              each holding its own journeys.
+            </CardDescription>
+          </CardHeader>
+          <CardContent />
+        </Card>
+      ) : (
+        // role="list" is explicit: the flex layout below strips the list
+        // marker, and some browsers drop the implicit role with it.
+        <ul role="list" className="flex flex-col gap-3">
+          {projects.map((project) => (
+            <li key={project.id}>
+              <Link
+                href={`/projects/${project.id}`}
+                className="flex flex-col gap-1 rounded-xl px-4 py-3 ring-1 ring-foreground/10 transition-colors hover:bg-muted"
+              >
+                <span className="font-medium">{project.title}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }

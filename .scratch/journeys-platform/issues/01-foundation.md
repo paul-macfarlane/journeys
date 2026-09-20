@@ -1,6 +1,6 @@
 # 01: Foundation
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately) — but gated on the human prerequisites below
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-19
 Parent: `.scratch/journeys-platform/spec.md`
@@ -146,3 +146,7 @@ Two fresh reviewers (frontier model) read the complete diff, one per axis; the o
 - Sign-in moved to a dedicated `/sign-in` page reached from a single "Sign in" button on the landing page; the provider buttons now use Google's and Discord's own logos and button branding (Google light/dark spec, Discord blurple). `src/proxy.ts` sends a signed-in Author from `/sign-in` to `/projects`; the page also checks the session server-side.
 - e2e: landing spec asserts the single link and no provider buttons; new `sign-in.spec.ts` covers the branded page (logos present, screenshot `test-results/sign-in/`) and the signed-in redirect. 6/6 specs pass; lint, format, typecheck, unit, build green.
 - AC-2 ("offers sign-in") and AC-3 still hold; no contract change.
+
+### [PROGRESS] 2026-09-19 — marked done
+
+Paul reviewed PR #6 and confirmed ticket 01 done on 2026-09-19 (recorded by the Atlas orchestrator on his instruction in the ticket 02 session).
