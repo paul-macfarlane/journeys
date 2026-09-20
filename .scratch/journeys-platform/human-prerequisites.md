@@ -29,7 +29,7 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 - [x] Authorized redirect URIs:
   - `http://localhost:3000/api/auth/callback/google`
   - `https://journeys-ten-virid.vercel.app/api/auth/callback/google`
-  - [ x `https://staging-journeys-ten-virid.vercel.app/api/auth/callback/google` (add after §9)
+  - [x] `https://staging-journeys-ten-virid.vercel.app/api/auth/callback/google` (add after §9)
 - [x] Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Vercel (Production) and `.env.local`.
 - [x] Also set them for **Preview** (see §9).
 - Note: Google does not accept wildcard redirect URIs, so ephemeral PR preview URLs will never have working Google sign-in. Staging (a fixed domain) does. Accept this for the hackathon.
