@@ -1,5 +1,5 @@
 // Database access only — `server-only` so a client import fails the build.
-// Pure logic (slugs, validation) lives under src/lib and stays importable
+// Pure logic (input validation) lives under src/lib and stays importable
 // from both sides.
 import "server-only";
 
@@ -7,8 +7,6 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { journey, member, project } from "@/db/schema";
-import { isUniqueViolation, SlugTakenError } from "@/db/errors";
-import { slugify, uniqueSlug } from "@/lib/slug";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
@@ -25,26 +23,14 @@ import { slugify, uniqueSlug } from "@/lib/slug";
 export type JourneySummary = {
   id: string;
   title: string;
-  slug: string;
   description: string;
 };
 
 const journeyColumns = {
   id: journey.id,
   title: journey.title,
-  slug: journey.slug,
   description: journey.description,
 };
-
-async function isSlugTaken(slug: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: journey.id })
-    .from(journey)
-    .where(eq(journey.slug, slug))
-    .limit(1);
-
-  return row !== undefined;
-}
 
 /** Every Journey in the Project, newest first. */
 export async function listJourneysForProject(
@@ -67,36 +53,27 @@ export async function createJourney(
   projectId: string,
   input: { title: string; description: string },
 ): Promise<JourneySummary> {
-  const slug = await uniqueSlug(slugify(input.title), isSlugTaken);
+  const [created] = await db
+    .insert(journey)
+    .values({
+      projectId,
+      title: input.title,
+      description: input.description,
+    })
+    .returning(journeyColumns);
 
-  try {
-    const [created] = await db
-      .insert(journey)
-      .values({
-        projectId,
-        title: input.title,
-        description: input.description,
-        slug,
-      })
-      .returning(journeyColumns);
-
-    return created;
-  } catch (error) {
-    // Another Author took the slug between the check above and this insert.
-    if (isUniqueViolation(error)) throw new SlugTakenError();
-    throw error;
-  }
+  return created;
 }
 
 /**
- * The Journey behind a Project slug and Journey slug pair, but only for one
- * of the Project's Members. Returns null for a non-Member, an unknown
- * Project, and an unknown Journey alike, so callers can answer all three
- * with the same 404.
+ * The Journey behind a Project id and Journey id pair, but only for one of
+ * the Project's Members. Returns null for a non-Member, an unknown Project,
+ * and an unknown Journey alike, so callers can answer all three with the
+ * same 404 — including a real Journey asked for under the wrong Project.
  */
 export async function getJourneyForMember(
-  projectSlug: string,
-  journeySlug: string,
+  projectId: string,
+  journeyId: string,
   userId: string,
 ): Promise<JourneySummary | null> {
   const [row] = await db
@@ -106,8 +83,8 @@ export async function getJourneyForMember(
     .innerJoin(member, eq(member.projectId, project.id))
     .where(
       and(
-        eq(project.slug, projectSlug),
-        eq(journey.slug, journeySlug),
+        eq(project.id, projectId),
+        eq(journey.id, journeyId),
         eq(member.userId, userId),
       ),
     )
@@ -117,52 +94,42 @@ export async function getJourneyForMember(
 }
 
 /**
- * Renames a Journey, and moves its slug when the Author changed it. Returns
- * null when the Author is not a Member of the Journey's Project, or the
- * Journey doesn't exist under that Project slug.
+ * Edits a Journey's title and description. Its id — and so its URL — is
+ * untouched. Returns null when the Author is not a Member of the Journey's
+ * Project, or the Journey doesn't exist under that Project.
  */
 export async function updateJourney(
-  projectSlug: string,
-  currentJourneySlug: string,
-  input: { title: string; slug: string; description: string },
+  projectId: string,
+  journeyId: string,
+  input: { title: string; description: string },
   userId: string,
 ): Promise<JourneySummary | null> {
-  const existing = await getJourneyForMember(
-    projectSlug,
-    currentJourneySlug,
-    userId,
-  );
+  const existing = await getJourneyForMember(projectId, journeyId, userId);
   if (!existing) return null;
 
-  try {
-    const [updated] = await db
-      .update(journey)
-      .set({
-        title: input.title,
-        slug: input.slug,
-        description: input.description,
-        updatedAt: new Date(),
-      })
-      .where(eq(journey.id, existing.id))
-      .returning(journeyColumns);
+  const [updated] = await db
+    .update(journey)
+    .set({
+      title: input.title,
+      description: input.description,
+      updatedAt: new Date(),
+    })
+    .where(eq(journey.id, existing.id))
+    .returning(journeyColumns);
 
-    return updated ?? null;
-  } catch (error) {
-    if (isUniqueViolation(error)) throw new SlugTakenError();
-    throw error;
-  }
+  return updated ?? null;
 }
 
 /**
  * Hard-deletes a Journey. Returns false when the Author is not a Member of
- * its Project, which callers answer with the same 404 as an unknown slug.
+ * its Project, which callers answer with the same 404 as an unknown id.
  */
 export async function deleteJourney(
-  projectSlug: string,
-  journeySlug: string,
+  projectId: string,
+  journeyId: string,
   userId: string,
 ): Promise<boolean> {
-  const existing = await getJourneyForMember(projectSlug, journeySlug, userId);
+  const existing = await getJourneyForMember(projectId, journeyId, userId);
   if (!existing) return false;
 
   await db.delete(journey).where(eq(journey.id, existing.id));

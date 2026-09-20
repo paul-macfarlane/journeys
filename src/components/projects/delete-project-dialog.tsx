@@ -22,11 +22,11 @@ import { Button } from "@/components/ui/button";
  * only ever happens behind an explicit confirmation.
  */
 export function DeleteProjectDialog({
+  projectId,
   title,
-  slug,
 }: {
+  projectId: string;
   title: string;
-  slug: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -36,7 +36,7 @@ export function DeleteProjectDialog({
   function confirmDelete() {
     setServerError(null);
     startTransition(async () => {
-      const result = await deleteProjectAction(slug);
+      const result = await deleteProjectAction(projectId);
 
       if (!result.ok) {
         setServerError(result.error);

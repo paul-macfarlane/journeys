@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
-import { SlugTakenError } from "@/db/errors";
 import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
 import { requireSession } from "@/lib/session";
@@ -24,12 +23,12 @@ import {
 export type JourneyActionResult = ActionResult;
 
 function revalidateJourneyPaths() {
-  revalidatePath("/projects/[projectSlug]", "page");
-  revalidatePath("/projects/[projectSlug]/journeys/[journeySlug]", "page");
+  revalidatePath("/projects/[projectId]", "page");
+  revalidatePath("/projects/[projectId]/journeys/[journeyId]", "page");
 }
 
 export async function createJourneyAction(
-  projectSlug: string,
+  projectId: string,
   input: unknown,
 ): Promise<JourneyActionResult> {
   const session = await requireSession();
@@ -41,26 +40,19 @@ export async function createJourneyAction(
 
   // Membership check: an Author who is not a Member of this Project cannot
   // create a Journey inside it.
-  const project = await getProjectForMember(projectSlug, session.user.id);
+  const project = await getProjectForMember(projectId, session.user.id);
   if (!project) {
     return { ok: false, error: "That project no longer exists" };
   }
 
-  try {
-    const created = await createJourney(project.id, parsed.data);
-    revalidateJourneyPaths();
-    return { ok: true, slug: created.slug };
-  } catch (error) {
-    if (error instanceof SlugTakenError) {
-      return { ok: false, error: error.message };
-    }
-    throw error;
-  }
+  const created = await createJourney(project.id, parsed.data);
+  revalidateJourneyPaths();
+  return { ok: true, id: created.id };
 }
 
 export async function updateJourneyAction(
-  projectSlug: string,
-  journeySlug: string,
+  projectId: string,
+  journeyId: string,
   input: unknown,
 ): Promise<JourneyActionResult> {
   const session = await requireSession();
@@ -70,40 +62,29 @@ export async function updateJourneyAction(
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
-  try {
-    const updated = await updateJourney(
-      projectSlug,
-      journeySlug,
-      parsed.data,
-      session.user.id,
-    );
-    // Not a Member (or no such Journey/Project): same answer as the page's
-    // 404.
-    if (!updated) return { ok: false, error: "That journey no longer exists" };
+  const updated = await updateJourney(
+    projectId,
+    journeyId,
+    parsed.data,
+    session.user.id,
+  );
+  // Not a Member (or no such Journey/Project): same answer as the page's
+  // 404.
+  if (!updated) return { ok: false, error: "That journey no longer exists" };
 
-    revalidateJourneyPaths();
-    return { ok: true, slug: updated.slug };
-  } catch (error) {
-    if (error instanceof SlugTakenError) {
-      return { ok: false, error: error.message };
-    }
-    throw error;
-  }
+  revalidateJourneyPaths();
+  return { ok: true, id: updated.id };
 }
 
 export async function deleteJourneyAction(
-  projectSlug: string,
-  journeySlug: string,
+  projectId: string,
+  journeyId: string,
 ): Promise<JourneyActionResult> {
   const session = await requireSession();
 
-  const deleted = await deleteJourney(
-    projectSlug,
-    journeySlug,
-    session.user.id,
-  );
+  const deleted = await deleteJourney(projectId, journeyId, session.user.id);
   if (!deleted) return { ok: false, error: "That journey no longer exists" };
 
   revalidateJourneyPaths();
-  return { ok: true, slug: journeySlug };
+  return { ok: true, id: journeyId };
 }

@@ -25,8 +25,9 @@ import {
 } from "@/lib/validation/project";
 
 /**
- * Creating a Project takes a title and nothing else — the slug is derived
- * from it, and the Author can change it later from the Project's own page.
+ * Creating a Project takes a title and nothing else. The Project is
+ * addressed by the id it is given, so the Author can rename it later from
+ * its own page without moving it.
  */
 export function NewProjectDialog() {
   const router = useRouter();

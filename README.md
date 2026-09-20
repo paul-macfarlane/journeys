@@ -39,15 +39,14 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 
 - `/` and `/sign-in` — the landing page and the Google/Discord sign-in.
 - `/projects` — the signed-in author's projects, with a dialog to create one.
-- `/projects/<project-slug>` — one project: rename it (title and slug),
-  delete it, and see the journeys inside it, with a dialog to create one.
-  Members only; anyone else gets a 404.
-- `/projects/<project-slug>/journeys/<journey-slug>` — one journey: edit its
-  title, slug, and description, or delete it. Members of the project only;
-  anyone else gets a 404.
-- `/j/<journey-slug>` — reserved for the public participant runner (not
-  built yet); the journey page already shows it as the journey's future
-  address.
+- `/projects/<project-id>` — one project: rename it, delete it, and see the
+  journeys inside it, with a dialog to create one. Members only; anyone else
+  gets a 404.
+- `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
+  title and description, or delete it. Members of the project only; anyone
+  else gets a 404.
+- `/j/<journey-id>` — reserved for the public participant runner (not built
+  yet).
 
 ## Commands
 

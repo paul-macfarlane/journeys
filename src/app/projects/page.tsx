@@ -56,13 +56,10 @@ export default async function ProjectsPage() {
           {projects.map((project) => (
             <li key={project.id}>
               <Link
-                href={`/projects/${project.slug}`}
+                href={`/projects/${project.id}`}
                 className="flex flex-col gap-1 rounded-xl px-4 py-3 ring-1 ring-foreground/10 transition-colors hover:bg-muted"
               >
                 <span className="font-medium">{project.title}</span>
-                <span className="text-muted-foreground text-sm">
-                  /projects/{project.slug}
-                </span>
               </Link>
             </li>
           ))}

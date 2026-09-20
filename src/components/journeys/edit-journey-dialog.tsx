@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { updateJourneyAction } from "@/app/projects/[projectSlug]/journeys/actions";
+import { updateJourneyAction } from "@/app/projects/[projectId]/journeys/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,27 +20,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { slugify } from "@/lib/slug";
 import {
   updateJourneySchema,
   type UpdateJourneyInput,
 } from "@/lib/validation/journey";
 
 /**
- * Editing carries the slug alongside the title and description, prefilled
- * with the current one: a new title on its own never moves the Journey's
- * URL, and the Author has to either edit the slug or press "Regenerate from
- * title".
+ * A Journey's title and description are the whole of its metadata. It is
+ * addressed by its id, so editing either never moves its URL and the dialog
+ * only ever has to refresh the page it is sitting on.
  */
 export function EditJourneyDialog({
-  projectSlug,
+  projectId,
+  journeyId,
   title,
-  slug,
   description,
 }: {
-  projectSlug: string;
+  projectId: string;
+  journeyId: string;
   title: string;
-  slug: string;
   description: string;
 }) {
   const router = useRouter();
@@ -49,12 +47,12 @@ export function EditJourneyDialog({
 
   const form = useForm<UpdateJourneyInput>({
     resolver: zodResolver(updateJourneySchema),
-    defaultValues: { title, slug, description },
+    defaultValues: { title, description },
   });
 
   async function onSubmit(values: UpdateJourneyInput) {
     setServerError(null);
-    const result = await updateJourneyAction(projectSlug, slug, values);
+    const result = await updateJourneyAction(projectId, journeyId, values);
 
     if (!result.ok) {
       setServerError(result.error);
@@ -62,10 +60,6 @@ export function EditJourneyDialog({
     }
 
     setOpen(false);
-    if (result.slug !== slug) {
-      // The slug moved, so this page's URL did too.
-      router.replace(`/projects/${projectSlug}/journeys/${result.slug}`);
-    }
     router.refresh();
   }
 
@@ -76,7 +70,7 @@ export function EditJourneyDialog({
         setOpen(nextOpen);
         setServerError(null);
         // Reopening always starts from what the Journey is called now.
-        form.reset({ title, slug, description });
+        form.reset({ title, description });
       }}
     >
       <DialogTrigger render={<Button variant="outline" />}>Edit</DialogTrigger>
@@ -88,8 +82,8 @@ export function EditJourneyDialog({
           <DialogHeader>
             <DialogTitle>Edit journey</DialogTitle>
             <DialogDescription>
-              The slug is this journey&apos;s future public address. It can be
-              changed freely until the journey is first published.
+              The title and description are what members see in the project. The
+              journey&apos;s address stays the same.
             </DialogDescription>
           </DialogHeader>
 
@@ -103,35 +97,6 @@ export function EditJourneyDialog({
             {form.formState.errors.title ? (
               <p role="alert" className="text-sm text-destructive">
                 {form.formState.errors.title.message}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-journey-slug">Slug</Label>
-            <Input
-              id="edit-journey-slug"
-              autoComplete="off"
-              {...form.register("slug")}
-            />
-            <div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  form.setValue("slug", slugify(form.getValues("title")), {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  });
-                }}
-              >
-                Regenerate from title
-              </Button>
-            </div>
-            {form.formState.errors.slug ? (
-              <p role="alert" className="text-sm text-destructive">
-                {form.formState.errors.slug.message}
               </p>
             ) : null}
           </div>

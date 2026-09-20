@@ -84,14 +84,14 @@ export const verification = pgTable("verification", {
 
 // A Project: a named grouping of Journeys, owned and collaborated on by its
 // Members. Text ids generated in the application, matching better-auth's own
-// id style above. Slugs are globally unique — the unique index below is the
-// real guard against a collision, not the slug helper that proposes them.
+// id style above. The id is the Project's address: `/projects/<id>`, which
+// nothing else names, so an Author renames a Project freely and its URL
+// never moves.
 export const project = pgTable("project", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   title: text("title").notNull(),
-  slug: text("slug").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -104,7 +104,7 @@ export const project = pgTable("project", {
 // `role` is written (defaulting to "member") and never read — it exists so
 // adding a distinction later needs no migration of existing rows.
 //
-// Migration 0001 also installs a BEFORE DELETE trigger enforcing that a
+// The domain migration also installs a BEFORE DELETE trigger enforcing that a
 // Project never loses its last Member. Two consequences, both deliberate:
 // deleting a Project still works (its row is already gone when the member
 // rows cascade), while deleting a `user` who is some Project's only Member
@@ -128,9 +128,9 @@ export const member = pgTable(
 );
 
 // A Journey: a graph of steps and choices, authored inside one Project.
-// Slugs are globally unique across every Journey, not scoped to a Project —
-// the same reason as Project slugs above: the unique index is the real
-// guard, not the slug helper that proposes them.
+// Like a Project, a Journey is addressed by its id — inside the Project at
+// `/projects/<project-id>/journeys/<journey-id>`, and publicly at
+// `/j/<journey-id>` once ticket 06 builds the runner.
 //
 // There is no live-version pointer or draft here yet. Publish state is
 // derived, not stored: ticket 05 adds the pointer a Journey needs to have
@@ -144,7 +144,6 @@ export const journey = pgTable("journey", {
     .notNull()
     .references(() => project.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
-  slug: text("slug").notNull().unique(),
   description: text("description").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

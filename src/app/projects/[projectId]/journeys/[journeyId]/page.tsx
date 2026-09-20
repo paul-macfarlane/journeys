@@ -17,16 +17,16 @@ import { requireSession } from "@/lib/session";
 export default async function JourneyPage({
   params,
 }: {
-  params: Promise<{ projectSlug: string; journeySlug: string }>;
+  params: Promise<{ projectId: string; journeyId: string }>;
 }) {
   const session = await requireSession();
-  const { projectSlug, journeySlug } = await params;
+  const { projectId, journeyId } = await params;
 
   // Null for a non-Member, an unknown Project, and an unknown Journey
   // alike, so all three get the same 404.
   const journey = await getJourneyForMember(
-    projectSlug,
-    journeySlug,
+    projectId,
+    journeyId,
     session.user.id,
   );
   if (!journey) notFound();
@@ -35,7 +35,7 @@ export default async function JourneyPage({
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
       <div>
         <Link
-          href={`/projects/${projectSlug}`}
+          href={`/projects/${projectId}`}
           className="text-muted-foreground text-sm hover:text-foreground"
         >
           ← Back to project
@@ -47,24 +47,19 @@ export default async function JourneyPage({
           <h1 className="text-2xl font-semibold tracking-tight">
             {journey.title}
           </h1>
-          <p className="text-muted-foreground text-sm">/j/{journey.slug}</p>
-          <p className="text-muted-foreground text-xs">
-            This is the journey&apos;s future public address. It can be changed
-            freely until it is first published.
-          </p>
           <JourneyStatusBadge />
         </div>
         <div className="flex items-center gap-2">
           <EditJourneyDialog
-            projectSlug={projectSlug}
+            projectId={projectId}
+            journeyId={journey.id}
             title={journey.title}
-            slug={journey.slug}
             description={journey.description}
           />
           <DeleteJourneyDialog
-            projectSlug={projectSlug}
+            projectId={projectId}
+            journeyId={journey.id}
             title={journey.title}
-            slug={journey.slug}
           />
         </div>
       </header>

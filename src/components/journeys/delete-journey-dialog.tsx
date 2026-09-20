@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { deleteJourneyAction } from "@/app/projects/[projectSlug]/journeys/actions";
+import { deleteJourneyAction } from "@/app/projects/[projectId]/journeys/actions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,13 +22,13 @@ import { Button } from "@/components/ui/button";
  * explicit confirmation.
  */
 export function DeleteJourneyDialog({
-  projectSlug,
+  projectId,
+  journeyId,
   title,
-  slug,
 }: {
-  projectSlug: string;
+  projectId: string;
+  journeyId: string;
   title: string;
-  slug: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -38,7 +38,7 @@ export function DeleteJourneyDialog({
   function confirmDelete() {
     setServerError(null);
     startTransition(async () => {
-      const result = await deleteJourneyAction(projectSlug, slug);
+      const result = await deleteJourneyAction(projectId, journeyId);
 
       if (!result.ok) {
         setServerError(result.error);
@@ -46,7 +46,7 @@ export function DeleteJourneyDialog({
       }
 
       setOpen(false);
-      router.push(`/projects/${projectSlug}`);
+      router.push(`/projects/${projectId}`);
       router.refresh();
     });
   }

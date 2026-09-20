@@ -1,5 +1,5 @@
 // Database access only — `server-only` so a client import fails the build.
-// Pure logic (slugs, validation) lives under src/lib and stays importable
+// Pure logic (input validation) lives under src/lib and stays importable
 // from both sides.
 import "server-only";
 
@@ -7,39 +7,26 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { member, project } from "@/db/schema";
-import { isUniqueViolation, SlugTakenError } from "@/db/errors";
-import { slugify, uniqueSlug } from "@/lib/slug";
 
 /**
  * Data access for Projects and their Members.
  *
- * Membership is the only authorization rule there is: every read and write
- * here re-checks it against the signed-in Author rather than trusting a
- * caller, and an Author who is not a Member cannot tell an existing Project
- * from one that never existed.
+ * A Project is addressed by its id, so nothing here resolves a name to a
+ * row and renaming one can never move it. Membership is the only
+ * authorization rule there is: every read and write re-checks it against the
+ * signed-in Author rather than trusting a caller, and an Author who is not a
+ * Member cannot tell an existing Project from one that never existed.
  */
 
 export type ProjectSummary = {
   id: string;
   title: string;
-  slug: string;
 };
 
 const projectColumns = {
   id: project.id,
   title: project.title,
-  slug: project.slug,
 };
-
-async function isSlugTaken(slug: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: project.id })
-    .from(project)
-    .where(eq(project.slug, slug))
-    .limit(1);
-
-  return row !== undefined;
-}
 
 /** Every Project the Author is a Member of, newest first. */
 export async function listProjectsForAuthor(
@@ -62,81 +49,68 @@ export async function createProject(
   input: { title: string },
   userId: string,
 ): Promise<ProjectSummary> {
-  const slug = await uniqueSlug(slugify(input.title), isSlugTaken);
+  return db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(project)
+      .values({ title: input.title })
+      .returning(projectColumns);
 
-  try {
-    return await db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(project)
-        .values({ title: input.title, slug })
-        .returning(projectColumns);
+    await tx.insert(member).values({ projectId: created.id, userId });
 
-      await tx.insert(member).values({ projectId: created.id, userId });
-
-      return created;
-    });
-  } catch (error) {
-    // Another Author took the slug between the check above and this insert.
-    if (isUniqueViolation(error)) throw new SlugTakenError();
-    throw error;
-  }
+    return created;
+  });
 }
 
 /**
- * The Project behind a slug, but only for one of its Members. Returns null
- * for a non-Member and for an unknown slug alike, so callers can answer both
+ * The Project behind an id, but only for one of its Members. Returns null
+ * for a non-Member and for an unknown id alike, so callers can answer both
  * with the same 404.
  */
 export async function getProjectForMember(
-  slug: string,
+  projectId: string,
   userId: string,
 ): Promise<ProjectSummary | null> {
   const [row] = await db
     .select(projectColumns)
     .from(project)
     .innerJoin(member, eq(member.projectId, project.id))
-    .where(and(eq(project.slug, slug), eq(member.userId, userId)))
+    .where(and(eq(project.id, projectId), eq(member.userId, userId)))
     .limit(1);
 
   return row ?? null;
 }
 
 /**
- * Edits a Project's title and slug, moving its URL when the slug changed.
- * Returns null when the Author is not a Member of `currentSlug`.
+ * Renames a Project. Its id — and so its URL — is untouched. Returns null
+ * when the Author is not a Member of `projectId`.
  */
 export async function editProject(
-  currentSlug: string,
-  input: { title: string; slug: string },
+  projectId: string,
+  input: { title: string },
   userId: string,
 ): Promise<ProjectSummary | null> {
-  const existing = await getProjectForMember(currentSlug, userId);
+  const existing = await getProjectForMember(projectId, userId);
   if (!existing) return null;
 
-  try {
-    const [updated] = await db
-      .update(project)
-      .set({ title: input.title, slug: input.slug, updatedAt: new Date() })
-      .where(eq(project.id, existing.id))
-      .returning(projectColumns);
+  const [updated] = await db
+    .update(project)
+    .set({ title: input.title, updatedAt: new Date() })
+    .where(eq(project.id, existing.id))
+    .returning(projectColumns);
 
-    return updated ?? null;
-  } catch (error) {
-    if (isUniqueViolation(error)) throw new SlugTakenError();
-    throw error;
-  }
+  return updated ?? null;
 }
 
 /**
- * Hard-deletes a Project. Its Members (and, from ticket 02's second half,
- * its Journeys) cascade with it. Returns false when the Author is not a
- * Member, which callers answer with the same 404 as an unknown slug.
+ * Hard-deletes a Project. Its Members and its Journeys cascade with it.
+ * Returns false when the Author is not a Member, which callers answer with
+ * the same 404 as an unknown id.
  */
 export async function deleteProject(
-  slug: string,
+  projectId: string,
   userId: string,
 ): Promise<boolean> {
-  const existing = await getProjectForMember(slug, userId);
+  const existing = await getProjectForMember(projectId, userId);
   if (!existing) return false;
 
   await db.delete(project).where(eq(project.id, existing.id));

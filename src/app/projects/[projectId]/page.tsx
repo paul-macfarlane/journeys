@@ -19,14 +19,14 @@ import { requireSession } from "@/lib/session";
 export default async function ProjectPage({
   params,
 }: {
-  params: Promise<{ projectSlug: string }>;
+  params: Promise<{ projectId: string }>;
 }) {
   const session = await requireSession();
-  const { projectSlug } = await params;
+  const { projectId } = await params;
 
-  // Null for a non-Member and for a slug that never existed alike, so both
+  // Null for a non-Member and for an id that never existed alike, so both
   // get the same 404 and neither leaks the other's existence.
-  const project = await getProjectForMember(projectSlug, session.user.id);
+  const project = await getProjectForMember(projectId, session.user.id);
   if (!project) notFound();
 
   const journeys = await listJourneysForProject(project.id);
@@ -47,20 +47,17 @@ export default async function ProjectPage({
           <h1 className="text-2xl font-semibold tracking-tight">
             {project.title}
           </h1>
-          <p className="text-muted-foreground text-sm">
-            /projects/{project.slug}
-          </p>
         </div>
         <div className="flex items-center gap-2">
-          <EditProjectDialog title={project.title} slug={project.slug} />
-          <DeleteProjectDialog title={project.title} slug={project.slug} />
+          <EditProjectDialog projectId={project.id} title={project.title} />
+          <DeleteProjectDialog projectId={project.id} title={project.title} />
         </div>
       </header>
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-lg font-medium tracking-tight">Journeys</h2>
-          <NewJourneyDialog projectSlug={project.slug} />
+          <NewJourneyDialog projectId={project.id} />
         </div>
 
         {journeys.length === 0 ? (
@@ -80,7 +77,7 @@ export default async function ProjectPage({
             {journeys.map((journey) => (
               <li key={journey.id}>
                 <Link
-                  href={`/projects/${project.slug}/journeys/${journey.slug}`}
+                  href={`/projects/${project.id}/journeys/${journey.id}`}
                   className="flex flex-col gap-1 rounded-xl px-4 py-3 ring-1 ring-foreground/10 transition-colors hover:bg-muted"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">

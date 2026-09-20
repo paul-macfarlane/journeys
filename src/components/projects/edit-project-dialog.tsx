@@ -19,23 +19,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { slugify } from "@/lib/slug";
 import {
   editProjectSchema,
   type EditProjectInput,
 } from "@/lib/validation/project";
 
 /**
- * Editing carries the slug alongside the title, prefilled with the current
- * one: a new title on its own never moves the Project's URL, and the Author
- * has to either edit the slug or ask for it to be regenerated.
+ * Renaming is the whole of editing a Project. The Project is addressed by
+ * its id, so a new title never moves its URL and the dialog only ever has to
+ * refresh the page it is sitting on.
  */
 export function EditProjectDialog({
+  projectId,
   title,
-  slug,
 }: {
+  projectId: string;
   title: string;
-  slug: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -43,12 +42,12 @@ export function EditProjectDialog({
 
   const form = useForm<EditProjectInput>({
     resolver: zodResolver(editProjectSchema),
-    defaultValues: { title, slug },
+    defaultValues: { title },
   });
 
   async function onSubmit(values: EditProjectInput) {
     setServerError(null);
-    const result = await editProjectAction(slug, values);
+    const result = await editProjectAction(projectId, values);
 
     if (!result.ok) {
       setServerError(result.error);
@@ -56,10 +55,6 @@ export function EditProjectDialog({
     }
 
     setOpen(false);
-    if (result.slug !== slug) {
-      // The slug moved, so this page's URL did too.
-      router.replace(`/projects/${result.slug}`);
-    }
     router.refresh();
   }
 
@@ -70,7 +65,7 @@ export function EditProjectDialog({
         setOpen(nextOpen);
         setServerError(null);
         // Reopening always starts from what the Project is called now.
-        form.reset({ title, slug });
+        form.reset({ title });
       }}
     >
       <DialogTrigger render={<Button variant="outline" />}>Edit</DialogTrigger>
@@ -82,8 +77,8 @@ export function EditProjectDialog({
           <DialogHeader>
             <DialogTitle>Edit project</DialogTitle>
             <DialogDescription>
-              The slug is this project&apos;s address. Changing it moves the
-              project to a new URL.
+              Renaming a project changes what every member sees. Its address
+              stays the same.
             </DialogDescription>
           </DialogHeader>
 
@@ -97,35 +92,6 @@ export function EditProjectDialog({
             {form.formState.errors.title ? (
               <p role="alert" className="text-sm text-destructive">
                 {form.formState.errors.title.message}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="rename-project-slug">Slug</Label>
-            <Input
-              id="rename-project-slug"
-              autoComplete="off"
-              {...form.register("slug")}
-            />
-            <div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  form.setValue("slug", slugify(form.getValues("title")), {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  });
-                }}
-              >
-                Regenerate from title
-              </Button>
-            </div>
-            {form.formState.errors.slug ? (
-              <p role="alert" className="text-sm text-destructive">
-                {form.formState.errors.slug.message}
               </p>
             ) : null}
             {serverError ? (

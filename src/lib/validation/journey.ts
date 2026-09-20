@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { slugSchema } from "@/lib/slug";
-
 /**
  * Journey input shapes, shared by the client forms and the server actions
  * that back them (deliberately no `server-only`), mirroring
@@ -25,19 +23,15 @@ export const journeyDescriptionSchema = z
   .trim()
   .max(500, "Use 500 characters or fewer");
 
-/** The Author supplies a title and description; the slug is derived. */
+/** The Author supplies a title and description; the id is the address. */
 export const createJourneySchema = z.object({
   title: journeyTitleSchema,
   description: journeyDescriptionSchema,
 });
 
-/**
- * Editing carries the slug too: prefilled with the current one, so a new
- * title or description alone never moves the Journey's URL.
- */
+/** Title and description are the whole of a Journey's metadata. */
 export const updateJourneySchema = z.object({
   title: journeyTitleSchema,
-  slug: slugSchema,
   description: journeyDescriptionSchema,
 });
 

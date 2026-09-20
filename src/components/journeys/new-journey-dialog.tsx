@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { createJourneyAction } from "@/app/projects/[projectSlug]/journeys/actions";
+import { createJourneyAction } from "@/app/projects/[projectId]/journeys/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,11 +28,11 @@ import {
 const DEFAULT_VALUES: CreateJourneyInput = { title: "", description: "" };
 
 /**
- * Creating a Journey takes a title and a short description — the slug is
- * derived from the title, and the Author can change it later from the
- * Journey's own page.
+ * Creating a Journey takes a title and a short description. The Journey is
+ * addressed by the id it is given, so the Author can edit both later from
+ * its own page without moving it.
  */
-export function NewJourneyDialog({ projectSlug }: { projectSlug: string }) {
+export function NewJourneyDialog({ projectId }: { projectId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export function NewJourneyDialog({ projectSlug }: { projectSlug: string }) {
 
   async function onSubmit(values: CreateJourneyInput) {
     setServerError(null);
-    const result = await createJourneyAction(projectSlug, values);
+    const result = await createJourneyAction(projectId, values);
 
     if (!result.ok) {
       setServerError(result.error);
@@ -78,7 +78,7 @@ export function NewJourneyDialog({ projectSlug }: { projectSlug: string }) {
             <DialogTitle>New journey</DialogTitle>
             <DialogDescription>
               A journey is the graph of steps and choices participants walk. Its
-              slug is derived from the title and can be changed later.
+              title and description can be changed later.
             </DialogDescription>
           </DialogHeader>
 

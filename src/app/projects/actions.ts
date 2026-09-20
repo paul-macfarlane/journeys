@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
-import { SlugTakenError } from "@/db/errors";
 import { createProject, deleteProject, editProject } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 import {
@@ -31,20 +30,13 @@ export async function createProjectAction(
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
-  try {
-    const created = await createProject(parsed.data, session.user.id);
-    revalidatePath("/projects");
-    return { ok: true, slug: created.slug };
-  } catch (error) {
-    if (error instanceof SlugTakenError) {
-      return { ok: false, error: error.message };
-    }
-    throw error;
-  }
+  const created = await createProject(parsed.data, session.user.id);
+  revalidatePath("/projects");
+  return { ok: true, id: created.id };
 }
 
 export async function editProjectAction(
-  currentSlug: string,
+  projectId: string,
   input: unknown,
 ): Promise<ProjectActionResult> {
   const session = await requireSession();
@@ -54,35 +46,24 @@ export async function editProjectAction(
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
-  try {
-    const renamed = await editProject(
-      currentSlug,
-      parsed.data,
-      session.user.id,
-    );
-    // Not a Member (or no such Project): same answer as the page's 404.
-    if (!renamed) return { ok: false, error: "That project no longer exists" };
+  const renamed = await editProject(projectId, parsed.data, session.user.id);
+  // Not a Member (or no such Project): same answer as the page's 404.
+  if (!renamed) return { ok: false, error: "That project no longer exists" };
 
-    revalidatePath("/projects");
-    revalidatePath("/projects/[projectSlug]", "page");
-    return { ok: true, slug: renamed.slug };
-  } catch (error) {
-    if (error instanceof SlugTakenError) {
-      return { ok: false, error: error.message };
-    }
-    throw error;
-  }
+  revalidatePath("/projects");
+  revalidatePath("/projects/[projectId]", "page");
+  return { ok: true, id: renamed.id };
 }
 
 export async function deleteProjectAction(
-  slug: string,
+  projectId: string,
 ): Promise<ProjectActionResult> {
   const session = await requireSession();
 
-  const deleted = await deleteProject(slug, session.user.id);
+  const deleted = await deleteProject(projectId, session.user.id);
   if (!deleted) return { ok: false, error: "That project no longer exists" };
 
   revalidatePath("/projects");
-  revalidatePath("/projects/[projectSlug]", "page");
-  return { ok: true, slug };
+  revalidatePath("/projects/[projectId]", "page");
+  return { ok: true, id: projectId };
 }
