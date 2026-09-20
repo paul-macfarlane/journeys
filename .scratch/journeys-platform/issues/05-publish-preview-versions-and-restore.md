@@ -1,6 +1,6 @@
 # 05: Publish, Preview, Unpublish, versions, and restore
 
-Status: ai-review
+Status: ready-for-human
 Blocked by: 03
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-20
 Parent: `.scratch/journeys-platform/spec.md`
@@ -100,3 +100,35 @@ Conformity: AC-1, AC-3, AC-4, AC-5, AC-7 conform; AC-2 conforms with T5 applied;
 Both axes confirmed: `src/db/versions.ts` is `server-only`; `src/lib/publish-state.ts` touches no database; the migration is generated, additive, and matches its snapshot; lockfile untouched; e2e signs in by minting a session; screenshots follow `test-results/<test-name>/<test-name>.png`; fixture journeys only.
 
 **Remaining risks (not findings):** the Journey page now makes about six queries, most re-checking membership and counting versions — fine at this scale; `restoreVersion` does not bump `journey.updated_at`; publish snapshots the zod-parsed document, so defaults (`allowBack`, `condition`, `effect`) are materialized for Drafts written by the 0002 backfill or the seed; no named test deletes a published Journey (the cascade is exercised only by e2e cleanup); no test covers a version id of another Journey (the guard exists); republishing an unchanged Draft creates an identical next version.
+
+### [CLOSEOUT] 2026-09-20 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/15 (base `staging`, head `feat/05-publish-preview-versions-and-restore`). Status `in-progress` → `ai-review` → `ready-for-human`.
+
+**Repository delivery `journeys`:** base `staging` @ `184d179`, direct checkout, no worktrees; D1 then D2 sequentially. Closeout re-check of the rejected parallelism: both deliverables edited `src/app/projects/[projectId]/journeys/[journeyId]/page.tsx` (overlapping hunks in the import block and the header actions row) and the same README paragraph, and both verify through the one e2e port and database — the prediction held, so the isolation record stands as written.
+
+**Deliverables:**
+- D1 publish, unpublish, version list, restore, derived publish state — atlas-worker on `opus` — `10d22af`.
+- D2 Preview through minimal runner components — atlas-worker on `sonnet` — `c65d286`.
+- Review fixes — orchestrator — `06a9878`. Evidence and records — orchestrator — `618286a` and this closeout.
+
+**Verified run command:** `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e` — every command exit 0 at `06a9878` (107 unit tests in 6 files; 19 e2e specs, `[e2e] database: journeys_e2e on localhost:5436`). No deployed-target check (Paul's 2026-09-20 decision); the Migrate action applies `0003` on merge.
+
+**Criterion verdicts (evidence under `test-results/`, committed in `618286a`, captured at `06a9878` unless noted):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 publishing an invalid Draft shows the problems and creates nothing | PASS | `publish-invalid-draft/publish-invalid-draft.png`, `dod-1-e2e.txt` (`publish-invalid-draft` ✓) |
+| AC-2 v1 then v2; v1's stored document unchanged, proven by restoring it in Seam B | PASS | `publish-versions-and-restore/publish-versions-and-restore.png`, `dod-1-e2e.txt` (`publish-versions-and-restore` ✓, with the version rows re-read after the restore) |
+| AC-3 list shows published / unpublished / never published; Unpublish flips it and clears the pointer | PASS | same, plus `journey-create/journey-create.png` |
+| AC-4 version list shows number, time, who; restore replaces the Draft only after confirmation | PASS | same |
+| AC-5 Preview walks Start → Ending; no Run row; non-Member and signed-out cannot open it | PASS | `preview/preview.png`, `preview-non-member/preview-non-member.png`, `ac-5-no-run-table.txt` (captured at `c65d286`; `drizzle/` unchanged since), `dod-1-e2e.txt` (`preview`, `preview-non-member` ✓) |
+| AC-6 slug editing disabled once a version exists | SKIPPED | approved exception: superseded by the 2026-09-19 `[SCOPE CHANGE]` (no slugs) |
+| AC-7 Seam B publish → edit → publish v2 → restore v1 | PASS | as AC-2 |
+| DoD-1 verified run command green | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` |
+| DoD-2 every PASS artifact committed; fixture data only | PASS | this record; the artifacts hold minted `Test Author` accounts, the invented border-post fixture, the documented local Postgres default, and nothing from a participant |
+| DoD-3 migration additive and safe against the previously deployed code | PASS | `dod-3-migration.txt` (captured at `10d22af`; `drizzle/` unchanged since; wording corrected per review T4) |
+
+**Deviations:** AC-6 skipped under the scope change; review S3 kept as an approved deviation (spec-owned fixture builders in `e2e/setup/documents.ts`); Preview's rich text is rendered by a hand-written React renderer over the sanitized closed schema rather than Tiptap's renderer, because Tiptap is not installed and lockfile commits are human-only — **open question for Paul**, carried in the PR description; ticket 08 may swap in `@tiptap/html`.
+
+**Human follow-ups:** (1) review and merge PR #15; (2) answer the renderer question above; (3) outside this ticket, `src/lib/graph/validate.ts` looks Step and Outcome ids up with bare indexing, so an id such as `toString` passes validation — the runner now guards against it and validation should too; (4) if the build wins its race with the Migrate action on `staging`, the two authoring pages error until `0003` lands, which is inherent to the deploy model.
