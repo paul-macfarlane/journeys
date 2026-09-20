@@ -1,6 +1,6 @@
 # 02: Projects and Journeys
 
-Status: ai-review
+Status: ready-for-human
 Blocked by: 01
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-19
 Parent: `.scratch/journeys-platform/spec.md`
@@ -86,3 +86,35 @@ Two fresh reviewers on `opus` read the full diff, one per axis; the orchestrator
 | S-9 `/j/<slug>` shown in the UI but absent from README routes | non-blocking | `README.md` | resolved: reserved-prefix line added |
 
 Remaining risks: the last-Member trigger refuses deleting a `user` who is a sole Member (by design, documented; account deletion is out of scope); e2e `cleanup` removes every Project a minted Author belongs to (documented; no spec shares a Project with an unminted Author).
+
+### [CLOSEOUT] 2026-09-19 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/10 (base `staging`, head `feat/02-projects-and-journeys`). Status `in-progress` → `ai-review` → `ready-for-human`.
+
+**Repository delivery `journeys`:** base `staging` @ `5816b65`, direct checkout, no worktrees. Parallelism re-check against the real diffs: D1 and D2 overlapped on `src/db/schema.ts`, `drizzle/meta/_journal.json`, `src/app/projects/[projectSlug]/page.tsx`, `src/lib/projects.ts`, `e2e/projects-and-journeys.spec.ts`, and `README.md` — sequential was right, and for the predicted reasons (the predicted `e2e/setup/session.ts` overlap did not materialize; D2 needed no change there).
+
+**Deliverables:**
+- D1 Projects and Members — atlas-worker on `opus` — `da71172`.
+- D2 Journeys — atlas-worker on `sonnet` — `8a73cfe`.
+- Orchestrator: review fixes `9d92364`, evidence and tracker records `ea0e4e2`, this closeout.
+
+**Verified run command:** `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e` — all exit 0 at `9d92364` (27 unit tests, 14 e2e specs, `[e2e] database: journeys_e2e on localhost:5436`).
+
+**Criterion verdicts (evidence under `test-results/`, committed in `ea0e4e2`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 create Project; listed; non-Member 404 (project and journey pages) | PASS | `ac-6-e2e.txt`, `project-create/`, `project-non-member/` |
+| AC-2 rename; slug changes only by edit or "Regenerate from title"; taken slug refused in words | PASS | `ac-6-e2e.txt`, `project-rename/` |
+| AC-3 confirmed delete; Journeys cascade | PASS | `ac-6-e2e.txt`, `project-delete/`, `project-delete-cascade/`, `dod-3-last-member.txt` (journey count 0 after project delete) |
+| AC-4 create Journey with title, description, auto slug; listed "Never published" | PASS | `ac-6-e2e.txt`, `journey-create/` |
+| AC-5 edit title, description, slug; confirmed delete | PASS | `ac-6-e2e.txt`, `journey-edit-and-delete/` |
+| AC-6 Seam B author flow | PASS | `ac-6-e2e.txt`, `author-flow/` |
+| DoD-1 commands green; migrations `0000`–`0002` apply to an empty database | PASS | `dod-1-commands.txt`, `dod-1-migrate-fresh.txt` |
+| DoD-2 every PASS artifact committed; fixture data only | PASS | this record; `test-results/` holds minted `Test Author` fixtures and `u1`/`u2`/`p1` rows only |
+| DoD-3 a Project cannot lose its last Member | PASS | `dod-3-last-member.txt` |
+| DoD-4 staging smoke after merge | BLOCKED (human gate) | after merge: Migrate action green, Paul creates and deletes a Project on the staging domain; post-check `curl` staging `/projects` → 307 signed out, by the next work package |
+
+**Deviations:** shadcn components vendored from registry JSON instead of the CLI (which wanted a new `cn` dependency; lockfile is human-only) — approved during D1 acceptance; `dod-3-last-member.txt` (D1 evidence) landed in the D2 commit; non-Member calls to server actions directly are untested per the spec's Testing Decisions (approved in review); ADR-0001 stays with ticket 03. Ticket 01 claimed as a resolved blocker while still `ready-for-human` (see the execution plan's availability note).
+
+**Human follow-ups:** (1) merge, watch the Migrate action, then the DoD-4 smoke on staging; (2) move ticket 01 to `done` if you agree it is; (3) your uncommitted `human-prerequisites.md` edit on the `staging` checkout is untouched — commit it when convenient; (4) note the trigger refuses deleting a `user` who is a sole Member (documented, out of scope).
