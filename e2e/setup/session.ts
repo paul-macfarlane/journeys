@@ -143,10 +143,24 @@ export async function signInAs(
  * Specs must remove what they create — the e2e database persists between
  * runs rather than being torn down after each. Cascades to session rows via
  * the schema's `ON DELETE CASCADE`.
+ *
+ * Projects go first, and not only to keep the database tidy: the last-Member
+ * trigger from migration 0001 refuses to let a Member row disappear while
+ * its Project survives, so deleting an Author who is some Project's only
+ * Member would otherwise fail outright. Deleting the Project cascades its
+ * Members away cleanly. A Project one of these Authors shares with an Author
+ * this spec did not mint would go too — no spec creates one, and a shared
+ * Project outliving the run would leak between runs.
  */
 export async function cleanup(authorIds: string[]): Promise<void> {
   if (authorIds.length === 0) return;
-  await getPool().query('DELETE FROM "user" WHERE id = ANY($1::text[])', [
+  const pool = getPool();
+
+  await pool.query(
+    'DELETE FROM "project" WHERE id IN (SELECT project_id FROM "member" WHERE user_id = ANY($1::text[]))',
+    [authorIds],
+  );
+  await pool.query('DELETE FROM "user" WHERE id = ANY($1::text[])', [
     authorIds,
   ]);
 }

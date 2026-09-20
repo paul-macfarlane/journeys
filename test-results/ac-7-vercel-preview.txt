@@ -1,6 +1,0 @@
-# AC-7a — Vercel preview deployment for the PR branch
-commit: b8b9db3 (first push)  date: 2026-09-19T18:26:01Z  target: Vercel project journeys (prj_qIl92Xg5ZwGXxUFWm2qqHvzQyvsH), Preview
-deployment dpl_26xuitMopjzXCaE6bPuFSraBC1yA for feat/01-foundation: state CANCELED
-build log: Running "if [ "$VERCEL_GIT_COMMIT_REF" = "main" ] || [ "$VERCEL_GIT_COMMIT_REF" = "staging" ]; then exit 1; else exit 0; fi"
-         The deployment was canceled because the Ignored Build Step command returned exit code 0.
-verdict: SKIPPED — approved exception (Paul, 2026-09-19): PR previews are intentionally never built; the staging deployment after merge is the deployed proof (AC-7b).

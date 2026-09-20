@@ -1,9 +1,16 @@
-// Drizzle schema. These four tables are Better Auth's own, managed through
-// its Drizzle adapter — column names and types are the adapter's contract,
-// not ours, so nothing here is extended. Journeys' domain tables (Project,
-// Journey, Draft, Published Version, Run, Response) land with their tickets.
+// Drizzle schema. The first four tables are Better Auth's own, managed
+// through its Drizzle adapter — column names and types are the adapter's
+// contract, not ours, so nothing there is extended. Journeys' own domain
+// tables follow, each landing with its ticket; Project and Member are here,
+// and Journey, Draft, Published Version, Run and Response follow later.
 
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -74,3 +81,48 @@ export const verification = pgTable("verification", {
     .notNull()
     .defaultNow(),
 });
+
+// A Project: a named grouping of Journeys, owned and collaborated on by its
+// Members. Text ids generated in the application, matching better-auth's own
+// id style above. Slugs are globally unique — the unique index below is the
+// real guard against a collision, not the slug helper that proposes them.
+export const project = pgTable("project", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// A Member: an Author who belongs to a Project. All Members are equal, so
+// `role` is written (defaulting to "member") and never read — it exists so
+// adding a distinction later needs no migration of existing rows.
+//
+// Migration 0001 also installs a BEFORE DELETE trigger enforcing that a
+// Project never loses its last Member. Two consequences, both deliberate:
+// deleting a Project still works (its row is already gone when the member
+// rows cascade), while deleting a `user` who is some Project's only Member
+// is refused — delete or hand over those Projects first. Drizzle snapshots
+// don't track triggers, so the statement lives only in the migration file.
+export const member = pgTable(
+  "member",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.userId] })],
+);
