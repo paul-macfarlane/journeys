@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { draft, journey, publishedVersion, user } from "@/db/schema";
-import { graphDocumentSchema } from "@/lib/graph/document";
+import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -66,6 +66,29 @@ export async function listVersionsForMember(
     ...version,
     isLive: liveVersionId === version.id,
   }));
+}
+
+/**
+ * The document participants are walking right now, or null when the Journey
+ * has no live version — and null for a non-Member too, which callers have
+ * already answered with a 404 by the time they ask this.
+ */
+export async function getLiveVersionDocument(
+  projectId: string,
+  journeyId: string,
+  userId: string,
+): Promise<GraphDocument | null> {
+  const existing = await getJourneyForMember(projectId, journeyId, userId);
+  if (!existing) return null;
+
+  const [row] = await db
+    .select({ document: publishedVersion.document })
+    .from(journey)
+    .innerJoin(publishedVersion, eq(publishedVersion.id, journey.liveVersionId))
+    .where(eq(journey.id, existing.id))
+    .limit(1);
+
+  return row ? graphDocumentSchema.parse(row.document) : null;
 }
 
 export type PublishDraftResult =

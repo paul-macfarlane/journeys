@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createDraftDocument,
+  documentsEqual,
   graphDocumentSchema,
   isEnding,
   parseGraphDocument,
@@ -480,5 +481,41 @@ describe("prepareDocumentForWrite", () => {
     const document = createDraftDocument();
 
     expect(prepareDocumentForWrite(document)).toEqual({ ok: true, document });
+  });
+});
+
+describe("documentsEqual", () => {
+  it("calls a document equal to a copy of itself with keys in another order", () => {
+    // Every object at every level gets its keys reversed, the way Postgres
+    // or another writer might have stored them.
+    const sortedNested = JSON.parse(
+      JSON.stringify(largeJourney, (_key, value) =>
+        value !== null && typeof value === "object" && !Array.isArray(value)
+          ? Object.fromEntries(
+              Object.entries(value as Record<string, unknown>).sort(
+                ([a], [b]) => b.localeCompare(a),
+              ),
+            )
+          : value,
+      ),
+    ) as typeof largeJourney;
+
+    expect(JSON.stringify(sortedNested)).not.toBe(JSON.stringify(largeJourney));
+    expect(documentsEqual(largeJourney, sortedNested)).toBe(true);
+  });
+
+  it("tells a Draft that changed one Step title from the version it came from", () => {
+    const edited = {
+      ...largeJourney,
+      steps: {
+        ...largeJourney.steps,
+        [largeJourney.startStepId]: {
+          ...largeJourney.steps[largeJourney.startStepId],
+          title: "A different opening",
+        },
+      },
+    };
+
+    expect(documentsEqual(largeJourney, edited)).toBe(false);
   });
 });

@@ -34,10 +34,13 @@ export function PublishControls({
   projectId,
   journeyId,
   publishState,
+  hasUnpublishedChanges,
 }: {
   projectId: string;
   journeyId: string;
   publishState: PublishState;
+  /** False only while the live version's document matches the Draft. */
+  hasUnpublishedChanges: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -83,7 +86,8 @@ export function PublishControls({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Button disabled={pending} onClick={publish}>
+        {/* Nothing to publish while participants already see this Draft. */}
+        <Button disabled={pending || !hasUnpublishedChanges} onClick={publish}>
           Publish
         </Button>
 
@@ -121,7 +125,9 @@ export function PublishControls({
         ) : null}
 
         <p className="text-muted-foreground text-sm">
-          Publishing snapshots the draft as it stands now.
+          {hasUnpublishedChanges
+            ? "Publishing snapshots the draft as it stands now."
+            : "The live version already matches the draft."}
         </p>
       </div>
 

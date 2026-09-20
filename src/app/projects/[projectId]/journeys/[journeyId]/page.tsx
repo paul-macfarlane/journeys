@@ -10,7 +10,8 @@ import { VersionList } from "@/components/journeys/version-list";
 import { buttonVariants } from "@/components/ui/button";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
-import { listVersionsForMember } from "@/db/versions";
+import { getLiveVersionDocument, listVersionsForMember } from "@/db/versions";
+import { documentsEqual } from "@/lib/graph/document";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,16 @@ export default async function JourneyPage({
     session.user.id,
   );
   if (!versions) notFound();
+
+  // Publish has nothing to do while participants already see this exact
+  // Draft; an unpublished or never-published Journey always has something.
+  const liveDocument = await getLiveVersionDocument(
+    projectId,
+    journeyId,
+    session.user.id,
+  );
+  const hasUnpublishedChanges =
+    liveDocument === null || !documentsEqual(draft, liveDocument);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
@@ -93,6 +104,7 @@ export default async function JourneyPage({
         projectId={projectId}
         journeyId={journey.id}
         publishState={journey.publishState}
+        hasUnpublishedChanges={hasUnpublishedChanges}
       />
 
       <DraftSummary draft={draft} />

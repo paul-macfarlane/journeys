@@ -119,6 +119,11 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await expect(versionOne.getByText(`by ${author.name}`)).toBeVisible();
   await expect(versionOne.locator("time")).toHaveCount(1);
 
+  // Nothing to publish while the live version matches the Draft.
+  await expect(
+    page.getByRole("button", { name: "Publish", exact: true }),
+  ).toBeDisabled();
+
   // The badge is the derived state, on the Journey page and in the Project's
   // list alike.
   await expect(page.getByText("Published", { exact: true })).toBeVisible();
@@ -155,6 +160,10 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await expect(
     page.getByRole("list", { name: "Steps" }).getByText(editedStartTitle),
   ).toBeVisible();
+  // The edit is something participants have not seen, so Publish is back.
+  await expect(
+    page.getByRole("button", { name: "Publish", exact: true }),
+  ).toBeEnabled();
   await page.getByRole("button", { name: "Publish", exact: true }).click();
 
   await expect(versions).toHaveCount(2);

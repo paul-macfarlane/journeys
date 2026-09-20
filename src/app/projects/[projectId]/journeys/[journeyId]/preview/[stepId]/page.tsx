@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { PreviewChrome } from "@/components/journeys/preview-chrome";
+import { PreviewFrame } from "@/components/journeys/preview-frame";
 import { StepView } from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
@@ -35,7 +35,7 @@ export default async function PreviewStepPage({
   const step = draft.steps[stepId];
 
   return (
-    <PreviewChrome projectId={projectId} journeyId={journeyId}>
+    <PreviewFrame projectId={projectId} journeyId={journeyId}>
       <StepView
         step={step}
         document={draft}
@@ -44,6 +44,6 @@ export default async function PreviewStepPage({
         }
         startOverHref={`/projects/${projectId}/journeys/${journeyId}/preview`}
       />
-    </PreviewChrome>
+    </PreviewFrame>
   );
 }

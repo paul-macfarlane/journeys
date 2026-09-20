@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * Preview-specific — unlike the components under `@/components/runner`,
  * this has no place in the participant runner ticket 06 builds.
  */
-export function PreviewChrome({
+export function PreviewFrame({
   projectId,
   journeyId,
   children,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { PreviewChrome } from "@/components/journeys/preview-chrome";
+import { PreviewFrame } from "@/components/journeys/preview-frame";
 import { buttonVariants } from "@/components/ui/button";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
@@ -36,7 +36,7 @@ export default async function PreviewStartPage({
   const canBegin = Object.hasOwn(draft.steps, draft.startStepId);
 
   return (
-    <PreviewChrome projectId={projectId} journeyId={journeyId}>
+    <PreviewFrame projectId={projectId} journeyId={journeyId}>
       <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">
           {journey.title}
@@ -56,6 +56,6 @@ export default async function PreviewStartPage({
           <p className="text-muted-foreground">This draft has no start step.</p>
         )}
       </div>
-    </PreviewChrome>
+    </PreviewFrame>
   );
 }

@@ -273,6 +273,36 @@ describe("validateForPublish", () => {
     expect(validateForPublish(document)).toEqual([]);
   });
 
+  it("does not mistake a prototype method for a Step or an Outcome", () => {
+    // Ids are opaque strings, so nothing stops one from being the name of a
+    // method every plain object inherits. Such an id must still count as
+    // missing when no Step or Outcome actually carries it.
+    const document = graph(
+      [
+        step("step-start", [choice("choice-1", "toString")]),
+        step("step-end", [], { outcomeId: "constructor" }),
+      ],
+      { startStepId: "valueOf" },
+    );
+
+    expect(validateForPublish(document).map((problem) => problem.code)).toEqual(
+      ["missing-start", "dangling-choice-target", "unknown-outcome"],
+    );
+  });
+
+  it("still finds a Step or Outcome whose id happens to be a method name", () => {
+    const outcome: Outcome = { id: "constructor", label: "Reached shore" };
+    const document = graph(
+      [
+        step("toString", [choice("choice-1", "hasOwnProperty")]),
+        step("hasOwnProperty", [], { outcomeId: outcome.id }),
+      ],
+      { outcomes: [outcome] },
+    );
+
+    expect(validateForPublish(document)).toEqual([]);
+  });
+
   it("carries the ids the canvas needs on every problem", () => {
     const document = graph([
       step("step-start", [

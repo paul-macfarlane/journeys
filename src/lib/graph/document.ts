@@ -239,3 +239,32 @@ export function createDraftDocument(): GraphDocument {
     outcomes: {},
   };
 }
+
+/**
+ * JSON with every object's keys in sorted order, so two documents that mean
+ * the same thing compare equal however their keys happen to be ordered —
+ * Postgres reorders jsonb keys, and the editor and the seed write them in
+ * their own orders.
+ */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Whether two documents describe the same Journey — the same Steps, Choices,
+ * Outcomes, and rich text. Used to tell a Draft that has moved on from the
+ * live Published Version from one that has not.
+ */
+export function documentsEqual(a: GraphDocument, b: GraphDocument): boolean {
+  return canonicalJson(a) === canonicalJson(b);
+}
