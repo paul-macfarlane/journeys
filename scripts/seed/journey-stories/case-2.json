@@ -1,0 +1,3797 @@
+{
+  "schemaVersion": 1,
+  "startStepId": "step-63",
+  "allowBack": true,
+  "steps": {
+    "step-1": {
+      "id": "step-1",
+      "title": "Detention Day 2",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, members of a \"Know Your Rights\" organization give a virtual presentation. They tell you that they may be able to help advocate for your rights as a detainee, connect you to a lawyer, and help you seek asylum. But, they warn you that not everyone will be represented."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One of the \"Customs and Border Patrol\" officers, as you learn they are called, tells you that because you crossed illegally, you will most likely be deported anyways with a ban to entering the U.S. for the next five years."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One of the other migrants tells you that in El Paso, almost every asylum case gets denied. But, she says that if you can find a sponsor, then you can leave detention to go to another city in the U.S. where you will have a better chance of winning. That's what she's going to do, her sister lives in a place called Providence, Rhode Island."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://www.mottodistribution.com/shop/media/catalog/product/c\u0061che/1/image/9df78eab33525d08d6e\u0035fb8d27136e95/d/e/detainee-handbook-pablo-allison-undocumented-press-9781999379742-5.jpeg",
+              "credit": "Photo - Image retrieved from: https://www.mottodistribution.com/shop/detainee-handbook-pablo-allison-undocumented-press-9781999379742.html on March 17, 2024. Permission received from Pablo Allison.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-1-choice-1",
+          "label": "Call the legal rights organization",
+          "targetStepId": "step-2",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-1-choice-2",
+          "label": "Volunteer to work & save up for calls and travel",
+          "targetStepId": "step-3",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-1-choice-3",
+          "label": "Try to find a sponsor",
+          "targetStepId": "step-4",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-1-choice-4",
+          "label": "Wait out the court process",
+          "targetStepId": "step-30",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-2": {
+      "id": "step-2",
+      "title": "Legal Org",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You call the legal organization, who tells you that they will take care of the cost for today's call. They tell you that before they can determine if you can be connected to a lawyer, you must recount your story from beginning to end. There are few grounds for seeking asylum, they tell you, and they will help determine which category your situation fits into."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You want their help, but the thought of re-telling your story, re-living your trauma, makes you sick to your stomach."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://cdn2.picryl.com/photo/2018/08/27/photos-of-ice-igsa-caroline-detention-facility-outside-af8168-1024.jpg",
+              "credit": "Photo - Image by Defense Visual Information Distribution Service, retrieved from: https://picryl.com/media/photos-of-ice-igsa-caroline-detention-facility-outside-af8168 on March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-2-choice-1",
+          "label": "Recount your story",
+          "targetStepId": "step-5",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-2-choice-2",
+          "label": "Delay recounting your story & schedule a future appointment",
+          "targetStepId": "step-6",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-2-choice-3",
+          "label": "Tell the staff member you cannot work with them",
+          "targetStepId": "step-7",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-3": {
+      "id": "step-3",
+      "title": "Work",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You decide to try and work, with the intention to save up enough to get out of detention and fight your case for asylum in another part of the country. Your bunk-mate tells you that their cousin's friend might be able to sponsor you if you can figure out how to get to Michigan, giving you a torn off piece of paper with his phone number written on it."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "At $1/day, you figure you'll have to save up for about a year to be able ot leave this place. That's another full year that your wife and daughters back home will go without food."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "At the main intake office, next to the cage they held you in when you arrived, you sign a volunteer to work form. The CBP officers assign you to the laundry room, and tell you that you'll be paid $1 at the end of each day for your service. And, they tell you that you can be fired from your position for not performing your job as expected."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your first day of work passes quickly, laundry isn't so bad. The next day, during your lunch break, you decide to use your $1 to make a phone call."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://cdn2.picryl.com/photo/2018/08/27/photos-of-ice-igsa-caroline-detention-facility-outside-af8168-1024.jpg",
+              "credit": "Photo - Image by Defense Visual Information Distribution Service, retrieved from: https://picryl.com/media/photos-of-ice-igsa-caroline-detention-facility-outside-af8168 on March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-3-choice-1",
+          "label": "Call your family in Guatemala",
+          "targetStepId": "step-18",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-3-choice-2",
+          "label": "Call your bunk mate's cousin",
+          "targetStepId": "step-19",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-4": {
+      "id": "step-4",
+      "title": "Sponsor",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You ask around, and your bunkmate tells you that his cousin may know a guy who is able to sponsor you. He scribbles down his phone number on a piece of paper, and says that he can lend you a dollar or two for a phone call."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-4-choice-1",
+          "label": "Call the sponsor",
+          "targetStepId": "step-19",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-4-choice-2",
+          "label": "Call your family",
+          "targetStepId": "step-18",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-5": {
+      "id": "step-5",
+      "title": "Recount to Lawyer",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You begin to tell your story, about the place that you used to call home. Your remember your family farm -- land that had been passed down for generations. You remember your daughters, their smiling faces asking you to pick them up and twirl them around, how you happy you had been to see them grow up. You remember your wife, hoping to be with her as she grew old. Nothing pained you more than to leave them behind."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "But after the third year of unfarmable land, after the third year with no food on the table, no clean water, and no work downtown, you and your wife both knew that you would have to leave."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You pause. You want to continue, to tell the staff member what happened once you left, but you start to choke on your words. You feel your heart pounding in your chest, beads of sweat forming on your forehead, and before you muster the courage to go on, the room starts to spin."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The staff member gives you a minute to catch your breath. She tells you that you can try again tomorrow."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-5-choice-1",
+          "label": "Wait until tomorrow.",
+          "targetStepId": "step-8",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-5-choice-2",
+          "label": "Forge on through the story.",
+          "targetStepId": "step-9",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-5-choice-3",
+          "label": "Tell the staff member you don't want to work with her.",
+          "targetStepId": "step-7",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-6": {
+      "id": "step-6",
+      "title": "Reschedule Appt",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You inform the staff member that you'll call and talk to her when you're ready. She says to take your time, there's no rush. She also encourages you to seek mental health services while in detention."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a week, you call the organization back. The staff member who picks up immediately apologizes."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "\"I'm really sorry,\" she says. \"I was informed this morning that we cannot take anymore clients. The immigration lawyer who we work with was killed in a shooting yesterday.\""
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your heart sinks as you hear the staff member speaking through sniffles on the other side. \"He and his family were killed in a shooting at the mall. They think the murderer was trying to prevent him from doing his work.\""
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you hang up the phone, you feel your hands shaking."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-6-choice-1",
+          "label": "Work and save up to call home",
+          "targetStepId": "step-18",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-6-choice-2",
+          "label": "Find a Sponsor",
+          "targetStepId": "step-4",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-7": {
+      "id": "step-7",
+      "title": "Deny Lawyer",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "On the phone with the legal organization, the staff member asks you if there's anything that she can do to help you right away."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You tell her that you want to contact your family. You're not sure if this is possible from detention, but you want them to know that you're alive and that you made it to the United States. You want to check on how they are and make sure they are safe. And, regrettably, you have to tell them that it's going to be a while before you're able to send any money home to help out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The staff member tells you that she can make a three way call and connect you to your family. You give her their phone number, and wait as the phone rings."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-7-choice-1",
+          "label": "Next",
+          "targetStepId": "step-21",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-8": {
+      "id": "step-8",
+      "title": "Wait Until Tomorrow",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You inform the staff member that you'll continue your conversation tomorrow, hang up the phone, and return to your cell. When you finally sit down on your bunk, you begin to cry. One of your roommates comes to console you, but you don't want to be consoled. You feel so, incredibly alone."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, when you call the organization back, the staff member immediately apologizes."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "\"I'm really sorry,\" she says. \"I was informed this morning that we cannot take anymore clients. The immigration lawyer who we work with was killed in a shooting yesterday.\""
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your heart sinks as you hear the staff member speaking through sniffles on the other side. \"He and his family were killed in a shooting at the mall. They think the murderer was trying to prevent him from doing his work.\""
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you hang up the phone, you feel your hands shaking."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-8-choice-1",
+          "label": "Work and save up to call home",
+          "targetStepId": "step-18",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-8-choice-2",
+          "label": "Find a Sponsor",
+          "targetStepId": "step-4",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-9": {
+      "id": "step-9",
+      "title": "Forge On",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You take a deep breath. Then you continue."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "To come to the U.S., you decided to utilize the help a coyote - a human smuggler. The coyote told you that he could take care of you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You didn't have any money to pay him, but he offered you a deal. You could help him with some work, and in exchange he would take you to the U.S. Without many other options, you agreed, and before you knew you were handed the keys to a truck. It was a shipment from the United States, all you had to do was drive it across the Guatemalan border to El Salvador."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "At first you agreed, but when you learned that there were hundreds of arms in the truck, you objected. That's when they showed you a photo of the last person who refused the task -- dead, next to the dead bodies of his children, their faces so disfigured you couldn't even fathom their ages. This wasn't much of a choice at all. You had to do this, or your three daughters would die. You asked God for forgiveness and drove the truck."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you get to this part of the story, though, a CBP officer interrupts you. Your have 2 minutes remaining before your phone call time runs out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-9-choice-1",
+          "label": "Continue the phone call.",
+          "targetStepId": "step-12",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-9-choice-2",
+          "label": "Tell the staff member that you'll call them tomorrow.",
+          "targetStepId": "step-8",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-10": {
+      "id": "step-10",
+      "title": "Waking Up in Detention",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You wake up disoriented, trying to remember what happened yesterday. The days had grown so long and laborsome that they all started to meld together. But when you see the chain-link fence walls of the cell and feel the cold metal of the shackles cut into your skin, it all comes racing back."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The man who rescued you in the desert, who told you he would get you to safety, let you climb into the back seat of his car, and you slept most of the two hours that it took you to come to this place. This prison. You had done nothing wrong, but you were here. This was detention, the ice box, the "
+              },
+              {
+                "type": "text",
+                "text": "Hielera",
+                "marks": [
+                  {
+                    "type": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": ". It was cold and crowded, and it had taken you hours to fall asleep against the backdrop of the blaring television."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://img.assets-d.propublica.org/v5/images/202100401-unaccompanied-minors-1.jpg?crop=focalpoint&fit=crop&fm=webp&fp-x=0.5&fp-y=0.5&h=1333&q=75&w=2000&s=b4597dcc01ad5cee3057f6054632d1bd",
+              "credit": "Photo - Image retrieved from: https://www.nytimes.com/2023/02/25/us/unaccompanied-migrant-child-workers-exploitation.html on March 17, 2024. Permission recieved from Kristen Luce.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-10-choice-1",
+          "label": "Next",
+          "targetStepId": "step-11",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-11": {
+      "id": "step-11",
+      "title": "Day 1 in Detention",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "It's your first day here, and the other people with you inside what feels like a cage look just as hungry, tired, and terrified as you feel. It's a sea of orange jumpsuits; what little that you had left on you had been taken when you arrived. Your clothes, your phone, your wallet, your shoe laces, even the four printed photos of your children whose faces were seared into your mind."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One of the men wearing the same uniform as the man who brought you here announces that everyone will go through something called \"intake\" today. They will assign you to a room and talk you through your daily schedule."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The rest of the day is a whirl of information. They tell you that you will be held in this detention facility indefinitely until your case is processed. They tell you that you have the right to work at the facility for $1/day. They tell you that you have a designated 20 minutes/day during which you can use the phone, which costs 10 cents/minute. You will have 1hr/day of outside time. They give you hand out after hand out of information."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Then, they assign you to a room with another three men. It is a three walled, windowless cell with a chain-link metal door. There are two sets of bunk beds, about a foot apart, with a toilet in between. Immediately, you realize privacy was a priviledge you had taken for granted."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://cdn2.picryl.com/photo/2019/12/02/ice-dallas-office-opening-its-newest-detention-facility-e991cd-1024.jpg",
+              "credit": "Photo - Image by Defense Visual Information Distribution Service, retrieved from: https://nara.getarchive.net/media/ice-dallas-office-opening-its-newest-detention-facility-e991cd on March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-11-choice-1",
+          "label": "Next",
+          "targetStepId": "step-1",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-12": {
+      "id": "step-12",
+      "title": "Continue the Phone Call",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Knowing you won't be able to muster up the energy to retell the story again tomorrow, you continue speaking against the CBP officer's warning."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You tell the staff member what happened next as quickly as you can. You delivered the arms. But the truck on the way back to Guatemala was not empty. It was full of people. Migrants, like you. When you met up with the coyote again, he shoved you in the back of the truck with everybody else. It was a heat box. Seventeen of the thirty people in the truck died before the doors were opened in the desert in Mexico. Five of them were children."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You break into tears when the CBP officer comes to get you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "\"You're five minutes past the phone call limit,\" he says. Because you had failed to adhere to his warning, you will be punished."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He brings you to an isolation room. You will spend the next seven days here, he says, your priviledges to the phone and outside grounds have been revoked."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-12-choice-1",
+          "label": "Next",
+          "targetStepId": "step-13",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-13": {
+      "id": "step-13",
+      "title": "Solitary Confinement",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next seven days are the slowest you've endured. After everything you've been through, you felt like you should be grateful for the rest, but in the small dark space you live with nothing but your guilt. Guilt for the crimes you've committed. Guilt for leaving your loved ones behind. Guilt for not being able to see your children grow up. And now, guilt for not even being able to send money home. You had told yourself that you had sacrificed being with them for their own future, and now it seemed like you couldn't even provide them with that. You let yourself grow skinny and sorrowful, the bland meals delivered to you are collected untouched."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Seven days later, a CBP officer comes to get you. You feel so weak, tired, depressed, and angry that when you get to your bed, you just lay down. Nobody can talk to you. Nobody can rouse you. You remember one of the pamphlets they gave you was about mental health, and that you were supposed to be able to see a doctor if you needed to, but you don't have the energy to find out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://www.crimemuseum.org/wp-content/uploads/2024/03/Solitary-Confinement.webp",
+              "credit": "Photo - Image by Crime Museum, retrieved from: https://www.rawpixel.com/image/5926378/photo-image-public-domain-person-woman March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-13-choice-1",
+          "label": "Try to contact the healthcare provider.",
+          "targetStepId": "step-14",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-13-choice-2",
+          "label": "Tell a CBP officer that you're feeling depressed.",
+          "targetStepId": "step-15",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-13-choice-3",
+          "label": "Stay in bed.",
+          "targetStepId": "step-16",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-14": {
+      "id": "step-14",
+      "title": "Mental Health?",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You muster up enough strength to ask one of your roommates how to see the doctor in detention. They help you flip through some of the handbooks, and find a form that you have to fill out and submit to one of the CBP officers. It must have your name, A-number, and the reason for your appointment. Once you submit the form, it will be up to seven days until you can see the doctor."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-14-choice-1",
+          "label": "Fill out the form and submit it.",
+          "targetStepId": "step-17",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-14-choice-2",
+          "label": "Tell the CBP officer you're feeling depressed.",
+          "targetStepId": "step-15",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-14-choice-3",
+          "label": "Give up and stay in bed.",
+          "targetStepId": "step-16",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-15": {
+      "id": "step-15",
+      "title": "You're Crazy",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You get the attention of one of the passing CBP officers, and muster up the courage to tell them how you've been feeling. You tell them you want to die, you want to get help, your family still needs you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The CBP officer asks you if you're thinking about killing yourself. When you say yes, he immediately re-handcuffs you. You've been determined a danger to yourself and/or others."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "So back to the hole you go. Your thoughts eat you alive in the dark, windowless cell. You stop eating all together. When the CBP officers come to retrieve you seven days later, you are emaciated, on the brink of death."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They take you to the emergency care center, but as the doctors start to insert needles into your arms and a tube up your nose, you feel yourself slipping away."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You close your eyes and picture your daughters' smiling faces. You wish that you could have told them goodbye."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 2:36P.M."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-in-detention",
+      "position": null
+    },
+    "step-16": {
+      "id": "step-16",
+      "title": "You're defiant",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You cannot find the strength to do anything but lay in bed. At the time of the next headcount, at 10:00PM, your roommates tell you to stand up. \"You could get in trouble if you don't!\" They warn you. But you can't even find the strength to respond."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When the CBP officers get to your cell, they ask your roommates if you're alive. You hear them open the door to your cell, and feel one of the officers shake you forcibly. They yell in your ear to get up. Then, they drag you back to solitary confinement."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "This is the second time you've disobeyed a CBP officer, they tell you. This time your punishment will be longer."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "So back to the hole you go. Your thoughts eat you alive in the dark, windowless cell. You stop eating all together. When the CBP officers come to check on you seven days later, you are emaciated, on the brink of death."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They take you to the emergency care center, but as the doctors start to insert needles into your arms and a tube up your nose, you feel yourself slipping away."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You close your eyes and picture your daughters' smiling faces. You wish that you could have told them goodbye."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 2:36P.M."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-in-detention",
+      "position": null
+    },
+    "step-17": {
+      "id": "step-17",
+      "title": "Fill Out Form",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You fill out the form with the help of your roommate and submit it to one of the CBP officers. But when they read your chief complaint \"need mental healthcare; contemplating suicide,\" they decide that you are a danger to yourself and others, and determine that you should be sent back to solitary confinement."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "So to solitary confinement you go. Your thoughts eat you alive in the dark, windowless cell. You stop eating all together. When the CBP officers come to retrieve you seven days later, you are emaciated, on the brink of death."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They take you to the emergency care center, but as the doctors start to insert needles into your arms and a tube up your nose, you feel yourself slipping away."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You close your eyes and picture your daughters' smiling faces. You wish that you could have told them goodbye."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 2:36P.M."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-in-detention",
+      "position": null
+    },
+    "step-18": {
+      "id": "step-18",
+      "title": "Call Home",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You try to call your family, but each time you dial the number, the same message is delivered in English -- only some of which you can understand. Starting to wonder why the phone isn't working, you ask the CBP officer who had escorted you to use the phone."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He tells you that you cannot make international phone calls while in detention. \"You should have known that,\" he remarks, \"it was in the booklet we gave you, idiot.\""
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-18-choice-1",
+          "label": "Call your bunk mate's cousin",
+          "targetStepId": "step-19",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-18-choice-2",
+          "label": "Call the legal rights organization",
+          "targetStepId": "step-7",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-18-choice-3",
+          "label": "Respond to the CBP officer",
+          "targetStepId": "step-20",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-19": {
+      "id": "step-19",
+      "title": "Call Sponsor",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Not too sure about what to expect, you call your bunkmate's cousin. An animated man picks up the phone and asks you what's up."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You tell him that you are detained in El Paso, and that your bunk mate suggested you call him in search of someone who could potentially sponsor you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The animated man on the phone tells you that he knows a man who will sponsor you, but that you'll need to work for him in return. You ask him if you will get paid for working, to which he replies \"of course!\" giving you a phone number to call."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-19-choice-1",
+          "label": "Call the number",
+          "targetStepId": "step-32",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-19-choice-2",
+          "label": "Work and save up first",
+          "targetStepId": "step-23",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-20": {
+      "id": "step-20",
+      "title": "Fuck CBP",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Hurt by the words of the CBP officer, you feel the anger boil up inside of you. You tell him that you haven't talked to your family in "
+              },
+              {
+                "type": "text",
+                "text": "months",
+                "marks": [
+                  {
+                    "type": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": ", how would he feel if that was him?"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He responds with a smirk. \"Did you really just talk back to me?\" he asks."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-20-choice-1",
+          "label": "Next",
+          "targetStepId": "step-25",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-21": {
+      "id": "step-21",
+      "title": "Family!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your eyes well up with tears at the sound of your wife's voice. You tell her that you're in detention, awaiting entry to the United States, and that it may be some time before you can send money home."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "She tells you not to worry, that she's just happy you are safe. She calls for your daughters, and suddenly their voices -- full of joy and laughter fill your ears."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You ask them how they've been getting by, and your wife tells you that it's been difficult to make ends meet. She goes every few days without food to make sure that your daughters are growing. Right now, they're surviving mostly on corn, but they're still surviving."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "She asks you about your journey, but you can't bring yourself to tell her about it. Not now. Not yet. Maybe not ever. As soon as you find a way to get funds, you'll call her, you say."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Understanding that it may be a while before she hears from you again, she tells you that she loves you. And makes you promise her that you'll stay safe. With that, your $1 of phone time comes to an end, and the server hangs up for you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What now?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-21-choice-1",
+          "label": "Back to work so you can save up and call your bunk mate's cousin",
+          "targetStepId": "step-22",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-21-choice-2",
+          "label": "Back to work, save up for a while and try to afford transportation",
+          "targetStepId": "step-23",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-22": {
+      "id": "step-22",
+      "title": "Back to Work",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You work in the laundry room. Each day, there are new migrants who arrive, and the number of laundry loads that you do increases tenfold each week, though you continue to earn only $1/day."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a week, you cash in a dollar to call your bunkmate's cousin's friend."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVs\u00582ltYWdlcy93ZWJzaXRlX2NvbnRlbnQv\u0062HIvZnJsYXVuZGVyZXR0ZV93YXNoaW5n\u005821hY2hpbmVzX3dhc2gtaW1hZ2Uta3li\u005aGN5dHUuanBn.jpg",
+              "credit": "Photo - Image retrieved from: https://www.rawpixel.com/image/6035728/photo-image-public-domain-house-technology on March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-22-choice-1",
+          "label": "Next",
+          "targetStepId": "step-32",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-23": {
+      "id": "step-23",
+      "title": "It's going to be a long haul",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Day after day, you continue to work in the laundry room. Each day, there are new migrants who arrive, and the number of laundry loads that you do increases ten fold each week. Eventually, there are so many clothes that you cannot fit them all in the washer."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVs\u00582ltYWdlcy93ZWJzaXRlX2NvbnRlbnQv\u0062HIvZnJsYXVuZGVyZXR0ZV93YXNoaW5n\u005821hY2hpbmVzX3dhc2gtaW1hZ2Uta3li\u005aGN5dHUuanBn.jpg",
+              "credit": "Photo - Image retrieved from: https://www.rawpixel.com/image/6035728/photo-image-public-domain-house-technology on March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-23-choice-1",
+          "label": "Hand wash the rest of the clothes.",
+          "targetStepId": "step-24",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-23-choice-2",
+          "label": "Leave some dirty clothes to wash for tomorrow.",
+          "targetStepId": "step-37",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-24": {
+      "id": "step-24",
+      "title": "Hand Wash",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You begin to grow frustrated and over-tired by the increase in workload. Hand washing the remaining clothing on top of running the machines takes a lot of energy, and it begins to cut into your \"recreational\" outisde time and lunch break. Additionally, your pay has remained at $1/day, and you've only earned a total of $25 to date."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-24-choice-1",
+          "label": "Ask the CBP officer to increase your pay",
+          "targetStepId": "step-26",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-24-choice-2",
+          "label": "Quit your job",
+          "targetStepId": "step-27",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-25": {
+      "id": "step-25",
+      "title": "Defy Defy Defy",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What you didn't know was that small act, in an attempt to prevent the deterioration of your own health, was considered defiance against a CBP officer."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You're \"failure to comply\" earns you a week in solitary confinement."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://static01.nyt.com/images/2013/03/24/us/sub-solitary/sub-solitary-articleLarge.jpg?quality=75&auto=webp&disable=upscale",
+              "credit": "Photo - Image retrieved from: https://www.nytimes.com/2013/03/24/us/immigrants-held-in-solitary-cells-often-for-weeks.html on March 17, 2024. Permission recieved from Catherine Rentz.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-25-choice-1",
+          "label": "Next",
+          "targetStepId": "step-13",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-26": {
+      "id": "step-26",
+      "title": "Pay me more!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One evening, you decide to confront one of the CBP officers about your pay. You explain that you've been doing a lot of extra work, and that $1/day does not seem like reasonable compensation."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He smirks at you, asking what you need the extra money for anyways."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Then he asks to search you for contraband. He doesn't believe that you're just \"saving up.\" You must be using the money for something illegal, and he has the right to search you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-26-choice-1",
+          "label": "Let him search you",
+          "targetStepId": "step-28",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-26-choice-2",
+          "label": "Tell him no",
+          "targetStepId": "step-36",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-27": {
+      "id": "step-27",
+      "title": "I quit!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your head grows heavy and your body becomes achy. Deciding that the compensation for what you have to put up with is not worth it, you submit a form of resignation from the voluntary work program."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You wonder how you could possibly come back from the toll of the last few days, but everytime you close your eyes, you see the faces of your daughters. You have to keep going, for them. How can you care for them if your health is on the line?"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-27-choice-1",
+          "label": "Submit an intake form to see the doctor",
+          "targetStepId": "step-33",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-27-choice-2",
+          "label": "Lay in bed for today. You need your rest.",
+          "targetStepId": "step-34",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-28": {
+      "id": "step-28",
+      "title": "Let him search you",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The CBP officer tells you to turn around and place your hands above your head, palms touching the wall. He pats you down, beginning at your arms and working his way to your shoulders and your chest. When his hands make their way to your waist, though, you feel yourself jerk reactively."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He pushes you forcefully against the wall and feels for your genitals. He tells you that if you scream, he'll just put you in solitary confinement anyway."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Then he releases you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "If you want more money, he says, you know how you can get it. He tells you that he will come monitor you as you wash clothes tomorrow."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Then he walks away. You crumble to the floor."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-28-choice-1",
+          "label": "Next",
+          "targetStepId": "step-29",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-29": {
+      "id": "step-29",
+      "title": "Ahhhhhhhhh",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, your brain feels empty. You cannot stop thinking about what that officer did to you, how uncomfortable it made you feel. You think about reporting him, but you worry that nobody will believe you. After all, you're a man, you should have been able to defend yourself."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You sift through the pamphlets that were given to you during your intake, and come across the zero tolerance sexual assault policy. There is a form to fill out, instructions on how to submit it, and a phone number you can call for support. The next page, though, outlines consequences for false accusation. If the investigation finds that there was a false accusation of sexual assault, you could be restricted to solitary confinement for the rest of your time in detention."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You wonder if this is a battle you will ever win."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-29-choice-1",
+          "label": "Report the assault",
+          "targetStepId": "step-31",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-29-choice-2",
+          "label": "Call your wife and tell her what happened",
+          "targetStepId": "step-35",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-29-choice-3",
+          "label": "Quit your job",
+          "targetStepId": "step-27",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-30": {
+      "id": "step-30",
+      "title": "Wait it out",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You decide to wait out the immigration hearing process. You try to follow the rules of the detention facility, but everyday the rooms get more crowded and the days get more monotonous."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You try to find things to do, but unless you know someone who can send you books or magazines, there's not much entertainment. You have one hour of outside time per day, and the rest of the time, you lay awake in a cramped cell. Eventually, they demand that you share cots in order to contain all of the detainees who arrive. You'd rather sleep on the floor."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After two months, the CBP officers announce that they do not have enough room to contain all of you in the detention facility. They're going to deport everybody who arrived within the last year who does not have a sponsor."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vi\u00632l0ZS8yMDIyLTExL2ZsNDI4MzE3NDAw\u004dTItaW1hZ2UuanBn.jpg",
+              "credit": "Phone - Image by Customs and Border Protection, retrieved from: https://www.rawpixel.com/image/8723909/photo-image-public-domain-people on March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-30-choice-1",
+          "label": "Look for a sponsor",
+          "targetStepId": "step-4",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-30-choice-2",
+          "label": "Allow yourself to get deported",
+          "targetStepId": "step-64",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-31": {
+      "id": "step-31",
+      "title": "Report it",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Not sure if it will amount to anything, you decide to report the sexual assault. You know that the CBP officer was in the wrong, and despite the difficulties of being in detention, you had heard how much the United States valued justice. You placed your hope in that value, and filled out the form."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Who do you give it to?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-31-choice-1",
+          "label": "CBP Officer",
+          "targetStepId": "step-38",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-31-choice-2",
+          "label": "Clergyman",
+          "targetStepId": "step-39",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-31-choice-3",
+          "label": "Healthcare provider",
+          "targetStepId": "step-40",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-32": {
+      "id": "step-32",
+      "title": "Trafficking?",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You call the number, and find out that the man willing to sponsor you has sponsored at least a dozen migrants already. He lives in Michigan, and he makes a lot of money, he says. He's willing to help you out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "But, he says that because he'll be helping you through the sponsorship process, you'll have to pay for plane tickets to Michigan on your own. If you can't afford them, he tells you that you can work a few weeks without pay to make up for it."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-32-choice-1",
+          "label": "Work in detention and save up to go to Michigan",
+          "targetStepId": "step-23",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-32-choice-2",
+          "label": "Go to Michigan and work without pay once you get there",
+          "targetStepId": "step-45",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-33": {
+      "id": "step-33",
+      "title": "See the doc",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You submit an intake form to see the doctor, but you have to write down your chief complaint on the form. You want to be honest, but you're not sure how certain topics will be stigmatized by the CBP officers to whom you have to submit your intake form to."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you write as your chief complaint?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-33-choice-1",
+          "label": "Difficulties with Mental Health",
+          "targetStepId": "step-17",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-33-choice-2",
+          "label": "Fatigue, stress, and physical achiness from Work",
+          "targetStepId": "step-41",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-34": {
+      "id": "step-34",
+      "title": "Stay in Bed",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, a CBP officer comes to your cell asking you why you did not show up at work yesterday. You tell him that you submitted a resignation from voluntary work form. He says that the office did not receive it, and that not showing up was unacceptable behavior which would be met with punitive measures."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You will no longer be able to work for the next sixty days, and your phone privileges have been revoked for the next two weeks. This defiance has also earned you a week in solitary confinement, he says."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-34-choice-1",
+          "label": "Next",
+          "targetStepId": "step-13",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-35": {
+      "id": "step-35",
+      "title": "Call home again",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You use some of your saved up change to call back the legal organization, and ask if she can help you reconnect with your family again. When you hear your wife's voice on the phone, you feel yourself starting to fight back tears. You tell her that you're having a really hard time in detention. You will do anything it takes to leave, you just don't know how to go about it."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "She asks you what has been happening, and all you have the strength to tell her is that one of the CBP officers had harassed and threatened you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "She tells you to stay strong. Your oldest daughter has dropped out of school and has been working along with your wife to sell dolls and necklaces made out of corn husks to people on the street. It's helped keep their stomachs from being empty over the past month."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your heart drops. You want to keep working with the hope of sending something home soon. Your daughter not being in school makes you so deeply upset. You made this treacherous journey to prevent just that."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "At the same time, you know that if you quit your job, you will not be able to get another voluntary work position for at least sixty days."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-35-choice-1",
+          "label": "Quit your job",
+          "targetStepId": "step-27",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-35-choice-2",
+          "label": "Continue to work, and call your bunkmate's cousin to ask about sponsorship",
+          "targetStepId": "step-45",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-36": {
+      "id": "step-36",
+      "title": "No!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You tell the CBP officer that he cannot search you. You have nothing to hide, but he also should not have any reason to suspect that you've done anything wrong."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Next thing you know, he's cuffed you and shoved you forcefully against the wall."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-36-choice-1",
+          "label": "Next",
+          "targetStepId": "step-25",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-37": {
+      "id": "step-37",
+      "title": "Dirty Clothes",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, the CBP officer in charge of compliance with the volunteer to work program confronts you. Because you left some dirty clothes without washing yesterday, this was considered unacceptable behavior. You've lost your privileges to work, and you will be punished more severely as well."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-37-choice-1",
+          "label": "Next",
+          "targetStepId": "step-25",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-38": {
+      "id": "step-38",
+      "title": "Report Assault to CBP",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You get the attention of one of the passing CBP officers, and muster up the courage to tell them what has happened. You tell them through tears that you want the officer who assaulted you to be held accountable. You want to get help to move past this, too, your family still needs you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The CBP officer smirks and immediately re-handcuffs you. You've dared to falsely accuse an officer of assault. He drags you to solitary confinement."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your thoughts eat you alive in the dark, windowless cell. You stop eating all together. When the CBP officers come to retrieve you seven days later, you are emaciated, on the brink of death."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They take you to the emergency care center, but as the doctors start to insert needles into your arms and a tube up your nose, you feel yourself slipping away."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You close your eyes and picture your daughters' smiling faces. You wish that you could have told them goodbye."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 2:36P.M."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://www.crimemuseum.org/wp-content/uploads/2024/03/Solitary-Confinement.webp",
+              "credit": "Photo - Image by Crime Museum, retrieved from: https://www.rawpixel.com/image/5926378/photo-image-public-domain-person-woman March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-in-detention",
+      "position": null
+    },
+    "step-39": {
+      "id": "step-39",
+      "title": "Report Assault to Clergyman",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You wait three days, you know that the designated priest comes to the detention facility every Sunday to lead prayer, but every minute you wait feels like torture."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "On Sunday morning, after the prayer service, you ask the priest if you can speak to him alone. You tell him what happened, as briefly as you can, and give him the form that you've filled out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You want to make sure that the officer is held accountable, you say."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The clergyman tells you that he will ensure the proper people are made aware of the situation."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-39-choice-1",
+          "label": "Next",
+          "targetStepId": "step-44",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-40": {
+      "id": "step-40",
+      "title": "Report Assault to Doc",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You submit an intake form to see the doctor, but you have to write down your chief complaint on the form. You want to be honest, but you're not sure how certain topics will be stigmatized by the CBP officers to whom you have to submit your intake form to."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you write as your chief complaint?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-40-choice-1",
+          "label": "Difficulties with Mental Health",
+          "targetStepId": "step-17",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-40-choice-2",
+          "label": "Victim of Abuse/Assault",
+          "targetStepId": "step-42",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-40-choice-3",
+          "label": "Fatigue, stress, and physical achiness from Work",
+          "targetStepId": "step-41",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-41": {
+      "id": "step-41",
+      "title": "Detention Doc",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The doctor in the detention facility is very kind. She opens up the conversation with you an incredibly sensitive way, and you feel comfortable telling her about what's been happening since you got to detention. She tells you that she will do everything in her power to advocate for you, and before she examines you, she listens intently to everything that you have to say."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "She asks about your family, about your hopes for coming to the U.S. She asks about your mental health and emotional well being. She asks you if you feel safe. But, she also gives you permission to refuse to answer if you want to talk about something at a later time."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You don't tell her everything, but you tell her about the CBP officer who harassed you. You tell her about your daughters. You tell her that their future depends on your work, and how guilty you feel that you haven't sent any money home."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "She comforts you."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-41-choice-1",
+          "label": "Next",
+          "targetStepId": "step-62",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-42": {
+      "id": "step-42",
+      "title": "Victim of Abuse/Assault",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You fill out the intake form to see the doctor, siting \"Abuse/Assault\" as your chief complaint. It will be seven days before you can see the doctor."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "As you wait consultation, though, the CBP officer who harassed you shows up at your cell. The form you filled out is in his hand. He tells you that one of his coworkers gave him the form, and that you would face consequences for trying to report the incident to the doctor."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He drags you to solitary confinement, you'll be there for two weeks, he says."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your thoughts eat you alive in the dark, windowless cell. You stop eating all together. You stop sleeping. You lose track of time. All you can think about is how you've failed your family, how your daughters will never get the education that they deserve, how your wife will continue to go hungry. How if you die, they will not even know what has happened to you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When the CBP officers come to retrieve you two weeks later, you are emaciated, on the brink of death."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-42-choice-1",
+          "label": "Next",
+          "targetStepId": "step-43",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-43": {
+      "id": "step-43",
+      "title": ":(",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They take you to the emergency care center, but as the doctors start to insert needles into your arms and a tube up your nose, you feel yourself slipping away."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You close your eyes and picture your daughters' smiling faces. You wish that you could have told them goodbye."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 2:36P.M."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-in-detention",
+      "position": null
+    },
+    "step-44": {
+      "id": "step-44",
+      "title": "Doc Calls You In",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, the physician who works at the detention facility asks to see you. A CBP officer is sent to come get you, and escorts you to the two room clinic."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you're alone with the doctor, she tells you that the priest informed her of what has happened. She tells you that she believes you, and that she's here to support you however she can."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-44-choice-1",
+          "label": "Next",
+          "targetStepId": "step-41",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-45": {
+      "id": "step-45",
+      "title": "Modern Slavery",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You tell the man on the phone that you'd rather get out of detention as soon as possible, and work without pay for him in Michigan to compensate for the cost of the plane tickets."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He agrees to the arrangement, and works with you to fill out and submit the proper forms to the CBP agents saying that he will sponsor you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The process is swift, probably because the influx of new migrants to the detention facility is ever-increasing, and you suspect that they may need your empty bed."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Before you know it, you're on a plane to Michigan."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-45-choice-1",
+          "label": "Next",
+          "targetStepId": "step-46",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-46": {
+      "id": "step-46",
+      "title": "Michigan",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "In Michigan, another migrant picks you up at the airport. He tells you that he has also been sponsored by the same man, and talks to you about how thankful he is for the opportunity to work for him."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He tells you that the work is hard, but the pay is pretty good - $6/hour. He's been working here for four years now, and though he is still paying your sponsor back for rent, he is able to send about $100 home every month."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You are excited about the prospects of being here, and wonder when you'll be able to start sending money home, too."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://static01.nyt.com/images/2023/02/17/multimedia\u002f00childlabor-hearthside3/00childlabor-hearthside3-superJumbo.jpg?quality=75&auto=webp",
+              "credit": "Photo - Image retrieved from: https://www.nytimes.com/2023/02/25/us/unaccompanied-migrant-child-workers-exploitation.html on March 17, 2024. Permission recieved from Kristen Luce.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-46-choice-1",
+          "label": "Next",
+          "targetStepId": "step-47",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-47": {
+      "id": "step-47",
+      "title": "Cheetos",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a few weeks in Michigan, you start to understand how things work around here. You've made friends with your coworkers -- seven of whom you share a two bedroom apartment with, and for the most part, things are good."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You still have to work without pay, as you remain in debt to your sponsor for your plane tickets, and now for your housing, but you keep working with the hopes that you'll be able to send money home soon."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The shifts are long. You begin your shift at the factory at 3am, and work until 9pm with limited breaks to eat and go to the bathroom. And, the job gets monotonous, as you quickly stuff bags of \"Cheetos,\" trying to work as quickly as the machinery does to prevent back-logs."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Eventually, things become so tiring that they start to eat at you. You feel sad, lonely, and depressed, even though you've made amazing new friends. You miss your daughters and your wife, even though you can now call them regularly over Whatsapp using one of your coworker's phones."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://static01.nyt.com/images/2023/02/15/multimedia\u002f00childlabor-hearthside2/00childlabor-hearthside2-superJumbo.jpg?quality=75&auto=webp",
+              "credit": "Photo - Image retrieved from: https://www.nytimes.com/2023/02/25/us/unaccompanied-migrant-child-workers-exploitation.html on March 17, 2024. Permission recieved from Kristen Luce.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-47-choice-1",
+          "label": "Seek mental healthcare",
+          "targetStepId": "step-48",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-47-choice-2",
+          "label": "Ask your friends for help",
+          "targetStepId": "step-50",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-47-choice-3",
+          "label": "Put up with it",
+          "targetStepId": "step-49",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-48": {
+      "id": "step-48",
+      "title": "Healthcare? In THIS economy?!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After talking to your coworkers, you come to understand that to see a doctor is going to cost a lot of extra money. The only place where they will see you without insurance is the Emergency Room, and they will send you a very large bill."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "This means that you could be in even more debt to your sponsor, and it might be a few more weeks before you can send anything home."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-48-choice-1",
+          "label": "Go to the Emergency Room",
+          "targetStepId": "step-52",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-48-choice-2",
+          "label": "Ask your friends for help",
+          "targetStepId": "step-50",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-48-choice-3",
+          "label": "Seek insurance",
+          "targetStepId": "step-53",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-49": {
+      "id": "step-49",
+      "title": "Put up with it",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a few more weeks of work, you find your heart beating quickly at all times of the day. When you try to go to sleep at night, you lay awake for hours, thinking about all that you've endured over the past few months. You feel the guilt of not being able to send money home weighing on your chest."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Recently, your wife told you that your oldest daughter has dropped out of school and has been working along with your wife to sell dolls and necklaces made out of corn husks to people on the street. It's helped keep their stomachs from being empty over the past month."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your heart drops. You want to keep working with the hope of sending something home soon. Your daughter not being in school makes you so deeply upset. You made this treacherous journey to prevent just that."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-49-choice-1",
+          "label": "Seek mental healthcare",
+          "targetStepId": "step-48",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-49-choice-2",
+          "label": "Ask your friends for help",
+          "targetStepId": "step-50",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-49-choice-3",
+          "label": "Continue to put up with it",
+          "targetStepId": "step-51",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-50": {
+      "id": "step-50",
+      "title": "Alcohol",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "That night, after your shift, you ask one of your roommates if he's ever experienced difficulties with sleeping or overwhelming sadness and fear. He says that he has. He understands what you're going through."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The two of you sit around the cramped kitchen table, and your friend retrieves a six-pack of beer that he keeps stashed in one of the cabinets. He tells you that beer always helps take the edge off, and the two of you drink together."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-50-choice-1",
+          "label": "Next",
+          "targetStepId": "step-54",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-51": {
+      "id": "step-51",
+      "title": "Put up with it 2",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Still, more weeks go by. The long hours start to take a toll on you physically, too. One of the women at the factory where you work recently lost a finger when mis-anticipating one of the machines, and you're scared that your tiredness will cause you to make a similar slip."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You decide you need to get something to help you sleep, but you're not sure what works."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-51-choice-1",
+          "label": "Seek healthcare",
+          "targetStepId": "step-48",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-51-choice-2",
+          "label": "Ask your friends for help",
+          "targetStepId": "step-50",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-52": {
+      "id": "step-52",
+      "title": "ER",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You decide to go to the ER to ask for help with your mental health. You get there at 9:30pm on a Saturday night, right after your work shift. They are seeing a lot of patients in need of immediate attention, they tell you through a language line, and you'll have to wait for turn."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Four hours later, you're still in the waiting room."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-52-choice-1",
+          "label": "Keep waiting",
+          "targetStepId": "step-60",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-53": {
+      "id": "step-53",
+      "title": "Insurance for the Migrant",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Deciding that trying to get care at the ER will be too difficult, you ask your sponsor if there's anyway for you to get health insurance. He tells you that because your asylum case has not yet been processed, you do not qualify for federally funded insurance programs, adding that he refuses to help you pay for any other private insurances."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "He tells you that he'll incur the costs of a visit to urgent care, though, at the expense of another month of free labor."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-53-choice-1",
+          "label": "Go to Urgent Care",
+          "targetStepId": "step-61",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-53-choice-2",
+          "label": "Continue to work without care",
+          "targetStepId": "step-55",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-54": {
+      "id": "step-54",
+      "title": "Self Medication",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Soon, you start to drink every evening. Then every day, then even at work during your shift. Your roommate says not to worry about paying him back for the alcohol, because he knows you're in a bind."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You start to forget to call your wife everyday, and start under performing at your job. When word gets back to your sponsor about your behavior, he threatens to kick you out of his housing."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-54-choice-1",
+          "label": "Go to the emergency room to get help",
+          "targetStepId": "step-52",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-54-choice-2",
+          "label": "Find medical insurance",
+          "targetStepId": "step-53",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-54-choice-3",
+          "label": "Keep working, your family needs you",
+          "targetStepId": "step-55",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-55": {
+      "id": "step-55",
+      "title": "Work to Death",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You continue to work, but after another week of feeling terrible and failing to deliver to your sponsor's liking, he decides to kick you out of your housing. You have no home, no money, and no direction. What's worse is that you still feel the immense guilt that got you here in the first place. It's as if nothing has changed."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your sponsor tells you that you can continue to work for him, and that if you get your act together he will let you come back to work."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-55-choice-1",
+          "label": "Keep working for your sponsor",
+          "targetStepId": "step-56",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-55-choice-2",
+          "label": "Find a shelter",
+          "targetStepId": "step-57",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-55-choice-3",
+          "label": "Seek care at the ER",
+          "targetStepId": "step-52",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-56": {
+      "id": "step-56",
+      "title": "This is when work kills you",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your exhaustion and addiction have driven you to a new low. One day at work, the sleeve of your shirt gets caught in one of the conveyor belts. You black out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you wake up in the hospital, one of the healthcare workers tells you through a language line that you've lost one of your arms, and that you have a large wound on your chest. Much of your skin had been sheered off, she said, but they thought you were stable for now."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One of your coworkers comes to visit you the next day, and tells you that your sponsor is extremely upset. He tells you that he's demanding more working hours and more money from you, and that he will not permit you to live in the apartment once you are discharged from the hospital. And, he tells you that you'll be fired if you mention any of this to anyone at the hospital."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-56-choice-1",
+          "label": "Ask the healthcare providers for help",
+          "targetStepId": "step-58",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-56-choice-2",
+          "label": "Refrain from saying anything",
+          "targetStepId": "step-59",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-57": {
+      "id": "step-57",
+      "title": "Homelessness for the Migrant",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You try to find a shelter that you can stay at temporarily until you feel better and can work to your sponsor's liking, but after two shelters ask you for proper identification as well as the signing of a contract stating that you will maintain sobriety while you're there, you decide to give up."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You stay on the street for a few nights, and after a few days without food, you grow incredibly emaciated. Nobody walking by seems to pay any attention to you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One particularly chilly night, you start to feel yourself slip away. You close your eyes and picture your daughter's faces. You wish that you could have told them goodbye."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death 3:39am."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Sleeping_on_the_Sidewalk_in_Atlanta.jpg",
+              "credit": "Photo - Image by Bart Everson, retrieved from: https://commons.wikimedia.org/wiki/File:Sleeping_on_the_Sidewalk_in_Atlanta.jpg on March 17, 2024. Creative Commons License associated: CC BY 2.0",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-on-the-street",
+      "position": null
+    },
+    "step-58": {
+      "id": "step-58",
+      "title": "Help!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After sometime, a Spanish-speaking doctor comes in to take care of you. She tells you that you're not the only person with a work-related injury like this that she's seen. She asks you what exactly happened, telling you that she wants to help advocate for your safety before discharging you from the hospital."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You explain that you've been experiencing episodes of severe anxiety where it feels like your heart is going to fall out of your chest. You tell her that you feel sad and so incredibly lonely all the time. You tell her that if it weren't for your daughters, you'd consider taking your own life. And you tell her that your sponsor has you working incredibly long shifts with the hope of being able to send money home to your family."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The healthcare provider tells you that they can keep you in the hospital for a few days, and that they can help get a social worker involved to find you a safer place to work and live. She encourages you to visit a Primary Care Physician for long-term mental healthcare, too."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-58-choice-1",
+          "label": "Next",
+          "targetStepId": "step-62",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-59": {
+      "id": "step-59",
+      "title": "Time of death",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, you develop a high fever. Your mouth feels dry, and your fingers start to go numb. As the doctors start to insert needles into your arms, though, you feel yourself slipping away."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You close your eyes and picture your daughters' smiling faces. You wish that you could have told them goodbye."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 2:36P.M."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-in-detention",
+      "position": null
+    },
+    "step-60": {
+      "id": "step-60",
+      "title": "Waiting in the ER",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After two more hours, one of the nurses wakes you up in the emergency room and tells you to follow her. The doctors, who you communicate with through a language line, tell you that they're here to listen and ask you what they can do to help."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You explain that you've been experiencing episodes of severe anxiety where it feels like your heart is going to fall out of your chest. You tell them that you feel sad and so incredibly lonely all the time. You tell them that if it weren't for your daughters, you'd consider taking your own life."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The healthcare provider tells you that they can watch you in the psychiatric floor for a few days, and help you get enrolled in an outpatient rehabilitation program. But, she encourages you to visit a Primary Care Physician for long-term mental healthcare."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-60-choice-1",
+          "label": "Next",
+          "targetStepId": "step-62",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-61": {
+      "id": "step-61",
+      "title": "Urgent Care",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You go to urgent care the next day at 9:30pm after your shift. The wait is not too long, and you're able to be seen by someone soon."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Through a language line, you tell them that you've been experiencing episodes of severe anxiety where it feels like your heart is going to fall out of your chest. You tell them that you feel sad and so incredibly lonely all the time. You tell them that if it weren't for your daughters, you'd consider taking your own life."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The healthcare provider tells you that she doesn't ordinarily prescribe mental health medications the first time she meets someone, and that you're better off going to a Primary Care Physician. But, she adds, given the severity of the situation, she's willing to make an exception."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-61-choice-1",
+          "label": "Next",
+          "targetStepId": "step-62",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-62": {
+      "id": "step-62",
+      "title": "Congratulations! You made it to the doctor!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Congratulations. You've made it to the doctor before you ended up in a healthcare facility due to a life or death situation. Of course, most of the conflict that your character is enduring has yet to be resolved."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Now it's time for reflection and discussion."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "During our next case, we will discuss the challenges of navigating our healthcare system to get the care that we all deserve."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://cdn.houstonpublicmedia.org/wp-content/uploads/2019/08/06183213/ICE-SERVICE-HEALTH-CORP.jpg.webp",
+              "credit": "Photo - Image by ICE Health Service Corps, retrieved from: https://www.ice.gov/features/ICE-Air on March 17, 2024. Image is in the public domain.",
+              "alt": null
+            }
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-reached-doctor",
+      "position": null
+    },
+    "step-63": {
+      "id": "step-63",
+      "title": "Preface",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Welcome. This is an activity meant to cultivate empathy for the situations that our patients may endure prior to coming to see us in a healthcare setting. As you work your way through this exercise, there will be parts of the story that may be triggering. Please take the time to care for your own mental and emotional health as needed, and step away when you need to. We will reflect on this exercise together as a group."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your GOAL as you put yourself in the character's shoes, is to seek healthcare for your needs before they overwhelm you, and the situation becomes life or death."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The PURPOSE of this exercise is for us as healthcare providers to understand that someone's journey starts long before they come into the healthcare setting."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-63-choice-1",
+          "label": "Next",
+          "targetStepId": "step-10",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-64": {
+      "id": "step-64",
+      "title": "Deportation",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The ICE officers decide to deport you, pushing you onto a crowded plane with several other shackled detainees. You're dropped off in a remote part of Guatemala without a way to contact your family. You and the other detainees trek for a few days in the heat, but without food, water, or direction, the journey becomes unbearable."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "All you can think about is how you've failed your family, how your daughters will never get the education that they deserve, how your wife will continue to go hungry. Two weeks later, you are emaciated, on the brink of death."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 3:30P.M."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-after-deportation",
+      "position": null
+    }
+  },
+  "outcomes": {
+    "outcome-died-in-detention": {
+      "id": "outcome-died-in-detention",
+      "label": "Died in detention"
+    },
+    "outcome-died-on-the-street": {
+      "id": "outcome-died-on-the-street",
+      "label": "Died on the street after release"
+    },
+    "outcome-died-after-deportation": {
+      "id": "outcome-died-after-deportation",
+      "label": "Died after deportation"
+    },
+    "outcome-reached-doctor": {
+      "id": "outcome-reached-doctor",
+      "label": "Reached the doctor"
+    }
+  }
+}

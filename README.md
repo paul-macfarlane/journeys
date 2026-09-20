@@ -54,64 +54,65 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 
 ## Commands
 
-| Command                           | What it does                                   |
-| --------------------------------- | ---------------------------------------------- |
-| `pnpm dev`                        | Next.js dev server on port 3000                |
-| `pnpm build` / `start`            | Production build / serve the build             |
-| `pnpm lint`                       | ESLint                                         |
-| `pnpm typecheck`                  | `tsc --noEmit`                                 |
-| `pnpm format` / `format:check`    | Prettier write / check                         |
-| `pnpm test` / `test:watch`        | Vitest unit tests                              |
-| `pnpm test:e2e`                   | Playwright e2e (starts its own server)         |
-| `pnpm db:up` / `db:down`          | Start / stop local Postgres (host port 5436)   |
-| `pnpm db:generate` / `db:migrate` | Create / apply Drizzle migrations              |
-| `pnpm db:push`                    | Push the schema without a migration (dev only) |
-| `pnpm db:studio`                  | Drizzle Studio                                 |
-| `pnpm seed:case-3 <email>`        | Seed the legacy case-3 journey (see below)     |
-| `pnpm prepare`                    | Installs the husky git hooks (runs on install) |
+| Command                             | What it does                                   |
+| ----------------------------------- | ---------------------------------------------- |
+| `pnpm dev`                          | Next.js dev server on port 3000                |
+| `pnpm build` / `start`              | Production build / serve the build             |
+| `pnpm lint`                         | ESLint                                         |
+| `pnpm typecheck`                    | `tsc --noEmit`                                 |
+| `pnpm format` / `format:check`      | Prettier write / check                         |
+| `pnpm test` / `test:watch`          | Vitest unit tests                              |
+| `pnpm test:e2e`                     | Playwright e2e (starts its own server)         |
+| `pnpm db:up` / `db:down`            | Start / stop local Postgres (host port 5436)   |
+| `pnpm db:generate` / `db:migrate`   | Create / apply Drizzle migrations              |
+| `pnpm db:push`                      | Push the schema without a migration (dev only) |
+| `pnpm db:studio`                    | Drizzle Studio                                 |
+| `pnpm seed:journey-stories <email>` | Seed the three legacy cases (see below)        |
+| `pnpm prepare`                      | Installs the husky git hooks (runs on install) |
 
-### Seeding the legacy case-3 journey
+### Seeding the legacy Journey Stories cases
 
-`pnpm seed:case-3 <author-email>` reads the legacy site's prerendered case-3
-pages, converts them into a graph document — titles, paragraphs, images with
-their credit lines, choices, endings — and writes it as the draft of a `Case 3`
-journey inside a `Journey Stories` project.
+`pnpm seed:journey-stories <author-email>` writes the legacy site's three
+migrant-healthcare cases into one `Journey Stories` project as the journeys
+`Case 1`, `Case 2`, and `Case 3`, each with its draft: the steps, choices,
+endings, outcomes, and credited images the legacy case has. Each document is
+validated for publish before anything is written.
 
-**Prerequisite:** the account must already exist. The script never creates
+**Prerequisite:** the account must already exist. The command never creates
 users; sign in once through Google or Discord with that email (see
 [`human-prerequisites.md`](.scratch/journeys-platform/human-prerequisites.md)
 §10), then run it. With no such user it prints the email, writes nothing, and
 exits non-zero.
 
 ```bash
-pnpm seed:case-3 you@example.com                    # seed the local dev database
-pnpm seed:case-3 you@example.com --write-fixture    # …and rewrite the test fixture
+pnpm seed:journey-stories you@example.com    # seed the local dev database
 ```
 
-- **Idempotent.** The project and the journey have fixed ids, so rerunning
-  updates the same rows: there is only ever one seed project and one case-3
-  journey, and the signed-in account is added as a member of the project if it
-  is not one already.
-- **`--write-fixture`** also writes `src/lib/graph/fixtures/case-3.json`, the
-  real-content success case `src/lib/graph/validate.test.ts` validates. Pass it
-  when the legacy content or the outcome mapping has changed, and commit the
-  result.
-- **Outcomes are hand-written.** `scripts/seed-case-3/outcomes.json` maps each
-  legacy ending to an outcome id and gives each outcome its label. Edit the
-  labels there — they are what a participant is told they reached — and rerun
-  the seed to apply them. The script refuses to write anything if an ending is
-  missing from the mapping, a mapped step still has choices, or an outcome id
-  names nothing.
+- **Idempotent.** The project and the three journeys have fixed ids, so
+  rerunning updates the same rows in place: there is only ever one seed
+  project and one journey per case, and the account is added as a member of
+  the project if it is not one already.
+- **The documents are the source of truth.** `scripts/seed/journey-stories/`
+  holds `case-1.json`, `case-2.json`, and `case-3.json` — converted once from
+  the legacy repo's `src/data/cases/*.json`. The legacy content never changes,
+  so nothing re-reads it and no converter is kept. Edit the outcome labels (and
+  anything else) in those files and rerun the command to apply the change;
+  `src/lib/graph/validate.test.ts` checks every document still publishes and
+  still holds the counts the legacy case has.
+- **Four choices and one step were left out.** Published journeys must not
+  loop, so the choices that looped back on the legacy site are gone — case 1's
+  "Yes" on "Detention 1", and case 2's "Call the legal organization" on "Call
+  Sponsor", "Call your bunkmate's cousin's friend" on "I quit!", and "Go home,
+  and try again later" on "ER" — along with case 1's "Detention", which nothing
+  reached once its loop was cut.
 - **Against Neon staging,** export the connection string for that one command:
-  `DATABASE_URL=… pnpm seed:case-3 you@example.com`. An explicit `DATABASE_URL`
-  wins over `.env.local`, and the script prints only the host and port it
-  connected to.
+  `DATABASE_URL=… pnpm seed:journey-stories you@example.com`. An explicit
+  `DATABASE_URL` wins over `.env.local`, and the command prints only the host
+  and port it connected to.
 - **Images point at third-party hosts.** Nothing is copied: every seeded image
   keeps the URL the legacy page linked — pexels, rawpixel, flickr, one
   WordPress site — so an image stops loading when its own host does, not when
-  the legacy site goes away. The scraper itself is throwaway — it reads the
-  markup the legacy Astro build emits today and is not maintained against
-  changes to it.
+  the legacy site goes away.
 
 ## Environments
 

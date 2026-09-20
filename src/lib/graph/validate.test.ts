@@ -8,18 +8,12 @@ import type {
   Step,
 } from "@/lib/graph/document";
 import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
-import case3Fixture from "@/lib/graph/fixtures/case-3.json";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import { validateForPublish } from "@/lib/graph/validate";
 
-import outcomesMapping from "../../../scripts/seed-case-3/outcomes.json";
-
-/**
- * The second success case is not hand-authored: it is the real case-3 Journey
- * the seed script writes, read back from the fixture it emits. Parsed through
- * the schema rather than trusted.
- */
-const case3: GraphDocument = graphDocumentSchema.parse(case3Fixture);
+import case1Document from "../../../scripts/seed/journey-stories/case-1.json";
+import case2Document from "../../../scripts/seed/journey-stories/case-2.json";
+import case3Document from "../../../scripts/seed/journey-stories/case-3.json";
 
 const emptyContent: Content = { type: "doc", content: [{ type: "paragraph" }] };
 
@@ -63,10 +57,6 @@ const reachedCare: Outcome = { id: "outcome-ashore", label: "Reached shore" };
 describe("validateForPublish", () => {
   it("finds nothing wrong with the large journey fixture", () => {
     expect(validateForPublish(largeJourney)).toEqual([]);
-  });
-
-  it("finds nothing wrong with the seeded case-3 journey", () => {
-    expect(validateForPublish(case3)).toEqual([]);
   });
 
   it("finds nothing wrong with a small, complete journey", () => {
@@ -334,67 +324,97 @@ describe("validateForPublish", () => {
 });
 
 /**
- * A regression lock on the committed fixture: what the seed script produced
- * from the legacy site as it was crawled on 2026-09-20 — 36 Steps entered at
- * "Preface", 50 Choices, and 6 Endings, each tagged with the Outcome
- * `scripts/seed-case-3/outcomes.json` gives it. These assertions read the
- * committed fixture, so they only change when someone reruns the seed with
- * `--write-fixture`; the check against the live site is `e2e/seed-case-3.spec.ts`.
+ * A regression lock on the three documents under
+ * `scripts/seed/journey-stories/`. They are the source of truth for the legacy
+ * site's cases — `pnpm seed:journey-stories` writes exactly these as the
+ * Drafts of the three Journey Stories Journeys — so what they must keep being
+ * is a Journey that publishes: one Start, no loops, every Ending tagged with
+ * an Outcome the document defines. Parsed through the schema rather than
+ * trusted, and the counts are the legacy content's own.
  */
-describe("the seeded case-3 journey", () => {
-  const steps = Object.values(case3.steps);
+const journeyStories = [
+  {
+    name: "Case 1",
+    document: graphDocumentSchema.parse(case1Document),
+    startStepId: "step-42",
+    steps: 46,
+    choices: 69,
+    endings: 6,
+    outcomes: 4,
+    images: 20,
+  },
+  {
+    name: "Case 2",
+    document: graphDocumentSchema.parse(case2Document),
+    startStepId: "step-63",
+    steps: 64,
+    choices: 102,
+    endings: 9,
+    outcomes: 4,
+    images: 15,
+  },
+  {
+    name: "Case 3",
+    document: graphDocumentSchema.parse(case3Document),
+    startStepId: "step-7",
+    steps: 36,
+    choices: 50,
+    endings: 6,
+    outcomes: 3,
+    images: 5,
+  },
+];
 
-  it("holds every Step the legacy case has, entered at the Preface", () => {
-    expect(steps).toHaveLength(36);
-    expect(case3.startStepId).toBe("step-7");
-    expect(case3.steps[case3.startStepId].title).toBe("Preface");
+describe("the seeded Journey Stories documents", () => {
+  it.each(journeyStories)("$name is publishable", ({ document }) => {
+    expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("holds every Choice the legacy case offers", () => {
-    const choices = steps.flatMap((step) => step.choices);
+  it.each(journeyStories)(
+    "$name starts at the Preface",
+    ({ document, startStepId }) => {
+      expect(document.startStepId).toBe(startStepId);
+      expect(document.steps[startStepId].title).toBe("Preface");
+    },
+  );
 
-    expect(choices).toHaveLength(50);
-    // Three Choices on one Step that all lead to the same Step stay three.
-    expect(case3.steps["step-14"].choices).toHaveLength(3);
-    for (const choice of case3.steps["step-14"].choices) {
-      expect(choice.targetStepId).toBe("step-22");
-    }
-  });
+  it.each(journeyStories)(
+    "$name holds every Step and Choice the legacy case has",
+    ({ document, steps: stepCount, choices: choiceCount }) => {
+      const steps = Object.values(document.steps);
 
-  it("ends exactly where the legacy case ends", () => {
-    const endings = steps.filter((step) => isEnding(step));
+      expect(steps).toHaveLength(stepCount);
+      expect(steps.flatMap((step) => step.choices)).toHaveLength(choiceCount);
+    },
+  );
 
-    expect(endings.map((step) => step.id)).toEqual([
-      "step-10",
-      "step-20",
-      "step-29",
-      "step-30",
-      "step-35",
-      "step-36",
-    ]);
-  });
+  it.each(journeyStories)(
+    "$name tags every Ending with an Outcome it defines",
+    ({ document, endings: endingCount, outcomes: outcomeCount }) => {
+      const endings = Object.values(document.steps).filter((step) =>
+        isEnding(step),
+      );
 
-  it("tags each Ending with the Outcome the mapping gives it", () => {
-    for (const ending of outcomesMapping.endings) {
-      const step = case3.steps[`step-${ending.step}`];
-      expect(isEnding(step)).toBe(true);
-      expect(step.outcomeId).toBe(ending.outcomeId);
-    }
+      expect(endings).toHaveLength(endingCount);
+      expect(Object.keys(document.outcomes)).toHaveLength(outcomeCount);
+      for (const ending of endings) {
+        expect(Object.keys(document.outcomes)).toContain(ending.outcomeId);
+      }
+    },
+  );
 
-    expect(Object.keys(case3.outcomes)).toEqual(
-      outcomesMapping.outcomes.map((outcome) => outcome.id),
-    );
-  });
+  it.each(journeyStories)(
+    "$name credits every image and links it over http(s)",
+    ({ document, images: imageCount }) => {
+      const images = Object.values(document.steps).flatMap((step) =>
+        step.content.content.filter((block) => block.type === "image"),
+      );
 
-  it("credits every image and hotlinks it over http(s)", () => {
-    const images = steps.flatMap((step) =>
-      step.content.content.filter((block) => block.type === "image"),
-    );
-
-    expect(images).toHaveLength(5);
-    for (const image of images) {
-      expect(image.attrs.credit.trim().length).toBeGreaterThan(0);
-      expect(image.attrs.src).toMatch(/^https?:\/\//);
-    }
-  });
+      expect(images).toHaveLength(imageCount);
+      for (const image of images) {
+        expect(image.attrs.credit.trim().length).toBeGreaterThan(0);
+        expect(image.attrs.src).toMatch(/^https?:\/\//);
+      }
+    },
+  );
 });

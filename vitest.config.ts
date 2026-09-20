@@ -15,7 +15,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     // src/lib/env.ts validates process.env at import so a misconfigured
     // deployment fails at boot. These throwaway values just let server
     // modules be imported under test; no test asserts against them, and
