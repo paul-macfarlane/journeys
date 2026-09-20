@@ -153,6 +153,24 @@ test("project-rename", async ({ page, context }) => {
   });
 });
 
+async function createJourney(
+  page: Page,
+  title: string,
+  description = "",
+): Promise<void> {
+  await page.getByRole("button", { name: "New journey" }).click();
+  await page.getByLabel("Title").fill(title);
+  if (description) {
+    await page.getByLabel("Description").fill(description);
+  }
+  await page.getByRole("button", { name: "Create journey" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(
+    page.getByRole("listitem").filter({ hasText: title }),
+  ).toHaveCount(1);
+}
+
 test("project-delete", async ({ page, context }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
@@ -179,6 +197,205 @@ test("project-delete", async ({ page, context }) => {
 
   await page.screenshot({
     path: "test-results/project-delete/project-delete.png",
+    fullPage: true,
+  });
+});
+
+test("journey-create", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const projectSlug = `refugee-health-${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeySlug = `border-crossing-${suffix}`;
+  const description =
+    "A family decides whether to cross at night or wait for daylight.";
+
+  await page.goto("/projects");
+  await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectSlug}`);
+
+  await createJourney(page, journeyTitle, description);
+
+  // Listed for its Project, as a link to the slug derived from the title.
+  const journeyItem = page
+    .getByRole("listitem")
+    .filter({ hasText: journeyTitle });
+  await expect(journeyItem.getByRole("link")).toHaveAttribute(
+    "href",
+    `/projects/${projectSlug}/journeys/${journeySlug}`,
+  );
+  await expect(journeyItem.getByText(description)).toBeVisible();
+  await expect(journeyItem.getByText("Never published")).toBeVisible();
+
+  await page.screenshot({
+    path: "test-results/journey-create/journey-create.png",
+    fullPage: true,
+  });
+});
+
+test("journey-edit-and-delete", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const projectSlug = `refugee-health-${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeySlug = `border-crossing-${suffix}`;
+  const otherJourneyTitle = `Clinic Visit ${suffix}`;
+  const otherJourneySlug = `clinic-visit-${suffix}`;
+  const renamedTitle = `Night Crossing ${suffix}`;
+  const renamedSlug = `night-crossing-${suffix}`;
+  const renamedDescription = "Updated: the family waits for a guide.";
+
+  await page.goto("/projects");
+  await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectSlug}`);
+  await createJourney(page, journeyTitle);
+  await createJourney(page, otherJourneyTitle);
+
+  await page.goto(`/projects/${projectSlug}/journeys/${journeySlug}`);
+
+  // A new title on its own leaves the slug — and so the URL — alone.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Title").fill(renamedTitle);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}/projects/${projectSlug}/journeys/${journeySlug}`,
+  );
+
+  // Editing the slug moves the Journey to a new URL.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Slug").fill(renamedSlug);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}/projects/${projectSlug}/journeys/${renamedSlug}`,
+  );
+  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+
+  // Editing the description shows it back on the journey page.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Description").fill(renamedDescription);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByText(renamedDescription)).toBeVisible();
+
+  // A slug another Journey already holds is refused, in words.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Slug").fill(otherJourneySlug);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page.getByText("That slug is already taken")).toBeVisible();
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}/projects/${projectSlug}/journeys/${renamedSlug}`,
+  );
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  // Delete, with confirmation.
+  await page.getByRole("button", { name: "Delete journey" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectSlug}`);
+  await expect(page.getByText(renamedTitle)).toHaveCount(0);
+
+  const response = await page.goto(
+    `/projects/${projectSlug}/journeys/${renamedSlug}`,
+  );
+  expect(response?.status()).toBe(404);
+
+  await page.screenshot({
+    path: "test-results/journey-edit-and-delete/journey-edit-and-delete.png",
+    fullPage: true,
+  });
+});
+
+test("project-delete-cascade", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Clinic Access ${suffix}`;
+  const projectSlug = `clinic-access-${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeySlug = `border-crossing-${suffix}`;
+
+  await page.goto("/projects");
+  await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectSlug}`);
+  await createJourney(page, journeyTitle);
+
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);
+
+  const journeyResponse = await page.goto(
+    `/projects/${projectSlug}/journeys/${journeySlug}`,
+  );
+  expect(journeyResponse?.status()).toBe(404);
+
+  const projectResponse = await page.goto(`/projects/${projectSlug}`);
+  expect(projectResponse?.status()).toBe(404);
+
+  await page.screenshot({
+    path: "test-results/project-delete-cascade/project-delete-cascade.png",
+    fullPage: true,
+  });
+});
+
+test("author-flow", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const projectSlug = `refugee-health-${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeySlug = `border-crossing-${suffix}`;
+  const renamedTitle = `Night Crossing ${suffix}`;
+  const renamedSlug = `night-crossing-${suffix}`;
+
+  // Seam B, AC-6: create Project → create Journey → rename → delete, in one
+  // continuous flow, one Author, one browser context.
+  await page.goto("/projects");
+  await createProject(page, projectTitle);
+
+  await page.goto(`/projects/${projectSlug}`);
+  await createJourney(page, journeyTitle);
+
+  await page.goto(`/projects/${projectSlug}/journeys/${journeySlug}`);
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Title").fill(renamedTitle);
+  await page.getByLabel("Slug").fill(renamedSlug);
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}/projects/${projectSlug}/journeys/${renamedSlug}`,
+  );
+  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+
+  await page.getByRole("button", { name: "Delete journey" }).click();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectSlug}`);
+  await expect(page.getByText(renamedTitle)).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await page.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);
+  await expect(page.getByText(projectTitle)).toHaveCount(0);
+
+  await page.screenshot({
+    path: "test-results/author-flow/author-flow.png",
     fullPage: true,
   });
 });

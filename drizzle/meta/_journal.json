@@ -15,6 +15,13 @@
       "when": 1789862137447,
       "tag": "0001_futuristic_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789862911155,
+      "tag": "0002_journey",
+      "breakpoints": true
     }
   ]
 }

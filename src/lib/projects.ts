@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { member, project } from "@/db/schema";
+import { isUniqueViolation, SlugTakenError } from "@/lib/db-errors";
 import { slugify, uniqueSlug } from "@/lib/slug";
 
 /**
@@ -15,15 +16,11 @@ import { slugify, uniqueSlug } from "@/lib/slug";
  * from one that never existed.
  */
 
-export const SLUG_TAKEN_MESSAGE = "That slug is already taken";
-
-/** Raised when the `project_slug_unique` index refuses a slug. */
-export class SlugTakenError extends Error {
-  constructor() {
-    super(SLUG_TAKEN_MESSAGE);
-    this.name = "SlugTakenError";
-  }
-}
+// Re-exported so existing callers (`src/app/projects/actions.ts`) keep
+// importing `SlugTakenError` from here; `src/lib/journeys.ts` imports the
+// same class straight from `@/lib/db-errors` instead, since it has no other
+// reason to depend on this module.
+export { SLUG_TAKEN_MESSAGE, SlugTakenError } from "@/lib/db-errors";
 
 export type ProjectSummary = {
   id: string;
@@ -36,29 +33,6 @@ const projectColumns = {
   title: project.title,
   slug: project.slug,
 };
-
-/**
- * Postgres unique violation. The slug is the only unique constraint a
- * Project write can trip, so 23505 always means the slug.
- *
- * Drizzle wraps the driver's error in a `DrizzleQueryError`, so the SQLSTATE
- * is on the cause rather than the error itself; the chain is walked (to a
- * bounded depth, so a self-referencing cause can't spin) instead of reaching
- * for a wrapper-specific field.
- */
-function isUniqueViolation(error: unknown): boolean {
-  let current: unknown = error;
-
-  for (let depth = 0; depth < 5 && current != null; depth += 1) {
-    if (typeof current !== "object") return false;
-    if ("code" in current && (current as { code?: unknown }).code === "23505") {
-      return true;
-    }
-    current = (current as { cause?: unknown }).cause;
-  }
-
-  return false;
-}
 
 async function isSlugTaken(slug: string): Promise<boolean> {
   const [row] = await db

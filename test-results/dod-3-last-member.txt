@@ -1,0 +1,46 @@
+# DoD-3 — a Project cannot lose its last Member (trigger from drizzle/0001)
+# Commit: da71172  Target: docker journeys-db (postgres:18), database journeys_verify created empty just before
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_verify pnpm db:migrate
+[✓] migrations applied successfully!  (0000, 0001)
+$ psql journeys_verify
+INSERT INTO "user" (id, name, email) VALUES ('u1', 'Author One', 'one@example.com'), ('u2', 'Author Two', 'two@example.com');
+INSERT 0 2
+INSERT INTO project (id, title, slug) VALUES ('p1', 'Refugee Health', 'refugee-health');
+INSERT 0 1
+INSERT INTO member (project_id, user_id) VALUES ('p1', 'u1'), ('p1', 'u2');
+INSERT 0 2
+DELETE FROM member WHERE project_id = 'p1' AND user_id = 'u2';
+DELETE 1
+SELECT count(*) AS members_after_first_removal FROM member WHERE project_id = 'p1';
+ members_after_first_removal 
+-----------------------------
+                           1
+(1 row)
+
+DELETE FROM member WHERE project_id = 'p1' AND user_id = 'u1';
+SELECT count(*) AS members_after_refused_removal FROM member WHERE project_id = 'p1';
+ERROR:  project p1 must keep at least one member
+CONTEXT:  PL/pgSQL function project_keeps_last_member() line 9 at RAISE
+ members_after_refused_removal 
+-------------------------------
+                             1
+(1 row)
+
+DELETE FROM "user" WHERE id = 'u1';
+SELECT count(*) AS users_after_refused_user_delete FROM "user";
+ERROR:  project p1 must keep at least one member
+CONTEXT:  PL/pgSQL function project_keeps_last_member() line 9 at RAISE
+SQL statement "DELETE FROM ONLY "public"."member" WHERE $1 OPERATOR(pg_catalog.=) "user_id""
+ users_after_refused_user_delete 
+---------------------------------
+                               2
+(1 row)
+
+DELETE FROM project WHERE id = 'p1';
+DELETE 1
+SELECT count(*) AS members_after_project_delete FROM member;
+ members_after_project_delete 
+------------------------------
+                            0
+(1 row)
+

@@ -126,3 +126,30 @@ export const member = pgTable(
   },
   (table) => [primaryKey({ columns: [table.projectId, table.userId] })],
 );
+
+// A Journey: a graph of steps and choices, authored inside one Project.
+// Slugs are globally unique across every Journey, not scoped to a Project —
+// the same reason as Project slugs above: the unique index is the real
+// guard, not the slug helper that proposes them.
+//
+// There is no live-version pointer or draft here yet. Publish state is
+// derived, not stored: ticket 05 adds the pointer a Journey needs to have
+// ever been published, and ticket 03 adds its Draft. Until then every
+// Journey reads as "Never published".
+export const journey = pgTable("journey", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
