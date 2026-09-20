@@ -157,4 +157,41 @@ describe("RichText", () => {
     expect(html).toContain("<figcaption");
     expect(html).toContain("Photo by Jane Doe");
   });
+
+  it("keeps the text but not the anchor of a link whose URL is not http(s), and drops such an image", () => {
+    const content: Content = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "click me",
+              marks: [
+                {
+                  type: "link",
+                  attrs: {
+                    href: "javascript:alert(1)",
+                    rel: "noopener noreferrer",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: "image",
+          attrs: { src: "data:image/png;base64,AAAA", credit: "Nobody" },
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(<RichText content={content} />);
+    expect(html).toContain("click me");
+    expect(html).not.toContain("<a");
+    expect(html).not.toContain("javascript:");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("Nobody");
+  });
 });

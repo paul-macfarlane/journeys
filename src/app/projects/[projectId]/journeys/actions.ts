@@ -162,6 +162,13 @@ export async function publishJourneyAction(
   // 404.
   if (!published) return { ok: false, error: "That journey no longer exists" };
   if (!published.ok) {
+    if ("conflict" in published) {
+      return {
+        ok: false,
+        error:
+          "Another member published this journey just now. Reload to see their version, then publish again.",
+      };
+    }
     return {
       ok: false,
       error: "This journey can't be published yet",

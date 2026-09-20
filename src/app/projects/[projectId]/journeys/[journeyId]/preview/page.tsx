@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PreviewChrome } from "@/components/journeys/preview-chrome";
 import { buttonVariants } from "@/components/ui/button";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
-
-import { PreviewChrome } from "./preview-chrome";
 
 /**
  * Preview's start screen: the Journey as a participant would first see it,
@@ -32,7 +31,9 @@ export default async function PreviewStartPage({
   const draft = await getDraftForMember(projectId, journeyId, session.user.id);
   if (!draft) notFound();
 
-  const canBegin = draft.startStepId in draft.steps;
+  // Own property only: a Start pointer naming "toString" would otherwise
+  // find a prototype method and offer a Begin link into a 500.
+  const canBegin = Object.hasOwn(draft.steps, draft.startStepId);
 
   return (
     <PreviewChrome projectId={projectId} journeyId={journeyId}>

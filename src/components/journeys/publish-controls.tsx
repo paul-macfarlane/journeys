@@ -132,15 +132,19 @@ export function PublishControls({
         >
           <p className="text-sm text-destructive">{error}</p>
           {problems.length > 0 ? (
-            // role="list" is explicit: the list marker survives here, but the
-            // app's other lists say so and this one is read out as evidence.
+            // role="list" is explicit for consistency with the app's other
+            // lists, and so the labelled list is announced inside the alert.
             <ul
               role="list"
               aria-label="Publishing problems"
               className="flex list-disc flex-col gap-1 pl-5 text-sm text-destructive"
             >
+              {/* One rule can name the same Step more than once (one entry
+                  per dangling Choice), so the Choice id is part of the key. */}
               {problems.map((problem, index) => (
-                <li key={`${problem.code}-${problem.stepId ?? index}`}>
+                <li
+                  key={`${problem.code}-${problem.stepId ?? ""}-${problem.choiceId ?? index}`}
+                >
                   {problem.message}
                 </li>
               ))}

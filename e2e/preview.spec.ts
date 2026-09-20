@@ -128,7 +128,7 @@ test("preview-non-member", async ({ page, context, browser }) => {
     await strangerContext.close();
   }
 
-  // A signed-out visitor never reaches the 404: the proxy bounces them to
+  // Signed out, nobody reaches the 404: the proxy bounces the request to
   // the landing page before the route runs at all.
   const signedOutContext = await browser.newContext({ baseURL: E2E_BASE_URL });
   try {

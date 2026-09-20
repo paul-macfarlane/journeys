@@ -22,7 +22,13 @@ function EndingView({
   document: GraphDocument;
   startOverHref: string;
 }) {
-  const outcome = step.outcomeId ? document.outcomes[step.outcomeId] : null;
+  // `Object.hasOwn`, not `in` or bare indexing: the maps are plain objects
+  // parsed from JSON, so an id like "toString" would otherwise find a
+  // prototype method and read as a real Outcome.
+  const outcome =
+    step.outcomeId !== null && Object.hasOwn(document.outcomes, step.outcomeId)
+      ? document.outcomes[step.outcomeId]
+      : null;
   const outcomeLabel = outcome?.label ?? "No outcome yet";
 
   return (
@@ -62,9 +68,15 @@ export function StepView({
           startOverHref={startOverHref}
         />
       ) : (
-        <ul role="list" className="flex flex-col gap-2">
+        // role="list" is explicit: the flex layout strips the list marker, and
+        // some browsers drop the implicit role with it.
+        <ul role="list" aria-label="Choices" className="flex flex-col gap-2">
           {step.choices.map((choice) => {
-            const targetExists = choice.targetStepId in document.steps;
+            // Own property only — see the Outcome lookup above.
+            const targetExists = Object.hasOwn(
+              document.steps,
+              choice.targetStepId,
+            );
             return (
               <li key={choice.id}>
                 {targetExists ? (

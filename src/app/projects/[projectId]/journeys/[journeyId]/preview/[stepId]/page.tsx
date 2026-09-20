@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
 
+import { PreviewChrome } from "@/components/journeys/preview-chrome";
 import { StepView } from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { requireSession } from "@/lib/session";
-
-import { PreviewChrome } from "../preview-chrome";
 
 /**
  * Preview's per-Step screen: one Step of the Draft, walked exactly the way a
@@ -30,8 +29,10 @@ export default async function PreviewStepPage({
   const draft = await getDraftForMember(projectId, journeyId, session.user.id);
   if (!draft) notFound();
 
+  // Own property only: `steps` is a plain object parsed from JSON, and a
+  // URL naming "toString" must 404 rather than find a prototype method.
+  if (!Object.hasOwn(draft.steps, stepId)) notFound();
   const step = draft.steps[stepId];
-  if (!step) notFound();
 
   return (
     <PreviewChrome projectId={projectId} journeyId={journeyId}>

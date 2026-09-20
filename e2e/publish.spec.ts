@@ -186,6 +186,9 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   const restored = await readDraftDocument(journeyId);
   expect(restored[0].document).toEqual(versionOneDocument);
 
+  // Restoring read a version; it must not have written one.
+  expect(await readVersionRows(journeyId)).toEqual(afterSecondPublish);
+
   // Unpublishing takes the Journey away from participants and keeps every
   // version that was ever published.
   await page.getByRole("button", { name: "Unpublish", exact: true }).click();

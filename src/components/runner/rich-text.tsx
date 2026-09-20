@@ -65,6 +65,16 @@ function Heading({
   }
 }
 
+/**
+ * The write-path sanitizer already limits link and image URLs to absolute
+ * http(s) addresses; this is the same rule applied once more where the URL
+ * becomes an attribute, so a document that reached storage some other way
+ * still cannot render a `javascript:` link or a `data:` image.
+ */
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
 function applyMark(mark: Mark, node: ReactNode): ReactNode {
   switch (mark.type) {
     case "bold":
@@ -72,6 +82,9 @@ function applyMark(mark: Mark, node: ReactNode): ReactNode {
     case "italic":
       return <em>{node}</em>;
     case "link":
+      // A link the rule refuses keeps its text and loses its anchor, exactly
+      // as the sanitizer would have stripped it.
+      if (!isHttpUrl(mark.attrs.href)) return node;
       return (
         <a href={mark.attrs.href} rel="noopener noreferrer" target="_blank">
           {node}
@@ -126,6 +139,8 @@ function RenderBlock({ block }: { block: Block }) {
         </ol>
       );
     case "image":
+      // An image the rule refuses is dropped whole, credit included.
+      if (!isHttpUrl(block.attrs.src)) return null;
       return (
         <figure>
           {/* eslint-disable-next-line @next/next/no-img-element -- a

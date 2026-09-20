@@ -56,7 +56,7 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 - `/projects/<project-id>/journeys/<journey-id>/preview` — walks the draft
   from its start step to an ending, exactly as a participant would, and
   records nothing. Members of the project only; anyone else gets a 404, and a
-  signed-out visitor is redirected to `/`.
+  signed-out request is redirected to `/`.
 - `/j/<journey-id>` — reserved for the public participant runner (not built
   yet).
 

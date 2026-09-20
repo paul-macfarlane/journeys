@@ -71,7 +71,22 @@ export async function listVersionsForMember(
 export type PublishDraftResult =
   | { ok: true; versionNumber: number }
   | { ok: false; problems: PublishProblem[] }
+  | { ok: false; conflict: true }
   | null;
+
+/**
+ * Postgres `unique_violation`, whether the driver's error arrives bare or
+ * wrapped by Drizzle with the original as its `cause`.
+ */
+function isUniqueViolation(error: unknown): boolean {
+  const candidates = [error, (error as { cause?: unknown })?.cause];
+  return candidates.some(
+    (candidate) =>
+      typeof candidate === "object" &&
+      candidate !== null &&
+      (candidate as { code?: unknown }).code === "23505",
+  );
+}
 
 /**
  * Publishes a Journey's Draft as the next Published Version and points the
@@ -107,33 +122,41 @@ export async function publishDraft(
   const problems = validateForPublish(document);
   if (problems.length > 0) return { ok: false, problems };
 
-  return db.transaction(async (tx) => {
-    const [highest] = await tx
-      .select({ versionNumber: publishedVersion.versionNumber })
-      .from(publishedVersion)
-      .where(eq(publishedVersion.journeyId, existing.id))
-      .orderBy(desc(publishedVersion.versionNumber))
-      .limit(1);
+  try {
+    return await db.transaction(async (tx) => {
+      const [highest] = await tx
+        .select({ versionNumber: publishedVersion.versionNumber })
+        .from(publishedVersion)
+        .where(eq(publishedVersion.journeyId, existing.id))
+        .orderBy(desc(publishedVersion.versionNumber))
+        .limit(1);
 
-    const versionNumber = (highest?.versionNumber ?? 0) + 1;
+      const versionNumber = (highest?.versionNumber ?? 0) + 1;
 
-    const [created] = await tx
-      .insert(publishedVersion)
-      .values({
-        journeyId: existing.id,
-        versionNumber,
-        document,
-        publishedBy: userId,
-      })
-      .returning({ id: publishedVersion.id });
+      const [created] = await tx
+        .insert(publishedVersion)
+        .values({
+          journeyId: existing.id,
+          versionNumber,
+          document,
+          publishedBy: userId,
+        })
+        .returning({ id: publishedVersion.id });
 
-    await tx
-      .update(journey)
-      .set({ liveVersionId: created.id, updatedAt: new Date() })
-      .where(eq(journey.id, existing.id));
+      await tx
+        .update(journey)
+        .set({ liveVersionId: created.id, updatedAt: new Date() })
+        .where(eq(journey.id, existing.id));
 
-    return { ok: true, versionNumber };
-  });
+      return { ok: true, versionNumber };
+    });
+  } catch (error) {
+    // The race the unique constraint exists for: another Member published
+    // between our read of the highest number and our insert. Their version
+    // is live and complete, and this Author can look at it and try again.
+    if (isUniqueViolation(error)) return { ok: false, conflict: true };
+    throw error;
+  }
 }
 
 /**
