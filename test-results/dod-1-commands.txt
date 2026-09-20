@@ -1,15 +1,15 @@
-# DoD-1 at commit 06a9878 — 2026-09-20T19:33:34Z
+# DoD-1 (rework after PR #15 review) — 2026-09-20T22:45:22Z
 
 $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint
 
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 lint .
 > eslint
 
 exit 0
 
 $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm format:check
 
-> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 format:check .
 > prettier --check .
 
 Checking formatting...
@@ -18,48 +18,48 @@ exit 0
 
 $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm typecheck
 
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 typecheck .
 > tsc --noEmit
 
 exit 0
 
 $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test
 
-> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 test .
 > vitest run
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+ RUN  v4.1.11 .
 
 
  Test Files  6 passed (6)
-      Tests  107 passed (107)
-   Start at  15:33:39
-   Duration  289ms (transform 279ms, setup 0ms, import 510ms, tests 60ms, environment 0ms)
+      Tests  111 passed (111)
+   Start at  18:45:27
+   Duration  437ms (transform 308ms, setup 0ms, import 819ms, tests 89ms, environment 0ms)
 
 exit 0
 
 $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm build
 
-> journeys@0.1.0 build /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 build .
 > next build
 
 ▲ Next.js 16.2.10 (Turbopack)
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.3s
+✓ Compiled successfully in 4.3s
   Running TypeScript ...
-  Finished TypeScript in 3.4s ...
+  Finished TypeScript in 3.8s ...
   Collecting page data using 9 workers ...
   Generating static pages using 9 workers (0/5) ...
   Generating static pages using 9 workers (1/5) 
   Generating static pages using 9 workers (2/5) 
   Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 86ms
+✓ Generating static pages using 9 workers (5/5) in 83ms
   Finalizing page optimization ...
 
 Route (app)
