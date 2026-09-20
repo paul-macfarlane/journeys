@@ -1,6 +1,6 @@
 # 03: Graph contract, validation, and Draft
 
-Status: ai-review
+Status: ready-for-human
 Blocked by: 02
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-19
 Parent: `.scratch/journeys-platform/spec.md`
@@ -105,3 +105,33 @@ Conformity: AC-1..AC-5 conform (F5 noted); DoD-1/DoD-3 not assessable from code;
 Both axes confirmed: `package.json`/`pnpm-lock.yaml` untouched; `server-only` placement and pure `src/lib` respected; vocabulary clean; e2e conventions followed; migration 0002 additive, `ON CONFLICT DO NOTHING`, backfill shape identical to `createDraftDocument()`; cycle detection correct on self-loops, two-step loops, and merges.
 
 **Remaining risks:** (1) rollout window — between the Vercel build going live and the Migrate action finishing, Journey pages 404/500 and a Journey created then has no Draft until its first save (upsert); (2) `hardBreak` is outside the contract's allowed set, so a Shift+Enter line break in the editor will be stripped at save — a contract decision, flagged for ticket 08; (3) the graph document has no explicit Step ordering (F8).
+
+### [CLOSEOUT] 2026-09-19 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/11 (base `staging`, head `feat/03-graph-contract-validation-and-draft`). Status `in-progress` → `ai-review` → `ready-for-human`.
+
+**Repository delivery `journeys`:** base `staging` @ `09169bc`, direct checkout, no worktrees. Parallelism re-check against the real diffs: D1 (`src/lib/graph/**`, `docs/adr/`) and D2 (`src/db/**`, `drizzle/**`, `src/app/projects/**`, `src/components/journeys/**`, `e2e/**`, `README.md`) touched disjoint files; sequential was right for the dependency (D2 imports D1), not for file conflicts — a future ticket with the same shape could overlap the two only by fixing the module API up front.
+
+**Deliverables:**
+- D1 Graph contract module and ADR — atlas-worker on `opus` — `abfcaa1` (one acceptance-screen fix: `prepareDocumentForWrite`, amended in place).
+- D2 Draft persistence and journey page — atlas-worker on `opus` — `0249ab0` (accepted first pass).
+- Orchestrator: review fixes `cd1cc28`, evidence and tracker records `ed36c74`, this closeout.
+
+**Verified run command:** `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e` — all exit 0 at `cd1cc28` (80 unit tests, 15 e2e specs, `[e2e] database: journeys_e2e on localhost:5436`).
+
+**Criterion verdicts (evidence under `test-results/`, committed in `ed36c74`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 creating a Journey creates a Draft with one Start step; round-trips unchanged | PASS | `ac-1-e2e.txt` (`journey-draft`), `journey-draft/journey-draft.png`; `prepareDocumentForWrite(largeJourney)` deep-equals the fixture in `document.test.ts`; the 44-step fixture written to the `draft` row reads back deep-equal |
+| AC-2 Seam A: a failing case per publish rule incl. cycle; success on the 44-step fixture; sanitizer strips/rejects as specified | PASS | `ac-2-seam-a.txt` (80 tests: 31 document, 20 content, 17 validate, 6 env… see file) |
+| AC-3 publish-time validation as a callable operation returning structured problems | PASS | `validateForPublish` → `PublishProblem[]`; `validateDraft` + `validateDraftAction` compile (`dod-1-commands.txt` typecheck) and are covered by the validate tests |
+| AC-4 ADR-0001 with context, decision, alternatives (relational rows; event-sourced), consequences | PASS | `docs/adr/0001-graph-as-one-json-document.md` |
+| AC-5 `CONTEXT.md` terms in type and function names; no `node`/`edge` outside canvas code | PASS | `ac-5-vocabulary.txt` (only the Node.js runtime and the node-postgres driver match) |
+| DoD-1 commands green; migrations `0000`–`0002` apply to an empty database | PASS | `dod-1-commands.txt`; `dod-1-migrate-fresh.txt` (also: `0002` on a database already at `0001` holding a Journey — backfilled Draft parses with the schema and matches `createDraftDocument()`) |
+| DoD-2 every PASS artifact committed; fixture data only | PASS | this record; `test-results/` holds minted `Test Author` fixtures and the lighthouse fixture only |
+| DoD-3 staging smoke after merge | BLOCKED (human gate) | after merge: `gh run list --workflow=Migrate --branch staging` green and its log applies `0002`; Paul signs in on staging, creates a Journey, and its page lists one Start step |
+
+**Deviations:** ticket 02 claimed as a resolved blocker while still `ready-for-human` (PR #10 merged; `done` is Paul's); the proof-artifact root was not cleared (the delete was denied by the permission classifier — ticket 02's files remain, each naming `a99258f`); `hardBreak` is outside the contract's allowed set and is stripped at save (contract decision, flagged for ticket 08); review deviations F4, F5, F8, F9, F10, S6, S7, S8, S9, S12 as recorded in `[AI CODE REVIEW]`.
+
+**Human follow-ups:** (1) merge, watch the Migrate action, then the DoD-3 smoke on staging; (2) move tickets 01 and 02 (and, after the smoke, 03) to `done`; (3) the staging domain answers with a 302 to Vercel SSO — if Deployment Protection on the staging domain is unintended, disable it so post-merge smoke checks can be observed unauthenticated; (4) optionally `git rm -r` ticket 02's files from `test-results/` (or allow that command for agents); (5) your uncommitted `human-prerequisites.md` edit on this checkout is untouched — commit it when convenient. Notes for ticket 08: the document has no explicit Step order (jsonb key order shows through), and `hardBreak` is stripped.
