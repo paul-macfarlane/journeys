@@ -1,8 +1,0 @@
-# AC-4 at cff9c1c — 2026-09-20T15:13:18Z: what the Author account sees after seeding (the rows behind /projects and the Project page; signing in is Paul's manual post-check)
-
--- Member rows of the seed Project (email):
-pauljosephmacfarlane@gmail.com
--- Journeys listed under the seed Project:
-00000000-5eed-4000-8000-000000000011|Case 1|Goal: Cross the border.
-00000000-5eed-4000-8000-000000000012|Case 2|Goal: Seek healthcare for your needs before they overwhelm you, and the situation becomes life or death.
-00000000-5eed-4000-8000-000000000013|Case 3|Goal: Maintain your health condition to the best of your ability before it manifests as serious complications.
