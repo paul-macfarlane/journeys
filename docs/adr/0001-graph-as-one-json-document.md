@@ -113,9 +113,10 @@ Choices in a side panel, expecting the whole Draft saved.
 
 **Negative**
 
-- No SQL over Steps. "Which Journeys mention this phrase" or "how many Steps
-  have Prompts" means reading documents, or reaching for `jsonb` operators that
-  the schema is not designed for.
+- No relational rows for Steps. "Which Journeys mention this phrase" or "how
+  many Steps have Prompts" means reading documents or querying them with
+  `jsonb` operators and indexes, which is sufficient for the needs we can
+  foresee; nothing asks for it today.
 - Writes are whole-document and last-write-wins. Two Members editing one Draft
   at the same time will overwrite each other. Acceptable while Projects are
   small; if it stops being acceptable, the fix is per-Step patching or

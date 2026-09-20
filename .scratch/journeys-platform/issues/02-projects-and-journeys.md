@@ -1,6 +1,6 @@
 # 02: Projects and Journeys
 
-Status: ready-for-human
+Status: done
 Blocked by: 01
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-19
 Parent: `.scratch/journeys-platform/spec.md`
@@ -140,3 +140,7 @@ Implementation: D3 — a fresh atlas-worker on `opus` reworks schema (single reg
 ### [PROGRESS] 2026-09-19 — DoD-4 post-check run by the ticket 03 work package
 
 PR #10 merged to `staging` at `09169bc` on 2026-09-20T02:53Z; the `Migrate` and `CI` actions for that push both succeeded (`gh run list --branch staging`). The planned post-check `curl -s -o /dev/null -w '%{http_code}' https://staging-journeys-ten-virid.vercel.app/projects` returned **302** to `https://vercel.com/sso-api?...` — the staging domain sits behind Vercel Deployment Protection, so the signed-out 307 cannot be observed without a Vercel session. DoD-4 stays a human check: Paul signs in on staging, creates and deletes a Project. Question queued for Paul on whether protection on the staging domain is intended.
+
+### [CLOSEOUT] 2026-09-20 — moved to `done`
+
+Paul confirmed in the ticket 03 session that this ticket is done (PR merged and accepted); status set to `done` on his instruction.

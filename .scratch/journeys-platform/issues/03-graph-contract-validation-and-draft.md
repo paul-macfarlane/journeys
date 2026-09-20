@@ -1,6 +1,6 @@
 # 03: Graph contract, validation, and Draft
 
-Status: ready-for-human
+Status: done
 Blocked by: 02
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-19
 Parent: `.scratch/journeys-platform/spec.md`
@@ -135,3 +135,15 @@ Both axes confirmed: `package.json`/`pnpm-lock.yaml` untouched; `server-only` pl
 **Deviations:** ticket 02 claimed as a resolved blocker while still `ready-for-human` (PR #10 merged; `done` is Paul's); the proof-artifact root was not cleared (the delete was denied by the permission classifier — ticket 02's files remain, each naming `a99258f`); `hardBreak` is outside the contract's allowed set and is stripped at save (contract decision, flagged for ticket 08); review deviations F4, F5, F8, F9, F10, S6, S7, S8, S9, S12 as recorded in `[AI CODE REVIEW]`.
 
 **Human follow-ups:** (1) merge, watch the Migrate action, then the DoD-3 smoke on staging; (2) move tickets 01 and 02 (and, after the smoke, 03) to `done`; (3) the staging domain answers with a 302 to Vercel SSO — if Deployment Protection on the staging domain is unintended, disable it so post-merge smoke checks can be observed unauthenticated; (4) optionally `git rm -r` ticket 02's files from `test-results/` (or allow that command for agents); (5) your uncommitted `human-prerequisites.md` edit on this checkout is untouched — commit it when convenient. Notes for ticket 08: the document has no explicit Step order (jsonb key order shows through), and `hardBreak` is stripped.
+
+### [CLOSEOUT] 2026-09-20 — moved to `done`
+
+Paul confirmed in the ticket 03 session that this ticket is done (PR merged and accepted); status set to `done` on his instruction.
+
+### [PROGRESS] 2026-09-20 — Paul's decisions after the closeout
+
+- DoD-3 (staging smoke): **SKIPPED** — Paul decided post-merge checks against staging are not needed for this work package; the Migrate action's result is enough. Attempted post-check: none against the app (the domain sits behind Vercel SSO).
+- Tickets 01, 02, and this one moved to `done` on Paul's instruction; PR #11 merges once the review cycle finishes.
+- Agents are now allowed to clear old evidence from `test-results/` (`git rm -r test-results`), recorded in `.claude/settings.json`.
+- The uncommitted `human-prerequisites.md` edit (completed prerequisites ticked, local port corrected to 5436; modified 2026-09-19 19:31, not by Paul) is committed on this branch so the checkout is clean.
+- Post-hackathon hardening captured as ticket 15 (`needs-triage`): concurrent Draft writes, JSONB querying only if a need appears, `hardBreak`, explicit Step order, and other loose ends.
