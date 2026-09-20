@@ -126,12 +126,6 @@ export function PublishControls({
             </AlertDialogContent>
           </AlertDialog>
         ) : null}
-
-        <p className="text-muted-foreground text-sm">
-          {hasUnpublishedChanges
-            ? "Publish to make what is here live."
-            : "Everything here is live."}
-        </p>
       </div>
 
       {error ? (
