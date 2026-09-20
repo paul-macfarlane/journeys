@@ -1,0 +1,24 @@
+# AC-1 (positive) at cff9c1c — 2026-09-20T15:13:18Z: seed against the local dev database where the Author account exists
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm seed:journey-stories pauljosephmacfarlane@gmail.com
+
+> journeys@0.1.0 seed:journey-stories /Users/paulmacfarlane/Code/journeys
+> tsx scripts/seed/journey-stories.ts pauljosephmacfarlane@gmail.com
+
+Database: localhost:5436
+Case 1: 46 steps, 69 choices, 6 endings, 4 outcomes
+Case 2: 64 steps, 102 choices, 9 endings, 5 outcomes
+Case 3: 36 steps, 50 choices, 6 endings, 3 outcomes
+Project: Journey Stories (00000000-5eed-4000-8000-000000000001)
+Member: pauljosephmacfarlane@gmail.com
+exit=0
+
+-- stored Drafts: journey | title | steps | endings | endings without a defined outcome | start exists --
+00000000-5eed-4000-8000-000000000011|Case 1|46|6|0|t
+00000000-5eed-4000-8000-000000000012|Case 2|64|9|0|t
+00000000-5eed-4000-8000-000000000013|Case 3|36|6|0|t
+
+-- the stored documents deep-equal the committed ones, key order aside (jsonb reorders object keys); validateForPublish over them is Seam A, ac-3-seam-a.txt:
+case-1: true
+case-2: true
+case-3: true

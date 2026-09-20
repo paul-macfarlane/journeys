@@ -1,0 +1,19 @@
+# DoD-1 e2e at d8a2d17 — 2026-09-20T15:01:46Z
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+
+> journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
+> playwright test
+
+◇ injected env (7) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+[WebServer] ⨯ Another next dev server is already running.
+[WebServer] 
+[WebServer] - Local:        http://localhost:3000
+[WebServer] - PID:          53593
+[WebServer] - Dir:          /Users/paulmacfarlane/Code/journeys
+[WebServer] - Log:          .next/dev/logs/next-development.log
+[WebServer] 
+[WebServer] Run kill 53593 to stop it.
+Error: Process from config.webServer was not able to start. Exit code: 1
+
+ ELIFECYCLE  Command failed with exit code 1.
+exit=1
