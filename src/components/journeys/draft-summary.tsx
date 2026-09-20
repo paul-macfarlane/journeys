@@ -5,6 +5,10 @@ import { isEnding, type GraphDocument } from "@/lib/graph/document";
  * A Draft at a glance: how much of a Journey there is, and what shape it is
  * in. Read-only — the editor that changes any of it arrives with ticket 08 —
  * so this renders the Draft it is handed and nothing more.
+ *
+ * The heading says "Steps", not "Draft": to an Author this is simply the
+ * Journey's content, and whether it is live or ahead of the live version is
+ * what the publish controls above say.
  */
 
 /** "1 step", "44 steps": the count and the noun that agrees with it. */
@@ -22,7 +26,7 @@ export function DraftSummary({ draft }: { draft: GraphDocument }) {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-medium tracking-tight">Draft</h2>
+        <h2 className="text-lg font-medium tracking-tight">Steps</h2>
         <p className="text-muted-foreground text-sm">{summary}</p>
       </div>
 

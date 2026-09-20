@@ -68,27 +68,40 @@ export async function listVersionsForMember(
   }));
 }
 
+/** What participants see of a version: its title, description, and graph. */
+export type LiveVersion = {
+  title: string;
+  description: string;
+  document: GraphDocument;
+};
+
 /**
- * The document participants are walking right now, or null when the Journey
+ * The version participants are walking right now, or null when the Journey
  * has no live version — and null for a non-Member too, which callers have
  * already answered with a 404 by the time they ask this.
  */
-export async function getLiveVersionDocument(
+export async function getLiveVersion(
   projectId: string,
   journeyId: string,
   userId: string,
-): Promise<GraphDocument | null> {
+): Promise<LiveVersion | null> {
   const existing = await getJourneyForMember(projectId, journeyId, userId);
   if (!existing) return null;
 
   const [row] = await db
-    .select({ document: publishedVersion.document })
+    .select({
+      title: publishedVersion.title,
+      description: publishedVersion.description,
+      document: publishedVersion.document,
+    })
     .from(journey)
     .innerJoin(publishedVersion, eq(publishedVersion.id, journey.liveVersionId))
     .where(eq(journey.id, existing.id))
     .limit(1);
 
-  return row ? graphDocumentSchema.parse(row.document) : null;
+  return row
+    ? { ...row, document: graphDocumentSchema.parse(row.document) }
+    : null;
 }
 
 export type PublishDraftResult =
@@ -161,6 +174,10 @@ export async function publishDraft(
         .values({
           journeyId: existing.id,
           versionNumber,
+          // The title and description as they read at this moment, so a
+          // later rename is the next version's, not this one's.
+          title: existing.title,
+          description: existing.description,
           document,
           publishedBy: userId,
         })

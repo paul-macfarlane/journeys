@@ -208,6 +208,13 @@ export const publishedVersion = pgTable(
       .notNull()
       .references(() => journey.id, { onDelete: "cascade" }),
     versionNumber: integer("version_number").notNull(),
+    // The title and description participants saw with this version. They
+    // live on the Journey row for editing and are copied here at publish
+    // time, so renaming a Journey never changes what is live until the next
+    // publish. Defaulted so a build older than migration 0004 can still
+    // insert; that migration backfills the rows it finds from the Journey.
+    title: text("title").notNull().default(""),
+    description: text("description").notNull().default(""),
     document: jsonb("document").$type<GraphDocument>().notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true })
       .notNull()

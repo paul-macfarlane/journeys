@@ -39,7 +39,10 @@ export function PublishControls({
   projectId: string;
   journeyId: string;
   publishState: PublishState;
-  /** False only while the live version's document matches the Draft. */
+  /**
+   * False only while the live version matches what is here: the Draft's
+   * document and the Journey's title and description.
+   */
   hasUnpublishedChanges: boolean;
 }) {
   const router = useRouter();
@@ -126,8 +129,8 @@ export function PublishControls({
 
         <p className="text-muted-foreground text-sm">
           {hasUnpublishedChanges
-            ? "Publishing snapshots the draft as it stands now."
-            : "The live version already matches the draft."}
+            ? "Publish to make what is here live."
+            : "Everything here is live."}
         </p>
       </div>
 

@@ -35,7 +35,12 @@ test.afterAll(async () => {
 });
 
 type DocumentRow = { document: unknown };
-type VersionRow = { id: string; version_number: number; document: unknown };
+type VersionRow = {
+  id: string;
+  version_number: number;
+  description: string;
+  document: unknown;
+};
 
 function readDraftDocument(journeyId: string): Promise<DocumentRow[]> {
   return queryE2eDatabase<DocumentRow>(
@@ -46,7 +51,7 @@ function readDraftDocument(journeyId: string): Promise<DocumentRow[]> {
 
 function readVersionRows(journeyId: string): Promise<VersionRow[]> {
   return queryE2eDatabase<VersionRow>(
-    'SELECT id, version_number, document FROM "published_version" WHERE journey_id = $1 ORDER BY version_number',
+    'SELECT id, version_number, description, document FROM "published_version" WHERE journey_id = $1 ORDER BY version_number',
     [journeyId],
   );
 }
@@ -95,6 +100,7 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   const projectTitle = `Refugee Health ${suffix}`;
   const journeyTitle = `Border Crossing ${suffix}`;
   const editedStartTitle = "Border post at night";
+  const editedDescription = "A family waits for the night crossing.";
 
   await page.goto("/projects");
   const projectId = await createProject(page, projectTitle);
@@ -119,10 +125,21 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await expect(versionOne.getByText(`by ${author.name}`)).toBeVisible();
   await expect(versionOne.locator("time")).toHaveCount(1);
 
-  // Nothing to publish while the live version matches the Draft.
+  // Nothing to publish while the live version matches the Draft, the title,
+  // and the description.
   await expect(
     page.getByRole("button", { name: "Publish", exact: true }),
   ).toBeDisabled();
+
+  // A description edit is something participants have not seen, so it is
+  // enough on its own to make Publish available again.
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Description").fill(editedDescription);
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Publish", exact: true }),
+  ).toBeEnabled();
 
   // The badge is the derived state, on the Journey page and in the Project's
   // list alike.
@@ -176,6 +193,9 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   expect(afterSecondPublish).toHaveLength(2);
   expect(afterSecondPublish[0].document).toEqual(versionOneDocument);
   expect(afterSecondPublish[1].document).toEqual(edited);
+  // The description went out with version 2 and left version 1's alone.
+  expect(afterSecondPublish[0].description).toBe("");
+  expect(afterSecondPublish[1].description).toBe(editedDescription);
 
   // Restoring asks first, and changes nothing until it is answered.
   await versionOne.getByRole("button", { name: "Restore" }).click();
