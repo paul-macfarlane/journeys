@@ -54,7 +54,8 @@ test("project-create", async ({ page, context }) => {
 
   await createProject(page, title);
 
-  // Listed for its creator, as a link to the slug derived from the title.
+  // Listed for the Author who created it, as a link to the slug derived
+  // from the title.
   const projectLink = page.getByRole("link").filter({ hasText: title });
   await expect(projectLink).toHaveAttribute("href", `/projects/${slug}`);
 
@@ -76,9 +77,13 @@ test("project-non-member", async ({ page, context, browser }) => {
   const suffix = uniqueSuffix();
   const title = `Clinic Access ${suffix}`;
   const slug = `clinic-access-${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeySlug = `border-crossing-${suffix}`;
 
   await page.goto("/projects");
   await createProject(page, title);
+  await page.goto(`/projects/${slug}`);
+  await createJourney(page, journeyTitle);
 
   // A second Author, in a browser context of their own, so nothing of the
   // first Author's session leaks across.
@@ -94,6 +99,14 @@ test("project-non-member", async ({ page, context, browser }) => {
     // existed, and no sign of the Project's title anywhere on it.
     expect(response?.status()).toBe(404);
     await expect(strangerPage.getByText(title)).toHaveCount(0);
+
+    // The Journey inside it is just as invisible: its slug is globally
+    // unique, so the page must not be reachable through the Project URL.
+    const journeyResponse = await strangerPage.goto(
+      `/projects/${slug}/journeys/${journeySlug}`,
+    );
+    expect(journeyResponse?.status()).toBe(404);
+    await expect(strangerPage.getByText(journeyTitle)).toHaveCount(0);
 
     await strangerPage.screenshot({
       path: "test-results/project-non-member/project-non-member.png",
@@ -131,8 +144,14 @@ test("project-rename", async ({ page, context }) => {
   await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
   await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${slug}`);
 
-  // Editing the slug moves the Project to a new URL.
+  // "Regenerate from title" proposes the slug the new title would get; the
+  // Author still chooses whether to keep it.
   await page.getByRole("button", { name: "Rename" }).click();
+  await expect(page.getByLabel("Slug")).toHaveValue(slug);
+  await page.getByRole("button", { name: "Regenerate from title" }).click();
+  await expect(page.getByLabel("Slug")).toHaveValue(renamedSlug);
+
+  // Editing the slug moves the Project to a new URL.
   await page.getByLabel("Slug").fill(renamedSlug);
   await page.getByRole("button", { name: "Save changes" }).click();
 

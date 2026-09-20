@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getProjectForMember } from "@/lib/projects";
+import { firstIssue, type ActionResult } from "@/lib/action-result";
 import { SlugTakenError } from "@/lib/db-errors";
 import { createJourney, deleteJourney, updateJourney } from "@/lib/journeys";
+import { getProjectForMember } from "@/lib/projects";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,
@@ -16,19 +17,11 @@ import {
  * `@/app/projects/actions`.
  *
  * Each one is a public endpoint, so each re-reads the session and re-parses
- * its input rather than trusting the form that called it. They return a
- * result the dialog can render inline; navigation stays on the client, which
- * is the side that knows whether it is sitting on a URL the slug just moved
- * out from under.
+ * its input rather than trusting the form that called it. They return an
+ * `ActionResult` the dialog can render inline.
  */
 
-export type JourneyActionResult =
-  { ok: true; slug: string } | { ok: false; error: string };
-
-/** Surfaces the first schema complaint in the dialog's error slot. */
-function firstIssue(issues: { message: string }[]): string {
-  return issues[0]?.message ?? "That doesn't look right";
-}
+export type JourneyActionResult = ActionResult;
 
 function revalidateJourneyPaths() {
   revalidatePath("/projects/[projectSlug]", "page");

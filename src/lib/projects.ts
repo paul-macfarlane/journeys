@@ -16,12 +16,6 @@ import { slugify, uniqueSlug } from "@/lib/slug";
  * from one that never existed.
  */
 
-// Re-exported so existing callers (`src/app/projects/actions.ts`) keep
-// importing `SlugTakenError` from here; `src/lib/journeys.ts` imports the
-// same class straight from `@/lib/db-errors` instead, since it has no other
-// reason to depend on this module.
-export { SLUG_TAKEN_MESSAGE, SlugTakenError } from "@/lib/db-errors";
-
 export type ProjectSummary = {
   id: string;
   title: string;
@@ -45,7 +39,7 @@ async function isSlugTaken(slug: string): Promise<boolean> {
 }
 
 /** Every Project the Author is a Member of, newest first. */
-export async function listProjectsForUser(
+export async function listProjectsForAuthor(
   userId: string,
 ): Promise<ProjectSummary[]> {
   return db
@@ -57,7 +51,7 @@ export async function listProjectsForUser(
 }
 
 /**
- * Creates a Project with its creator as the first Member. Both rows in one
+ * Creates a Project with the creating Author as its first Member. Both rows in one
  * transaction: a Project with no Members could never be opened again, and
  * the database refuses to let one lose its last Member anyway.
  */

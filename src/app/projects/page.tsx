@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { listProjectsForUser } from "@/lib/projects";
+import { listProjectsForAuthor } from "@/lib/projects";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export default async function ProjectsPage() {
   const session = await requireSession();
-  const projects = await listProjectsForUser(session.user.id);
+  const projects = await listProjectsForAuthor(session.user.id);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">

@@ -2,12 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  createProject,
-  deleteProject,
-  renameProject,
-  SlugTakenError,
-} from "@/lib/projects";
+import { firstIssue, type ActionResult } from "@/lib/action-result";
+import { SlugTakenError } from "@/lib/db-errors";
+import { createProject, deleteProject, renameProject } from "@/lib/projects";
 import { requireSession } from "@/lib/session";
 import {
   createProjectSchema,
@@ -18,19 +15,11 @@ import {
  * Server actions behind the Project dialogs.
  *
  * Each one is a public endpoint, so each re-reads the session and re-parses
- * its input rather than trusting the form that called it. They return a
- * result the dialog can render inline; navigation stays on the client, which
- * is the side that knows whether it is sitting on a URL the slug just moved
- * out from under.
+ * its input rather than trusting the form that called it. They return an
+ * `ActionResult` the dialog can render inline.
  */
 
-export type ProjectActionResult =
-  { ok: true; slug: string } | { ok: false; error: string };
-
-/** Surfaces the first schema complaint in the dialog's error slot. */
-function firstIssue(issues: { message: string }[]): string {
-  return issues[0]?.message ?? "That doesn't look right";
-}
+export type ProjectActionResult = ActionResult;
 
 export async function createProjectAction(
   input: unknown,

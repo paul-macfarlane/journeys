@@ -45,6 +45,9 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 - `/projects/<project-slug>/journeys/<journey-slug>` — one journey: edit its
   title, slug, and description, or delete it. Members of the project only;
   anyone else gets a 404.
+- `/j/<journey-slug>` — reserved for the public participant runner (not
+  built yet); the journey page already shows it as the journey's future
+  address.
 
 ## Commands
 
