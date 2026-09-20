@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { renameProjectAction } from "@/app/projects/actions";
+import { editProjectAction } from "@/app/projects/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,16 +21,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { slugify } from "@/lib/slug";
 import {
-  renameProjectSchema,
-  type RenameProjectInput,
+  editProjectSchema,
+  type EditProjectInput,
 } from "@/lib/validation/project";
 
 /**
- * Renaming carries the slug alongside the title, prefilled with the current
+ * Editing carries the slug alongside the title, prefilled with the current
  * one: a new title on its own never moves the Project's URL, and the Author
  * has to either edit the slug or ask for it to be regenerated.
  */
-export function RenameProjectDialog({
+export function EditProjectDialog({
   title,
   slug,
 }: {
@@ -41,14 +41,14 @@ export function RenameProjectDialog({
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const form = useForm<RenameProjectInput>({
-    resolver: zodResolver(renameProjectSchema),
+  const form = useForm<EditProjectInput>({
+    resolver: zodResolver(editProjectSchema),
     defaultValues: { title, slug },
   });
 
-  async function onSubmit(values: RenameProjectInput) {
+  async function onSubmit(values: EditProjectInput) {
     setServerError(null);
-    const result = await renameProjectAction(slug, values);
+    const result = await editProjectAction(slug, values);
 
     if (!result.ok) {
       setServerError(result.error);
@@ -73,16 +73,14 @@ export function RenameProjectDialog({
         form.reset({ title, slug });
       }}
     >
-      <DialogTrigger render={<Button variant="outline" />}>
-        Rename
-      </DialogTrigger>
+      <DialogTrigger render={<Button variant="outline" />}>Edit</DialogTrigger>
       <DialogContent>
         <form
           className="flex flex-col gap-4"
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <DialogHeader>
-            <DialogTitle>Rename project</DialogTitle>
+            <DialogTitle>Edit project</DialogTitle>
             <DialogDescription>
               The slug is this project&apos;s address. Changing it moves the
               project to a new URL.

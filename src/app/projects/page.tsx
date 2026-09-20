@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { listProjectsForAuthor } from "@/lib/projects";
+import { listProjectsForAuthor } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = {

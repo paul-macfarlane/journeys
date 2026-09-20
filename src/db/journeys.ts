@@ -1,14 +1,17 @@
+// Database access only — `server-only` so a client import fails the build.
+// Pure logic (slugs, validation) lives under src/lib and stays importable
+// from both sides.
 import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { journey, member, project } from "@/db/schema";
-import { isUniqueViolation, SlugTakenError } from "@/lib/db-errors";
+import { isUniqueViolation, SlugTakenError } from "@/db/errors";
 import { slugify, uniqueSlug } from "@/lib/slug";
 
 /**
- * Data access for Journeys, mirroring `@/lib/projects`.
+ * Data access for Journeys, mirroring `@/db/projects`.
  *
  * A Journey belongs to a Project, so its authorization rides on the same
  * Project membership: every read and write here re-checks it against the

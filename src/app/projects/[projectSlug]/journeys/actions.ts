@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
-import { SlugTakenError } from "@/lib/db-errors";
-import { createJourney, deleteJourney, updateJourney } from "@/lib/journeys";
-import { getProjectForMember } from "@/lib/projects";
+import { SlugTakenError } from "@/db/errors";
+import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
+import { getProjectForMember } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,

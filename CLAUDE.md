@@ -40,8 +40,8 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `.scratch/<feature-slug>/` — Committed specs, decisions, and ticket files (local markdown tracker)
 - `src/app/` — Next.js 16 App Router routes, layouts, and the better-auth route handler
 - `src/components/` — shadcn/ui primitives and app components
-- `src/db/` — Drizzle schema and database client (Neon in deployments, `pg` locally)
-- `src/lib/` — Shared server and client helpers, including startup env validation
+- `src/db/` — Drizzle schema, database client (Neon in deployments, `pg` locally), and per-table data access (`projects.ts`, `journeys.ts`); every file here is `server-only`
+- `src/lib/` — Pure, database-free helpers shared by server and client (slugs, zod schemas, action results) plus startup env validation
 - `drizzle/` — Committed Drizzle migrations; applied by CI and the Migrate workflow, never by Vercel builds
 - `e2e/` — Playwright specs plus setup that provisions the dedicated `journeys_e2e` database and server on port 3100
 - `test-results/` — Committed proof artifacts: one directory per e2e test name plus captured command output

@@ -20,13 +20,13 @@ export const createProjectSchema = z.object({
 });
 
 /**
- * Renaming carries the slug too: it is prefilled with the current one, so a
+ * Editing carries the slug too: it is prefilled with the current one, so a
  * new title alone never moves the Project's URL.
  */
-export const renameProjectSchema = z.object({
+export const editProjectSchema = z.object({
   title: projectTitleSchema,
   slug: slugSchema,
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
-export type RenameProjectInput = z.infer<typeof renameProjectSchema>;
+export type EditProjectInput = z.infer<typeof editProjectSchema>;

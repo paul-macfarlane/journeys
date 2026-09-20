@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
 import { NewJourneyDialog } from "@/components/journeys/new-journey-dialog";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
-import { RenameProjectDialog } from "@/components/projects/rename-project-dialog";
+import { EditProjectDialog } from "@/components/projects/edit-project-dialog";
 import {
   Card,
   CardContent,
@@ -12,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { listJourneysForProject } from "@/lib/journeys";
-import { getProjectForMember } from "@/lib/projects";
+import { listJourneysForProject } from "@/db/journeys";
+import { getProjectForMember } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 
 export default async function ProjectPage({
@@ -52,7 +52,7 @@ export default async function ProjectPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <RenameProjectDialog title={project.title} slug={project.slug} />
+          <EditProjectDialog title={project.title} slug={project.slug} />
           <DeleteProjectDialog title={project.title} slug={project.slug} />
         </div>
       </header>

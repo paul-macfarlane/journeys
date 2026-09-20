@@ -136,7 +136,7 @@ test("project-rename", async ({ page, context }) => {
   await page.goto(`/projects/${slug}`);
 
   // A new title on its own leaves the slug — and so the URL — alone.
-  await page.getByRole("button", { name: "Rename" }).click();
+  await page.getByRole("button", { name: "Edit" }).click();
   await page.getByLabel("Title").fill(renamedTitle);
   await page.getByRole("button", { name: "Save changes" }).click();
 
@@ -146,7 +146,7 @@ test("project-rename", async ({ page, context }) => {
 
   // "Regenerate from title" proposes the slug the new title would get; the
   // Author still chooses whether to keep it.
-  await page.getByRole("button", { name: "Rename" }).click();
+  await page.getByRole("button", { name: "Edit" }).click();
   await expect(page.getByLabel("Slug")).toHaveValue(slug);
   await page.getByRole("button", { name: "Regenerate from title" }).click();
   await expect(page.getByLabel("Slug")).toHaveValue(renamedSlug);
@@ -159,7 +159,7 @@ test("project-rename", async ({ page, context }) => {
   await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
 
   // A slug another Project already holds is refused, in words.
-  await page.getByRole("button", { name: "Rename" }).click();
+  await page.getByRole("button", { name: "Edit" }).click();
   await page.getByLabel("Slug").fill(otherSlug);
   await page.getByRole("button", { name: "Save changes" }).click();
 

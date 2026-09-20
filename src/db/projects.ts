@@ -1,10 +1,13 @@
+// Database access only — `server-only` so a client import fails the build.
+// Pure logic (slugs, validation) lives under src/lib and stays importable
+// from both sides.
 import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { member, project } from "@/db/schema";
-import { isUniqueViolation, SlugTakenError } from "@/lib/db-errors";
+import { isUniqueViolation, SlugTakenError } from "@/db/errors";
 import { slugify, uniqueSlug } from "@/lib/slug";
 
 /**
@@ -99,10 +102,10 @@ export async function getProjectForMember(
 }
 
 /**
- * Renames a Project, and moves its slug when the Author changed it. Returns
- * null when the Author is not a Member of `currentSlug`.
+ * Edits a Project's title and slug, moving its URL when the slug changed.
+ * Returns null when the Author is not a Member of `currentSlug`.
  */
-export async function renameProject(
+export async function editProject(
   currentSlug: string,
   input: { title: string; slug: string },
   userId: string,

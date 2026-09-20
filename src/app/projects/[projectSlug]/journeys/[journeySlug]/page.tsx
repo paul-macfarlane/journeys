@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getJourneyForMember } from "@/lib/journeys";
+import { getJourneyForMember } from "@/db/journeys";
 import { requireSession } from "@/lib/session";
 
 export default async function JourneyPage({

@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
-import { SlugTakenError } from "@/lib/db-errors";
-import { createProject, deleteProject, renameProject } from "@/lib/projects";
+import { SlugTakenError } from "@/db/errors";
+import { createProject, deleteProject, editProject } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 import {
   createProjectSchema,
-  renameProjectSchema,
+  editProjectSchema,
 } from "@/lib/validation/project";
 
 /**
@@ -43,19 +43,19 @@ export async function createProjectAction(
   }
 }
 
-export async function renameProjectAction(
+export async function editProjectAction(
   currentSlug: string,
   input: unknown,
 ): Promise<ProjectActionResult> {
   const session = await requireSession();
 
-  const parsed = renameProjectSchema.safeParse(input);
+  const parsed = editProjectSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
   try {
-    const renamed = await renameProject(
+    const renamed = await editProject(
       currentSlug,
       parsed.data,
       session.user.id,
