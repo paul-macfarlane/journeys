@@ -10,8 +10,11 @@ live with the consequence.
 Next.js 16 App Router · TypeScript · Tailwind v4 + shadcn/ui · Drizzle ·
 Neon Postgres (Docker locally) · Better Auth · Vitest + Playwright · Vercel.
 
-Domain vocabulary is in [`CONTEXT.md`](CONTEXT.md). Architecture decision
-records will live in `docs/adr/` from the first recorded decision onward.
+Domain vocabulary is in [`CONTEXT.md`](CONTEXT.md). Architecture decisions are
+recorded in `docs/adr/`: by
+[ADR-0001](docs/adr/0001-graph-as-one-json-document.md), each draft and each
+published version is one validated JSON graph document, whose shape lives in
+`src/lib/graph/` rather than in the database.
 
 ## Local setup
 
@@ -43,8 +46,9 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   journeys inside it, with a dialog to create one. Members only; anyone else
   gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
-  title and description, or delete it. Members of the project only; anyone
-  else gets a 404.
+  title and description, delete it, and see its draft — the steps it holds,
+  which is the start, which are endings (editing arrives later). Members of
+  the project only; anyone else gets a 404.
 - `/j/<journey-id>` — reserved for the public participant runner (not built
   yet).
 

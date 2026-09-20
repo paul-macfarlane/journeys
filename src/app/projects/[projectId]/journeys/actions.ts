@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
+import { saveDraft, validateDraft } from "@/db/drafts";
 import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
+import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,
@@ -87,4 +89,51 @@ export async function deleteJourneyAction(
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId };
+}
+
+/**
+ * A failed save carries the Step whose rich text was refused when there is
+ * one, so the editor can take the Author to it rather than only saying no.
+ */
+export type SaveDraftActionResult =
+  { ok: true; id: string } | { ok: false; error: string; stepId?: string };
+
+/** Stores a Journey's whole Draft document. */
+export async function saveDraftAction(
+  projectId: string,
+  journeyId: string,
+  input: unknown,
+): Promise<SaveDraftActionResult> {
+  const session = await requireSession();
+
+  const saved = await saveDraft(projectId, journeyId, input, session.user.id);
+  // Not a Member (or no such Journey/Project): same answer as the page's
+  // 404.
+  if (!saved) return { ok: false, error: "That journey no longer exists" };
+  if (!saved.ok) return { ok: false, error: saved.error, stepId: saved.stepId };
+
+  revalidateJourneyPaths();
+  return { ok: true, id: journeyId };
+}
+
+export type ValidateDraftActionResult =
+  { ok: true; problems: PublishProblem[] } | { ok: false; error: string };
+
+/**
+ * Publish-time validation of a Journey's Draft as it stands, as something a
+ * caller can ask for: an empty problem list means the Draft could be
+ * published. Nothing in the UI calls this yet — ticket 08's editor is what
+ * shows the problems, and ticket 05's publish is what refuses on them — but
+ * the operation exists and is authorized now rather than later.
+ */
+export async function validateDraftAction(
+  projectId: string,
+  journeyId: string,
+): Promise<ValidateDraftActionResult> {
+  const session = await requireSession();
+
+  const problems = await validateDraft(projectId, journeyId, session.user.id);
+  if (!problems) return { ok: false, error: "That journey no longer exists" };
+
+  return { ok: true, problems };
 }

@@ -1,7 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { expect, test } from "@playwright/test";
 
-import { expect, test, type Page } from "@playwright/test";
-
+import {
+  createJourney,
+  createProject,
+  ID_PATTERN,
+  uniqueSuffix,
+} from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
@@ -19,67 +23,6 @@ test.afterAll(async () => {
   await cleanup(mintedAuthorIds);
   await closePools();
 });
-
-/**
- * The e2e database is shared across runs, so every title carries a suffix
- * that keeps a spec's list filtering exact. Hex only, so a title never
- * accidentally reads as another run's.
- */
-function uniqueSuffix(): string {
-  return randomUUID().replace(/-/g, "").slice(0, 8);
-}
-
-/** The shape of a `crypto.randomUUID()` id, which is every address now. */
-const ID_PATTERN = "[0-9a-f-]{36}";
-
-/**
- * A Project and a Journey are addressed by their id, and a spec cannot know
- * one before the app hands it back: every id here is read out of the href
- * the page rendered.
- */
-function idFromHref(href: string | null, prefix: string): string {
-  const value = href ?? "";
-  expect(value).toMatch(new RegExp(`^${prefix}${ID_PATTERN}$`));
-  return value.slice(prefix.length);
-}
-
-async function createProject(page: Page, title: string): Promise<string> {
-  await page.getByRole("button", { name: "New project" }).click();
-  await page.getByLabel("Title").fill(title);
-  await page.getByRole("button", { name: "Create project" }).click();
-
-  await expect(page.getByRole("dialog")).toBeHidden();
-  const item = page.getByRole("listitem").filter({ hasText: title });
-  await expect(item).toHaveCount(1);
-
-  return idFromHref(
-    await item.getByRole("link").getAttribute("href"),
-    "/projects/",
-  );
-}
-
-async function createJourney(
-  page: Page,
-  projectId: string,
-  title: string,
-  description = "",
-): Promise<string> {
-  await page.getByRole("button", { name: "New journey" }).click();
-  await page.getByLabel("Title").fill(title);
-  if (description) {
-    await page.getByLabel("Description").fill(description);
-  }
-  await page.getByRole("button", { name: "Create journey" }).click();
-
-  await expect(page.getByRole("dialog")).toBeHidden();
-  const item = page.getByRole("listitem").filter({ hasText: title });
-  await expect(item).toHaveCount(1);
-
-  return idFromHref(
-    await item.getByRole("link").getAttribute("href"),
-    `/projects/${projectId}/journeys/`,
-  );
-}
 
 test("project-create", async ({ page, context }) => {
   const author = await signInAs(context);

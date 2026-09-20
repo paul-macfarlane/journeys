@@ -37,6 +37,10 @@
     ]
   },
   "permissions": {
+    "allow": [
+      "Bash(git rm -r test-results*)",
+      "Bash(git rm -r --quiet test-results*)"
+    ],
     "ask": [
       "Edit(CLAUDE.md)",
       "Bash(git worktree remove*)",
