@@ -1,44 +1,5 @@
-# DoD-1 — verified run command at cd1cc28 (local: docker journeys-db postgres:18 on 5436; e2e against journeys_e2e on port 3100)
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
-
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
-> eslint
-
-lint EXIT=0
-
-> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
-> prettier --check .
-
-Checking formatting...
-All matched files use Prettier code style!
-format:check EXIT=0
-
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
-> tsc --noEmit
-
-typecheck EXIT=0
-> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
-> vitest run
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
- Test Files  4 passed (4)
-      Tests  80 passed (80)
-   Start at  23:51:09
-   Duration  235ms (transform 198ms, setup 0ms, import 419ms, tests 41ms, environment 0ms)
-test EXIT=0
-▲ Next.js 16.2.10 (Turbopack)
-✓ Compiled successfully in 3.6s
-✓ Generating static pages using 9 workers (5/5) in 332ms
-Route (app)
-┌ ƒ /
-├ ○ /_not-found
-├ ƒ /api/auth/[...all]
-├ ƒ /projects
-├ ƒ /projects/[projectId]
-├ ƒ /projects/[projectId]/journeys/[journeyId]
-└ ƒ /sign-in
-○  (Static)   prerendered as static content
-build EXIT=0
-
+# AC-1 — Seam B e2e at cd1cc28: test journey-draft (create Journey → one Start step → row parses → 44-step fixture written to the row → page shows it → row reads back deep-equal); screenshot test-results/journey-draft/journey-draft.png
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
 > journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
 > playwright test
 
@@ -70,4 +31,3 @@ Running 15 tests using 5 workers
 
   15 passed (16.7s)
 test:e2e EXIT=0
-verify.sh done

@@ -1,34 +1,104 @@
-# DoD-1 — committed migrations applied to an empty database at a99258f
-$ createdb journeys_verify (empty) && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_verify pnpm db:migrate
+# DoD-1 — migrations at 0249ab0: (a) 0002 applied on top of a database already at 0001 holding a Journey (staging's situation); (b) 0000–0002 applied to an empty database
+# Target: docker journeys-db (postgres:18) on 5436
+## (a) journeys_verify: at migrations 0000, 0001 from the ticket 02 probe; seed a Project + Member + Journey BEFORE 0002
+$ psql journeys_verify
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ draft_table_before 
+--------------------
+ 
+(1 row)
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_verify pnpm db:migrate
 
 > journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys
 > drizzle-kit migrate
 
 No config path provided, using default 'drizzle.config.ts'
 Reading config file '/Users/paulmacfarlane/Code/journeys/drizzle.config.ts'
+◇ injected env (7) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
 Using 'pg' driver for database querying
-[⣷] applying migrations...[✓] migrations applied successfully!
-$ psql journeys_verify: tables, applied migrations, trigger
+[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!EXIT=0
+$ psql journeys_verify: applied migrations, backfilled draft row
+ journeys 
+----------
+        1
+(1 row)
+
+ journey_id |  doc   | start_is_only_step 
+------------+--------+--------------------
+ j2         | object | t
+(1 row)
+
+$ psql -Atc "SELECT document FROM draft WHERE journey_id = 'j2'" | pnpm exec tsx parse-draft.ts   (pure @/lib/graph, no server-only)
+backfilled draft parses with graphDocumentSchema: true; steps=1; startStepId is the only step: true; title=Start; same keys as createDraftDocument(): true; publish problems: ["ending-without-outcome"]
+EXIT=0
+$ psql journeys_verify: deleting the Journey cascades its Draft
+DELETE 1
+ drafts_after_journey_delete 
+-----------------------------
+                           0
+(1 row)
+
+## (b) journeys_verify_fresh: empty database
+$ psql postgres -c "CREATE DATABASE journeys_verify_fresh"
+CREATE DATABASE
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_verify_fresh pnpm db:migrate
+
+> journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/Users/paulmacfarlane/Code/journeys/drizzle.config.ts'
+◇ injected env (7) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!EXIT=0
+$ psql journeys_verify_fresh: tables, applied migrations, draft count
               List of tables
  Schema |     Name     | Type  |  Owner   
 --------+--------------+-------+----------
  public | account      | table | postgres
+ public | draft        | table | postgres
  public | journey      | table | postgres
  public | member       | table | postgres
  public | project      | table | postgres
  public | session      | table | postgres
  public | user         | table | postgres
  public | verification | table | postgres
-(7 rows)
+(8 rows)
 
+ drafts 
+--------
+      0
+(1 row)
+
+
+## applied migrations per database (drizzle-kit records them in drizzle.__drizzle_migrations)
+$ psql journeys_verify -c "SELECT id, created_at FROM drizzle.__drizzle_migrations ORDER BY id"
  id |  created_at   
 ----+---------------
   1 | 1789840167187
   2 | 1789868229363
-(2 rows)
+  3 | 1789875349522
+(3 rows)
 
-              tgname              
-----------------------------------
- member_project_keeps_last_member
-(1 row)
+$ psql journeys_verify_fresh -c "SELECT id, created_at FROM drizzle.__drizzle_migrations ORDER BY id"
+ id |  created_at   
+----+---------------
+  1 | 1789840167187
+  2 | 1789868229363
+  3 | 1789875349522
+(3 rows)
 
+$ cat drizzle/meta/_journal.json | grep -E "tag|when"
+      "when": 1789840167187,
+      "tag": "0000_outgoing_excalibur",
+      "when": 1789868229363,
+      "tag": "0001_tiny_maddog",
+      "when": 1789875349522,
+      "tag": "0002_ambiguous_doctor_spectrum",
+
+## final commit
+$ git diff 0249ab0..cd1cc28 --stat -- drizzle src/db/schema.ts   (migrations and schema unchanged since this probe ran at 0249ab0; the review-fix commit touched neither)
+(empty)
