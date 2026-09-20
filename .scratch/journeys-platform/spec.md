@@ -256,3 +256,7 @@ Participant state or variables (Choices that set values later Steps read); condi
 **Legacy facts that shaped this spec.** The live site's journeys have 36–64 steps and 6–9 endings; most steps are linear with a single "Next"; a minority branch two or three ways; there is no participant input anywhere; step bodies contain headings, lists, italics, and about twenty Creative Commons images with credit lines. The legacy repository is private and unreadable by agents; the live site is the only content source.
 
 **Demo.** Author creates a small journey on the canvas, publishes v1, a participant on a phone completes it via QR code, the author shows the run on the canvas overlay, edits and publishes v2, and shows the run still pinned to v1 — then opens the seeded case-3 journey to show the platform holding real-sized content.
+
+### [SCOPE CHANGE] 2026-09-19 — slugs dropped (approved by Paul during PR #10 review)
+
+Amends "Domain model", "Public URL and runner", and "Public pages and discovery": Project and Journey have **no slug**. Every route uses the id: Author routes `/projects/{project-id}` and `/projects/{project-id}/journeys/{journey-id}`; public `/j/{journey-id}` and `/p/{project-id}`. "Slug editable until first publish and frozen afterward" no longer applies. Reason: Authors should only think about the title, and an id path parameter needs no syncing with it; readable links are traded away (QR codes are unaffected). Recorded in ticket 02's [SCOPE CHANGE]; tickets 05, 06, 07 carry a pointer.

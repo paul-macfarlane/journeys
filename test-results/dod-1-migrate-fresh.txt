@@ -1,4 +1,4 @@
-# DoD-1 — committed migrations applied to an empty database at 7c39e44
+# DoD-1 — committed migrations applied to an empty database at a99258f
 $ createdb journeys_verify (empty) && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_verify pnpm db:migrate
 
 > journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys
@@ -8,7 +8,7 @@ No config path provided, using default 'drizzle.config.ts'
 Reading config file '/Users/paulmacfarlane/Code/journeys/drizzle.config.ts'
 Using 'pg' driver for database querying
 [⣷] applying migrations...[✓] migrations applied successfully!
-$ psql journeys_verify -c '\dt' and applied migrations
+$ psql journeys_verify: tables, applied migrations, trigger
               List of tables
  Schema |     Name     | Type  |  Owner   
 --------+--------------+-------+----------
@@ -24,9 +24,8 @@ $ psql journeys_verify -c '\dt' and applied migrations
  id |  created_at   
 ----+---------------
   1 | 1789840167187
-  2 | 1789862137447
-  3 | 1789862911155
-(3 rows)
+  2 | 1789868229363
+(2 rows)
 
               tgname              
 ----------------------------------

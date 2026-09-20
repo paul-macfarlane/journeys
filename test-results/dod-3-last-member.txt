@@ -1,13 +1,13 @@
-# DoD-3 — a Project cannot lose its last Member (trigger from drizzle/0001) at 7c39e44
-# Target: docker journeys-db (postgres:18), database journeys_verify freshly migrated (0000, 0001, 0002) — see dod-1-migrate-fresh.txt
+# DoD-3 — a Project cannot lose its last Member (trigger from drizzle/0001) at a99258f
+# Target: docker journeys-db (postgres:18), database journeys_verify freshly migrated (0000, 0001) — see dod-1-migrate-fresh.txt
 $ psql journeys_verify
 INSERT INTO "user" (id, name, email) VALUES ('u1', 'Author One', 'one@example.com'), ('u2', 'Author Two', 'two@example.com');
 INSERT 0 2
-INSERT INTO project (id, title, slug) VALUES ('p1', 'Refugee Health', 'refugee-health');
+INSERT INTO project (id, title) VALUES ('p1', 'Refugee Health');
 INSERT 0 1
 INSERT INTO member (project_id, user_id) VALUES ('p1', 'u1'), ('p1', 'u2');
 INSERT 0 2
-INSERT INTO journey (id, project_id, title, slug) VALUES ('j1', 'p1', 'Border Crossing', 'border-crossing');
+INSERT INTO journey (id, project_id, title) VALUES ('j1', 'p1', 'Border Crossing');
 INSERT 0 1
 DELETE FROM member WHERE project_id = 'p1' AND user_id = 'u2';
 DELETE 1

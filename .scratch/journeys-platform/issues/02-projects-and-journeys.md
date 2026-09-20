@@ -10,10 +10,10 @@ Parent: `.scratch/journeys-platform/spec.md`
 Slugs are globally unique and auto-generated from the title; Journey slugs are editable until first publish (no publish exists yet, so editable throughout this ticket). Deleting is a hard delete after confirmation. A Project cannot lose its last Member (enforced here even though removing Members arrives in ticket 13). Member `role` column exists, defaults to `member`, is never read.
 
 - [ ] Author creates a Project; it appears in their projects list; non-Members cannot open it (404 or forbidden, consistently).
-- [ ] Author renames a Project and its slug regenerates only if they choose to change it; slug uniqueness is enforced with a clear error.
+- [ ] Author renames a Project. *(Amended 2026-09-19: slugs dropped — see [SCOPE CHANGE].)*
 - [ ] Author deletes a Project after confirmation; it and its Journeys are gone.
-- [ ] Author creates a Journey with title, description, auto slug; the Project page lists Journeys with state "never published".
-- [ ] Author renames a Journey, edits its description and slug; deletes it after confirmation.
+- [ ] Author creates a Journey with title and description; the Project page lists Journeys with state "never published". *(Amended 2026-09-19: no slug.)*
+- [ ] Author renames a Journey and edits its description; deletes it after confirmation. *(Amended 2026-09-19: no slug.)*
 - [ ] Seam B: an e2e spec covers create Project → create Journey → rename → delete.
 
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`.
@@ -125,3 +125,14 @@ Remaining risks: the last-Member trigger refuses deleting a `user` who is a sole
 - `renameProject` / `renameProjectAction` / `RenameProjectDialog` renamed to `editProject` / `editProjectAction` / `EditProjectDialog`; the button reads "Edit", matching the Journey dialog.
 - Verified run command rerun at `7c39e44`, all exit 0; evidence under `test-results/` refreshed from that run (migrate-fresh and trigger evidence unchanged in substance; `drizzle/` and `src/db/schema.ts` untouched by the refactor).
 - Open question from Paul on whether slugs should be Author-editable at all (AC-2/AC-5 wording) — awaiting his decision; see the conversation.
+
+### [SCOPE CHANGE] 2026-09-19 — slugs dropped, ids everywhere (approved by Paul)
+
+Paul's PR #10 review: a user-editable slug is more than an Author should have to think about, and there is no strong reason to keep a slug in sync with a title when the id can be the path parameter. Decision (Paul, 2026-09-19, option "drop slugs, use ids everywhere" chosen over keeping hidden slugs): Projects and Journeys have no slug column; Author routes are `/projects/[projectId]` and `/projects/[projectId]/journeys/[journeyId]`; the public runner URL (ticket 06) becomes `/j/{journey-id}` and the public Project page (ticket 07) `/p/{project-id}`; ticket 05's "slug frozen at first publish" rule is void. Traded away: readable shareable links. AC-2, AC-4, and AC-5 above are amended in place with a marker; `spec.md` and `decisions.md` carry the same amendment in their Comments/Amendments sections, and tickets 05, 06, 07 carry a pointer.
+
+Implementation: D3 — a fresh atlas-worker on `opus` reworks schema (single regenerated migration `0001`, since nothing on this branch is deployed), data access, actions, routes, dialogs, e2e, and README; the orchestrator re-verifies and refreshes the evidence.
+
+### [PROGRESS] 2026-09-19 — D3 integrated (slugs dropped)
+
+- D3 — atlas-worker on `opus` — `a99258f`: single regenerated migration `0001_tiny_maddog.sql` (project, member, journey, trigger; no slug columns), routes `/projects/[projectId]` and `/projects/[projectId]/journeys/[journeyId]`, title-only Project edit, title+description Journey edit, `src/lib/slug*` and `src/db/errors.ts` removed, e2e reads ids from link hrefs. Local `journeys` and `journeys_e2e` were reset (domain tables dropped, migration rows > 1 removed, re-migrated); better-auth tables and Paul's sign-in rows untouched. `staging` has only migration `0000`, so no deployed database needs reconciling.
+- Verified run command rerun at `a99258f`: lint, format:check, typecheck, 6 unit tests, build, 14 e2e specs all green; fresh-database migrate and DoD-3 trigger probe rerun and evidence refreshed under `test-results/`.
