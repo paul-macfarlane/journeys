@@ -1,6 +1,6 @@
 # 05: Publish, Preview, Unpublish, versions, and restore
 
-Status: in-progress
+Status: ai-review
 Blocked by: 03
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-20
 Parent: `.scratch/journeys-platform/spec.md`
@@ -62,3 +62,41 @@ Paul decided during PR #10 review that Projects and Journeys have no slug: every
 | DoD-3 | read `drizzle/0003_*.sql`: only `CREATE TABLE`, `ADD COLUMN` (nullable), and constraints; `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm db:migrate` against the dev database, which already runs the previously deployed schema | local; docker Postgres `journeys` | additive; migrate exits 0 | `test-results/dod-3-migration.txt` | after D1 | changes under `drizzle/`, `src/db/schema.ts` |
 
 Human gates: none. The only deployed step — the Migrate action on merge — is automatic.
+
+### [PROGRESS] 2026-09-20 — D1 and D2 integrated; aggregate review started
+
+D1 (publish, unpublish, version list, restore, derived publish state) — atlas-worker on `opus` — `10d22af`, accepted after the orchestrator's screen. The worker found and fixed a Drizzle quirk on the way: an interpolated column inside a join-free query renders unqualified, so the correlated version count compared two columns of the inner table and silently read 0 (a Journey with two versions showed "Never published" in the Project list); the count is now a grouped query shared by both Journey reads. D2 (Preview through minimal runner components) — atlas-worker on `sonnet` — `c65d286`, accepted. Candidate evidence: the screenshots under `test-results/` from both workers' e2e runs in this checkout (17, then 19 specs green) and `test-results/dod-3-migration.txt` captured by the orchestrator. Status `in-progress` → `ai-review`. Queued, non-blocking question for Paul: Preview's rich text is rendered by a hand-written React renderer over the sanitized closed schema because Tiptap is not installed and lockfile commits are human-only; the spec names Tiptap's renderer, and ticket 08 may swap in `@tiptap/html` when it adds the editor's dependencies.
+
+### [AI CODE REVIEW] 2026-09-20 — aggregate review of `184d179..c65d286`, fixes in `06a9878`
+
+Two fresh reviewers (one per axis, `opus`, read-only) read the whole diff against the fixed base with the ticket, its `[SCOPE CHANGE]` and `[EXECUTION PLAN]`, the spec's Publishing / Domain model / Testing Decisions sections, `CONTEXT.md`, ADR-0001, and `docs/agents/testing.md`; the orchestrator adjudicated every candidate from the cited hunks and applied the fixes inline in `06a9878`. **No blocking findings on either axis.**
+
+**Axis 1 — technical implementation and spec conformity** (6 candidates)
+
+| # | Severity | Paths | Disposition |
+|---|---|---|---|
+| T1 PASS evidence not yet committed; `dod-1-*.txt` not yet captured | non-blocking (closeout work) | `test-results/` | resolved by the evidence commit at closeout — captured once, after the review fixes, at the verified commit |
+| T2 Step and Outcome ids looked up with bare indexing / `in`, so an id such as `toString` finds a prototype method (Preview 500 instead of 404; a dangling Choice rendered as a link) | non-blocking | preview routes, `step-view.tsx` | resolved: `Object.hasOwn` in all three places; the same pattern in `src/lib/graph/validate.ts` predates this ticket and is noted as a follow-up |
+| T3 the concurrent-publish unique violation the plan relies on surfaced as an unhandled rejection with no message | non-blocking | `versions.ts`, `actions.ts` | resolved: `publishDraft` catches `23505` (bare or as `cause`) and the action returns a worded error |
+| T4 DoD-3's stated justification was wrong in the forward direction (the new build does read the new column and table) | non-blocking | `dod-3-migration.txt`, this ticket | resolved: the migration is additive and safe against the previously deployed code, which is the requirement; if the build wins the race with the Migrate action there is a brief error window inherent to the deploy model |
+| T5 AC-2's e2e proved version rows unchanged after publishing v2 but not after restoring v1 | non-blocking | `e2e/publish.spec.ts` | resolved: assertion added |
+| T6 the renderer trusted the http(s) rule the write path enforces; a document stored some other way could render a `javascript:` link | non-blocking | `rich-text.tsx` | resolved: scheme re-checked at render; non-http links keep their text, non-http images are dropped; unit test added |
+
+Conformity: AC-1, AC-3, AC-4, AC-5, AC-7 conform; AC-2 conforms with T5 applied; AC-6 superseded by the `[SCOPE CHANGE]`; DoD-1/DoD-2 rest on the evidence captured at aggregate verification; DoD-3 conforms with T4's wording corrected.
+
+**Axis 2 — coding standards** (8 candidates)
+
+| # | Severity | Paths | Disposition |
+|---|---|---|---|
+| S1 stale "ticket 05 is what will act on that" on `validateDraft` | non-blocking | `drafts.ts` | resolved |
+| S2 `saveDraft` docstring claimed to be the only Draft writer; `restoreVersion` is a second | non-blocking | `drafts.ts` | resolved: docstring names it and why it needs no re-sanitizing |
+| S3 three tiny fixture builders duplicated from `large-journey.ts` | non-blocking | `e2e/setup/documents.ts` | deviation approved: the execution plan placed the spec-owned fixture there deliberately (readable ids); kept |
+| S4 `preview-chrome.tsx` was the only non-route file under `src/app/` | non-blocking | preview routes | resolved: moved to `src/components/journeys/preview-chrome.tsx` |
+| S5 `role="list"` comment gave a reason that did not apply | non-blocking | `publish-controls.tsx` | resolved |
+| S6 problem-list React keys collide for two dangling Choices on one Step | non-blocking | `publish-controls.tsx` | resolved: Choice id in the key |
+| S7 "visitor" is on the `CONTEXT.md` avoid list | non-blocking | `README.md`, `e2e/preview.spec.ts` | resolved |
+| S8 Choices list lacked the convention's comment and an `aria-label` | non-blocking | `step-view.tsx` | resolved: `aria-label="Choices"` |
+
+Both axes confirmed: `src/db/versions.ts` is `server-only`; `src/lib/publish-state.ts` touches no database; the migration is generated, additive, and matches its snapshot; lockfile untouched; e2e signs in by minting a session; screenshots follow `test-results/<test-name>/<test-name>.png`; fixture journeys only.
+
+**Remaining risks (not findings):** the Journey page now makes about six queries, most re-checking membership and counting versions — fine at this scale; `restoreVersion` does not bump `journey.updated_at`; publish snapshots the zod-parsed document, so defaults (`allowBack`, `condition`, `effect`) are materialized for Drafts written by the 0002 backfill or the seed; no named test deletes a published Journey (the cascade is exercised only by e2e cleanup); no test covers a version id of another Journey (the guard exists); republishing an unchanged Draft creates an identical next version.

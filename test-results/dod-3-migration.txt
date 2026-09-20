@@ -1,0 +1,43 @@
+$ cat drizzle/0003_loose_energizer.sql
+CREATE TABLE "published_version" (
+	"id" text PRIMARY KEY NOT NULL,
+	"journey_id" text NOT NULL,
+	"version_number" integer NOT NULL,
+	"document" jsonb NOT NULL,
+	"published_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"published_by" text,
+	CONSTRAINT "published_version_journey_id_version_number_unique" UNIQUE("journey_id","version_number")
+);
+--> statement-breakpoint
+ALTER TABLE "journey" ADD COLUMN "live_version_id" text;--> statement-breakpoint
+ALTER TABLE "published_version" ADD CONSTRAINT "published_version_journey_id_journey_id_fk" FOREIGN KEY ("journey_id") REFERENCES "public"."journey"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "published_version" ADD CONSTRAINT "published_version_published_by_user_id_fk" FOREIGN KEY ("published_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "journey" ADD CONSTRAINT "journey_live_version_id_published_version_id_fk" FOREIGN KEY ("live_version_id") REFERENCES "public"."published_version"("id") ON DELETE set null ON UPDATE no action;
+
+# Review: CREATE TABLE, one nullable ADD COLUMN, three constraints. The migration is additive, so it is safe against the previously deployed code (the CLAUDE.md requirement). The new build does read both objects, so if the Vercel build wins its race with the Migrate action there is a brief window of errors on the two authoring pages; that window is inherent to the deploy model, not to this migration.
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm db:migrate
+# (first applied to the dev database journeys by the D1 worker at 10d22af; this rerun is the idempotent confirmation)
+
+> journeys@0.1.0 db:migrate .
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file './drizzle.config.ts'
+◇ injected env (7) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!exit 0
+
+$ psql-equivalent: columns of published_version and journey.live_version_id on the dev database
+    table_name     |   column_name   |        data_type         | is_nullable 
+-------------------+-----------------+--------------------------+-------------
+ journey           | live_version_id | text                     | YES
+ published_version | id              | text                     | NO
+ published_version | journey_id      | text                     | NO
+ published_version | version_number  | integer                  | NO
+ published_version | document        | jsonb                    | NO
+ published_version | published_at    | timestamp with time zone | NO
+ published_version | published_by    | text                     | YES
+(7 rows)
+
+exit 0

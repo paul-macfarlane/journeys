@@ -1,0 +1,82 @@
+# DoD-1 at commit 06a9878 — 2026-09-20T19:33:34Z
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint
+
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> eslint
+
+exit 0
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm format:check
+
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+exit 0
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm typecheck
+
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> tsc --noEmit
+
+exit 0
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test
+
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+
+ Test Files  6 passed (6)
+      Tests  107 passed (107)
+   Start at  15:33:39
+   Duration  289ms (transform 279ms, setup 0ms, import 510ms, tests 60ms, environment 0ms)
+
+exit 0
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm build
+
+> journeys@0.1.0 build /Users/paulmacfarlane/Code/journeys
+> next build
+
+▲ Next.js 16.2.10 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.3s
+  Running TypeScript ...
+  Finished TypeScript in 3.4s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/5) ...
+  Generating static pages using 9 workers (1/5) 
+  Generating static pages using 9 workers (2/5) 
+  Generating static pages using 9 workers (3/5) 
+✓ Generating static pages using 9 workers (5/5) in 86ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth/[...all]
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+└ ƒ /sign-in
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+exit 0
