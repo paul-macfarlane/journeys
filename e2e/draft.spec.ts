@@ -62,7 +62,7 @@ test("journey-draft", async ({ page, context }) => {
   );
 
   // A Journey that was only just created already has a Draft to show.
-  await expect(page.getByRole("heading", { name: "Draft" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Steps" })).toBeVisible();
   await expect(page.getByText("1 step · 0 outcomes")).toBeVisible();
 
   const stepItems = page

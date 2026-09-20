@@ -1,16 +1,19 @@
 // Drizzle schema. The first four tables are Better Auth's own, managed
 // through its Drizzle adapter — column names and types are the adapter's
 // contract, not ours, so nothing there is extended. Journeys' own domain
-// tables follow, each landing with its ticket; Project, Member, Journey and
-// Draft are here, and Published Version, Run and Response follow later.
+// tables follow, each landing with its ticket; Project, Member, Journey,
+// Draft and Published Version are here, and Run and Response follow later.
 
 import {
   boolean,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  unique,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 import type { GraphDocument } from "@/lib/graph/document";
@@ -135,10 +138,11 @@ export const member = pgTable(
 // `/projects/<project-id>/journeys/<journey-id>`, and publicly at
 // `/j/<journey-id>` once ticket 06 builds the runner.
 //
-// A Journey's Draft is the `draft` row below, created with it. There is no
-// live-version pointer yet: publish state is derived, not stored, and ticket
-// 05 adds the pointer a Journey needs to have ever been published. Until then
-// every Journey reads as "Never published".
+// A Journey's Draft is the `draft` row below, created with it, and its
+// Published Versions are the `published_version` rows further down.
+// `liveVersionId` names the one live to participants: null before the first
+// publish, and null again after unpublishing, which is why publish state is
+// derived from it rather than stored (see `src/lib/publish-state.ts`).
 export const journey = pgTable("journey", {
   id: text("id")
     .primaryKey()
@@ -148,6 +152,12 @@ export const journey = pgTable("journey", {
     .references(() => project.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
+  // Circular: `published_version` points back at `journey`, so the column
+  // type is annotated (`AnyPgColumn`) for TypeScript's benefit.
+  liveVersionId: text("live_version_id").references(
+    (): AnyPgColumn => publishedVersion.id,
+    { onDelete: "set null" },
+  ),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -175,3 +185,43 @@ export const draft = pgTable("draft", {
     .notNull()
     .defaultNow(),
 });
+
+// A Published Version: an immutable snapshot of a Journey's Draft, taken the
+// moment an Author published it. Nothing ever updates one of these rows —
+// later Draft edits become the next version instead — so restoring an older
+// version copies its document back into the Draft rather than moving a
+// pointer, and unpublishing clears `journey.live_version_id` while every row
+// here stays.
+//
+// The document column holds the same graph shape the Draft does, owned by
+// `src/lib/graph/document.ts` (see ADR-0001). `published_by` goes null if the
+// account does, because a version outlives the Member who published it.
+// `(journey_id, version_number)` is unique, so two publishes racing for the
+// same number fail loudly instead of writing a duplicate.
+export const publishedVersion = pgTable(
+  "published_version",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    journeyId: text("journey_id")
+      .notNull()
+      .references(() => journey.id, { onDelete: "cascade" }),
+    versionNumber: integer("version_number").notNull(),
+    // The title and description participants saw with this version. They
+    // live on the Journey row for editing and are copied here at publish
+    // time, so renaming a Journey never changes what is live until the next
+    // publish. Defaulted so a build older than migration 0004 can still
+    // insert; that migration backfills the rows it finds from the Journey.
+    title: text("title").notNull().default(""),
+    description: text("description").notNull().default(""),
+    document: jsonb("document").$type<GraphDocument>().notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    publishedBy: text("published_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => [unique().on(table.journeyId, table.versionNumber)],
+);

@@ -68,10 +68,11 @@ export type SaveDraftResult =
 /**
  * Stores a Draft's document. The only path that accepts a document from
  * outside: `createJourney` and migration 0002's backfill write the shape
- * `createDraftDocument()` builds, and everything else comes through here, so
- * every stored document has been through `prepareDocumentForWrite` (loose
- * parse, sanitize, strict parse) and nothing reaches the column that the
- * contract would refuse to read back.
+ * `createDraftDocument()` builds, `restoreVersion` in `@/db/versions` copies
+ * back a document that already went through this path once, and everything
+ * else comes through here, so every stored document has been through
+ * `prepareDocumentForWrite` (loose parse, sanitize, strict parse) and nothing
+ * reaches the column that the contract would refuse to read back.
  *
  * Written as an upsert: a Journey created in the moment between the Vercel
  * build going live and migration 0002 running has no Draft row yet, and its
@@ -106,7 +107,7 @@ export async function saveDraft(
 /**
  * The publish-time problems with a Journey's Draft as it stands, or null when
  * the Author is not a Member. An empty list means the Draft could be
- * published; ticket 05 is what will act on that.
+ * published; `publishDraft` in `@/db/versions` is what refuses on them.
  */
 export async function validateDraft(
   projectId: string,

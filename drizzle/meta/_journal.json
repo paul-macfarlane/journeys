@@ -22,6 +22,20 @@
       "when": 1789875349522,
       "tag": "0002_ambiguous_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789930980630,
+      "tag": "0003_loose_energizer",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789945631599,
+      "tag": "0004_massive_khan",
+      "breakpoints": true
     }
   ]
 }

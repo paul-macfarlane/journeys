@@ -1,0 +1,43 @@
+# AC-5: nothing exists that Preview could record into. Queried after the e2e run that walked Preview (e2e/preview.spec.ts asserts the same against journeys_e2e).
+
+$ docker exec journeys-db psql -U postgres -d journeys_e2e -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
+    table_name     
+-------------------
+ account
+ draft
+ journey
+ member
+ project
+ published_version
+ session
+ user
+ verification
+(9 rows)
+
+$ ... WHERE table_name IN ('run','response')
+ run_or_response_tables 
+------------------------
+                      0
+(1 row)
+
+
+$ docker exec journeys-db psql -U postgres -d journeys -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
+    table_name     
+-------------------
+ account
+ draft
+ journey
+ member
+ project
+ published_version
+ session
+ user
+ verification
+(9 rows)
+
+$ ... WHERE table_name IN ('run','response')
+ run_or_response_tables 
+------------------------
+                      0
+(1 row)
+

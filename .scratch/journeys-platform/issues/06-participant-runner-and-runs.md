@@ -23,3 +23,7 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 ### [SCOPE CHANGE] 2026-09-19 — slugs dropped (see ticket 02)
 
 Paul decided during PR #10 review that Projects and Journeys have no slug: every path parameter is the id. Read every "slug" in this ticket as the id (`/j/{journey-id}`, `/p/{project-id}`), and drop any "slug frozen at first publish" behavior. Recorded in ticket 02's [SCOPE CHANGE] and the spec's Comments.
+
+### Note 2026-09-20 — from ticket 05's rework
+
+A Published Version now carries its own `title` and `description` (`published_version.title`, `.description`, snapshotted at publish). The runner's start screen and step pages must read those from the pinned version, never from the `journey` row, so a rename after publish does not change a live or in-progress Run.

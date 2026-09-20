@@ -82,7 +82,7 @@ export default async function ProjectPage({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium">{journey.title}</span>
-                    <JourneyStatusBadge />
+                    <JourneyStatusBadge publishState={journey.publishState} />
                   </div>
                   {journey.description ? (
                     <p className="text-muted-foreground text-sm">

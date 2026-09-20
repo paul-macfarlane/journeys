@@ -55,7 +55,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - Vercel builds never run migrations. The `Migrate` GitHub Action applies Drizzle migrations on push to `staging` and `main`, and it starts alongside the Vercel build with no ordering guarantee, so every migration must stay compatible with the previously deployed code.
 - There are no pull-request preview deployments: Vercel's Ignored Build Step skips every branch except `staging` and `main`. Deployed verification happens on the staging domain after a PR merges.
 - `pnpm test:e2e` provisions its own `journeys_e2e` database and starts its own Next server on port 3100; it never reuses `pnpm dev` or the dev database. Specs sign in by minting a real better-auth session, never by driving OAuth or mocking better-auth.
-- Never commit `pnpm-lock.yaml` from an agent session; lockfile commits are human-only.
+- Agents may run `pnpm add`, but the Atlas plugin's commit-time secret scrub refuses any agent `git commit` whose staged diff holds a 40+ character token, which every `pnpm-lock.yaml` integrity hash is; the lockfile commit is therefore Paul's, from his own terminal, until that hook gains a lockfile allowlist.
 - The legacy `paul-macfarlane/journey` repository is a private read-only reference (a local clone lives at `~/Code/journey`). Its three cases were converted once from `src/data/cases/*.json` into the committed documents under `scripts/seed/journey-stories/`, which are now the source of truth; seed with `pnpm seed:journey-stories <email>`. Do not scrape the live site and do not import Twine.
 - Never place participant Responses or real run data in proof artifacts; use seeded or fixture journeys.
 

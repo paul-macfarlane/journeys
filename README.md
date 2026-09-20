@@ -47,8 +47,16 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
   title and description, delete it, and see its draft — the steps it holds,
-  which is the start, which are endings (editing arrives later). Members of
-  the project only; anyone else gets a 404.
+  which is the start, which are endings (editing arrives later). Publish the
+  draft as an immutable version (refused, with the problems listed, while the
+  draft has any), unpublish to take it back from participants, preview it, and
+  see every published version — number, when, and who published it — with the
+  live one marked and any of them restorable into the draft. Members of the
+  project only; anyone else gets a 404.
+- `/projects/<project-id>/journeys/<journey-id>/preview` — walks the draft
+  from its start step to an ending, exactly as a participant would, and
+  records nothing. Members of the project only; anyone else gets a 404, and a
+  signed-out request is redirected to `/`.
 - `/j/<journey-id>` — reserved for the public participant runner (not built
   yet).
 

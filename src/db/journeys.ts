@@ -3,11 +3,12 @@
 // from both sides.
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
-import { draft, journey, member, project } from "@/db/schema";
+import { draft, journey, member, project, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
+import { publishStateOf, type PublishState } from "@/lib/publish-state";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
@@ -17,14 +18,16 @@ import { createDraftDocument } from "@/lib/graph/document";
  * signed-in Author, and an Author who is not a Member of the Journey's
  * Project cannot tell an existing Journey from one that never existed.
  *
- * There is no publish state column: every Journey reads as "Never
- * published" until ticket 05 adds the live-version pointer that changes it.
+ * Publish state is not a column: it is derived from the live-version
+ * pointer and the count of Published Versions, so a Journey can never be
+ * marked published while pointing at nothing (see `@/lib/publish-state`).
  */
 
 export type JourneySummary = {
   id: string;
   title: string;
   description: string;
+  publishState: PublishState;
 };
 
 const journeyColumns = {
@@ -33,15 +36,67 @@ const journeyColumns = {
   description: journey.description,
 };
 
+/** The Journey itself plus the live pointer publish state is derived from. */
+const journeyStateColumns = {
+  ...journeyColumns,
+  liveVersionId: journey.liveVersionId,
+};
+
+/**
+ * How many Published Versions each of these Journeys has, as its own
+ * grouped query rather than a correlated subquery inside the Journey select:
+ * Drizzle renders an interpolated column unqualified when the surrounding
+ * query joins nothing, which turns `published_version.journey_id =
+ * journey.id` into a comparison of two columns of the inner table — legal
+ * SQL that silently counts zero. Grouping keeps it one round trip for a
+ * whole Project.
+ */
+async function countVersionsByJourney(
+  journeyIds: string[],
+): Promise<Map<string, number>> {
+  if (journeyIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      journeyId: publishedVersion.journeyId,
+      versionCount: count(),
+    })
+    .from(publishedVersion)
+    .where(inArray(publishedVersion.journeyId, journeyIds))
+    .groupBy(publishedVersion.journeyId);
+
+  return new Map(rows.map((row) => [row.journeyId, row.versionCount]));
+}
+
+function toSummary(
+  row: {
+    id: string;
+    title: string;
+    description: string;
+    liveVersionId: string | null;
+  },
+  versionCount: number,
+): JourneySummary {
+  const { liveVersionId, ...rest } = row;
+  return {
+    ...rest,
+    publishState: publishStateOf({ liveVersionId, versionCount }),
+  };
+}
+
 /** Every Journey in the Project, newest first. */
 export async function listJourneysForProject(
   projectId: string,
 ): Promise<JourneySummary[]> {
-  return db
-    .select(journeyColumns)
+  const rows = await db
+    .select(journeyStateColumns)
     .from(journey)
     .where(eq(journey.projectId, projectId))
     .orderBy(desc(journey.createdAt));
+
+  const versionCounts = await countVersionsByJourney(rows.map((row) => row.id));
+
+  return rows.map((row) => toSummary(row, versionCounts.get(row.id) ?? 0));
 }
 
 /**
@@ -71,7 +126,9 @@ export async function createJourney(
       .insert(draft)
       .values({ journeyId: created.id, document: createDraftDocument() });
 
-    return created;
+    // A Journey that has just come into being has no Published Version and
+    // no live pointer, so its state is not worth a second query.
+    return { ...created, publishState: "never-published" as const };
   });
 }
 
@@ -87,7 +144,7 @@ export async function getJourneyForMember(
   userId: string,
 ): Promise<JourneySummary | null> {
   const [row] = await db
-    .select(journeyColumns)
+    .select(journeyStateColumns)
     .from(journey)
     .innerJoin(project, eq(project.id, journey.projectId))
     .innerJoin(member, eq(member.projectId, project.id))
@@ -100,7 +157,10 @@ export async function getJourneyForMember(
     )
     .limit(1);
 
-  return row ?? null;
+  if (!row) return null;
+
+  const versionCounts = await countVersionsByJourney([row.id]);
+  return toSummary(row, versionCounts.get(row.id) ?? 0);
 }
 
 /**
@@ -127,7 +187,9 @@ export async function updateJourney(
     .where(eq(journey.id, existing.id))
     .returning(journeyColumns);
 
-  return updated ?? null;
+  // A title and a description are all this changes; publish state is
+  // whatever the membership check already read.
+  return updated ? { ...updated, publishState: existing.publishState } : null;
 }
 
 /**

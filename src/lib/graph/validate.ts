@@ -36,6 +36,19 @@ function nameOf(step: Step): string {
   return step.title.trim().length > 0 ? step.title : step.id;
 }
 
+/**
+ * Own properties only. The maps are plain objects parsed from JSON, so an id
+ * such as "toString" or "constructor" would otherwise find a prototype
+ * method and count as a Step or Outcome that exists.
+ */
+function hasStep(document: GraphDocument, stepId: string): boolean {
+  return Object.hasOwn(document.steps, stepId);
+}
+
+function hasOutcome(document: GraphDocument, outcomeId: string): boolean {
+  return Object.hasOwn(document.outcomes, outcomeId);
+}
+
 /** Every Step a participant could arrive at, walking out from the Start. */
 function reachableFrom(document: GraphDocument, startStepId: string) {
   const reached = new Set<string>();
@@ -46,10 +59,10 @@ function reachableFrom(document: GraphDocument, startStepId: string) {
     if (stepId === undefined || reached.has(stepId)) {
       continue;
     }
-    const step = document.steps[stepId];
-    if (step === undefined) {
+    if (!hasStep(document, stepId)) {
       continue;
     }
+    const step = document.steps[stepId];
     reached.add(stepId);
     for (const choice of step.choices) {
       pending.push(choice.targetStepId);
@@ -66,7 +79,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
   // `startStepId` is a single pointer, so "more than one Start" cannot be
   // written down; "exactly one Start" is therefore just "the pointer names a
   // Step that exists".
-  const startExists = document.steps[document.startStepId] !== undefined;
+  const startExists = hasStep(document, document.startStepId);
   if (!startExists) {
     // No `stepId`: the pointer names nothing, so there is no Step to select.
     problems.push({
@@ -77,7 +90,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
 
   for (const [stepId, step] of entries) {
     for (const choice of step.choices) {
-      if (document.steps[choice.targetStepId] === undefined) {
+      if (!hasStep(document, choice.targetStepId)) {
         problems.push({
           code: "dangling-choice-target",
           message: `Step "${nameOf(step)}" has a choice pointing at a step that no longer exists`,
@@ -117,7 +130,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
       });
       continue;
     }
-    if (document.outcomes[step.outcomeId] === undefined) {
+    if (!hasOutcome(document, step.outcomeId)) {
       problems.push({
         code: "unknown-outcome",
         message: `Ending "${nameOf(step)}" is tagged with an outcome that no longer exists`,
@@ -131,7 +144,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
   // does not exist is dangling, not a loop.
   for (const [stepId, step] of entries) {
     for (const choice of step.choices) {
-      if (document.steps[choice.targetStepId] === undefined) {
+      if (!hasStep(document, choice.targetStepId)) {
         continue;
       }
       if (reachableFrom(document, choice.targetStepId).has(stepId)) {
