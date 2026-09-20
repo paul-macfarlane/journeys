@@ -198,3 +198,13 @@ public URLs, custom theme editor, manual canvas layout.
   public `/j/{journey-id}` and `/p/{project-id}`. Authors edit a title (and
   a Journey description), never an address. Supersedes every "slug" line
   above and the "slug frozen at first publish" rule.
+
+## Amendment after PR #13 review (2026-09-20, decided by Paul)
+
+- Seeding: no scraper. The local clone of the legacy repo (`~/Code/journey`,
+  `src/data/cases/case-{1,2,3}.json`) is converted once into three graph
+  documents committed as static JSON; a small idempotent seed command inserts
+  all three cases into one `Journey Stories` Project. No e2e coverage for the
+  seed; one pure validation test over the committed documents. Supersedes
+  "Seeding real content" above and the "Seed scraper" wording in the priority
+  order.

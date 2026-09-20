@@ -40,10 +40,11 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `.scratch/<feature-slug>/` — Committed specs, decisions, and ticket files (local markdown tracker)
 - `src/app/` — Next.js 16 App Router routes, layouts, and the better-auth route handler
 - `src/components/` — shadcn/ui primitives and app components
-- `src/db/` — Drizzle schema, database client (Neon in deployments, `pg` locally), and per-table data access (`projects.ts`, `journeys.ts`); every file here is `server-only`
+- `src/db/` — Drizzle schema, database client (Neon in deployments, `pg` locally), and per-table data access (`projects.ts`, `journeys.ts`); every file here except `schema.ts` is `server-only`
 - `src/lib/` — Pure, database-free helpers shared by server and client (zod schemas, action results) plus startup env validation
 - `drizzle/` — Committed Drizzle migrations; applied by CI and the Migrate workflow, never by Vercel builds
 - `e2e/` — Playwright specs plus setup that provisions the dedicated `journeys_e2e` database and server on port 3100
+- `scripts/` — Development-only commands run with `tsx` (`seed/journey-stories.ts` plus the three committed legacy graph documents beside it); imports `@/db/schema` and `src/lib/graph` only, never a `server-only` module
 - `test-results/` — Committed proof artifacts: one directory per e2e test name plus captured command output
 - `.github/workflows/` — CI (lint, format, typecheck, migrate, unit, build, e2e) and Migrate (per-branch Drizzle migrations)
 
@@ -55,7 +56,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - There are no pull-request preview deployments: Vercel's Ignored Build Step skips every branch except `staging` and `main`. Deployed verification happens on the staging domain after a PR merges.
 - `pnpm test:e2e` provisions its own `journeys_e2e` database and starts its own Next server on port 3100; it never reuses `pnpm dev` or the dev database. Specs sign in by minting a real better-auth session, never by driving OAuth or mocking better-auth.
 - Never commit `pnpm-lock.yaml` from an agent session; lockfile commits are human-only.
-- The legacy `paul-macfarlane/journey` repository is a private read-only reference; seed real content by scraping the live site, not by importing Twine.
+- The legacy `paul-macfarlane/journey` repository is a private read-only reference (a local clone lives at `~/Code/journey`). Its three cases were converted once from `src/data/cases/*.json` into the committed documents under `scripts/seed/journey-stories/`, which are now the source of truth; seed with `pnpm seed:journey-stories <email>`. Do not scrape the live site and do not import Twine.
 - Never place participant Responses or real run data in proof artifacts; use seeded or fixture journeys.
 
 ## Atlas repository workflow

@@ -1,4 +1,4 @@
-# DoD-1 static checks at 3fdae5b — 2026-09-20T05:46:19Z
+# DoD-1 static checks at cff9c1c — 2026-09-20T15:12:53Z
 
 $ pnpm lint
 
@@ -35,10 +35,10 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
 
 
- Test Files  7 passed (7)
-      Tests  114 passed (114)
-   Start at  01:46:26
-   Duration  405ms (transform 664ms, setup 0ms, import 1.13s, tests 60ms, environment 1ms)
+ Test Files  4 passed (4)
+      Tests  98 passed (98)
+   Start at  11:12:57
+   Duration  257ms (transform 202ms, setup 0ms, import 418ms, tests 48ms, environment 0ms)
 
 exit=0
 
@@ -51,15 +51,15 @@ $ pnpm build
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 4.9s
+✓ Compiled successfully in 3.1s
   Running TypeScript ...
-  Finished TypeScript in 5.6s ...
+  Finished TypeScript in 3.1s ...
   Collecting page data using 9 workers ...
   Generating static pages using 9 workers (0/5) ...
   Generating static pages using 9 workers (1/5) 
   Generating static pages using 9 workers (2/5) 
   Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 394ms
+✓ Generating static pages using 9 workers (5/5) in 275ms
   Finalizing page optimization ...
 
 Route (app)
@@ -79,4 +79,4 @@ Route (app)
 
 exit=0
 
-# e2e: see test-results/ac-4-e2e.txt (same commit; 16 passed)
+# e2e: see test-results/dod-1-e2e.txt
