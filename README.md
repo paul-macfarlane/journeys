@@ -67,7 +67,51 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 | `pnpm db:generate` / `db:migrate` | Create / apply Drizzle migrations              |
 | `pnpm db:push`                    | Push the schema without a migration (dev only) |
 | `pnpm db:studio`                  | Drizzle Studio                                 |
+| `pnpm seed:case-3 <email>`        | Seed the legacy case-3 journey (see below)     |
 | `pnpm prepare`                    | Installs the husky git hooks (runs on install) |
+
+### Seeding the legacy case-3 journey
+
+`pnpm seed:case-3 <author-email>` reads the legacy site's prerendered case-3
+pages, converts them into a graph document — titles, paragraphs, images with
+their credit lines, choices, endings — and writes it as the draft of a `Case 3`
+journey inside a `Journey Stories` project.
+
+**Prerequisite:** the account must already exist. The script never creates
+users; sign in once through Google or Discord with that email (see
+[`human-prerequisites.md`](.scratch/journeys-platform/human-prerequisites.md)
+§10), then run it. With no such user it prints the email, writes nothing, and
+exits non-zero.
+
+```bash
+pnpm seed:case-3 you@example.com                    # seed the local dev database
+pnpm seed:case-3 you@example.com --write-fixture    # …and rewrite the test fixture
+```
+
+- **Idempotent.** The project and the journey have fixed ids, so rerunning
+  updates the same rows: there is only ever one seed project and one case-3
+  journey, and the signed-in account is added as a member of the project if it
+  is not one already.
+- **`--write-fixture`** also writes `src/lib/graph/fixtures/case-3.json`, the
+  real-content success case `src/lib/graph/validate.test.ts` validates. Pass it
+  when the legacy content or the outcome mapping has changed, and commit the
+  result.
+- **Outcomes are hand-written.** `scripts/seed-case-3/outcomes.json` maps each
+  legacy ending to an outcome id and gives each outcome its label. Edit the
+  labels there — they are what a participant is told they reached — and rerun
+  the seed to apply them. The script refuses to write anything if an ending is
+  missing from the mapping, a mapped step still has choices, or an outcome id
+  names nothing.
+- **Against Neon staging,** export the connection string for that one command:
+  `DATABASE_URL=… pnpm seed:case-3 you@example.com`. An explicit `DATABASE_URL`
+  wins over `.env.local`, and the script prints only the host and port it
+  connected to.
+- **Images point at third-party hosts.** Nothing is copied: every seeded image
+  keeps the URL the legacy page linked — pexels, rawpixel, flickr, one
+  WordPress site — so an image stops loading when its own host does, not when
+  the legacy site goes away. The scraper itself is throwaway — it reads the
+  markup the legacy Astro build emits today and is not maintained against
+  changes to it.
 
 ## Environments
 

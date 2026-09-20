@@ -19,6 +19,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "seed:case-3": "tsx scripts/seed-case-3/index.ts",
     "prepare": "husky"
   },
   "lint-staged": {

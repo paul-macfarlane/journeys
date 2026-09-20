@@ -1,33 +1,67 @@
-# DoD-1 — verified run command at cd1cc28 (local: docker journeys-db postgres:18 on 5436; e2e against journeys_e2e on port 3100)
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+# DoD-1 static checks at 3fdae5b — 2026-09-20T05:46:19Z
+
+$ pnpm lint
 
 > journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
 > eslint
 
-lint EXIT=0
+exit=0
+
+$ pnpm format:check
 
 > journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
 > prettier --check .
 
 Checking formatting...
 All matched files use Prettier code style!
-format:check EXIT=0
+exit=0
+
+$ pnpm typecheck
 
 > journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
 > tsc --noEmit
 
-typecheck EXIT=0
+exit=0
+
+$ pnpm test
+
 > journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
 > vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
  RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
- Test Files  4 passed (4)
-      Tests  80 passed (80)
-   Start at  23:51:09
-   Duration  235ms (transform 198ms, setup 0ms, import 419ms, tests 41ms, environment 0ms)
-test EXIT=0
+
+
+ Test Files  7 passed (7)
+      Tests  114 passed (114)
+   Start at  01:46:26
+   Duration  405ms (transform 664ms, setup 0ms, import 1.13s, tests 60ms, environment 1ms)
+
+exit=0
+
+$ pnpm build
+
+> journeys@0.1.0 build /Users/paulmacfarlane/Code/journeys
+> next build
+
 ▲ Next.js 16.2.10 (Turbopack)
-✓ Compiled successfully in 3.6s
-✓ Generating static pages using 9 workers (5/5) in 332ms
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 4.9s
+  Running TypeScript ...
+  Finished TypeScript in 5.6s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/5) ...
+  Generating static pages using 9 workers (1/5) 
+  Generating static pages using 9 workers (2/5) 
+  Generating static pages using 9 workers (3/5) 
+✓ Generating static pages using 9 workers (5/5) in 394ms
+  Finalizing page optimization ...
+
 Route (app)
 ┌ ƒ /
 ├ ○ /_not-found
@@ -36,38 +70,13 @@ Route (app)
 ├ ƒ /projects/[projectId]
 ├ ƒ /projects/[projectId]/journeys/[journeyId]
 └ ƒ /sign-in
+
+
+ƒ Proxy (Middleware)
+
 ○  (Static)   prerendered as static content
-build EXIT=0
+ƒ  (Dynamic)  server-rendered on demand
 
-> journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
-> playwright test
+exit=0
 
-[e2e] database: journeys_e2e on localhost:5436
-
-Running 15 tests using 5 workers
-
-  ✓   1 [chromium] › e2e/landing.spec.ts:3:5 › landing page explains the product and offers a single sign-in link while signed out (766ms)
-  ✓   3 [chromium] › e2e/projects-and-journeys.spec.ts:27:5 › project-create (4.8s)
-  ✓   4 [chromium] › e2e/projects-and-journeys.spec.ts:167:5 › journey-create (5.1s)
-  ✓   2 [chromium] › e2e/projects-and-journeys.spec.ts:103:5 › project-rename (5.4s)
-[WebServer] [browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
-[WebServer] [browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
-  ✓   6 [chromium] › e2e/projects-and-journeys.spec.ts:257:5 › project-delete-cascade (6.5s)
-  ✓   5 [chromium] › e2e/draft.spec.ts:42:5 › journey-draft (8.2s)
-[WebServer] [browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
-  ✓  11 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (645ms)
-[WebServer] [browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
-  ✓   9 [chromium] › e2e/projects-and-journeys.spec.ts:138:5 › project-delete (3.7s)
-[WebServer] [browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
-  ✓   7 [chromium] › e2e/projects-and-journeys.spec.ts:58:5 › project-non-member (4.5s)
-  ✓  12 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (656ms)
-  ✓  15 [chromium] › e2e/sign-in.spec.ts:37:5 › a signed-in Author visiting /sign-in is sent to their projects (753ms)
-  ✓  14 [chromium] › e2e/sign-in.spec.ts:13:5 › sign-in page offers Google and Discord with their logos (1.4s)
-[WebServer] [browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
-  ✓   8 [chromium] › e2e/projects-and-journeys.spec.ts:205:5 › journey-edit-and-delete (6.3s)
-  ✓  13 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (2.3s)
-  ✓  10 [chromium] › e2e/projects-and-journeys.spec.ts:290:5 › author-flow (5.3s)
-
-  15 passed (16.7s)
-test:e2e EXIT=0
-verify.sh done
+# e2e: see test-results/ac-4-e2e.txt (same commit; 16 passed)

@@ -7,8 +7,19 @@ import type {
   Outcome,
   Step,
 } from "@/lib/graph/document";
+import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
+import case3Fixture from "@/lib/graph/fixtures/case-3.json";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import { validateForPublish } from "@/lib/graph/validate";
+
+import outcomesMapping from "../../../scripts/seed-case-3/outcomes.json";
+
+/**
+ * The second success case is not hand-authored: it is the real case-3 Journey
+ * the seed script writes, read back from the fixture it emits. Parsed through
+ * the schema rather than trusted.
+ */
+const case3: GraphDocument = graphDocumentSchema.parse(case3Fixture);
 
 const emptyContent: Content = { type: "doc", content: [{ type: "paragraph" }] };
 
@@ -52,6 +63,10 @@ const reachedCare: Outcome = { id: "outcome-ashore", label: "Reached shore" };
 describe("validateForPublish", () => {
   it("finds nothing wrong with the large journey fixture", () => {
     expect(validateForPublish(largeJourney)).toEqual([]);
+  });
+
+  it("finds nothing wrong with the seeded case-3 journey", () => {
+    expect(validateForPublish(case3)).toEqual([]);
   });
 
   it("finds nothing wrong with a small, complete journey", () => {
@@ -315,5 +330,71 @@ describe("validateForPublish", () => {
     ]);
 
     expect(validateForPublish(document)[0].message).toContain("The last light");
+  });
+});
+
+/**
+ * A regression lock on the committed fixture: what the seed script produced
+ * from the legacy site as it was crawled on 2026-09-20 — 36 Steps entered at
+ * "Preface", 50 Choices, and 6 Endings, each tagged with the Outcome
+ * `scripts/seed-case-3/outcomes.json` gives it. These assertions read the
+ * committed fixture, so they only change when someone reruns the seed with
+ * `--write-fixture`; the check against the live site is `e2e/seed-case-3.spec.ts`.
+ */
+describe("the seeded case-3 journey", () => {
+  const steps = Object.values(case3.steps);
+
+  it("holds every Step the legacy case has, entered at the Preface", () => {
+    expect(steps).toHaveLength(36);
+    expect(case3.startStepId).toBe("step-7");
+    expect(case3.steps[case3.startStepId].title).toBe("Preface");
+  });
+
+  it("holds every Choice the legacy case offers", () => {
+    const choices = steps.flatMap((step) => step.choices);
+
+    expect(choices).toHaveLength(50);
+    // Three Choices on one Step that all lead to the same Step stay three.
+    expect(case3.steps["step-14"].choices).toHaveLength(3);
+    for (const choice of case3.steps["step-14"].choices) {
+      expect(choice.targetStepId).toBe("step-22");
+    }
+  });
+
+  it("ends exactly where the legacy case ends", () => {
+    const endings = steps.filter((step) => isEnding(step));
+
+    expect(endings.map((step) => step.id)).toEqual([
+      "step-10",
+      "step-20",
+      "step-29",
+      "step-30",
+      "step-35",
+      "step-36",
+    ]);
+  });
+
+  it("tags each Ending with the Outcome the mapping gives it", () => {
+    for (const ending of outcomesMapping.endings) {
+      const step = case3.steps[`step-${ending.step}`];
+      expect(isEnding(step)).toBe(true);
+      expect(step.outcomeId).toBe(ending.outcomeId);
+    }
+
+    expect(Object.keys(case3.outcomes)).toEqual(
+      outcomesMapping.outcomes.map((outcome) => outcome.id),
+    );
+  });
+
+  it("credits every image and hotlinks it over http(s)", () => {
+    const images = steps.flatMap((step) =>
+      step.content.content.filter((block) => block.type === "image"),
+    );
+
+    expect(images).toHaveLength(5);
+    for (const image of images) {
+      expect(image.attrs.credit.trim().length).toBeGreaterThan(0);
+      expect(image.attrs.src).toMatch(/^https?:\/\//);
+    }
   });
 });
