@@ -1,0 +1,484 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  createDraftDocument,
+  graphDocumentSchema,
+  isEnding,
+  parseGraphDocument,
+  prepareDocumentForWrite,
+} from "@/lib/graph/document";
+import { largeJourney } from "@/lib/graph/fixtures/large-journey";
+
+describe("createDraftDocument", () => {
+  it("creates a Draft holding exactly one Step", () => {
+    const document = createDraftDocument();
+
+    expect(Object.keys(document.steps)).toHaveLength(1);
+  });
+
+  it("makes that one Step the Start, with no Choices and no Outcomes", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    expect(start).toBeDefined();
+    expect(start.id).toBe(document.startStepId);
+    expect(start.title).toBe("Start");
+    expect(start.choices).toEqual([]);
+    expect(start.prompt).toBeNull();
+    expect(start.outcomeId).toBeNull();
+    expect(start.position).toBeNull();
+    expect(document.outcomes).toEqual({});
+    expect(document.allowBack).toBe(true);
+    expect(document.schemaVersion).toBe(1);
+  });
+
+  it("gives the Start an empty paragraph, exactly as the editor emits it", () => {
+    const document = createDraftDocument();
+
+    expect(document.steps[document.startStepId].content).toEqual({
+      type: "doc",
+      content: [{ type: "paragraph" }],
+    });
+  });
+
+  it("gives each Draft its own Start id", () => {
+    expect(createDraftDocument().startStepId).not.toBe(
+      createDraftDocument().startStepId,
+    );
+  });
+
+  it("parses unchanged, so what is stored is what was built", () => {
+    const document = createDraftDocument();
+
+    expect(graphDocumentSchema.parse(document)).toEqual(document);
+  });
+
+  it("survives a round trip through JSON unchanged", () => {
+    const document = createDraftDocument();
+
+    expect(JSON.parse(JSON.stringify(document))).toEqual(document);
+  });
+});
+
+describe("the large journey fixture", () => {
+  it("is a real-sized journey: 44 Steps, 6 Endings, 3 Outcomes", () => {
+    const steps = Object.values(largeJourney.steps);
+
+    expect(steps).toHaveLength(44);
+    expect(steps.filter((step) => isEnding(step))).toHaveLength(6);
+    expect(Object.keys(largeJourney.outcomes)).toHaveLength(3);
+  });
+
+  it("parses unchanged", () => {
+    expect(graphDocumentSchema.parse(largeJourney)).toEqual(largeJourney);
+  });
+
+  it("survives a round trip through JSON unchanged", () => {
+    expect(JSON.parse(JSON.stringify(largeJourney))).toEqual(largeJourney);
+  });
+});
+
+describe("isEnding", () => {
+  it("calls a Step with no Choices an Ending", () => {
+    expect(isEnding(largeJourney.steps["step-39"])).toBe(true);
+  });
+
+  it("does not call a Step with Choices an Ending", () => {
+    expect(isEnding(largeJourney.steps["step-01"])).toBe(false);
+  });
+});
+
+describe("graphDocumentSchema", () => {
+  it("rejects a steps key that disagrees with the Step's own id", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    const result = graphDocumentSchema.safeParse({
+      ...document,
+      steps: { "step-elsewhere": start },
+      startStepId: "step-elsewhere",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an outcomes key that disagrees with the Outcome's own id", () => {
+    const result = graphDocumentSchema.safeParse({
+      ...largeJourney,
+      outcomes: {
+        "outcome-renamed": largeJourney.outcomes["outcome-kept-the-light"],
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a Prompt of any type other than free text", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    const result = graphDocumentSchema.safeParse({
+      ...document,
+      steps: {
+        [start.id]: {
+          ...start,
+          prompt: { type: "select", label: "Pick one", required: false },
+        },
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a free-text Prompt", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    const result = graphDocumentSchema.safeParse({
+      ...document,
+      steps: {
+        [start.id]: {
+          ...start,
+          prompt: {
+            type: "free_text",
+            label: "What would you do?",
+            required: false,
+          },
+        },
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a schema version it was not written for", () => {
+    const result = graphDocumentSchema.safeParse({
+      ...createDraftDocument(),
+      schemaVersion: 2,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty Step id", () => {
+    const result = graphDocumentSchema.safeParse({
+      ...createDraftDocument(),
+      startStepId: "",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a title longer than 200 characters", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    const result = graphDocumentSchema.safeParse({
+      ...document,
+      steps: { [start.id]: { ...start, title: "a".repeat(201) } },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts readable Step ids so the seed can use them", () => {
+    expect(graphDocumentSchema.safeParse(largeJourney).success).toBe(true);
+  });
+});
+
+describe("parseGraphDocument", () => {
+  it("returns the document when it is valid", () => {
+    const document = createDraftDocument();
+    const result = parseGraphDocument(document);
+
+    expect(result).toEqual({ ok: true, document });
+  });
+
+  it("returns an error naming the field that failed instead of throwing", () => {
+    const result = parseGraphDocument({
+      ...createDraftDocument(),
+      startStepId: 7,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/startStepId/);
+    }
+  });
+
+  it("names a nested path", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    const result = parseGraphDocument({
+      ...document,
+      steps: { [start.id]: { ...start, choices: "none" } },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/choices/);
+    }
+  });
+
+  it("rejects something that is not a document at all", () => {
+    expect(parseGraphDocument("a journey").ok).toBe(false);
+  });
+});
+
+describe("prepareDocumentForWrite", () => {
+  /** A Draft as it arrives from the editor: one Step, content unvalidated. */
+  function rawDraftWith(content: unknown): unknown {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    return { ...document, steps: { [start.id]: { ...start, content } } };
+  }
+
+  function onlyStepContent(document: {
+    steps: Record<string, { content: unknown }>;
+  }): unknown {
+    return Object.values(document.steps)[0].content;
+  }
+
+  it("stores the rel the contract requires, whatever the editor emitted", () => {
+    const result = prepareDocumentForWrite(
+      rawDraftWith({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "the keeper's log",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: {
+                      href: "https://example.test/keepers-log",
+                      rel: "noopener noreferrer nofollow",
+                      target: "_blank",
+                      class: null,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(onlyStepContent(result.document)).toEqual({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "the keeper's log",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: {
+                      href: "https://example.test/keepers-log",
+                      rel: "noopener noreferrer",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    }
+  });
+
+  it("drops a pasted line break and keeps the text around it", () => {
+    const result = prepareDocumentForWrite(
+      rawDraftWith({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "The lamp is lit." },
+              { type: "hardBreak" },
+              { type: "text", text: "The wind is west." },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(onlyStepContent(result.document)).toEqual({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "The lamp is lit." },
+              { type: "text", text: "The wind is west." },
+            ],
+          },
+        ],
+      });
+    }
+  });
+
+  it("strips a javascript link and keeps the words it wrapped", () => {
+    const result = prepareDocumentForWrite(
+      rawDraftWith({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "press here",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: {
+                      href: "javascript:alert(1)",
+                      rel: "noopener noreferrer",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(onlyStepContent(result.document)).toEqual({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "press here" }],
+          },
+        ],
+      });
+    }
+  });
+
+  it("refuses an uncredited image and names the Step holding it", () => {
+    const result = prepareDocumentForWrite({
+      schemaVersion: 1,
+      startStepId: "step-first",
+      allowBack: true,
+      steps: {
+        "step-first": {
+          id: "step-first",
+          title: "The gallery",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Climb." }],
+              },
+            ],
+          },
+          choices: [
+            {
+              id: "choice-first-1",
+              label: "Look out",
+              targetStepId: "step-second",
+              condition: null,
+              effect: null,
+            },
+          ],
+          prompt: null,
+          outcomeId: null,
+          position: null,
+        },
+        "step-second": {
+          id: "step-second",
+          title: "The lamp",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "image",
+                attrs: { src: "https://example.test/images/lamp.jpg" },
+              },
+            ],
+          },
+          choices: [],
+          prompt: null,
+          outcomeId: null,
+          position: null,
+        },
+      },
+      outcomes: {},
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Every image needs a credit",
+      stepId: "step-second",
+    });
+  });
+
+  it("reports a broken envelope without ever reaching the sanitizer", () => {
+    const result = prepareDocumentForWrite({
+      ...(rawDraftWith({
+        type: "doc",
+        content: [
+          {
+            type: "image",
+            attrs: { src: "https://example.test/images/lamp.jpg" },
+          },
+        ],
+      }) as object),
+      startStepId: "",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/startStepId/);
+      expect(result.error).not.toBe("Every image needs a credit");
+      expect(result.stepId).toBeUndefined();
+    }
+  });
+
+  it("reports a steps key that disagrees with the Step's own id", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    const result = prepareDocumentForWrite({
+      ...document,
+      steps: { "step-elsewhere": start },
+      startStepId: "step-elsewhere",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/steps\.step-elsewhere\.id/);
+    }
+  });
+
+  it("leaves a journey whose content is already clean unchanged", () => {
+    const result = prepareDocumentForWrite(largeJourney);
+
+    expect(result).toEqual({ ok: true, document: largeJourney });
+  });
+
+  it("leaves a brand-new Draft unchanged", () => {
+    const document = createDraftDocument();
+
+    expect(prepareDocumentForWrite(document)).toEqual({ ok: true, document });
+  });
+});
