@@ -7,10 +7,12 @@ import { EditJourneyDialog } from "@/components/journeys/edit-journey-dialog";
 import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
 import { PublishControls } from "@/components/journeys/publish-controls";
 import { VersionList } from "@/components/journeys/version-list";
+import { buttonVariants } from "@/components/ui/button";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { listVersionsForMember } from "@/db/versions";
 import { requireSession } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 export default async function JourneyPage({
   params,
@@ -63,6 +65,12 @@ export default async function JourneyPage({
           <JourneyStatusBadge publishState={journey.publishState} />
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href={`/projects/${projectId}/journeys/${journey.id}/preview`}
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            Preview
+          </Link>
           <EditJourneyDialog
             projectId={projectId}
             journeyId={journey.id}
