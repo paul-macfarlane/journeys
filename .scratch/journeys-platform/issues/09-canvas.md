@@ -121,3 +121,7 @@ Duplicated e2e helpers (`readDraft`, `expectSaved`, `startJourney`) follow the p
 **Deviations:** S4 (eight fixed `oklch` Outcome colors) approved during review; `video: "on"` at spec-file scope (Playwright refuses it in a `describe`), with only the two authoring tests keeping their recording. Open non-blocking risks T4 (per-keystroke layout) and T6 (floating panels over a node) are in the review record.
 
 **Human follow-ups:** (1) **HG-1 / DoD-3:** from your own terminal on `feat/09-canvas`, `git add pnpm-lock.yaml && git commit -m "chore: commit pnpm-lock.yaml" && git push`; CI cannot install until it lands, and `gh pr checks 19` is the post-check. (2) Review and merge PR #19. (3) Move this ticket to `done` after merging; that unblocks 10 (with 06) and is one of 11's two blockers (with 06 and 07).
+
+### [CLOSEOUT] 2026-09-21 — addendum: HG-1 satisfied, DoD-3 PASS
+
+Paul committed `pnpm-lock.yaml` from his terminal as `aaaa0a8` (199 lines, `@xyflow/react`, `@dagrejs/dagre`, and their dependencies) and pushed. Post-check: `gh pr checks 19` — the `checks` workflow (lint, format, typecheck, migrate, unit, build, e2e) passed in 5m08s at `aaaa0a8` (GitHub Actions run id 35604801090); the Vercel check reports "Canceled by Ignored Build Step", the configured behavior for every branch but `staging` and `main`. **DoD-3: PASS.** Every AC and DoD criterion now carries PASS. Remaining human follow-ups: review and merge PR #19, then move this ticket to `done`.
