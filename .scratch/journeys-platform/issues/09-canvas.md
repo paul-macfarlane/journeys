@@ -1,8 +1,8 @@
 # 09: Canvas
 
-Status: ready-for-agent
+Status: done
 Blocked by: 04, 08
-Owner:
+Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
 
 **What to build:** The editor's map: React Flow (`@xyflow/react`, MIT) with `@dagrejs/dagre` auto-layout renders every Step as a node and every Choice as an edge; the Start is distinct; Endings are distinct and colored by Outcome; clicking a node opens the side panel from ticket 08; a new Step can be added from the canvas; validation problems are highlighted on the affected nodes/edges; the graph stays navigable at 60 steps with pan, zoom, and fit-to-view. No manual positions are stored; layout is recomputed on change.
@@ -16,3 +16,116 @@ Parent: `.scratch/journeys-platform/spec.md`
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`.
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-21 — Atlas orchestrator
+
+**Contract:** this ticket as it stands (no scope changes on file). Criteria are AC-1..AC-5 in checklist order. Derived DoD from the footer, `docs/agents/testing.md`, and `CLAUDE.md`: DoD-1 verified run command green; DoD-2 every PASS artifact committed under `test-results/`, fixture journeys only, no participant data; DoD-3 the two new dependencies are recorded in `package.json`, `pnpm-lock.yaml` is updated locally and committed by Paul from his own terminal (the Atlas plugin's commit-time secret scrub refuses lockfile hashes in agent commits), and the PR's CI install passes. Run surface: local + deployed; per Paul's 2026-09-20 decision there is no post-merge staging smoke gate, so no deployed criterion is defined. Analytics overlays (10), Prompts (12), and AI (14) are not built here.
+
+**Availability:** Paul named this ticket as the next work package in the session of 2026-09-21. Its `Blocked by` tickets 04 and 08 are both `done`; 07 and 14 are also available; 10, 11, 12 wait on 06 (`ready-for-human`).
+
+**Repository delivery:** `journeys`, base `staging` @ `9e2802c`, branch `feat/09-canvas`, direct checkout, no worktrees. Two deliverables run **sequentially** (D1 then D2) because D2 imports D1's layout module and needs D1's installed packages, and both verify through the one e2e port (3100) and the one `journeys_e2e` database; no file conflict is predicted (D1 owns `package.json`, `src/lib/graph/layout.ts`, `src/lib/graph/layout.test.ts`; D2 owns `src/components/journeys/`, the Journey page, `e2e/canvas.spec.ts`, README). Re-checked at closeout.
+
+**Resolved technical decisions (execution, not contract changes):**
+
+- **Dependencies.** `pnpm add @xyflow/react @dagrejs/dagre` (latest: 12.11.6 and 3.1.1; `@dagrejs/dagre` ships its own types, so no `@types` package). `package.json` is committed by the agent; `pnpm-lock.yaml` is Paul's commit (human gate HG-1). Nothing else is installed.
+- **Pure layout module** `src/lib/graph/layout.ts` (no `server-only`, no React): `layoutGraph(document)` runs dagre (`rankdir: "TB"`, fixed node size `NODE_WIDTH` 220 × `NODE_HEIGHT` 72, `nodesep` 32, `ranksep` 72) over every Step and returns `{ nodes, edges }`. One node per Step: `{ id: stepId, kind: "step", stepId, title, x, y, width, height, isStart, isEnding, outcomeId, outcomeIndex }` where `outcomeIndex` is the Outcome's position in `Object.keys(document.outcomes)` (null for none or unknown) so Endings can be colored by Outcome deterministically. One edge per Choice: `{ id: "<stepId>:<choiceId>", stepId, choiceId, source: stepId, target: targetStepId, label }`. A Choice whose target does not exist gets a placeholder node `{ id: "missing:<targetStepId>", kind: "missing", ... }` so the broken edge is still drawn to something. Positions are never stored; the function is deterministic and never mutates its input. Also `problemsByAddress(problems)` → `{ steps: Map<stepId, PublishProblem[]>, choices: Map<"<stepId>:<choiceId>", PublishProblem[]> }` so the canvas can decorate nodes and edges from `validateForPublish` output (`missing-start` has no address and is not decorated). Seam A tests in `layout.test.ts`: on the seeded case-3 document (imported from `scripts/seed/journey-stories/case-3.json`), on `largeJourney` from `src/lib/graph/fixtures/large-journey.ts`, and on a generated 60-Step document — exactly one node per Step, one edge per Choice, no two node rectangles overlap, every coordinate finite and non-negative, the Start and Endings flagged, the same input yields equal output; a dangling Choice yields one `missing` node and its edge; `problemsByAddress` groups by step and by choice.
+- **Canvas component** `src/components/journeys/journey-canvas.tsx` (`"use client"`), rendered by `DraftEditor`: `<section aria-label="Canvas">` holding a `ReactFlowProvider` + `ReactFlow` with `import "@xyflow/react/dist/style.css"`, `nodesDraggable={false}`, `nodesConnectable={false}`, `fitView`, `minZoom` 0.1, `Controls` (zoom in, zoom out, fit view; `showInteractive={false}`), `MiniMap` (pannable, zoomable), `Background`, and `colorMode` from next-themes' `resolvedTheme`. Nodes and edges come from `useMemo(() => layoutGraph(document), [document])`; the selected node follows `selectedStepId`; clicking a node calls `onSelectStep(stepId)` (a `missing` node opens the Step whose Choice points at it). When the set of node ids changes (a Step added or removed) the canvas calls `fitView({ duration: 200 })` so a new node is in view; no other automatic panning. Exactly one element per node has role `button` and accessible name equal to the Step's title (`stepName`), so a spec can click `section[aria-label="Canvas"]` → `getByRole("button", { name: title, exact: true })`; the worker verifies against the installed `@xyflow/react` how the node wrapper exposes `role`/`aria-label` and sets the node's `ariaLabel` (or role/label on the inner element) so there is one, not two. Node rendering: Start distinct (a "Start" badge and primary ring); Endings distinct (an "Ending" badge, a colored bar from an 8-color palette indexed by `outcomeIndex`, and the Outcome label; neutral when there is no Outcome); a `missing` node reads "Missing step" with a dashed destructive ring. Validation marks: a node with problems carries `data-problems="<count>"`, a destructive ring, and a badge whose accessible name is "N problems" with the messages as its `title`; an edge with problems carries the CSS class `canvas-edge-problem` and a destructive stroke, and every edge carries `ariaLabel` "<label>: <source title> → <target title>". Edges are `smoothstep` with an arrow marker and the Choice label. A `Panel` at the top-left holds the "Add step" button (moved here from the editor header, so the page still has exactly one button named "Add step"); a `Panel` at the top-right holds a small legend (Start, Ending, Problem).
+- **Live problems.** `DraftEditor` computes `useMemo(() => validateForPublish(document), [document])` and passes it to the canvas, so a mark clears the moment the fix lands in the document (AC-3) without a round trip. The on-demand "Validate" button, its server action, and its problem list stay exactly as they are.
+- **Editor layout** (`draft-editor.tsx`): the header keeps the "Steps" heading, the summary, the save status, and "Validate"; "Add step" moves into the canvas. Below the alerts and the Validation section: `grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]` — left the canvas (`h-[36rem]`) with `OutcomeList` and `StepList` side by side beneath it; right the `StepPanel`. The step list stays as secondary navigation (Paul's PR #16 rework) and keeps every existing spec's `list "Steps"` selector valid. The Journey page container widens from `max-w-6xl` to `max-w-7xl`. Author-facing copy uses `CONTEXT.md` words only (Step, Choice, Start, Ending, Outcome, Draft).
+- **Seam B** `e2e/canvas.spec.ts`, four tests (names are the evidence directories), all signing in with `signInAs` and building the Project and Journey through the browser; the case-3 document is written into the `draft` row with `writeDraftDocument` because a 36-Step Journey is what is being displayed, not built: `canvas-case-3-map` (AC-1, AC-5 screenshot; viewport 1600×1200 so the map is legible): 36 nodes and one edge per Choice are in the DOM; after load (and again after clicking the "fit view" control) every node's bounding box lies inside the Canvas section's bounding box and no two node boxes intersect; screenshot to `test-results/canvas-case-3-map/canvas-case-3-map.png`. `canvas-node-opens-panel-and-edge-appears` (AC-2): "Add step" on the canvas → 2 nodes; click the Start node → the panel's "Step title" shows the Start's title; add a Choice in the panel targeting the new Step → the edge count goes 0 → 1 with no reload and the edge carries the label. `canvas-validation-marks` (AC-3): a new Journey's Start is an Ending with no Outcome → its node has `data-problems`; add and assign an Outcome → the mark clears; "Add step" → the new node is marked (unreachable); add a Choice from the Start to it → both marks clear; delete the new Step → a "Missing step" node appears and the edge has `canvas-edge-problem`; retarget or remove that Choice → the placeholder and the edge mark go. `canvas-build-branch-and-publish` (AC-4, AC-5): "Add step" from the canvas twice — each time the new node appears and the panel opens it with "Step title" focused and "Untitled step"; rename both; add two Choices from the Start; the DOM edge count is 2; add an Outcome and assign it to both Endings; Validate → "No problems found."; Publish → badge "Published"; the `draft` row read back holds 3 Steps and the Start holds 2 Choices. Screenshots at `test-results/<test-name>/<test-name>.png` for all four; the two interaction tests also save Playwright video to `test-results/<test-name>/<test-name>.webm` (testing.md names the canvas editor as the case for video). Every existing spec stays green; selectors change only where the moved "Add step" button requires (it should require none).
+- README: the journey page entry gains the canvas map; no new route.
+
+**Deliverables:**
+- **D1 — dependencies and the pure layout module** (worker: atlas-worker on `sonnet`, tightly specified): `pnpm add`, `src/lib/graph/layout.ts` + `layout.test.ts`.
+- **D2 — the canvas on the Journey page, with Seam B** (worker: atlas-worker on `opus`): `journey-canvas.tsx`, `draft-editor.tsx` changes, page width, `e2e/canvas.spec.ts`, README. Depends on D1.
+
+**Verification map (evidence committed under `test-results/`; the root is cleared once, immediately before the aggregate capture):**
+
+| Criterion | Command / action | Surface & real deps | Expected | Evidence | Earliest | Invalidated by |
+|---|---|---|---|---|---|---|
+| AC-1 | `pnpm test:e2e` test `canvas-case-3-map`; Seam A `layout.test.ts` (case-3, largeJourney, 60 Steps: no overlaps) | local; docker Postgres `journeys_e2e`; e2e server on 3100; Vitest | 36 nodes laid out, none overlapping; after fit-to-view every node inside the canvas | `test-results/canvas-case-3-map/canvas-case-3-map.png`, `test-results/dod-1-e2e.txt`, `test-results/dod-1-commands.txt` (unit line) | after D2 (Seam A after D1) | changes under `src/`, `e2e/`, `scripts/seed/journey-stories/case-3.json` |
+| AC-2 | `pnpm test:e2e` test `canvas-node-opens-panel-and-edge-appears` | as AC-1 | click opens the Step in the panel; a Choice added in the panel adds the edge live | `test-results/canvas-node-opens-panel-and-edge-appears/….png` and `….webm`, `test-results/dod-1-e2e.txt` | after D2 | as AC-1 |
+| AC-3 | `pnpm test:e2e` test `canvas-validation-marks`; Seam A `problemsByAddress` | as AC-1 | ending-without-outcome, unreachable, and dangling marks appear on the exact node/edge and clear when fixed | `test-results/canvas-validation-marks/….png`, `test-results/dod-1-e2e.txt` | after D2 | as AC-1 |
+| AC-4 | `pnpm test:e2e` test `canvas-build-branch-and-publish` (first half) | as AC-1 | "Add step" on the canvas creates a node and opens it in the panel with the title focused | `test-results/canvas-build-branch-and-publish/….png` and `….webm`, `test-results/dod-1-e2e.txt` | after D2 | as AC-1 |
+| AC-5 | `pnpm test:e2e` test `canvas-build-branch-and-publish` (edge count 2, Publish) plus the AC-1 screenshot | as AC-1 | branch built via canvas + panel; 2 edges; published; case-3 map screenshot committed | as AC-4 and AC-1 | after D2 | as AC-1 |
+| DoD-1 | `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e` | local; docker Postgres | all exit 0 | `test-results/dod-1-commands.txt`, `test-results/dod-1-e2e.txt` | after D2 | any source, config, or test change |
+| DoD-2 | evidence review: every PASS artifact committed under `test-results/`; fixture journeys only | local | as stated | this ticket's closeout | closeout | — |
+| DoD-3 | `git diff staging -- package.json` shows only the two packages; **HG-1** Paul commits `pnpm-lock.yaml` on the branch; post-check `gh pr checks` green after the push | local + GitHub CI | lockfile committed by a human; CI install passes | this ticket's closeout, the PR's checks | closeout | any dependency change |
+
+**Human gates:** HG-1 (DoD-3) — prerequisite: D1 has run `pnpm add` on the branch; action: Paul runs `git add pnpm-lock.yaml && git commit -m "chore: commit pnpm-lock.yaml"` from his own terminal on `feat/09-canvas`; expected: the lockfile commit is on the branch before or right after the PR opens, and CI's install step passes. Announced now, raised at closeout. No other gate: no migration in this ticket, no deployed smoke.
+
+### [PROGRESS] 2026-09-21 — D1 and D2 integrated; aggregate review started
+
+D1 `d00562d` (atlas-worker on `sonnet`): `@xyflow/react` 12.11.6 and `@dagrejs/dagre` 3.1.1 in `package.json`; `src/lib/graph/layout.ts` with `layoutGraph` and `problemsByAddress`; seven Seam A cases in `layout.test.ts` (case-3, `largeJourney`, a generated 60-Step tree: one node per Step, one edge per Choice, no overlaps, deterministic, input untouched; missing-target placeholders; problem grouping). D2 `bc9dfed` (atlas-worker on `opus`): `journey-canvas.tsx`, the editor's new layout with "Add step" on the canvas, live problem marks from `validateForPublish` over the in-memory document, `max-w-7xl`, `e2e/canvas.spec.ts` (four tests), README. Worker choices where the plan was silent, accepted at the screen: `data-problems` always present with the count; `elementsSelectable={false}` (selection is the panel's); the fit-view effect skips its first run; hydration-safe `colorMode` via `useSyncExternalStore`; `Handle` anchors on custom nodes (React Flow draws no edge without them); `video: "on"` at file scope because Playwright refuses it inside a `describe`, with only the two authoring tests saving their recording. Worker-reported full verification command exit 0 at `bc9dfed` (172 unit tests in 10 files; 36 e2e specs). Candidate evidence only; the aggregate capture follows the review. Status `in-progress` → `ai-review`.
+
+### [AI CODE REVIEW] 2026-09-21 — aggregate review of `9e2802c..bc9dfed`, fixes in `f24a106`
+
+Two fresh reviewers (both on `opus`) read the full diff, one per axis; the orchestrator adjudicated every candidate by reading the cited hunks and verified the library claims against the installed `@xyflow/react` 12.11.6 bundle and the case-3 data. No blocking finding on either axis.
+
+**Axis 1 — technical implementation and spec conformity** (AC-by-AC table: AC-1, AC-2, AC-4, AC-5 addressed with a covering test; AC-3 covered except the `cycle` edge mark; DoD-1/2/3 pending the aggregate capture and HG-1; no scope leak):
+
+| # | Severity | Paths | Finding | Disposition |
+|---|---|---|---|---|
+| T1 | non-blocking | `journey-canvas.tsx` | Nodes were focusable with `role="button"` but React Flow's key handler only selects, so Enter/Space never opened a Step (verified in `NodeWrapper`). | **Resolved** `f24a106`: the card is a real `<button aria-label=title>`; its click bubbles to `onNodeClick`; `nodesFocusable={false}` removes the dead tab stop. |
+| T2 | non-blocking | `journey-canvas.tsx` | Parallel Choices to one target drew as stacked arrows (case-3 step-14 → step-22 ×3). | **Resolved** `f24a106`: one source `Handle` per Choice along the node's bottom, `sourceHandle = choiceId`. |
+| T3 | non-blocking | `journey-canvas.tsx` | case-3 illegible at fit-to-view in a 36rem canvas. | **Resolved** `f24a106`: `h-[70vh] min-h-[36rem]`; titles read at rest in the recaptured screenshot. |
+| T4 | non-blocking | `draft-editor.tsx`, `journey-canvas.tsx` | Layout and validation recompute on every rich-text keystroke; unmeasured. | **Open**, accepted risk; candidate for ticket 15 hardening (memo on a structural key). |
+| T5 | non-blocking | `journey-canvas.tsx` | Comment overclaimed that a shared "Missing step" placeholder opens "the one place" to fix. | **Resolved** `f24a106` (wording). |
+| T6 | non-blocking | `journey-canvas.tsx` | The "Add step" and legend Panels can occlude a node after fit; speculative. | **Open**, accepted; no test hits it. |
+| T7 | non-blocking | `journey-canvas.tsx` | Problem messages were hover-only on a generic span. | **Resolved** `f24a106`: messages are the node button's `title`, exposed as its description. |
+| T8 | non-blocking | `README.md` | "every validation problem is marked" overclaimed (`missing-start` has no address). | **Resolved** `f24a106` (wording). |
+| T9 | non-blocking | `e2e/canvas.spec.ts` | `cycle` edge marks and Outcome coloring had no assertion. | **Resolved** `f24a106`: `canvas-validation-marks` closes and reopens a loop (2 marked edges → 0); `canvas-build-branch-and-publish` asserts `data-outcome-index="0"` on both Endings. |
+
+**Axis 2 — coding standards** (checklist clean for `src/lib` purity, `scripts/` import direction, ADR-0001, e2e sign-in/suffix/`expectSaved`/screenshot/cleanup conventions, test placement, README register, commit hygiene, approved dependencies):
+
+| # | Severity | Paths | Finding | Disposition |
+|---|---|---|---|---|
+| S1 | non-blocking | `journey-canvas.tsx`, `ui/badge.tsx` | The problem count re-implemented the `Badge` recipe. | **Resolved** `f24a106`: `Badge` gains `tone="destructive"`; the canvas uses it. |
+| S2 | non-blocking | `journey-canvas.tsx` | = T1. | Resolved with T1. |
+| S3 | non-blocking | `journey-canvas.tsx` | React Flow announces every node as "node", a word `CONTEXT.md` avoids. | **Resolved** `f24a106`: `aria-roledescription` "step" / "missing step" / "choice". |
+| S4 | non-blocking | `journey-canvas.tsx` | Eight hardcoded `oklch` Outcome colors instead of theme tokens; identical in dark mode. | **Deviation approved**: the plan asked for eight colors and the theme defines five chart tokens; revisit if Themes (11) adds tokens. |
+| S5 | non-blocking | `e2e/canvas.spec.ts` | Selectors on React Flow's internal classes. | **Resolved** `f24a106`: nodes by `button[data-kind]`, edges by `[data-choice-id]`, problem edges by `data-problems`; no `react-flow__` selector remains. |
+| S6 | non-blocking | `journey-canvas.tsx` | `canvas-edge-problem` was a class that styled nothing. | **Resolved** `f24a106`: replaced by `data-problems` on the edge. |
+| S7 | non-blocking | `layout.test.ts` | "the packet" in comments names a delegation artifact. | **Resolved** `f24a106`: "ticket 09". |
+| S8 | non-blocking | `journey-canvas.tsx` | Node size re-read from constants the layout already returns. | **Resolved** `f24a106`: `node.width`/`node.height`. |
+| S9 | non-blocking | `CONTEXT.md` | "Canvas" was not in the glossary. | **Resolved** `f24a106`: `Canvas` entry added (avoid: graph view, diagram, board, flowchart). |
+
+Duplicated e2e helpers (`readDraft`, `expectSaved`, `startJourney`) follow the pattern every existing spec uses; noted, not changed. Remaining risks: T4, T6, and the approved S4 deviation.
+
+### [CLOSEOUT] 2026-09-21 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/19 (base `staging`, head `feat/09-canvas`). Status `in-progress` → `ai-review` → `ready-for-human`.
+
+**Repository delivery `journeys`:** base `staging` @ `9e2802c`, direct checkout, no worktrees; D1 then D2 sequentially. Closeout re-check of the isolation record: D1 (`d00562d`) touched `package.json`, `src/lib/graph/layout.ts`, `layout.test.ts`; D2 (`bc9dfed`) touched `README.md`, `e2e/canvas.spec.ts`, the Journey page, `draft-editor.tsx`, `journey-canvas.tsx` — none of D1's files, so the no-conflict prediction held. The serialization rested on D2 importing D1's module and on the single e2e port and database, both of which also held; the record stands as written.
+
+**Deliverables:**
+- D1 layout module and dependencies — atlas-worker on `sonnet` — `d00562d`.
+- D2 the canvas on the Journey page with Seam B — atlas-worker on `opus` — `bc9dfed`.
+- Review fixes — orchestrator — `f24a106`. Evidence — orchestrator — `0cef2e3`. This closeout record follows.
+
+**Verified run command:** `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e` — every command exit 0 at `f24a106` (172 unit tests in 10 files; 36 e2e specs, `[e2e] database: journeys_e2e on localhost:5436`). No deployed-target check (Paul's 2026-09-20 decision); no migration in this ticket.
+
+**Criterion verdicts (evidence under `test-results/`, committed in `0cef2e3`, captured at `f24a106`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 case-3 fully laid out, no overlaps, every node inside the viewport after fit-to-view | PASS | `canvas-case-3-map/canvas-case-3-map.png`, `dod-1-e2e.txt` (`canvas-case-3-map` ✓: 36 nodes, 50 edges, `mapFaults` empty before and after the fit-view control), `dod-1-commands.txt` (Seam A `layout.test.ts`: case-3, `largeJourney`, 60-Step tree) |
+| AC-2 clicking a node opens the Step; a Choice added in the panel adds the edge live | PASS | `canvas-node-opens-panel-and-edge-appears/…png` and `…webm`, `dod-1-e2e.txt` ✓ (edge count 0 → 1 with no reload, labelled) |
+| AC-3 problems mark the exact nodes/edges; fixing one clears its mark | PASS | `canvas-validation-marks/…png`, `dod-1-e2e.txt` ✓ (ending-without-outcome, unreachable, cycle on both arrows, dangling with a placeholder and a marked edge — each set and cleared), `dod-1-commands.txt` (Seam A `problemsByAddress`) |
+| AC-4 Add Step from the canvas creates a node and opens it in the panel | PASS | `canvas-build-branch-and-publish/…png` and `…webm`, `dod-1-e2e.txt` ✓ (node count +1; "Step title" focused on "Untitled step") |
+| AC-5 branch built via canvas + panel, edge count, publish; case-3 screenshot | PASS | as AC-4 (2 edges; Validate clean; Published; the row holds 3 Steps and 2 Choices on the Start) and the AC-1 screenshot |
+| DoD-1 verified run command green | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` (dotenv tips and the pre-existing Next dev console warning removed; the header says so) |
+| DoD-2 every PASS artifact committed; fixture data only | PASS | this record; the artifacts hold minted `Test Author` accounts, invented Border-post Journeys, the committed case-3 seed, and nothing from a participant |
+| DoD-3 dependencies recorded; lockfile committed by Paul; CI install passes | BLOCKED on HG-1 | `package.json` differs from `staging` by the two lines (verified at `f24a106`); `pnpm-lock.yaml` is modified in the checkout and in no commit; post-check after Paul's commit: `gh pr checks 19` |
+
+**Deviations:** S4 (eight fixed `oklch` Outcome colors) approved during review; `video: "on"` at spec-file scope (Playwright refuses it in a `describe`), with only the two authoring tests keeping their recording. Open non-blocking risks T4 (per-keystroke layout) and T6 (floating panels over a node) are in the review record.
+
+**Human follow-ups:** (1) **HG-1 / DoD-3:** from your own terminal on `feat/09-canvas`, `git add pnpm-lock.yaml && git commit -m "chore: commit pnpm-lock.yaml" && git push`; CI cannot install until it lands, and `gh pr checks 19` is the post-check. (2) Review and merge PR #19. (3) Move this ticket to `done` after merging; that unblocks 10 (with 06) and is one of 11's two blockers (with 06 and 07).
+
+### [CLOSEOUT] 2026-09-21 — addendum: HG-1 satisfied, DoD-3 PASS
+
+Paul committed `pnpm-lock.yaml` from his terminal as `aaaa0a8` (199 lines, `@xyflow/react`, `@dagrejs/dagre`, and their dependencies) and pushed. Post-check: `gh pr checks 19` — the `checks` workflow (lint, format, typecheck, migrate, unit, build, e2e) passed in 5m08s at `aaaa0a8` (GitHub Actions run id 35604801090); the Vercel check reports "Canceled by Ignored Build Step", the configured behavior for every branch but `staging` and `main`. **DoD-3: PASS.** Every AC and DoD criterion now carries PASS. Remaining human follow-ups: review and merge PR #19, then move this ticket to `done`.
+
+### [CLOSEOUT] 2026-09-21 — `done` set on the PR itself
+
+Per the tracker rule Paul set on 2026-09-21, the closeout commit carries `Status: done`; merging PR #19 is the acceptance that lands it on `staging`.

@@ -58,7 +58,7 @@ export default async function JourneyPage({
     !documentsEqual(draft, live.document);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-12">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-12">
       <div>
         <Link
           href={`/projects/${projectId}`}

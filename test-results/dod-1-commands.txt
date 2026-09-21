@@ -1,17 +1,8 @@
-# DoD-1 command output, ticket 06 (participant runner and Runs) — captured by the orchestrator at commit 9bd057c (staging with ticket 13 merged in)
-# Command: DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm db:migrate && DATABASE_URL=... pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
-# Sanitized: dotenv tip lines were removed; the repository's absolute path was shortened to a relative one.
-commit: 9bd057c
-date: 2026-09-21T03:51:22Z
-=== pnpm db:migrate
-
-> journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys
-> drizzle-kit migrate
-
-No config path provided, using default 'drizzle.config.ts'
-Reading config file './drizzle.config.ts'
-Using 'pg' driver for database querying
-[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!exit: 0
+# DoD-1 command output, ticket 09 (canvas) — captured by the orchestrator at commit f24a106
+# Command: DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
+# Sanitized: dotenv tip lines were removed. No migration in this ticket, so db:migrate is not part of the run.
+commit: f24a106
+date: 2026-09-21T04:49:55Z
 === pnpm lint
 
 > journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
@@ -44,10 +35,10 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
 
 
- Test Files  9 passed (9)
-      Tests  165 passed (165)
-   Start at  23:51:31
-   Duration  493ms (transform 544ms, setup 0ms, import 1.29s, tests 111ms, environment 0ms)
+ Test Files  10 passed (10)
+      Tests  172 passed (172)
+   Start at  00:50:02
+   Duration  440ms (transform 554ms, setup 0ms, import 1.33s, tests 220ms, environment 1ms)
 
 exit: 0
 === pnpm build
@@ -59,15 +50,15 @@ exit: 0
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 4.6s
+✓ Compiled successfully in 4.4s
   Running TypeScript ...
-  Finished TypeScript in 4.2s ...
+  Finished TypeScript in 4.0s ...
   Collecting page data using 9 workers ...
   Generating static pages using 9 workers (0/5) ...
   Generating static pages using 9 workers (1/5) 
   Generating static pages using 9 workers (2/5) 
   Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 119ms
+✓ Generating static pages using 9 workers (5/5) in 122ms
   Finalizing page optimization ...
 
 Route (app)
