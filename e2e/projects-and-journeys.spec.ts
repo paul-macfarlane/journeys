@@ -6,8 +6,18 @@ import {
   ID_PATTERN,
   uniqueSuffix,
 } from "./setup/authoring";
+import {
+  publishableDocument,
+  readRuns,
+  writeDraftDocument,
+} from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
-import { cleanup, closePools, signInAs } from "./setup/session";
+import {
+  cleanup,
+  closePools,
+  queryE2eDatabase,
+  signInAs,
+} from "./setup/session";
 
 /**
  * Seam B for ticket 02: an Author's Projects (and the Journeys inside them)
@@ -288,7 +298,7 @@ test("project-delete-cascade", async ({ page, context }) => {
   });
 });
 
-test("author-flow", async ({ page, context }) => {
+test("author-flow", async ({ page, context, browser }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
 
@@ -297,8 +307,9 @@ test("author-flow", async ({ page, context }) => {
   const journeyTitle = `Border Crossing ${suffix}`;
   const renamedTitle = `Night Crossing ${suffix}`;
 
-  // Seam B, AC-6: create Project → create Journey → rename → delete, in one
-  // continuous flow, one Author, one browser context.
+  // Seam B, AC-6: create Project → create Journey → rename → publish → an
+  // anonymous Participant walks it to an Ending → delete, in one continuous
+  // flow, one Author, one browser context (and one Participant's own).
   await page.goto("/projects");
   const projectId = await createProject(page, projectTitle);
 
@@ -315,10 +326,50 @@ test("author-flow", async ({ page, context }) => {
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);
   await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
 
+  // Publish it the way an Author does, from the Journey page's own button.
+  await writeDraftDocument(journeyId, publishableDocument());
+  await page.goto(journeyPath);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  const [version] = await queryE2eDatabase<{ id: string }>(
+    'SELECT id FROM "published_version" WHERE journey_id = $1',
+    [journeyId],
+  );
+
+  // An anonymous Participant, in a browser context with no session at all,
+  // walks the published Journey from its start screen to an Ending.
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+    await participant.goto(`/j/${journeyId}`);
+    await expect(
+      participant.getByRole("heading", { name: renamedTitle }),
+    ).toBeVisible();
+
+    await participant.getByRole("button", { name: "Begin" }).click();
+    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(participant.getByText("The end")).toBeVisible();
+    await expect(participant.getByText("Outcome: Reached care")).toBeVisible();
+  } finally {
+    await participantContext.close();
+  }
+
+  const runs = await readRuns(version.id);
+  expect(runs).toHaveLength(1);
+  expect(runs[0].ended_at).not.toBeNull();
+  expect(runs[0].outcome_id).toBe("reached-care");
+
   await page.getByRole("button", { name: "Delete journey" }).click();
   await page.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
   await expect(page.getByText(renamedTitle)).toHaveCount(0);
+
+  // Deleting the Journey cascades its Published Versions and, through them,
+  // the Run the Participant left behind.
+  expect(await readRuns(version.id)).toHaveLength(0);
 
   await page.getByRole("button", { name: "Delete project" }).click();
   await page.getByRole("button", { name: "Delete permanently" }).click();

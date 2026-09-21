@@ -61,8 +61,19 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   from its start step to an ending, exactly as a participant would, and
   records nothing. Members of the project only; anyone else gets a 404, and a
   signed-out request is redirected to `/`.
-- `/j/<journey-id>` — reserved for the public participant runner (not built
-  yet).
+- `/j/<journey-id>` — the public participant runner's start screen: the live
+  published version's title and description, and a button that begins a run.
+  Anonymous — no account, no sign-in. An unpublished (or never published)
+  journey shows an "unavailable" screen instead; an unknown id gets a 404.
+- `/j/<journey-id>/<step-id>` — one step of a run: its text, its choices as
+  links, and a back control. The run is identified by an unguessable id in a
+  cookie scoped to that journey's path, so two journeys open in one browser
+  keep separate runs and a step URL opened without one lands on the start
+  screen. Going back — the browser's button or the in-app control — truncates
+  the run's path to that step and counts a backtrack; reaching an ending
+  records the outcome; starting over begins a new run and leaves the old one
+  as it was. A run in progress keeps walking the version it started on, even
+  if a new version is published meanwhile.
 
 ## Commands
 

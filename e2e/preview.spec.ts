@@ -82,11 +82,20 @@ test("preview", async ({ page, context }) => {
   await page.getByRole("link", { name: "Start over" }).click();
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
 
-  // Nothing exists that Preview could have written to.
-  const runTables = await queryE2eDatabase(
-    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('run', 'response')",
+  // Preview records nothing. Since ticket 06 there is a `run` table to
+  // record into, so the claim is checked against it: this Journey has no
+  // Published Version and therefore no Run, which is exactly what walking a
+  // Draft must leave behind. Responses are ticket 12's and have no table yet.
+  const runRows = await queryE2eDatabase(
+    'SELECT r.id FROM "run" r JOIN "published_version" v ON v.id = r.version_id WHERE v.journey_id = $1',
+    [journeyId],
   );
-  expect(runTables).toHaveLength(0);
+  expect(runRows).toHaveLength(0);
+
+  const responseTable = await queryE2eDatabase(
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'response'",
+  );
+  expect(responseTable).toHaveLength(0);
 });
 
 test("preview-non-member", async ({ page, context, browser }) => {
