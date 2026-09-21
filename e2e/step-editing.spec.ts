@@ -227,7 +227,12 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
 
   // Deleting the Step a Choice points at says which Choice it breaks first.
-  await page.getByRole("button", { name: "Delete step", exact: true }).click();
+  // The panel's button: the selected box on the map carries one of its own,
+  // with the same name, that opens the same confirmation.
+  await page
+    .getByRole("region", { name: "Step" })
+    .getByRole("button", { name: "Delete step", exact: true })
+    .click();
   const confirmation = page.getByRole("alertdialog");
   await expect(
     confirmation.getByText("Wait your turn on Border post"),

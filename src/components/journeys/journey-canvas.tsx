@@ -7,6 +7,7 @@ import {
   Handle,
   MarkerType,
   MiniMap,
+  NodeToolbar,
   Panel,
   Position,
   ReactFlow,
@@ -23,6 +24,8 @@ import {
 } from "@xyflow/react";
 import { useTheme } from "next-themes";
 import {
+  createContext,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -30,9 +33,11 @@ import {
   type HTMLAttributes,
 } from "react";
 
+import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
+import type { SelectStep } from "@/components/journeys/editor-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { GraphDocument } from "@/lib/graph/document";
+import type { GraphDocument, Step } from "@/lib/graph/document";
 import { layoutGraph, problemsByAddress } from "@/lib/graph/layout";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
@@ -61,6 +66,14 @@ import "@xyflow/react/dist/style.css";
  * The problems this draws come from `validateForPublish` run in the browser on
  * the document the editor is holding, not from the "Validate" button's server
  * round trip, so a mark clears the moment the fix is typed.
+ *
+ * The map is also where the Journey is built: the open box carries a toolbar
+ * for the three moves that change the shape around it, a Choice is made by
+ * dragging from a box onto another, an arrow's head is dragged to move where
+ * its Choice leads, and a clicked arrow is the Choice in hand — opened in the
+ * panel, and removed by the Delete key. Nothing here edits the document: each
+ * of those is handed back to the editor in the document's own words (a Step,
+ * a Choice), and the map redraws from whatever the editor makes of it.
  */
 
 /**
@@ -98,10 +111,35 @@ function choiceLabel(label: string): string {
   return label.trim().length > 0 ? label : "Untitled choice";
 }
 
+/**
+ * What the box toolbar does, handed to the nodes through context rather than
+ * through each node's `data`: these are the editor's own functions, and a
+ * node whose data changed identity on every render of the editor would be a
+ * node React Flow re-measured on every render of the editor.
+ */
+type CanvasActions = {
+  onAddNextStep: (stepId: string) => void;
+  onSetStart: (stepId: string) => void;
+  onDeleteStep: (stepId: string) => void;
+};
+
+const CanvasActionsContext = createContext<CanvasActions | null>(null);
+
+function useCanvasActions(): CanvasActions {
+  const actions = useContext(CanvasActionsContext);
+  if (actions === null) {
+    throw new Error("A canvas node was rendered outside the canvas");
+  }
+  return actions;
+}
+
 type StepNodeData = {
   title: string;
   isStart: boolean;
   isEnding: boolean;
+  /** The Draft and this box's Step, for the toolbar's delete confirmation. */
+  document: GraphDocument;
+  step: Step;
   outcomeLabel: string | null;
   outcomeColor: string | null;
   problems: string[];
@@ -126,17 +164,26 @@ type MissingNodeData = {
   opens: string | null;
 };
 
+/** One Choice, named the way the document names it. */
+export type CanvasArrow = { stepId: string; choiceId: string };
+
+/** Delete and Backspace both. React Flow ignores either inside an input. */
+const DELETE_KEYS = ["Delete", "Backspace"];
+
 type StepFlowNode = Node<StepNodeData, "step">;
 type MissingFlowNode = Node<MissingNodeData, "missing">;
 type CanvasFlowNode = StepFlowNode | MissingFlowNode;
 
 /**
- * How strongly an arrow is drawn, given which Step the panel has open:
- * `attached` for the arrows into and out of it, `dimmed` for every other one.
- * `selected` is reserved for an arrow the Author has clicked, which a later
- * deliverable draws heavier; nothing produces it yet.
+ * How strongly an arrow is drawn: `selected` for the one arrow the Author
+ * has clicked, drawn heavier than any other; otherwise `attached` for the
+ * arrows into and out of the Step the panel has open, and `dimmed` for the
+ * rest.
  */
 type Emphasis = "selected" | "attached" | "dimmed";
+
+/** What a clicked arrow is drawn with, over whatever else it would be. */
+const SELECTED_STROKE_WIDTH = 3;
 
 type ChoiceEdgeData = {
   /**
@@ -256,12 +303,81 @@ function handleLeft(index: number, count: number): string {
 
 function StepNode({ data }: NodeProps<StepFlowNode>) {
   const marked = data.problems.length > 0;
+  const actions = useCanvasActions();
 
   return (
     <>
-      {/* Edges are drawn between handles; nothing here is connectable, so
-          these are anchors rather than controls. */}
-      <Handle type="target" position={Position.Top} isConnectable={false} />
+      {/* The moves that change the Journey's shape around this Step, on the
+          box itself: the same three the panel's foot carries, where the
+          Author is already looking. `nopan`/`nodrag` keep a click on a
+          button from dragging the map out from under it. */}
+      <NodeToolbar
+        isVisible={data.isSelected}
+        position={Position.Top}
+        role="toolbar"
+        aria-label={`${data.title} actions`}
+        // A portal's children still bubble through the React tree, so a
+        // click on a button here would reach the node's own handler and
+        // re-open this Step over whichever one the button just opened.
+        onClick={(event) => event.stopPropagation()}
+        className="nopan nodrag flex flex-wrap items-center gap-1 rounded-lg bg-background px-1.5 py-1 ring-1 ring-foreground/10"
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => actions.onAddNextStep(data.opens)}
+        >
+          Add next step
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={data.isStart}
+          onClick={() => actions.onSetStart(data.opens)}
+        >
+          Make this the start
+        </Button>
+        <DeleteStepDialog
+          document={data.document}
+          step={data.step}
+          isStart={data.isStart}
+          onDeleteStep={actions.onDeleteStep}
+        />
+      </NodeToolbar>
+
+      {/* Where every arrow into this Step lands: one point at the top, which
+          every edge names as its `targetHandle`. */}
+      <Handle
+        id="top"
+        type="target"
+        position={Position.Top}
+        isConnectableStart={false}
+      />
+
+      {/* And where a drag can let go of one: the whole box. React Flow gives
+          a handle `pointer-events` only while a connection is in progress
+          (its `connectionindicator` rule), and this one can never start one,
+          so at rest it is inert and a click goes straight to the button
+          under it. It is never an arrow's endpoint — `targetHandle: "top"`
+          is — so it stays invisible. */}
+      <Handle
+        id="drop"
+        type="target"
+        position={Position.Top}
+        isConnectableStart={false}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          minWidth: 0,
+          minHeight: 0,
+          transform: "none",
+          border: "none",
+          borderRadius: "0.75rem",
+          background: "transparent",
+        }}
+      />
 
       <button
         type="button"
@@ -317,6 +433,27 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
           style={{ left: handleLeft(index, data.sourceAnchors.length) }}
         />
       ))}
+
+      {/* The one control on the box: drag from here onto another box to make
+          a Choice. Set apart from the Choice anchors — bigger, coloured, and
+          out at the corner where none of them is ever spread to — because
+          those are where arrows leave from, not something to take hold of. */}
+      <Handle
+        id="connect"
+        type="source"
+        position={Position.Bottom}
+        title="Drag onto another step to add a choice"
+        style={{
+          left: "auto",
+          right: 12,
+          width: 14,
+          height: 14,
+          borderRadius: 9999,
+          background: "var(--primary)",
+          border: "2px solid var(--background)",
+          transform: "translate(50%, 50%)",
+        }}
+      />
     </>
   );
 }
@@ -324,7 +461,15 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
 function MissingNode({ data }: NodeProps<MissingFlowNode>) {
   return (
     <>
-      <Handle type="target" position={Position.Top} isConnectable={false} />
+      {/* Named `top` like a Step's, because the arrow that ends here names
+          the handle it ends at. Not connectable: a Step that is gone is not
+          somewhere another Choice can be pointed. */}
+      <Handle
+        id="top"
+        type="target"
+        position={Position.Top}
+        isConnectable={false}
+      />
 
       <button
         type="button"
@@ -368,21 +513,46 @@ export type JourneyCanvasProps = {
   document: GraphDocument;
   selectedStepId: string;
   problems: PublishProblem[];
-  onSelectStep: (stepId: string) => void;
+  /** The one arrow the Author has clicked, if any. */
+  selectedArrow: CanvasArrow | null;
+  onSelectStep: SelectStep;
   onAddStep: () => void;
+  /** The box toolbar's three moves, on whichever Step the panel has open. */
+  onAddNextStep: (stepId: string) => void;
+  onSetStart: (stepId: string) => void;
+  onDeleteStep: (stepId: string) => void;
+  /** A Choice drawn between two boxes, and one whose head was moved. */
+  onConnectChoice: (stepId: string, targetStepId: string) => void;
+  onRetargetChoice: (
+    stepId: string,
+    choiceId: string,
+    targetStepId: string,
+  ) => void;
+  /** An arrow clicked, or a click landing anywhere else on the map. */
+  onSelectArrow: (arrow: CanvasArrow | null) => void;
+  /** The Choices behind the arrows the Delete key was pressed on. */
+  onRemoveChoices: (arrows: CanvasArrow[]) => void;
 };
 
 function CanvasFlow({
   document,
   selectedStepId,
   problems,
+  selectedArrow,
   onSelectStep,
   onAddStep,
+  onAddNextStep,
+  onSetStart,
+  onDeleteStep,
+  onConnectChoice,
+  onRetargetChoice,
+  onSelectArrow,
+  onRemoveChoices,
 }: JourneyCanvasProps) {
   const layout = useMemo(() => layoutGraph(document), [document]);
   const addressed = useMemo(() => problemsByAddress(problems), [problems]);
 
-  const { nodes, edges } = useMemo(() => {
+  const { nodes, edges, arrows } = useMemo(() => {
     const titleById = new Map(
       layout.nodes.map((node) => [node.id, node.title]),
     );
@@ -408,8 +578,14 @@ function CanvasFlow({
         position: { x: node.x, y: node.y },
         width: node.width,
         height: node.height,
-        selected: isSelected,
-        connectable: false,
+        // Arrows are React Flow's to select; boxes are not. A selected node
+        // would also be one the Delete key took with it, and the panel's
+        // selection is not a thing the Delete key is about.
+        selected: false,
+        selectable: false,
+        // A placeholder stands for a Step that is gone: there is nothing to
+        // draw an arrow to it, and nothing to draw one from.
+        connectable: node.kind === "step",
       };
 
       if (node.kind === "missing") {
@@ -447,6 +623,8 @@ function CanvasFlow({
           title: node.title,
           isStart: node.isStart,
           isEnding: node.isEnding,
+          document,
+          step: document.steps[node.stepId],
           sourceAnchors: node.sourceAnchors,
           outcomeLabel:
             node.outcomeId !== null
@@ -461,24 +639,47 @@ function CanvasFlow({
       } satisfies StepFlowNode;
     });
 
+    // Which Choice each arrow draws, by the id React Flow knows it as: what
+    // a click, a drag of its head, or a delete has to be turned back into.
+    const arrows = new Map<string, CanvasArrow>();
+
     const flowEdges: ChoiceFlowEdge[] = layout.edges.map((edge) => {
       const label = choiceLabel(edge.label);
       const problemCount = (addressed.choices.get(edge.id) ?? []).length;
       const marked = problemCount > 0;
-      // The panel always has a Step open, so every arrow is one of the two:
-      // this Step's, or dimmed behind it. A placeholder is opened through the
-      // Step whose Choice dangles, which is this arrow's source.
-      const emphasis: Emphasis =
-        edge.source === selectedStepId || edge.target === selectedStepId
+      const isSelected =
+        selectedArrow !== null &&
+        selectedArrow.stepId === edge.stepId &&
+        selectedArrow.choiceId === edge.choiceId;
+      // The arrow in hand wins. Otherwise the panel always has a Step open,
+      // so every arrow is one of the two: this Step's, or dimmed behind it.
+      // A placeholder is opened through the Step whose Choice dangles, which
+      // is this arrow's source.
+      const emphasis: Emphasis = isSelected
+        ? "selected"
+        : edge.source === selectedStepId || edge.target === selectedStepId
           ? "attached"
           : "dimmed";
+      const marks = marked
+        ? { stroke: "var(--destructive)", strokeWidth: 2 }
+        : undefined;
+
+      arrows.set(edge.id, { stepId: edge.stepId, choiceId: edge.choiceId });
 
       return {
         id: edge.id,
         source: edge.source,
         sourceHandle: edge.choiceId,
         target: edge.target,
+        // Named rather than left to React Flow's first target handle: the
+        // box has a second, invisible one covering it for drops to land on.
+        targetHandle: "top",
+        // The head of the arrow can be picked up and dropped on another box;
+        // where a Choice leaves from is the Step it is written on, which is
+        // not something to drag.
+        reconnectable: "target" as const,
         type: "choice",
+        selected: isSelected,
         label,
         ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`,
         markerEnd: { type: MarkerType.ArrowClosed },
@@ -490,14 +691,26 @@ function CanvasFlow({
           "data-problems": String(problemCount),
           "data-emphasis": emphasis,
         } as Edge["domAttributes"],
-        style: marked
-          ? { stroke: "var(--destructive)", strokeWidth: 2 }
-          : undefined,
+        style: isSelected
+          ? { ...marks, strokeWidth: SELECTED_STROKE_WIDTH }
+          : marks,
       };
     });
 
-    return { nodes: flowNodes, edges: flowEdges };
-  }, [addressed, document.outcomes, layout, selectedStepId]);
+    return { nodes: flowNodes, edges: flowEdges, arrows };
+  }, [addressed, document, layout, selectedArrow, selectedStepId]);
+
+  // Every Step is a valid target, its own Step included: a loop is an
+  // ordinary path since ticket 18. A placeholder is not a Step.
+  const stepIds = useMemo(
+    () => new Set(Object.keys(document.steps)),
+    [document.steps],
+  );
+
+  const actions = useMemo<CanvasActions>(
+    () => ({ onAddNextStep, onSetStart, onDeleteStep }),
+    [onAddNextStep, onSetStart, onDeleteStep],
+  );
 
   const outcomeLegend = useMemo(
     () =>
@@ -586,75 +799,135 @@ function CanvasFlow({
       : "system";
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={NODE_TYPES}
-      edgeTypes={EDGE_TYPES}
-      colorMode={colorMode}
-      nodesDraggable={false}
-      nodesConnectable={false}
-      // The node's own button takes focus; the wrapper would otherwise be a
-      // second tab stop that opens nothing.
-      nodesFocusable={false}
-      // Selection is the panel's, and it follows `selectedStepId`; letting
-      // React Flow keep a second one would only ever disagree with it.
-      elementsSelectable={false}
-      fitView
-      minZoom={0.1}
-      onNodeClick={(_event, node) => {
-        const opens = (node.data as StepNodeData | MissingNodeData).opens;
-        if (opens !== null) onSelectStep(opens);
-      }}
-    >
-      <Background />
-      <Controls showInteractive={false} />
-      <MiniMap pannable zoomable />
+    <CanvasActionsContext.Provider value={actions}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
+        colorMode={colorMode}
+        nodesDraggable={false}
+        nodesConnectable
+        // Dragging is the whole motion here: a click on a handle would
+        // otherwise arm a connection the next click anywhere completes.
+        connectOnClick={false}
+        edgesReconnectable
+        // The node's own button takes focus; the wrapper would otherwise be a
+        // second tab stop that opens nothing.
+        nodesFocusable={false}
+        // Arrows only: which Step is open stays the panel's, and every node
+        // above is `selectable: false`.
+        elementsSelectable
+        deleteKeyCode={DELETE_KEYS}
+        fitView
+        minZoom={0.1}
+        isValidConnection={(connection) => stepIds.has(connection.target)}
+        // A Choice made where the Author drew it: from the Step the drag
+        // left, to the Step it landed on, with its label still to write.
+        onConnect={({ source, target }) => {
+          if (!stepIds.has(source) || !stepIds.has(target)) return;
+          onConnectChoice(source, target);
+        }}
+        // The head of an arrow dropped on another box. A drop on nothing
+        // never gets here, which is what leaves the Choice as it was.
+        onReconnect={(oldEdge, connection) => {
+          const arrow = arrows.get(oldEdge.id);
+          if (arrow === undefined || !stepIds.has(connection.target)) return;
+          onRetargetChoice(arrow.stepId, arrow.choiceId, connection.target);
+        }}
+        // Clicking an arrow opens the Choice it draws: the Step it is
+        // written on, with its label in hand.
+        onEdgeClick={(_event, edge) => {
+          const arrow = arrows.get(edge.id);
+          if (arrow === undefined) return;
+          onSelectStep(arrow.stepId, { focusChoiceId: arrow.choiceId });
+        }}
+        // React Flow's own account of what the Author did to the arrows,
+        // turned back into the Choices they draw: a click selects one (and a
+        // click on bare map clears it), and Delete removes them, which is
+        // exactly what "Remove choice" in the panel does.
+        onEdgesChange={(changes) => {
+          const removed: CanvasArrow[] = [];
 
-      <Panel position="top-left">
-        <Button variant="outline" size="sm" onClick={onAddStep}>
-          Add step
-        </Button>
-      </Panel>
+          for (const change of changes) {
+            const arrow =
+              change.type === "select" || change.type === "remove"
+                ? arrows.get(change.id)
+                : undefined;
+            if (arrow === undefined) continue;
 
-      <Panel position="top-right">
-        {/* role="list" is explicit: the flex layout strips the list marker,
+            if (change.type === "select") {
+              if (change.selected) {
+                onSelectArrow(arrow);
+              } else if (
+                selectedArrow !== null &&
+                selectedArrow.stepId === arrow.stepId &&
+                selectedArrow.choiceId === arrow.choiceId
+              ) {
+                onSelectArrow(null);
+              }
+              continue;
+            }
+
+            removed.push(arrow);
+          }
+
+          if (removed.length > 0) onRemoveChoices(removed);
+        }}
+        onNodeClick={(_event, node) => {
+          const opens = (node.data as StepNodeData | MissingNodeData).opens;
+          if (opens !== null) onSelectStep(opens);
+        }}
+      >
+        <Background />
+        <Controls showInteractive={false} />
+        <MiniMap pannable zoomable />
+
+        <Panel position="top-left">
+          <Button variant="outline" size="sm" onClick={onAddStep}>
+            Add step
+          </Button>
+        </Panel>
+
+        <Panel position="top-right">
+          {/* role="list" is explicit: the flex layout strips the list marker,
             and some browsers drop the implicit role with it. Every Outcome
             gets an entry, in document order, so the colors on the Endings
             can be read back to what they group. */}
-        <ul
-          role="list"
-          aria-label="Legend"
-          className="flex max-w-80 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-background/90 px-2.5 py-1.5 text-xs text-muted-foreground ring-1 ring-foreground/10"
-        >
-          <li className={LEGEND_ENTRY_CLASS}>
-            <span className={cn(LEGEND_SWATCH_CLASS, "bg-primary")} />
-            Start
-          </li>
-
-          {outcomeLegend.map((outcome) => (
-            <li
-              key={outcome.id}
-              data-outcome-index={outcome.index}
-              data-outcome-id={outcome.id}
-              className={LEGEND_ENTRY_CLASS}
-            >
-              <span
-                data-outcome-swatch=""
-                className={LEGEND_SWATCH_CLASS}
-                style={{ backgroundColor: outcome.color }}
-              />
-              <span className="max-w-32 truncate">{outcome.label}</span>
+          <ul
+            role="list"
+            aria-label="Legend"
+            className="flex max-w-80 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-background/90 px-2.5 py-1.5 text-xs text-muted-foreground ring-1 ring-foreground/10"
+          >
+            <li className={LEGEND_ENTRY_CLASS}>
+              <span className={cn(LEGEND_SWATCH_CLASS, "bg-primary")} />
+              Start
             </li>
-          ))}
 
-          <li className={LEGEND_ENTRY_CLASS}>
-            <span className={cn(LEGEND_SWATCH_CLASS, "bg-destructive")} />
-            Problem
-          </li>
-        </ul>
-      </Panel>
-    </ReactFlow>
+            {outcomeLegend.map((outcome) => (
+              <li
+                key={outcome.id}
+                data-outcome-index={outcome.index}
+                data-outcome-id={outcome.id}
+                className={LEGEND_ENTRY_CLASS}
+              >
+                <span
+                  data-outcome-swatch=""
+                  className={LEGEND_SWATCH_CLASS}
+                  style={{ backgroundColor: outcome.color }}
+                />
+                <span className="max-w-32 truncate">{outcome.label}</span>
+              </li>
+            ))}
+
+            <li className={LEGEND_ENTRY_CLASS}>
+              <span className={cn(LEGEND_SWATCH_CLASS, "bg-destructive")} />
+              Problem
+            </li>
+          </ul>
+        </Panel>
+      </ReactFlow>
+    </CanvasActionsContext.Provider>
   );
 }
 

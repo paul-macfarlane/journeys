@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   SELECT_CLASS,
@@ -32,17 +32,40 @@ const NEW_STEP = "__new__";
 export function ChoiceList({
   document,
   step,
+  focusChoiceId,
+  focusChoiceRequest,
   onChange,
   onSelectStep,
 }: {
   document: GraphDocument;
   step: Step;
+  /** A Choice here whose label field is being asked for — one drawn on the
+   * map, or one whose arrow the Author clicked. */
+  focusChoiceId: string | null;
+  /** Bumped each time that was asked for, so asking twice focuses twice. */
+  focusChoiceRequest: number;
   onChange: (document: GraphDocument) => void;
   onSelectStep: SelectStep;
 }) {
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
   const [target, setTarget] = useState<string>(NEW_STEP);
+
+  // The label fields, by Choice, so the one the map asks for can be given
+  // focus without the panel knowing anything about how a row is built.
+  const labelFields = useRef(new Map<string, HTMLInputElement>());
+
+  useEffect(() => {
+    if (focusChoiceId === null) return;
+
+    const field = labelFields.current.get(focusChoiceId);
+    if (field === undefined) return;
+
+    field.focus();
+    // Selected rather than left with a caret: what is there is either
+    // nothing at all or a label the Author has just come back to rename.
+    field.select();
+  }, [focusChoiceId, focusChoiceRequest]);
 
   // Every Step is a valid Choice target, the current one included — a loop
   // is an ordinary path since ticket 18.
@@ -96,6 +119,13 @@ export function ChoiceList({
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Input
+                  ref={(field) => {
+                    if (field === null) {
+                      labelFields.current.delete(choice.id);
+                      return;
+                    }
+                    labelFields.current.set(choice.id, field);
+                  }}
                   aria-label="Choice label"
                   autoComplete="off"
                   className="w-56"

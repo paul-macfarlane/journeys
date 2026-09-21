@@ -60,7 +60,11 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   computes, the arrows into and out of the step the panel has open are drawn
   at full strength while the rest dim, opening a step that is off the map
   brings it back into view, and the legend names every outcome in the colour
-  its endings carry. The draft autosaves. Publish the draft as an
+  its endings carry. The journey is built on the map too: dragging from a
+  box's connect dot onto another box makes the choice between them (and
+  dragging an arrow's head onto a third box moves it there), the open box's
+  toolbar adds the next step, makes it the start or deletes it, and clicking
+  an arrow opens its choice for renaming or deletes it with the Delete key. The draft autosaves. Publish the draft as an
   immutable version (refused, with the problems listed, while the
   draft has any), unpublish to take it back from participants, preview it, and
   see every published version — number, when, and who published it — with the

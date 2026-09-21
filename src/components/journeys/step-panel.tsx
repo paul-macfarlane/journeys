@@ -1,22 +1,10 @@
-import { useState } from "react";
-
 import { ChoiceList } from "@/components/journeys/choice-list";
+import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import {
   SELECT_CLASS,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,87 +75,13 @@ function LeadsHereFrom({
   );
 }
 
-/**
- * Deleting a Step leaves every Choice aimed at it dangling rather than
- * silently rewriting another Step's Choices, so the confirmation names each
- * one the Author is about to break.
- */
-function DeleteStepDialog({
-  document,
-  step,
-  isStart,
-  onDeleteStep,
-}: {
-  document: GraphDocument;
-  step: Step;
-  isStart: boolean;
-  onDeleteStep: (stepId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const affected = choicesTargeting(document, step.id);
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {isStart ? (
-        <span className="text-muted-foreground text-sm">
-          Make another step the start first
-        </span>
-      ) : null}
-
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger
-          render={<Button variant="destructive" size="sm" disabled={isStart} />}
-        >
-          Delete step
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this step?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {affected.length > 0
-                ? "These choices will point at a step that no longer exists:"
-                : "No choices point at this step."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {affected.length > 0 ? (
-            // role="list" is explicit for consistency with the app's other
-            // lists, and so the labelled list is announced inside the dialog.
-            <ul
-              role="list"
-              aria-label="Affected choices"
-              className="flex list-disc flex-col gap-1 pl-5 text-sm"
-            >
-              {affected.map((entry) => (
-                <li key={entry.choice.id}>
-                  {`${choiceLabel(entry.choice.label)} on ${entry.stepTitle}`}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setOpen(false);
-                onDeleteStep(step.id);
-              }}
-            >
-              Delete step
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
 export function StepPanel({
   document,
   step,
   revision,
   focusTitle,
+  focusChoiceId,
+  focusChoiceRequest,
   onChange,
   onSelectStep,
   onContentChange,
@@ -180,6 +94,10 @@ export function StepPanel({
   revision: number;
   /** True when this Step was just created from a Choice and wants a name. */
   focusTitle: boolean;
+  /** A Choice on this Step whose label field is being asked for. */
+  focusChoiceId: string | null;
+  /** Bumped each time that was asked for, so asking twice focuses twice. */
+  focusChoiceRequest: number;
   onChange: (document: GraphDocument) => void;
   onSelectStep: SelectStep;
   onContentChange: (stepId: string, content: Content) => void;
@@ -233,6 +151,8 @@ export function StepPanel({
         key={`choices-${step.id}`}
         document={document}
         step={step}
+        focusChoiceId={focusChoiceId}
+        focusChoiceRequest={focusChoiceRequest}
         onChange={onChange}
         onSelectStep={onSelectStep}
       />

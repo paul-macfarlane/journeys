@@ -10,14 +10,26 @@ import {
   type SaveDraftActionResult,
 } from "@/app/projects/[projectId]/journeys/actions";
 import { counted, type SelectStep } from "@/components/journeys/editor-shared";
-import { JourneyCanvas } from "@/components/journeys/journey-canvas";
+import {
+  JourneyCanvas,
+  type CanvasArrow,
+} from "@/components/journeys/journey-canvas";
 import { OutcomeList } from "@/components/journeys/outcome-list";
 import { StepList } from "@/components/journeys/step-list";
 import { StepPanel } from "@/components/journeys/step-panel";
 import { Button } from "@/components/ui/button";
 import type { Content } from "@/lib/graph/content";
 import { documentsEqual, type GraphDocument } from "@/lib/graph/document";
-import { addStep, deleteStep, updateStep } from "@/lib/graph/edit";
+import {
+  addChoice,
+  addChoiceToNewStep,
+  addStep,
+  deleteStep,
+  removeChoice,
+  setStart,
+  updateChoice,
+  updateStep,
+} from "@/lib/graph/edit";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -249,15 +261,124 @@ export function DraftEditor({
   // just created and has only "Untitled step" for a name.
   const [titleFocusStepId, setTitleFocusStepId] = useState<string | null>(null);
 
+  /**
+   * The Choice whose label field should take focus, for a Choice drawn on
+   * the map and so still unnamed. `request` counts the times one was asked
+   * for, so clicking the same arrow twice running focuses it twice rather
+   * than once.
+   */
+  const [choiceFocus, setChoiceFocus] = useState<{
+    stepId: string;
+    choiceId: string;
+    request: number;
+  } | null>(null);
+
+  /**
+   * The one arrow the Author has clicked on the map. Held here rather than
+   * in React Flow so that the arrows the canvas draws are derived from the
+   * document and this, and there is never a second account of what is
+   * selected to disagree with.
+   */
+  const [selectedArrow, setSelectedArrow] = useState<CanvasArrow | null>(null);
+
   const selectStep: SelectStep = useCallback((stepId, options) => {
     setSelectedStepId(stepId);
     setTitleFocusStepId(options?.focusTitle ? stepId : null);
+
+    const focusChoiceId = options?.focusChoiceId;
+    setChoiceFocus((current) =>
+      focusChoiceId === undefined
+        ? null
+        : {
+            stepId,
+            choiceId: focusChoiceId,
+            request: (current?.request ?? 0) + 1,
+          },
+    );
+    // Opening a Step is the Author's attention leaving the arrow — except
+    // when the Step was opened by clicking that very arrow.
+    if (focusChoiceId === undefined) setSelectedArrow(null);
   }, []);
+
+  /**
+   * A selected arrow can outlive the Choice it draws — deleted here, or by
+   * another Member's write — so what the map is handed is the selection only
+   * while the document still has it, the way `selectedStep` is below.
+   */
+  const liveArrow = useMemo(() => {
+    if (selectedArrow === null) return null;
+
+    const step = Object.hasOwn(document.steps, selectedArrow.stepId)
+      ? document.steps[selectedArrow.stepId]
+      : null;
+    const alive =
+      step?.choices.some((choice) => choice.id === selectedArrow.choiceId) ??
+      false;
+    return alive ? selectedArrow : null;
+  }, [document, selectedArrow]);
+
+  /** The Delete key on a selected arrow, which is the panel's "Remove choice". */
+  function removeChoices(arrows: CanvasArrow[]) {
+    let next = documentRef.current;
+    for (const arrow of arrows) {
+      next = removeChoice(next, arrow.stepId, arrow.choiceId);
+    }
+    if (next === documentRef.current) return;
+
+    applyEdit(next);
+  }
 
   function addNewStep() {
     const created = addStep(documentRef.current);
     applyEdit(created.document);
     selectStep(created.stepId, { focusTitle: true });
+  }
+
+  /**
+   * "Add next step" on a box's toolbar: the Step and the Choice that reaches
+   * it in one motion, opened with its title field focused so the Author names
+   * it in the same breath. The label is left empty — what the Choice is
+   * called is the next thing to write, on the Step it leaves.
+   */
+  function addNextStep(stepId: string) {
+    const created = addChoiceToNewStep(documentRef.current, stepId, {
+      label: "",
+    });
+    if (created.choiceId === "") return;
+
+    applyEdit(created.document);
+    selectStep(created.stepId, { focusTitle: true });
+  }
+
+  function makeStart(stepId: string) {
+    applyEdit(setStart(documentRef.current, stepId));
+  }
+
+  /**
+   * An arrow drawn from one box onto another: the Choice exists the moment
+   * the Author lets go, and the panel opens on the Step it leaves with the
+   * label field waiting — the drag said where it goes, not what it says.
+   */
+  function connectSteps(stepId: string, targetStepId: string) {
+    const created = addChoice(documentRef.current, stepId, {
+      label: "",
+      targetStepId,
+    });
+    if (created.choiceId === "") return;
+
+    applyEdit(created.document);
+    selectStep(stepId, { focusChoiceId: created.choiceId });
+  }
+
+  /** The head of an arrow dropped on another box. */
+  function retargetChoice(
+    stepId: string,
+    choiceId: string,
+    targetStepId: string,
+  ) {
+    applyEdit(
+      updateChoice(documentRef.current, stepId, choiceId, { targetStepId }),
+    );
   }
 
   function removeStep(stepId: string) {
@@ -407,6 +528,14 @@ export function DraftEditor({
             problems={liveProblems}
             onSelectStep={selectStep}
             onAddStep={addNewStep}
+            onAddNextStep={addNextStep}
+            onSetStart={makeStart}
+            onDeleteStep={removeStep}
+            onConnectChoice={connectSteps}
+            onRetargetChoice={retargetChoice}
+            selectedArrow={liveArrow}
+            onSelectArrow={setSelectedArrow}
+            onRemoveChoices={removeChoices}
           />
 
           {/* The map is the way around the Draft; the list stays as the
@@ -427,6 +556,12 @@ export function DraftEditor({
             step={selectedStep}
             revision={revision}
             focusTitle={titleFocusStepId === selectedStep.id}
+            focusChoiceId={
+              choiceFocus?.stepId === selectedStep.id
+                ? choiceFocus.choiceId
+                : null
+            }
+            focusChoiceRequest={choiceFocus?.request ?? 0}
             onChange={applyEdit}
             onSelectStep={selectStep}
             onContentChange={handleContentChange}

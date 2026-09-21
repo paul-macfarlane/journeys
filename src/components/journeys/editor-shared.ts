@@ -7,9 +7,14 @@
 /**
  * How a Step is opened in the panel. `focusTitle` is for a Step that was just
  * created from a Choice: it opens with its title field focused so the Author
- * names it in the same breath.
+ * names it in the same breath. `focusChoiceId` is the same move one level
+ * down — a Choice drawn on the map, or one whose arrow was clicked, opens its
+ * Step with that Choice's label field focused.
  */
-export type SelectStepOptions = { focusTitle?: boolean };
+export type SelectStepOptions = {
+  focusTitle?: boolean;
+  focusChoiceId?: string;
+};
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
 
