@@ -701,9 +701,13 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
 
       {/* The one control on the box: drag from here onto another box to make
           a Choice. Set apart from the Choice anchors — bigger, colored, and
-          out at the bottom-right corner where none of them is ever spread to
-          whichever way the map runs — because those are where arrows leave
-          from, not something to take hold of. */}
+          out on the bottom-right corner of the box rather than along the side
+          the arrows leave by — because those are where arrows leave from, not
+          something to take hold of. The anchors are spread evenly along that
+          side, so they crowd towards the corner as a Step gains Choices: the
+          dot stands clear of the last of them up to about eight Choices
+          running top to bottom and about ten running left to right, and past
+          that the two overlap rather than the dot being clear for good. */}
       <Handle
         id="connect"
         type="source"
@@ -711,7 +715,7 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
         title="Drag onto another step to add a choice"
         style={{
           ...(data.direction === "LR"
-            ? { top: "auto", bottom: 12, right: 0 }
+            ? { top: "auto", bottom: -4, right: 0 }
             : { left: "auto", right: 12 }),
           width: 14,
           height: 14,
@@ -787,6 +791,15 @@ const IN_VIEW_TOLERANCE = 1;
  * wins over a closer one away to the side, which is what "that way" means.
  */
 const ACROSS_WEIGHT = 2;
+
+/**
+ * How long after the panel was put away or brought back a resize of the map
+ * still counts as that toggle's doing. The columns move for 200ms and the map
+ * is resized under them several times on the way; a resize arriving later than
+ * this is something else — a window dragged wider, a zoom — and the view the
+ * Author has set up is left exactly where they set it.
+ */
+const FIT_AFTER_TOGGLE_MS = 500;
 
 /** The two ways the map can be drawn, in the order the control offers them. */
 const LAYOUT_DIRECTIONS: { direction: LayoutDirection; label: string }[] = [
@@ -1318,19 +1331,33 @@ function CanvasFlow({
     void fitView({ duration: 200 });
   }, [fitView, layout.direction]);
 
-  // A map that has just been given the whole width, or had it taken back:
-  // the boxes are where they were, but the frame around them is not, so the
-  // whole map is shown in the frame it now has. Asked for a frame later than
-  // the render that asked, because the width the browser has settled on is
-  // not the width it had when the class changed.
+  // A map that has just been given the whole width, or had it taken back: the
+  // boxes are where they were, but the frame around them is not, so the whole
+  // map is shown in the frame it now has. Which frame that is cannot be known
+  // when the request arrives — the columns take 200ms to slide, and React Flow
+  // learns each width it passes through from a ResizeObserver that runs after
+  // the layout producing it — so all that happens here is that the moment of
+  // the request is noted.
   const lastFitRequest = useRef(fitRequest);
+  const fitRequestedAt = useRef<number | null>(null);
   useEffect(() => {
     if (lastFitRequest.current === fitRequest) return;
     lastFitRequest.current = fitRequest;
+    fitRequestedAt.current = performance.now();
+  }, [fitRequest]);
 
-    const frame = requestAnimationFrame(() => void fitView({ duration: 200 }));
-    return () => cancelAnimationFrame(frame);
-  }, [fitRequest, fitView]);
+  // And the fit happens on each resize that follows it: the map is re-fitted
+  // every time the sliding columns hand it a new width, and the last of those
+  // is the width it keeps. With reduced motion the columns jump, so there is
+  // one resize and one fit; on a screen too narrow for the panel to sit beside
+  // the map, putting it away resizes nothing and fits nothing.
+  useEffect(() => {
+    const requestedAt = fitRequestedAt.current;
+    if (requestedAt === null) return;
+    if (performance.now() - requestedAt > FIT_AFTER_TOGGLE_MS) return;
+
+    void fitView({ duration: 200 });
+  }, [fitView, paneHeight, paneWidth]);
 
   // next-themes reads the browser's stored choice, which the server render
   // cannot know: asking before hydration is done would put a different color

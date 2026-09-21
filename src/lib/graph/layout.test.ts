@@ -418,10 +418,8 @@ describe("layoutGraph direction", () => {
         continue;
       }
       if (document.layoutDirection === "LR") {
-        expect(target.x).toBeGreaterThan(source.x);
         expect(target.x).toBeGreaterThan(source.x + source.width);
       } else {
-        expect(target.y).toBeGreaterThan(source.y);
         expect(target.y).toBeGreaterThan(source.y + source.height);
       }
     }
@@ -596,7 +594,7 @@ describe("mapOrder", () => {
     expect(mapOrder(layout)).toEqual(["start"]);
   });
 
-  it("orders the seeded case-3 Steps top to bottom, then left to right, with no placeholders, left to right", () => {
+  it("orders the Steps of a left-to-right case-3 map top to bottom, then left to right, with no placeholders", () => {
     const document = {
       ...graphDocumentSchema.parse(case3),
       layoutDirection: "LR" as const,

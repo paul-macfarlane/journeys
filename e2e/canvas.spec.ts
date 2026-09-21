@@ -4,6 +4,7 @@ import {
   type BrowserContext,
   type Locator,
   type Page,
+  type TestInfo,
 } from "@playwright/test";
 
 import { contentPreview, PREVIEW_LIMIT } from "@/lib/graph/content";
@@ -133,11 +134,13 @@ function showPanelButton(page: Page) {
  * The map given the whole width: the panel put away from its own button. The
  * map is waited out afterwards, because giving it the width re-fits it and a
  * coordinate read mid-fit is a coordinate of somewhere a box no longer is.
+ * The transform it settles at is handed back, for a test that asks whether
+ * the map was re-fitted at all.
  */
-async function hidePanel(page: Page): Promise<void> {
+async function hidePanel(page: Page): Promise<string> {
   await page.getByRole("button", { name: "Hide panel", exact: true }).click();
   await expect(stepPanel(page)).toHaveCount(0);
-  await settledTransform(page);
+  return settledTransform(page);
 }
 
 /** One box on the map, named by the Step it stands for. */
@@ -402,6 +405,11 @@ const SETTLE_INTERVAL_MS = 250;
  * The map's transform once it has stopped moving. `fitView` animates, so
  * "the viewport did not move" is only worth asserting against a reading taken
  * after the last animation finished rather than before or during one.
+ *
+ * Read off the viewport's inline style: React Flow pans and zooms the map by
+ * writing a CSS transform there, and the `transform` attribute an SVG would
+ * carry is not something it ever sets — read as an attribute, every reading
+ * is the same empty nothing and any two of them agree.
  */
 async function settledTransform(page: Page): Promise<string> {
   const viewport = canvas(page).locator(".react-flow__viewport");
@@ -411,7 +419,9 @@ async function settledTransform(page: Page): Promise<string> {
   await expect
     .poll(
       async () => {
-        const now = await viewport.getAttribute("transform");
+        const now = await viewport.evaluate(
+          (element) => (element as HTMLElement).style.transform,
+        );
         still = now === last ? still + 1 : 0;
         last = now;
         return still;
@@ -662,6 +672,78 @@ async function connectByDragging(
 }
 
 /**
+ * The finish both branch-building tests share, whichever way round the map
+ * they built it on runs: the one Outcome added and both Endings tagged with
+ * it, the Draft validated, saved and published, and the Journey walked by a
+ * Participant down the Choice they take to an Ending. What each of those
+ * tests proves is the way its branch was made; everything after that is the
+ * same, and is done here once. The map and the runner are photographed under
+ * the test's own name, so each keeps its own proof.
+ */
+async function tagEndingsPublishAndWalk(
+  page: Page,
+  context: BrowserContext,
+  journeyId: string,
+  testInfo: TestInfo,
+): Promise<void> {
+  await addOutcome(page, "Reached care");
+  for (const ending of ["Waved through", "Turned back"]) {
+    await canvasNode(page, ending).click();
+    await expect(page.getByLabel("Step title")).toHaveValue(ending);
+    await page
+      .getByLabel("Outcome", { exact: true })
+      .selectOption({ label: "Reached care" });
+    await expect(canvasNode(page, ending)).toHaveAttribute(
+      "data-problems",
+      "0",
+    );
+  }
+
+  await page.getByRole("button", { name: "Validate", exact: true }).click();
+  await expect(page.getByText("No problems found.")).toBeVisible();
+
+  await expectSaved(page);
+  const publish = page.getByRole("button", { name: "Publish", exact: true });
+  await expect(publish).toBeEnabled();
+  await publish.click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  await page.screenshot({
+    path: `test-results/${testInfo.title}/${testInfo.title}.png`,
+    fullPage: true,
+  });
+
+  // And a Participant walks what was drawn: how the Journey was built, and
+  // how the Author was looking at it while they built it, is nothing the walk
+  // knows about.
+  const participantContext = await context.browser()!.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Border post" }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Walk away" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Turned back" }),
+    ).toBeVisible();
+    await expect(participant.getByText("The end")).toBeVisible();
+
+    await participant.screenshot({
+      path: `test-results/${testInfo.title}/${testInfo.title}-runner.png`,
+      fullPage: true,
+    });
+  } finally {
+    await participantContext.close();
+  }
+}
+
+/**
  * The two directions the map can be drawn in: which edge of a box the Step a
  * Choice leads to stands past, and which edge a Choice that leads back to its
  * own Step loops around — out past the right running top to bottom, out past
@@ -676,12 +758,19 @@ const DIRECTIONS = [
   {
     name: "Top to bottom",
     suffix: "",
+    /**
+     * Whether the map has to be turned before the moves are made: a new Draft
+     * is drawn top to bottom, so that one is already what is in front of the
+     * Author.
+     */
+    turns: false,
     targetPast: "bottom",
     loopPast: "right",
   },
   {
     name: "Left to right",
     suffix: "-left-to-right",
+    turns: true,
     targetPast: "right",
     loopPast: "bottom",
   },
@@ -706,7 +795,7 @@ for (const direction of DIRECTIONS) {
 
     // A new Draft is drawn top to bottom, so that one is already the map in
     // front of the Author; the other is switched to first.
-    if (direction.suffix !== "") await setDirection(page, direction.name);
+    if (direction.turns) await setDirection(page, direction.name);
 
     await renameStep(page, "Border post");
     await expect(canvasNodes(page)).toHaveCount(1);
@@ -985,20 +1074,25 @@ test("canvas-hide-and-show-panel", async ({ page, context }) => {
   await addStepFromCanvas(page, "Waved through");
   await expect.poll(() => mapFaults(page, 3), { timeout: 20_000 }).toEqual([]);
 
-  // How wide the map is with the panel beside it, to measure the rest by.
-  await settledTransform(page);
+  // How wide the map is with the panel beside it, and where it sits in that
+  // width, to measure the rest by.
+  const besideTransform = await settledTransform(page);
   const beside = await canvas(page).boundingBox();
   expect(beside, "the canvas has no box yet").not.toBeNull();
   const besideWidth = beside!.width;
 
   // Put away, the panel gives the map the whole width — and the map is laid
   // out into it rather than left sitting in the middle of it.
-  await hidePanel(page);
+  const widenedTransform = await hidePanel(page);
   await expect
     .poll(async () => (await canvas(page).boundingBox())?.width ?? 0, {
       timeout: 10_000,
     })
     .toBeGreaterThan(besideWidth);
+  expect(
+    widenedTransform,
+    "the map was left in the view it had in the narrower frame",
+  ).not.toBe(besideTransform);
   await expect.poll(() => mapFaults(page, 3), { timeout: 20_000 }).toEqual([]);
 
   // Remembered by the browser, never written to the Journey: how an Author
@@ -1011,17 +1105,24 @@ test("canvas-hide-and-show-panel", async ({ page, context }) => {
   await expect(showPanelButton(page)).toBeVisible();
 
   // Opening a Step brings the panel back on its own: the gesture an Author
-  // edits with never changes for the panel being away.
+  // edits with never changes for the panel being away. It brings it back for
+  // this page only — what the browser remembers is the choice the Author
+  // made, and clicking a box is not that choice.
   await canvasNode(page, "Clinic tent").click();
   await expect(stepPanel(page)).toBeVisible();
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+  expect(
+    await page.evaluate(() =>
+      window.localStorage.getItem("journeys:step-panel"),
+    ),
+  ).toBe("hidden");
 
-  await hidePanel(page);
   await expectSaved(page);
   await page.reload();
   await expect(canvas(page)).toBeVisible();
 
-  // The choice outlives the page: the panel is still away after a reload.
+  // So the choice outlives the page: the panel is away again after a reload,
+  // though it was on screen when the reload happened.
   await expect.poll(() => stepPanel(page).count(), { timeout: 10_000 }).toBe(0);
   await expect(showPanelButton(page)).toBeVisible();
 
@@ -1036,6 +1137,9 @@ test("canvas-hide-and-show-panel", async ({ page, context }) => {
       { timeout: 10_000 },
     )
     .toBeLessThanOrEqual(1);
+  // And the map is laid out into the width it has back, as it was into the
+  // width it was given.
+  await expect.poll(() => mapFaults(page, 3), { timeout: 20_000 }).toEqual([]);
 
   // Escape off a box lands the keyboard on the map; a second Escape, with the
   // map itself holding it, puts the panel away.
@@ -2144,7 +2248,7 @@ test.describe("authoring from the map", () => {
       // A new Draft is drawn top to bottom; the other direction is switched
       // to before a single Step is named, so every move below is made on a
       // map whose anchors are on the sides of the boxes.
-      if (direction.suffix !== "") await setDirection(page, direction.name);
+      if (direction.turns) await setDirection(page, direction.name);
 
       await renameStep(page, "Border post");
       await addStepFromCanvas(page, "Clinic tent");
@@ -2178,7 +2282,13 @@ test.describe("authoring from the map", () => {
       ).toBeVisible();
 
       // Dragging the arrow's head onto another box moves the Choice there.
-      await fitWholeMap(page, 3);
+      // On the left-to-right map the whole map is taken back first: the
+      // Choice just made re-ranks the Step it leads to along the horizontal
+      // rank axis, and an arrow is not a box added, so the map does not
+      // re-fit itself for it (ticket 16's rule) — on a map zoomed in far
+      // enough the box lands off the frame. Running top to bottom the map is
+      // left exactly as the moves above left it.
+      if (direction.turns) await fitWholeMap(page, 3);
       const choiceId = await canvasEdges(page).getAttribute("data-choice-id");
       expect(choiceId).not.toBeNull();
       const head = canvasEdge(page, choiceId!).locator(
@@ -2201,8 +2311,10 @@ test.describe("authoring from the map", () => {
         "Waved through",
       );
 
-      // A drag that ends on bare map leaves the Draft exactly as it was.
-      await fitWholeMap(page, 3);
+      // A drag that ends on bare map leaves the Draft exactly as it was. The
+      // retarget above re-ranked a Step too, so the left-to-right map is
+      // taken back again for the same reason.
+      if (direction.turns) await fitWholeMap(page, 3);
       const nowhere = await emptySpot(page);
       await dragTo(page, connectHandle(page, "Clinic tent"), nowhere);
       await expect(canvasEdges(page)).toHaveCount(1);
@@ -2278,7 +2390,10 @@ test.describe("authoring from the map", () => {
     });
   }
 
-  test("canvas-build-by-dragging-and-walk", async ({ page, context }) => {
+  test("canvas-build-by-dragging-and-walk", async ({
+    page,
+    context,
+  }, testInfo) => {
     const { journeyId } = await startJourney(page, context);
 
     await renameStep(page, "Border post");
@@ -2303,63 +2418,14 @@ test.describe("authoring from the map", () => {
     );
     await expect(canvasEdges(page)).toHaveCount(2);
 
-    await addOutcome(page, "Reached care");
-    for (const ending of ["Waved through", "Turned back"]) {
-      await canvasNode(page, ending).click();
-      await expect(page.getByLabel("Step title")).toHaveValue(ending);
-      await page
-        .getByLabel("Outcome", { exact: true })
-        .selectOption({ label: "Reached care" });
-      await expect(canvasNode(page, ending)).toHaveAttribute(
-        "data-problems",
-        "0",
-      );
-    }
-
-    await page.getByRole("button", { name: "Validate", exact: true }).click();
-    await expect(page.getByText("No problems found.")).toBeVisible();
-
-    await expectSaved(page);
-    const publish = page.getByRole("button", { name: "Publish", exact: true });
-    await expect(publish).toBeEnabled();
-    await publish.click();
-    await expect(page.getByText("Published", { exact: true })).toBeVisible();
-
-    await page.screenshot({
-      path: "test-results/canvas-build-by-dragging-and-walk/canvas-build-by-dragging-and-walk.png",
-      fullPage: true,
-    });
-
-    // And a Participant walks what was drawn: a Journey built entirely by
-    // dragging is a Journey like any other.
-    const participantContext = await context.browser()!.newContext({
-      baseURL: E2E_BASE_URL,
-    });
-    try {
-      const participant = await participantContext.newPage();
-
-      await participant.goto(`/j/${journeyId}`);
-      await participant.getByRole("button", { name: "Begin" }).click();
-      await expect(
-        participant.getByRole("heading", { name: "Border post" }),
-      ).toBeVisible();
-
-      await participant.getByRole("link", { name: "Walk away" }).click();
-      await expect(
-        participant.getByRole("heading", { name: "Turned back" }),
-      ).toBeVisible();
-      await expect(participant.getByText("The end")).toBeVisible();
-
-      await participant.screenshot({
-        path: "test-results/canvas-build-by-dragging-and-walk/canvas-build-by-dragging-and-walk-runner.png",
-        fullPage: true,
-      });
-    } finally {
-      await participantContext.close();
-    }
+    // A Journey built entirely by dragging is a Journey like any other.
+    await tagEndingsPublishAndWalk(page, context, journeyId, testInfo);
   });
 
-  test("canvas-build-left-to-right-and-walk", async ({ page, context }) => {
+  test("canvas-build-left-to-right-and-walk", async ({
+    page,
+    context,
+  }, testInfo) => {
     const { journeyId } = await startJourney(page, context);
 
     // The same branch as the test above, built on a map that runs left to
@@ -2411,66 +2477,13 @@ test.describe("authoring from the map", () => {
       "right",
     );
 
-    await addOutcome(page, "Reached care");
-    for (const ending of ["Waved through", "Turned back"]) {
-      await canvasNode(page, ending).click();
-      await expect(page.getByLabel("Step title")).toHaveValue(ending);
-      await page
-        .getByLabel("Outcome", { exact: true })
-        .selectOption({ label: "Reached care" });
-      await expect(canvasNode(page, ending)).toHaveAttribute(
-        "data-problems",
-        "0",
-      );
-    }
-
-    await page.getByRole("button", { name: "Validate", exact: true }).click();
-    await expect(page.getByText("No problems found.")).toBeVisible();
-
-    await expectSaved(page);
-    const publish = page.getByRole("button", { name: "Publish", exact: true });
-    await expect(publish).toBeEnabled();
-    await publish.click();
-    await expect(page.getByText("Published", { exact: true })).toBeVisible();
+    await tagEndingsPublishAndWalk(page, context, journeyId, testInfo);
 
     // Which way the map runs is the Journey's and was stored with the rest of
     // it; whether the panel was away is the browser's and is nowhere in it.
     const stored = await readDraft(journeyId);
     expect(stored.layoutDirection).toBe("LR");
     expect(stored.steps[stored.startStepId].choices).toHaveLength(2);
-
-    await page.screenshot({
-      path: "test-results/canvas-build-left-to-right-and-walk/canvas-build-left-to-right-and-walk.png",
-      fullPage: true,
-    });
-
-    // And a Participant walks it: how an Author was looking at the map is
-    // nothing the Journey they walk knows about.
-    const participantContext = await context.browser()!.newContext({
-      baseURL: E2E_BASE_URL,
-    });
-    try {
-      const participant = await participantContext.newPage();
-
-      await participant.goto(`/j/${journeyId}`);
-      await participant.getByRole("button", { name: "Begin" }).click();
-      await expect(
-        participant.getByRole("heading", { name: "Border post" }),
-      ).toBeVisible();
-
-      await participant.getByRole("link", { name: "Walk away" }).click();
-      await expect(
-        participant.getByRole("heading", { name: "Turned back" }),
-      ).toBeVisible();
-      await expect(participant.getByText("The end")).toBeVisible();
-
-      await participant.screenshot({
-        path: "test-results/canvas-build-left-to-right-and-walk/canvas-build-left-to-right-and-walk-runner.png",
-        fullPage: true,
-      });
-    } finally {
-      await participantContext.close();
-    }
   });
 
   test("canvas-build-branch-and-publish", async ({ page, context }) => {

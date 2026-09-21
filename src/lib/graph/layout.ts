@@ -92,10 +92,18 @@ export type CanvasEdge = {
   points: Point[];
 };
 
-/** Everything one document lays out to: the boxes and the arrows between them. */
+/**
+ * Everything one document lays out to: the boxes, the arrows between them,
+ * and which way round they were laid out.
+ */
 export type GraphLayout = {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
+  /**
+   * The document's own `layoutDirection`, carried through so the canvas draws
+   * every handle and every loop from the layout it was handed rather than
+   * reading the document a second time and risking a different answer.
+   */
   direction: LayoutDirection;
 };
 

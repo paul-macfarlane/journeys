@@ -60,36 +60,35 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   to right, switched from the control beside "Add step" and stored on the
   draft rather than in the browser, so every member of the project sees the
   journey the same way round; changing it re-fits the whole map. Its arrows
-  follow the routes the layout
-  computes, the arrows into and out of the step the panel has open are drawn
-  at full strength while the rest dim, opening a step that is off the map
-  brings it back into view, and the legend names every outcome in the color
-  its endings carry. The journey is built on the map too: dragging from a
-  box's connect dot onto another box makes the choice between them (and
-  dragging an arrow's head onto a third box moves it there), the open box's
-  toolbar adds the next step, duplicates the step, zooms the map to it, makes
-  it the start or deletes it — the panel's footer duplicates it too — and
-  clicking an arrow opens its choice for renaming or deletes it with the
-  Delete key. The map is read as well as built: hovering or focusing a box
-  shows the opening of that step's content without opening it, and the arrow
-  keys walk from box to nearest box, where Enter opens the one the keyboard is
-  on and Escape steps back out to the map itself. The panel beside the map can
-  be hidden with "Hide panel" to give the map the whole width, and comes back
-  from "Show panel" at the canvas's right edge or by opening any step from
-  anywhere; a second Escape, with the map itself holding the keyboard, hides it
-  again. Whether it is hidden is remembered per browser rather than stored on
-  the journey, so it is how one author is reading the map and not something
-  every member sees.
-  Problems are listed on the step they belong to and in a live count above
-  the map, and the "Find step" field above the map — reached with Cmd/Ctrl+K
-  from anywhere on the page — filters the steps by title as they are typed,
-  lists every one of them in the map's own order when nothing is, and centers
-  the map on whichever is chosen. The draft autosaves. Publish the draft as an
-  immutable version (refused, with the problems listed, while the
-  draft has any), unpublish to take it back from participants, preview it, and
-  see every published version — number, when, and who published it — with the
-  live one marked and any of them restorable into the draft. Members of the
-  project only; anyone else gets a 404.
+  follow the routes the layout computes, the arrows into and out of the step
+  the panel has open are drawn at full strength while the rest dim, opening a
+  step that is off the map brings it back into view, and the legend names
+  every outcome in the color its endings carry. The journey is built on the
+  map too: dragging from a box's connect dot onto another box makes the
+  choice between them (and dragging an arrow's head onto a third box moves
+  it there), the open box's toolbar adds the next step, duplicates the step,
+  zooms the map to it, makes it the start or deletes it — the panel's footer
+  duplicates it too — and clicking an arrow opens its choice for renaming or
+  deletes it with the Delete key. The map is read as well as built: hovering
+  or focusing a box shows the opening of that step's content without opening
+  it, and the arrow keys walk from box to nearest box, where Enter opens the
+  one the keyboard is on and Escape steps back out to the map itself. The
+  panel beside the map can be hidden with "Hide panel" to give the map the
+  whole width, and comes back from "Show panel" at the canvas's right edge or
+  by opening any step from anywhere; a second Escape, with the map itself
+  holding the keyboard, hides it again. Whether it is hidden is remembered
+  per browser rather than stored on the journey, so it is how one author is
+  reading the map and not something every member sees. Problems are listed on
+  the step they belong to and in a live count above the map, and the
+  "Find step" field above the map — reached with Cmd/Ctrl+K from anywhere on
+  the page — filters the steps by title as they are typed, lists every one of
+  them in the map's own order when nothing is, and centers the map on
+  whichever is chosen. The draft autosaves. Publish the draft as an immutable
+  version (refused, with the problems listed, while the draft has any),
+  unpublish to take it back from participants, preview it, and see every
+  published version — number, when, and who published it — with the live one
+  marked and any of them restorable into the draft. Members of the project
+  only; anyone else gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>/preview` — walks the draft
   from its start step to an ending, exactly as a participant would, and
   records nothing. Members of the project only; anyone else gets a 404, and a
