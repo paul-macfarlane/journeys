@@ -1,6 +1,6 @@
 # 13: Members
 
-Status: ready-for-human
+Status: done
 Blocked by: 02
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -116,3 +116,7 @@ Actions, README, scope, and vocabulary: clean; every AC and plan decision matche
 **Deviations:** S3 (import order in `actions.ts`, pre-existing) — orchestrator-approved, non-blocking, recorded in the review above. Worker deviations were test-only (rows filtered by email, since both minted Authors share a name).
 
 **Human follow-ups:** (1) review and merge PR #17; (2) move this ticket to `done` after merging. Tickets 05 and 08 were moved to `done` in this same branch at Paul's direction, so 06, 07, 09, and 14 are already available; 06 is next by priority.
+
+### [CLOSEOUT] 2026-09-21 — moved to `done`
+
+PR #17 merged to `staging` on 2026-09-21 (03:48 UTC). Moved to `done` at Paul's direction of 2026-09-21 under the amended tracker rule (a merged PR is the human's acceptance).
