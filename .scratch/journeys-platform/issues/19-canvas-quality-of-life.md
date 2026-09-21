@@ -30,3 +30,7 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 ### Note from ticket 16's review (2026-09-21)
 
 A self-loop Choice (a Step whose Choice targets itself) can be drawn by dragging on the canvas since ticket 16, and its arrow is routed straight through its own box: dagre keeps the loop in the box's rank and runs it out to the right and back (`layout.test.ts` pins the shape). A hand-built side route in the `choice` edge is this ticket's territory.
+
+### Scope addition (Paul, 2026-09-21): remove the step list
+
+Once "Find step" and the map keyboard basics land, remove the step list under the canvas (`StepList`, its "Steps" disclosure, and the `list "Steps"` reads in `draft.spec.ts`, `step-editing.spec.ts`, `publish.spec.ts`, `canvas.spec.ts`). The find-step palette lists every Step in map order when the query is empty, which is what the list was for; arrow keys between boxes replace it for keyboard navigation. The Outcomes editor beneath the canvas stays. The "Selected step stays in view" bullet's sticky panel is superseded if a slidable panel is decided before this ticket runs.
