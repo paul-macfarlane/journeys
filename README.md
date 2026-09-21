@@ -128,12 +128,13 @@ pnpm seed:journey-stories you@example.com    # seed the local dev database
   anything else) in those files and rerun the command to apply the change;
   `src/lib/graph/validate.test.ts` checks every document still publishes and
   still holds the counts the legacy case has.
-- **Four choices and one step were left out.** Published journeys must not
-  loop, so the choices that looped back on the legacy site are gone — case 1's
-  "Yes" on "Detention 1", and case 2's "Call the legal organization" on "Call
-  Sponsor", "Call your bunkmate's cousin's friend" on "I quit!", and "Go home,
-  and try again later" on "ER" — along with case 1's "Detention", which nothing
-  links to in the legacy data either.
+- **One step was left out.** Case 1's "Detention" is omitted because nothing
+  in the legacy data links to it — unreachable on the legacy site itself, with
+  nothing to do with cycles. The four choices that loop back on the legacy
+  site — case 1's "Yes" on "Detention 1", and case 2's "Call the legal
+  organization" on "Call Sponsor", "Call your bunkmate's cousin's friend" on "I
+  quit!", and "Go home, and try again later" on "ER" — are present, since
+  cycles became allowed (ticket 18, ADR-0002).
 - **Against Neon staging,** export the connection string for that one command:
   `DATABASE_URL=… pnpm seed:journey-stories you@example.com`. An explicit
   `DATABASE_URL` wins over `.env.local`, and the command prints only the host

@@ -1,8 +1,9 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { graphDocumentSchema } from "@/lib/graph/document";
+import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
 import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
+import caseTwoJson from "../scripts/seed/journey-stories/case-2.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
   loopDocument,
@@ -71,6 +72,39 @@ async function stubOffOriginImages(context: BrowserContext): Promise<void> {
       body: PLACEHOLDER_IMAGE,
     });
   });
+}
+
+/**
+ * The shortest route of Choice labels from the Start to `targetStepId`,
+ * found by breadth-first search over the document's own Choices (in each
+ * Step's own order). Computed rather than hand-copied so a future content
+ * edit to the seeded case upstream does not silently break this walk — the
+ * route always matches whatever the document currently says.
+ */
+function shortestRouteTo(
+  document: GraphDocument,
+  targetStepId: string,
+): string[] {
+  const visited = new Set<string>([document.startStepId]);
+  const queue: { stepId: string; route: string[] }[] = [
+    { stepId: document.startStepId, route: [] },
+  ];
+
+  while (queue.length > 0) {
+    const { stepId, route } = queue.shift()!;
+    if (stepId === targetStepId) return route;
+
+    for (const choice of document.steps[stepId].choices) {
+      if (visited.has(choice.targetStepId)) continue;
+      visited.add(choice.targetStepId);
+      queue.push({
+        stepId: choice.targetStepId,
+        route: [...route, choice.label],
+      });
+    }
+  }
+
+  throw new Error(`No route from Start to ${targetStepId}`);
 }
 
 /** Mobile-first means this, on every screen of the walk. */
@@ -443,6 +477,68 @@ test("runner-loop-and-back", async ({ page, context, browser }) => {
     expect(ended[0].outcome_id).toBe("reached-care");
     expect(ended[0].ended_at).not.toBeNull();
     expect(ended[0].backtrack_count).toBe(1);
+  } finally {
+    await participantContext.close();
+  }
+});
+
+test("runner-case-2-restored-choice", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const journeyTitle = `Case 2 ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Migrant Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // The committed seed document, read through the same contract the app
+  // reads a stored version with — including the four Choices ticket 18
+  // restored, one of which is this walk's whole point.
+  const caseTwo = graphDocumentSchema.parse(caseTwoJson);
+  await writeDraftDocument(journeyId, caseTwo);
+  const versionId = await publishDocument(journeyId, caseTwo);
+
+  const route = shortestRouteTo(caseTwo, "step-27");
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    await stubOffOriginImages(participantContext);
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+
+    for (const label of route) {
+      await participant.getByRole("link", { name: label, exact: true }).click();
+    }
+    await expect(
+      participant.getByRole("heading", { name: "I quit!" }),
+    ).toBeVisible();
+
+    await participant
+      .getByRole("link", {
+        name: "Call your bunkmate's cousin's friend",
+        exact: true,
+      })
+      .click();
+    await expect(
+      participant.getByRole("heading", { name: "Trafficking?" }),
+    ).toBeVisible();
+
+    await participant.screenshot({
+      path: "test-results/runner-case-2-restored-choice/runner-case-2-restored-choice.png",
+      fullPage: true,
+    });
+
+    const runs = await readRuns(versionId);
+    expect(runs).toHaveLength(1);
+    expect(runs[0].path.slice(-2)).toEqual(["step-27", "step-32"]);
+    expect(runs[0].backtrack_count).toBe(0);
   } finally {
     await participantContext.close();
   }

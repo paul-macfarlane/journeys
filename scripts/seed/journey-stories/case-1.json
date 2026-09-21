@@ -2442,6 +2442,13 @@
       "choices": [
         {
           "id": "step-46-choice-1",
+          "label": "Yes",
+          "targetStepId": "step-1",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-46-choice-2",
           "label": "No",
           "targetStepId": "step-47",
           "condition": null,

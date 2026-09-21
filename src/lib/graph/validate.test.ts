@@ -330,7 +330,7 @@ const journeyStories = [
     source: case1Document,
     startStepId: "step-42",
     steps: 46,
-    choices: 69,
+    choices: 70,
     endings: 6,
     outcomes: 4,
     images: 20,
@@ -340,7 +340,7 @@ const journeyStories = [
     source: case2Document,
     startStepId: "step-63",
     steps: 64,
-    choices: 102,
+    choices: 105,
     endings: 9,
     outcomes: 5,
     images: 15,
@@ -389,6 +389,30 @@ describe("the seeded Journey Stories documents", () => {
       expect(steps.flatMap((step) => step.choices)).toHaveLength(choiceCount);
     },
   );
+
+  it("case 1 and case 2 carry the Choices ticket 18 restored, with their legacy labels", () => {
+    const case1 = documentOf(case1Document);
+    const case2 = documentOf(case2Document);
+
+    const findChoice = (
+      document: GraphDocument,
+      stepId: string,
+      label: string,
+    ) => document.steps[stepId].choices.find((c) => c.label === label);
+
+    expect(findChoice(case1, "step-46", "Yes")?.targetStepId).toBe("step-1");
+    expect(
+      findChoice(case2, "step-19", "Call the legal organization")?.targetStepId,
+    ).toBe("step-2");
+    expect(
+      findChoice(case2, "step-27", "Call your bunkmate's cousin's friend")
+        ?.targetStepId,
+    ).toBe("step-32");
+    expect(
+      findChoice(case2, "step-52", "Go home, and try again later")
+        ?.targetStepId,
+    ).toBe("step-53");
+  });
 
   it.each(journeyStories)(
     "$name tags every Ending with an Outcome it defines",
