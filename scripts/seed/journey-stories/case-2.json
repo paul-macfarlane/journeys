@@ -1282,6 +1282,13 @@
         },
         {
           "id": "step-19-choice-2",
+          "label": "Call the legal organization",
+          "targetStepId": "step-2",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-19-choice-3",
           "label": "Work and save up first",
           "targetStepId": "step-23",
           "condition": null,
@@ -1729,6 +1736,13 @@
         },
         {
           "id": "step-27-choice-2",
+          "label": "Call your bunkmate's cousin's friend",
+          "targetStepId": "step-32",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-27-choice-3",
           "label": "Lay in bed for today. You need your rest.",
           "targetStepId": "step-34",
           "condition": null,
@@ -3147,6 +3161,13 @@
           "id": "step-52-choice-1",
           "label": "Keep waiting",
           "targetStepId": "step-60",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-52-choice-2",
+          "label": "Go home, and try again later",
+          "targetStepId": "step-53",
           "condition": null,
           "effect": null
         }

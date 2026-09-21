@@ -1,6 +1,7 @@
 # ADR-0001: Store each Draft and Published Version as one validated JSON graph document
 
 - Status: Accepted
+- Amended by: ADR-0002 (2026-09-21) — the "walk in circles" publish rule is withdrawn; cycles are allowed.
 - Decided: 2026-09-18 (grilling session); written up 2026-09-19
 - Deciders: Paul Macfarlane
 

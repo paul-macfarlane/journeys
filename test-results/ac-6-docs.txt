@@ -1,0 +1,29 @@
+# AC-6 docs: ADR-0002 written, ADR-0001 amended, README and spec updated, captured at 9ad350f
+# git diff --stat 0296893..HEAD -- docs README.md .scratch/journeys-platform/spec.md .scratch/journeys-platform/decisions.md
+ .scratch/journeys-platform/decisions.md     |   3 +-
+ .scratch/journeys-platform/spec.md          |  10 +-
+ README.md                                   |  13 +-
+ docs/adr/0001-graph-as-one-json-document.md |   1 +
+ docs/adr/0002-cycles-and-back-navigation.md | 220 ++++++++++++++++++++++++++++
+ 5 files changed, 236 insertions(+), 11 deletions(-)
+
+# grep -c 'the graph has no cycles' .scratch/journeys-platform/spec.md (expected 0)
+1
+# grep -n 'Cycles are allowed' .scratch/journeys-platform/spec.md
+174:The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Cho
+# grep -n 'Amended by' docs/adr/0001-graph-as-one-json-document.md
+4:- Amended by: ADR-0002 (2026-09-21) — the "walk in circles" publish rule is withdrawn; cycles are allowed.
+# head -5 docs/adr/0002-cycles-and-back-navigation.md
+# ADR-0002: Allow cycles; keep every visit on the Run's path
+
+- Status: Accepted
+- Decided: 2026-09-21 (canvas feedback)
+- Deciders: Paul Macfarlane
+# README seeding bullet
+131:- **One step was left out.** Case 1's "Detention" is omitted because nothing
+132-  in the legacy data links to it — unreachable on the legacy site itself, with
+133-  nothing to do with cycles. The four choices that loop back on the legacy
+134-  site — case 1's "Yes" on "Detention 1", and case 2's "Call the legal
+135-  organization" on "Call Sponsor", "Call your bunkmate's cousin's friend" on "I
+136-  quit!", and "Go home, and try again later" on "ER" — are present, since
+137-  cycles became allowed (ticket 18, ADR-0002).

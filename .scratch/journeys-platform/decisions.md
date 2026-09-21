@@ -94,7 +94,8 @@ Vocabulary is defined in `/CONTEXT.md` — use those terms.
 - Delete Journey: supported, hard delete with confirm, cascades runs/responses.
   No soft delete.
 - Back navigation: allowed. URL per step; path = current linear route (back
-  truncates, backtrack counter stored); reserved `allow_back` flag for later.
+  truncates, backtrack counter stored); reserved `allow_back` flag for later
+  (amended 2026-09-21 — see the Back-navigation bullet below).
 - Journey gets a short description; runner has a start screen.
 - Playwright auth: mint a real better-auth session via the internal adapter
   and a hand-signed `better-auth.session_token` cookie (picksleagues pattern),

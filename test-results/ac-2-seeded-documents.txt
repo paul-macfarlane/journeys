@@ -1,0 +1,37 @@
+# AC-2 the seeded Journey Stories documents, captured at 9ad350f
+# pnpm test src/lib/graph/validate.test.ts -t 'seeded Journey Stories' -- --reporter=verbose
+
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> vitest run src/lib/graph/validate.test.ts -t 'seeded Journey Stories' -- --reporter=verbose
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+
+ Test Files  1 passed (1)
+      Tests  19 passed | 17 skipped (36)
+   Start at  11:31:15
+   Duration  929ms (transform 347ms, setup 0ms, import 585ms, tests 41ms, environment 0ms)
+
+exit=0
+
+# The four restored Steps, read from the committed documents:
+case-1: 46 Steps, 70 Choices
+  step-46 'Detention 1':
+    step-46-choice-1  'Yes' -> step-1
+    step-46-choice-2  'No' -> step-47
+case-2: 64 Steps, 105 Choices
+  step-19 'Call Sponsor':
+    step-19-choice-1  'Call the number' -> step-32
+    step-19-choice-2  'Call the legal organization' -> step-2
+    step-19-choice-3  'Work and save up first' -> step-23
+  step-27 'I quit!':
+    step-27-choice-1  'Submit an intake form to see the doctor' -> step-33
+    step-27-choice-2  "Call your bunkmate's cousin's friend" -> step-32
+    step-27-choice-3  'Lay in bed for today. You need your rest.' -> step-34
+  step-52 'ER':
+    step-52-choice-1  'Keep waiting' -> step-60
+    step-52-choice-2  'Go home, and try again later' -> step-53

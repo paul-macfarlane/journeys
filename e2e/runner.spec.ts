@@ -1,10 +1,14 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { graphDocumentSchema } from "@/lib/graph/document";
+import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
+import { MAX_PATH_LENGTH } from "@/lib/graph/run";
+
+import caseTwoJson from "../scripts/seed/journey-stories/case-2.json";
 import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
+  loopDocument,
   publishDocument,
   QUEUE_STEP_ID,
   QUEUE_STEP_TITLE,
@@ -70,6 +74,42 @@ async function stubOffOriginImages(context: BrowserContext): Promise<void> {
       body: PLACEHOLDER_IMAGE,
     });
   });
+}
+
+/**
+ * The shortest route of Choice labels from the Start to `targetStepId`,
+ * found by breadth-first search over the document's own Choices (in each
+ * Step's own order). Computed rather than hand-copied so a future content
+ * edit to the seeded case upstream does not silently break this walk — the
+ * route always matches whatever the document currently says.
+ */
+function shortestRouteTo(
+  document: GraphDocument,
+  targetStepId: string,
+): string[] {
+  const visited = new Set<string>([document.startStepId]);
+  const queue: { stepId: string; route: string[] }[] = [
+    { stepId: document.startStepId, route: [] },
+  ];
+
+  while (queue.length > 0) {
+    const next = queue.shift();
+    if (!next) break;
+
+    const { stepId, route } = next;
+    if (stepId === targetStepId) return route;
+
+    for (const choice of document.steps[stepId].choices) {
+      if (visited.has(choice.targetStepId)) continue;
+      visited.add(choice.targetStepId);
+      queue.push({
+        stepId: choice.targetStepId,
+        route: [...route, choice.label],
+      });
+    }
+  }
+
+  throw new Error(`No route from Start to ${targetStepId}`);
 }
 
 /** Mobile-first means this, on every screen of the walk. */
@@ -260,8 +300,11 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     // The browser restores the previous page from its own cache and the page
     // sends itself back to the server, so the row settles a moment after the
     // heading is on screen — the two screens look identical either way.
+    // 30s budgets a second full page load on a busy development server.
     await expect
-      .poll(async () => (await readRuns(versionId))[0].path)
+      .poll(async () => (await readRuns(versionId))[0].path, {
+        timeout: 30_000,
+      })
       .toEqual([START_STEP_ID, QUEUE_STEP_ID]);
 
     const afterBrowserBack = await readRuns(versionId);
@@ -314,6 +357,284 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     expect(afterStartOver[0].outcome_id).toBe("turned-away");
     expect(afterStartOver[1].path).toEqual([START_STEP_ID]);
     expect(afterStartOver[1].ended_at).toBeNull();
+  } finally {
+    await participantContext.close();
+  }
+});
+
+test("runner-loop-and-back", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Queue ${suffix}`,
+  );
+
+  const versionId = await publishDocument(journeyId, loopDocument());
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    // Twice around the loop: every visit is its own entry, and choosing the
+    // Step behind you is a forward move, not a backtrack.
+    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    const aroundTheLoop = await readRuns(versionId);
+    expect(aroundTheLoop).toHaveLength(1);
+    expect(aroundTheLoop[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+    ]);
+    expect(aroundTheLoop[0].backtrack_count).toBe(0);
+
+    // The ambiguous navigation: the queue Step is both the entry behind the
+    // Participant and a Choice of the Step they are on. Back means the entry,
+    // which only holds if the index reaches the server.
+    await participant.goBack();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    // 30s budgets a second full page load on a busy development server.
+    await expect
+      .poll(async () => (await readRuns(versionId))[0].path, {
+        timeout: 30_000,
+      })
+      .toEqual([START_STEP_ID, QUEUE_STEP_ID, START_STEP_ID, QUEUE_STEP_ID]);
+
+    const afterBrowserBack = await readRuns(versionId);
+    expect(afterBrowserBack[0].backtrack_count).toBe(1);
+    expect(afterBrowserBack[0].ended_at).toBeNull();
+
+    // The index did its work and left: the address bar shows the Step alone.
+    await expect(participant).toHaveURL(
+      `${E2E_BASE_URL}/j/${journeyId}/${QUEUE_STEP_ID}`,
+    );
+
+    // Round the loop once more from there, and out.
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    const afterLoopingAgain = await readRuns(versionId);
+    expect(afterLoopingAgain[0].path).toHaveLength(5);
+    expect(afterLoopingAgain[0].backtrack_count).toBe(1);
+
+    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Show your papers" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Waved through" }),
+    ).toBeVisible();
+    await expect(participant.getByText("The end")).toBeVisible();
+
+    await participant.screenshot({
+      path: "test-results/runner-loop-and-back/runner-loop-and-back.png",
+      fullPage: true,
+    });
+
+    const ended = await readRuns(versionId);
+    expect(ended).toHaveLength(1);
+    expect(ended[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      "waved-through",
+    ]);
+    expect(ended[0].outcome_id).toBe("reached-care");
+    expect(ended[0].ended_at).not.toBeNull();
+    expect(ended[0].backtrack_count).toBe(1);
+  } finally {
+    await participantContext.close();
+  }
+});
+
+test("runner-path-cap", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Endless Queue ${suffix}`,
+  );
+
+  const versionId = await publishDocument(journeyId, loopDocument());
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    const started = await readRuns(versionId);
+    expect(started).toHaveLength(1);
+
+    // Walking to the cap would take a thousand clicks and prove nothing the
+    // reducer's own cases do not; the row is grown to it directly so this
+    // spec is about what a Participant is told when the walk stops. The cap
+    // is an even number, so the path ends on the queue Step.
+    const cappedPath = Array.from({ length: MAX_PATH_LENGTH }, (_, index) =>
+      index % 2 === 0 ? START_STEP_ID : QUEUE_STEP_ID,
+    );
+    await queryE2eDatabase('UPDATE "run" SET path = $1::jsonb WHERE id = $2', [
+      JSON.stringify(cappedPath),
+      started[0].id,
+    ]);
+
+    // The Step the Run already stands on is a stay: nothing to append.
+    await participant.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    // A forward move past the cap is refused, and said so in one sentence.
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByText(
+        "This journey has gone on too long to continue. Start over to keep going.",
+      ),
+    ).toBeVisible();
+
+    // Refused means the Participant is left where they stood. The notice
+    // travels as a query parameter the page strips once it hydrates, so the
+    // Step is what this asserts, not whether the stripping has happened yet.
+    await expect(participant).toHaveURL(
+      new RegExp(`/j/${journeyId}/${QUEUE_STEP_ID}(\\?|$)`),
+    );
+
+    // Starting over is the way out, and it is offered.
+    await expect(
+      participant.getByRole("button", { name: "Start over" }),
+    ).toBeVisible();
+
+    await participant.screenshot({
+      path: "test-results/runner-path-cap/runner-path-cap.png",
+      fullPage: true,
+    });
+
+    // Nothing was recorded: not an entry, and not a backtrack either.
+    const capped = await readRuns(versionId);
+    expect(capped).toHaveLength(1);
+    expect(capped[0].path).toHaveLength(MAX_PATH_LENGTH);
+    expect(capped[0].backtrack_count).toBe(0);
+  } finally {
+    await participantContext.close();
+  }
+});
+
+test("runner-case-2-restored-choice", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const journeyTitle = `Case 2 ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Migrant Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // The committed seed document, read through the same contract the app
+  // reads a stored version with — including the four Choices ticket 18
+  // restored, one of which is this walk's whole point.
+  const caseTwo = graphDocumentSchema.parse(caseTwoJson);
+  await writeDraftDocument(journeyId, caseTwo);
+  const versionId = await publishDocument(journeyId, caseTwo);
+
+  const route = shortestRouteTo(caseTwo, "step-27");
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    await stubOffOriginImages(participantContext);
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+
+    for (const label of route) {
+      await participant.getByRole("link", { name: label, exact: true }).click();
+    }
+    await expect(
+      participant.getByRole("heading", { name: "I quit!" }),
+    ).toBeVisible();
+
+    await participant
+      .getByRole("link", {
+        name: "Call your bunkmate's cousin's friend",
+        exact: true,
+      })
+      .click();
+    await expect(
+      participant.getByRole("heading", { name: "Trafficking?" }),
+    ).toBeVisible();
+
+    await participant.screenshot({
+      path: "test-results/runner-case-2-restored-choice/runner-case-2-restored-choice.png",
+      fullPage: true,
+    });
+
+    const runs = await readRuns(versionId);
+    expect(runs).toHaveLength(1);
+    expect(runs[0].path.slice(-2)).toEqual(["step-27", "step-32"]);
+    expect(runs[0].backtrack_count).toBe(0);
   } finally {
     await participantContext.close();
   }

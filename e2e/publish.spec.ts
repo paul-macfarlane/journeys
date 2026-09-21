@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
+  loopDocument,
   publishableDocument,
   START_STEP_ID,
   START_STEP_TITLE,
@@ -88,6 +89,39 @@ test("publish-invalid-draft", async ({ page, context }) => {
 
   await page.screenshot({
     path: "test-results/publish-invalid-draft/publish-invalid-draft.png",
+    fullPage: true,
+  });
+});
+
+test("publish-draft-with-loop", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // A loop is an ordinary path since ticket 18, so a Draft that holds one
+  // publishes exactly as any other valid Draft does.
+  const document = loopDocument();
+  await writeDraftDocument(journeyId, document);
+
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  const published = await readVersionRows(journeyId);
+  expect(published).toHaveLength(1);
+  expect(published[0].document).toEqual(document);
+
+  await page.screenshot({
+    path: "test-results/publish-draft-with-loop/publish-draft-with-loop.png",
     fullPage: true,
   });
 });

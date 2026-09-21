@@ -8,11 +8,18 @@ import { hasStep } from "@/lib/graph/document";
  * Every function returns new state and never mutates the state or document it
  * is given, the same convention `src/lib/graph/edit.ts` follows for Authors.
  *
- * A Run's `path` is the linear route a Participant has walked from the Start,
- * always a sequence of Step ids in `document.steps`. Because a Published
- * Version's graph has no cycles (`validateForPublish` refuses one), a Step id
- * appears in `path` at most once, which is what makes truncating to it
- * unambiguous.
+ * A Run's `path` is the route a Participant has walked from the Start, one
+ * entry per visit. A Published Version's graph may hold a cycle (ticket 18),
+ * so a Step id may appear in `path` more than once, and "current" is simply
+ * the last entry — never "the entry that happens to hold this id".
+ *
+ * Two consequences run through the rules below. A Choice is resolved before a
+ * backtrack, so closing a loop by choosing moves forward and appends. And the
+ * one genuinely ambiguous navigation — the browser's back button on a
+ * loop-closing Step, where the Step behind the Participant is also a Choice of
+ * the Step they are on — is disambiguated by the path index the runner carries
+ * in `history.state`: an index that names the entry the Participant came back
+ * to makes it a backtrack rather than a Choice.
  */
 
 /** The reducer's own copy of a Run's mutable state — mirrors the `run` row. */
@@ -22,6 +29,14 @@ export type RunState = {
   endedAt: Date | null;
   outcomeId: string | null;
 };
+
+/**
+ * How long a single Run's path may grow. A loop can be walked forever, and a
+ * path is stored as one row's worth of JSON, so the walk stops somewhere: the
+ * move past this many entries is refused and the Participant is told to start
+ * over.
+ */
+export const MAX_PATH_LENGTH = 500;
 
 /** The Step a Participant is on right now: the last Step in the path. */
 export function currentStepId(state: RunState): string {
@@ -52,16 +67,26 @@ export function startRun(document: GraphDocument, now: Date): RunState {
   };
 }
 
+/**
+ * The `at` query parameter as `navigateTo` wants it: a path index, or
+ * nothing. A run of digits is an index; anything else — a negative number, a
+ * fraction, a word, an empty string, or the array Next.js hands over when the
+ * parameter is repeated — is stale or made up, and becomes null rather than
+ * a number the reducer would have to distrust.
+ */
+export function parsePathIndex(
+  raw: string | string[] | undefined,
+): number | null {
+  return typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : null;
+}
+
+/** Why a navigation was refused; the step page reads these. */
+export type RefusalReason = "unknown-step" | "not-offered" | "path-full";
+
 export type NavigateResult =
   | { kind: "stay" }
   | { kind: "moved"; state: RunState }
-  | { kind: "refused"; currentStepId: string };
-
-/** `path` truncated to (and including) the first occurrence of `stepId`. */
-function truncateTo(path: string[], stepId: string): string[] {
-  const index = path.indexOf(stepId);
-  return path.slice(0, index + 1);
-}
+  | { kind: "refused"; currentStepId: string; reason: RefusalReason };
 
 /** State for landing on `stepId`: an Ending sets both, anything else clears them. */
 function landingState(
@@ -82,50 +107,82 @@ function landingState(
   };
 }
 
+/** Does the Step at `index` of the path offer a Choice leading to `stepId`? */
+function offers(
+  document: GraphDocument,
+  path: string[],
+  index: number,
+  stepId: string,
+): boolean {
+  return document.steps[path[index]].choices.some(
+    (choice) => choice.targetStepId === stepId,
+  );
+}
+
 /**
  * Applies a Participant's navigation to `stepId` — following a Choice link,
  * the in-app Back control, or the browser's own back button reloading an
- * earlier step's URL. The rules, in order:
+ * earlier step's URL. `at` is the path index the navigation claims to be
+ * returning to, when one travelled with it (`?at=` on the step URL, written
+ * from `history.state`); null when it did not. The rules, in order:
  *
  * 1. `stepId` is not a Step of this document at all: refused.
- * 2. `stepId` is the current Step: stay (a reload of the same URL).
- * 3. `stepId` is already in the path: a backtrack. The path truncates to it
- *    (inclusive), `backtrackCount` increments, and any Ending is cleared.
- * 4. Otherwise, `stepId` must be a Choice's target from some Step already in
- *    the path — the **latest** such Step, so a Choice taken from a page the
- *    Participant reached via browser back (a Step earlier than the server's
- *    idea of "current") still resolves correctly. If that offering Step is
- *    the current one, the target is simply appended. If it is an earlier
- *    Step, the path truncates to it first (incrementing `backtrackCount`, the
- *    same as rule 3) before the target is appended — the Participant is
- *    choosing from a cached page the server never saw as current. If no Step
- *    in the path offers `stepId` at all, refused.
+ * 2. `at` is an index of the path whose entry is `stepId`: the Participant
+ *    named the entry they are on or came back to. An earlier entry is a
+ *    backtrack (the path truncates to it, `backtrackCount` increments); the
+ *    last entry is a stay. Any other `at` — out of range, a different Step,
+ *    not a whole number — is stale or made up, and is ignored from here on.
+ * 3. `stepId` is the current Step: stay (a reload of the same URL). Because
+ *    this comes before rule 4, a Choice that targets its own Step is a stay
+ *    too, rather than a second entry for a screen never left.
+ * 4. `stepId` is a Choice of the current Step: forward, appended — even if it
+ *    is already on the path, which is how a loop is walked. Once the path
+ *    holds `MAX_PATH_LENGTH` entries there is nowhere to append: refused.
+ * 5. `stepId` is already on the path: a backtrack to its **latest**
+ *    occurrence. The path truncates to it (inclusive), `backtrackCount`
+ *    increments, and any Ending is cleared.
+ * 6. `stepId` is a Choice of some earlier Step on the path — the **latest**
+ *    such Step, so a Choice taken from a page the Participant reached via
+ *    browser back still resolves. The path truncates to that Step first
+ *    (incrementing `backtrackCount`, as rule 5 does) before the target is
+ *    appended.
+ * 7. Otherwise refused.
  *
  * Landing on an Ending (from any of these) sets `endedAt` and `outcomeId`;
  * landing anywhere else clears both. A refusal returns the unmodified
- * `currentStepId` and changes nothing.
+ * `currentStepId` with its reason, and changes nothing.
  */
 export function navigateTo(
   document: GraphDocument,
   state: RunState,
   stepId: string,
   now: Date,
+  at: number | null = null,
 ): NavigateResult {
   if (!hasStep(document, stepId)) {
-    return { kind: "refused", currentStepId: currentStepId(state) };
+    return {
+      kind: "refused",
+      currentStepId: currentStepId(state),
+      reason: "unknown-step",
+    };
   }
 
-  if (stepId === currentStepId(state)) {
-    return { kind: "stay" };
-  }
+  const lastIndex = state.path.length - 1;
 
-  if (state.path.includes(stepId)) {
-    const path = truncateTo(state.path, stepId);
+  if (
+    at !== null &&
+    Number.isInteger(at) &&
+    at >= 0 &&
+    at <= lastIndex &&
+    state.path[at] === stepId
+  ) {
+    if (at === lastIndex) return { kind: "stay" };
+
     return {
       kind: "moved",
       state: landingState(
         document,
-        path,
+        state.path.slice(0, at + 1),
         state.backtrackCount + 1,
         stepId,
         now,
@@ -133,31 +190,74 @@ export function navigateTo(
     };
   }
 
-  // The latest Step in the path holding a Choice that targets `stepId`.
+  if (stepId === currentStepId(state)) {
+    return { kind: "stay" };
+  }
+
+  // A Choice of the Step the Participant is on is a forward move, even when
+  // it closes a loop back onto a Step the path already holds.
+  if (offers(document, state.path, lastIndex, stepId)) {
+    if (state.path.length >= MAX_PATH_LENGTH) {
+      return {
+        kind: "refused",
+        currentStepId: currentStepId(state),
+        reason: "path-full",
+      };
+    }
+
+    return {
+      kind: "moved",
+      state: landingState(
+        document,
+        [...state.path, stepId],
+        state.backtrackCount,
+        stepId,
+        now,
+      ),
+    };
+  }
+
+  const returningTo = state.path.lastIndexOf(stepId);
+  if (returningTo !== -1) {
+    return {
+      kind: "moved",
+      state: landingState(
+        document,
+        state.path.slice(0, returningTo + 1),
+        state.backtrackCount + 1,
+        stepId,
+        now,
+      ),
+    };
+  }
+
+  // The latest earlier Step in the path holding a Choice that targets
+  // `stepId`: the Participant is choosing from a page the server never saw as
+  // current, having reached it with the browser's back button.
   let offeringIndex = -1;
-  for (let index = state.path.length - 1; index >= 0; index--) {
-    const step = document.steps[state.path[index]];
-    if (step.choices.some((choice) => choice.targetStepId === stepId)) {
+  for (let index = lastIndex - 1; index >= 0; index--) {
+    if (offers(document, state.path, index, stepId)) {
       offeringIndex = index;
       break;
     }
   }
 
   if (offeringIndex === -1) {
-    return { kind: "refused", currentStepId: currentStepId(state) };
+    return {
+      kind: "refused",
+      currentStepId: currentStepId(state),
+      reason: "not-offered",
+    };
   }
-
-  const isCurrent = offeringIndex === state.path.length - 1;
-  const truncated = isCurrent
-    ? state.path
-    : state.path.slice(0, offeringIndex + 1);
-  const path = [...truncated, stepId];
-  const backtrackCount = isCurrent
-    ? state.backtrackCount
-    : state.backtrackCount + 1;
 
   return {
     kind: "moved",
-    state: landingState(document, path, backtrackCount, stepId, now),
+    state: landingState(
+      document,
+      [...state.path.slice(0, offeringIndex + 1), stepId],
+      state.backtrackCount + 1,
+      stepId,
+      now,
+    ),
   };
 }

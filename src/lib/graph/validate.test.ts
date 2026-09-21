@@ -125,18 +125,6 @@ describe("validateForPublish", () => {
     });
   });
 
-  it("does not call a dangling Choice a cycle", () => {
-    const document = graph([
-      step("step-start", [choice("choice-1", "step-gone")]),
-    ]);
-
-    expect(
-      validateForPublish(document).filter(
-        (problem) => problem.code === "cycle",
-      ),
-    ).toEqual([]);
-  });
-
   it("reports a Step that cannot be reached from the Start", () => {
     const document = graph(
       [
@@ -197,66 +185,38 @@ describe("validateForPublish", () => {
     expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("reports both Choices that close a two-step loop", () => {
-    const document = graph([
-      step("step-start", [choice("choice-1", "step-back")]),
-      step("step-back", [choice("choice-2", "step-start")]),
-    ]);
-
-    const cycles = validateForPublish(document).filter(
-      (problem) => problem.code === "cycle",
-    );
-
-    expect(cycles.map((problem) => [problem.stepId, problem.choiceId])).toEqual(
+  it("accepts a two-step loop", () => {
+    const document = graph(
       [
-        ["step-start", "choice-1"],
-        ["step-back", "choice-2"],
+        step("step-start", [choice("choice-1", "step-back")]),
+        step("step-back", [
+          choice("choice-2", "step-start"),
+          choice("choice-3", "step-end"),
+        ]),
+        step("step-end", [], { outcomeId: reachedCare.id }),
       ],
+      { outcomes: [reachedCare] },
     );
+
+    expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("reports a Choice that points at its own Step", () => {
-    const document = graph([
-      step("step-start", [
-        choice("choice-on", "step-end"),
-        choice("choice-round", "step-start"),
-      ]),
-      step("step-end", [], { outcomeId: reachedCare.id }),
-    ]);
-
-    const cycles = validateForPublish(document).filter(
-      (problem) => problem.code === "cycle",
-    );
-
-    expect(cycles).toHaveLength(1);
-    expect(cycles[0].stepId).toBe("step-start");
-    expect(cycles[0].choiceId).toBe("choice-round");
-  });
-
-  it("reports the Choices inside a longer loop but not the one leading into it", () => {
-    const document = graph([
-      step("step-start", [choice("choice-1", "step-two")]),
-      step("step-two", [choice("choice-2", "step-three")]),
-      step("step-three", [
-        choice("choice-3", "step-end"),
-        choice("choice-back", "step-two"),
-      ]),
-      step("step-end", [], { outcomeId: reachedCare.id }),
-    ]);
-
-    const cycles = validateForPublish(document).filter(
-      (problem) => problem.code === "cycle",
-    );
-
-    expect(cycles.map((problem) => [problem.stepId, problem.choiceId])).toEqual(
+  it("accepts a Choice that points at its own Step", () => {
+    const document = graph(
       [
-        ["step-two", "choice-2"],
-        ["step-three", "choice-back"],
+        step("step-start", [
+          choice("choice-on", "step-end"),
+          choice("choice-round", "step-start"),
+        ]),
+        step("step-end", [], { outcomeId: reachedCare.id }),
       ],
+      { outcomes: [reachedCare] },
     );
+
+    expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("does not call branches that merge back together a loop", () => {
+  it("accepts branches that merge back together", () => {
     const document = graph(
       [
         step("step-start", [
@@ -358,8 +318,8 @@ describe("validateForPublish", () => {
  * `scripts/seed/journey-stories/`. They are the source of truth for the legacy
  * site's cases — `pnpm seed:journey-stories` writes exactly these as the
  * Drafts of the three Journey Stories Journeys — so what they must keep being
- * is a Journey that publishes: one Start, no loops, every Ending tagged with
- * an Outcome the document defines. Each is parsed through the schema inside
+ * is a Journey that publishes: one Start, every Ending tagged with an Outcome
+ * the document defines. Each is parsed through the schema inside
  * the test that needs it rather than at module load, so a hand-edit that
  * breaks one document fails that document's tests and nothing else. The
  * counts are the legacy content's own.
@@ -370,7 +330,7 @@ const journeyStories = [
     source: case1Document,
     startStepId: "step-42",
     steps: 46,
-    choices: 69,
+    choices: 70,
     endings: 6,
     outcomes: 4,
     images: 20,
@@ -380,7 +340,7 @@ const journeyStories = [
     source: case2Document,
     startStepId: "step-63",
     steps: 64,
-    choices: 102,
+    choices: 105,
     endings: 9,
     outcomes: 5,
     images: 15,
@@ -429,6 +389,33 @@ describe("the seeded Journey Stories documents", () => {
       expect(steps.flatMap((step) => step.choices)).toHaveLength(choiceCount);
     },
   );
+
+  // The four Choices ticket 18 restored, dropped in ticket 04 because each
+  // closed a loop the no-cycles rule refused to publish.
+  it("case 1 and case 2 carry the legacy looping Choices, with their labels and targets", () => {
+    const case1 = documentOf(case1Document);
+    const case2 = documentOf(case2Document);
+
+    const findChoice = (
+      document: GraphDocument,
+      stepId: string,
+      label: string,
+    ) =>
+      document.steps[stepId].choices.find((choice) => choice.label === label);
+
+    expect(findChoice(case1, "step-46", "Yes")?.targetStepId).toBe("step-1");
+    expect(
+      findChoice(case2, "step-19", "Call the legal organization")?.targetStepId,
+    ).toBe("step-2");
+    expect(
+      findChoice(case2, "step-27", "Call your bunkmate's cousin's friend")
+        ?.targetStepId,
+    ).toBe("step-32");
+    expect(
+      findChoice(case2, "step-52", "Go home, and try again later")
+        ?.targetStepId,
+    ).toBe("step-53");
+  });
 
   it.each(journeyStories)(
     "$name tags every Ending with an Outcome it defines",
