@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+import { countCrossingPairs, type Polyline } from "@/lib/graph/crossings";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
 import case3 from "../scripts/seed/journey-stories/case-3.json";
@@ -154,7 +155,28 @@ async function addChoiceToStep(
 async function addOutcome(page: Page, label: string): Promise<void> {
   await page.getByLabel("New outcome", { exact: true }).fill(label);
   await page.getByRole("button", { name: "Add outcome", exact: true }).click();
-  await expect(page.getByLabel("Outcome label")).toHaveValue(label);
+  // Outcomes are listed in document order and a new one is appended, so the
+  // last field is the one just added — with one Outcome it is the only one.
+  await expect(page.getByLabel("Outcome label").last()).toHaveValue(label);
+}
+
+/** Every arrow's rendered path, sampled every 4 units into a polyline in flow coordinates. */
+function sampleArrowPaths(page: Page): Promise<Polyline[]> {
+  return canvas(page)
+    .locator("[data-choice-id] path.react-flow__edge-path")
+    .evaluateAll((paths) =>
+      paths.map((element) => {
+        const path = element as SVGPathElement;
+        const length = path.getTotalLength();
+        const samples = Math.max(16, Math.ceil(length / 4));
+        const points: { x: number; y: number }[] = [];
+        for (let index = 0; index <= samples; index += 1) {
+          const point = path.getPointAtLength((length * index) / samples);
+          points.push({ x: point.x, y: point.y });
+        }
+        return points;
+      }),
+    );
 }
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -231,6 +253,73 @@ async function mapFaults(page: Page, expected: number): Promise<string[]> {
   return faults;
 }
 
+/**
+ * Where each box sits relative to the Canvas frame right now: whether the
+ * whole box is inside it, whether any of it shows at all, and whether a click
+ * on its middle would reach the box rather than an overlay (the Controls, the
+ * minimap, the legend) sitting on top of it.
+ */
+type NodeView = {
+  title: string;
+  fullyInside: boolean;
+  showing: boolean;
+  clickable: boolean;
+};
+
+async function nodeViews(page: Page): Promise<NodeView[]> {
+  const frame = await canvas(page).boundingBox();
+  if (frame === null) return [];
+
+  return canvasNodes(page).evaluateAll(
+    (elements, f) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        const centerX = rect.x + rect.width / 2;
+        const centerY = rect.y + rect.height / 2;
+        const atCenter = window.document.elementFromPoint(centerX, centerY);
+        return {
+          title: element.getAttribute("aria-label") ?? "",
+          fullyInside:
+            rect.x >= f.x - 1 &&
+            rect.y >= f.y - 1 &&
+            rect.x + rect.width <= f.x + f.width + 1 &&
+            rect.y + rect.height <= f.y + f.height + 1,
+          showing:
+            rect.x + rect.width > f.x &&
+            rect.x < f.x + f.width &&
+            rect.y + rect.height > f.y &&
+            rect.y < f.y + f.height,
+          clickable: atCenter !== null && element.contains(atCenter),
+        };
+      }),
+    frame,
+  );
+}
+
+/**
+ * The map's transform once it has stopped moving. `fitView` animates, so
+ * "the viewport did not move" is only worth asserting against a reading taken
+ * after the last animation finished rather than during one.
+ */
+async function settledTransform(page: Page): Promise<string> {
+  const viewport = canvas(page).locator(".react-flow__viewport");
+  let last = await viewport.getAttribute("transform");
+
+  await expect
+    .poll(
+      async () => {
+        const now = await viewport.getAttribute("transform");
+        const unchanged = now === last;
+        last = now;
+        return unchanged;
+      },
+      { timeout: 10_000, intervals: [250] },
+    )
+    .toBe(true);
+
+  return last ?? "";
+}
+
 test.describe("the seeded map", () => {
   // Thirty-six Steps is a map to be read, not a thumbnail: the widest screen
   // an Author would use is what it is laid out against.
@@ -274,10 +363,109 @@ test.describe("the seeded map", () => {
       .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
       .toEqual([]);
 
+    // How tangled the map is, counted off the arrows the browser drew. The
+    // baseline — 15 crossing pairs over these 36 boxes and 50 arrows — was
+    // measured on ticket 09's `f24a106`, with this same sampling and the same
+    // `countCrossingPairs`, so the two numbers are comparable.
+    const arrows = await sampleArrowPaths(page);
+    expect(arrows).toHaveLength(choiceCount);
+    for (const arrow of arrows) {
+      expect(arrow.length).toBeGreaterThanOrEqual(16);
+    }
+    const crossings = countCrossingPairs(arrows);
+    console.log(`case-3 crossing pairs: f24a106 baseline=15 now=${crossings}`);
+    expect(crossings).toBeLessThan(15);
+
     await page.screenshot({
       path: "test-results/canvas-case-3-map/canvas-case-3-map.png",
       fullPage: true,
     });
+  });
+
+  test("canvas-locate-on-map", async ({ page, context }) => {
+    const { journeyId } = await startJourney(page, context);
+
+    const seeded = graphDocumentSchema.parse(case3);
+    const stepCount = Object.keys(seeded.steps).length;
+
+    await expectSaved(page);
+    await writeDraftDocument(journeyId, seeded);
+    await page.reload();
+
+    await expect(canvasNodes(page)).toHaveCount(stepCount);
+    await expect
+      .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
+      .toEqual([]);
+
+    // Zoomed in far enough that the map no longer fits, which is the state a
+    // Step opened from the list has to be found in.
+    const zoomIn = canvas(page).getByRole("button", { name: /zoom in/i });
+    for (let click = 0; click < 4; click += 1) {
+      await zoomIn.click();
+    }
+    await expect
+      .poll(
+        async () =>
+          (await nodeViews(page)).filter((view) => !view.fullyInside).length,
+        { timeout: 10_000 },
+      )
+      .toBeGreaterThan(0);
+
+    // The Step to open: the last one the list offers that is off the map
+    // right now, falling back to any that is not wholly on it.
+    const stepsList = page.getByRole("list", { name: "Steps" });
+    const listed = await stepsList.getByRole("button").allInnerTexts();
+    const views = await nodeViews(page);
+    const isOffScreen = (title: string) =>
+      views.some((view) => view.title === title && !view.showing);
+    const isPartly = (title: string) =>
+      views.some((view) => view.title === title && !view.fullyInside);
+    const target =
+      listed.findLast(isOffScreen) ?? listed.findLast(isPartly) ?? "";
+    expect(target).not.toBe("");
+
+    await stepsList.getByRole("button", { name: target, exact: true }).click();
+    await expect(page.getByLabel("Step title")).toHaveValue(target);
+
+    // Opening it brought its box onto the map.
+    await expect
+      .poll(
+        async () =>
+          (await nodeViews(page)).find((view) => view.title === target)
+            ?.fullyInside,
+        { timeout: 10_000 },
+      )
+      .toBe(true);
+
+    await page.screenshot({
+      path: "test-results/canvas-locate-on-map/canvas-locate-on-map.png",
+      fullPage: true,
+    });
+
+    // A box already on the map is opened where it stands: nothing moves. The
+    // whole map is asked for first, so "already on the map" is every box
+    // rather than whichever ones happened to sit near the one just located.
+    await canvas(page)
+      .getByRole("button", { name: /fit view/i })
+      .click();
+    await expect
+      .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
+      .toEqual([]);
+
+    const before = await settledTransform(page);
+    const settled = await nodeViews(page);
+    const showing = settled.find(
+      (view) => view.title !== target && view.fullyInside && view.clickable,
+    );
+    expect(
+      showing,
+      `no box is clickable on the map: ${JSON.stringify(settled)}`,
+    ).toBeDefined();
+    const showingTitle = showing?.title ?? "";
+
+    await canvasNode(page, showingTitle).click();
+    await expect(page.getByLabel("Step title")).toHaveValue(showingTitle);
+    expect(await settledTransform(page)).toBe(before);
   });
 });
 
@@ -392,6 +580,183 @@ test("canvas-validation-marks", async ({ page, context }) => {
     "data-problems",
     "0",
   );
+});
+
+/**
+ * The smallest Draft with an arrow attached to neither end of a selection:
+ * a Start with a Choice to each of two Steps, and a Choice from the first of
+ * those to the second, so whichever box is open one arrow is always someone
+ * else's.
+ */
+function dimmingDocument(): GraphDocument {
+  const text = (value: string) => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: value }] }],
+  });
+  const choice = (id: string, label: string, targetStepId: string) => ({
+    id,
+    label,
+    targetStepId,
+    condition: null,
+    effect: null,
+  });
+
+  return graphDocumentSchema.parse({
+    schemaVersion: 1,
+    startStepId: "start",
+    allowBack: true,
+    steps: {
+      start: {
+        id: "start",
+        title: "Border post",
+        content: text("The queue has not moved in an hour."),
+        choices: [
+          choice("to-clinic", "Find the clinic", "clinic"),
+          choice("to-ward", "Walk away", "ward"),
+        ],
+        prompt: null,
+        outcomeId: null,
+        position: null,
+      },
+      clinic: {
+        id: "clinic",
+        title: "Clinic tent",
+        content: text("A nurse looks up from her notes."),
+        choices: [choice("clinic-to-ward", "Ask for help", "ward")],
+        prompt: null,
+        outcomeId: null,
+        position: null,
+      },
+      ward: {
+        id: "ward",
+        title: "Waved through",
+        content: text("The officer stamps the paper and points you on."),
+        choices: [],
+        prompt: null,
+        outcomeId: "reached-care",
+        position: null,
+      },
+    },
+    outcomes: { "reached-care": { id: "reached-care", label: "Reached care" } },
+  });
+}
+
+/** One arrow on the map, named by the Choice it draws. */
+function canvasEdge(page: Page, choiceId: string) {
+  return canvas(page).locator(`[data-choice-id="${choiceId}"]`);
+}
+
+test("canvas-selection-dims-arrows", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+
+  await expectSaved(page);
+  await writeDraftDocument(journeyId, dimmingDocument());
+  await page.reload();
+  await expect(canvasEdges(page)).toHaveCount(3);
+
+  async function expectEmphasis(emphasis: Record<string, string>) {
+    for (const [choiceId, value] of Object.entries(emphasis)) {
+      await expect(canvasEdge(page, choiceId)).toHaveAttribute(
+        "data-emphasis",
+        value,
+      );
+    }
+  }
+
+  // The panel opens on the Start, so the Start's two arrows are the ones in
+  // hand and the arrow between the other two Steps is not.
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await expectEmphasis({
+    "to-clinic": "attached",
+    "to-ward": "attached",
+    "clinic-to-ward": "dimmed",
+  });
+
+  // A Step in the middle: the arrow into it and the arrow out of it.
+  await canvasNode(page, "Clinic tent").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+  await expectEmphasis({
+    "to-clinic": "attached",
+    "clinic-to-ward": "attached",
+    "to-ward": "dimmed",
+  });
+
+  await page.screenshot({
+    path: "test-results/canvas-selection-dims-arrows/canvas-selection-dims-arrows.png",
+    fullPage: true,
+  });
+
+  // An Ending: both arrows that reach it, and neither of the Start's others.
+  await canvasNode(page, "Waved through").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Waved through");
+  await expectEmphasis({
+    "to-ward": "attached",
+    "clinic-to-ward": "attached",
+    "to-clinic": "dimmed",
+  });
+});
+
+test("canvas-legend-outcomes", async ({ page, context }) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+  await addStepFromCanvas(page, "Waved through");
+  await addStepFromCanvas(page, "Turned back");
+
+  await canvasNode(page, "Border post").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await addChoiceToStep(page, "Wait your turn", "Waved through");
+  await addChoiceToStep(page, "Walk away", "Turned back");
+
+  await addOutcome(page, "Reached care");
+  await addOutcome(page, "Turned away");
+
+  const assigned: Array<[string, string]> = [
+    ["Waved through", "Reached care"],
+    ["Turned back", "Turned away"],
+  ];
+  for (const [ending, outcome] of assigned) {
+    await canvasNode(page, ending).click();
+    await expect(page.getByLabel("Step title")).toHaveValue(ending);
+    await page
+      .getByLabel("Outcome", { exact: true })
+      .selectOption({ label: outcome });
+    await expect(canvasNode(page, ending)).toHaveAttribute(
+      "data-problems",
+      "0",
+    );
+  }
+
+  // Every Outcome the Journey defines, in document order, between the Start
+  // and the Problem marks — and no generic "Ending" entry any more.
+  const legend = canvas(page).getByRole("list", { name: "Legend" });
+  await expect(legend.getByRole("listitem")).toHaveText([
+    "Start",
+    "Reached care",
+    "Turned away",
+    "Problem",
+  ]);
+
+  // The colour a legend entry shows is the colour its Endings carry.
+  for (const [index, [ending]] of assigned.entries()) {
+    const swatch = legend.locator(
+      `[data-outcome-index="${index}"] [data-outcome-swatch]`,
+    );
+    const bar = canvasNode(page, ending).locator("[data-outcome-bar]");
+    const swatchColor = await swatch.evaluate(
+      (element) => window.getComputedStyle(element).backgroundColor,
+    );
+    const barColor = await bar.evaluate(
+      (element) => window.getComputedStyle(element).backgroundColor,
+    );
+    expect(swatchColor).toBe(barColor);
+  }
+
+  await expectSaved(page);
+  await page.screenshot({
+    path: "test-results/canvas-legend-outcomes/canvas-legend-outcomes.png",
+    fullPage: true,
+  });
 });
 
 test.describe("authoring from the map", () => {

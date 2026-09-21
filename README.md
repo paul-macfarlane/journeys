@@ -56,7 +56,11 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   out automatically from the steps and choices themselves, never from stored
   positions — where clicking a node opens that step in the panel, a step can
   be added from the canvas, and validation problems are marked on the
-  step or choice it is about. The draft autosaves. Publish the draft as an
+  step or choice it is about. Its arrows follow the routes the layout
+  computes, the arrows into and out of the step the panel has open are drawn
+  at full strength while the rest dim, opening a step that is off the map
+  brings it back into view, and the legend names every outcome in the colour
+  its endings carry. The draft autosaves. Publish the draft as an
   immutable version (refused, with the problems listed, while the
   draft has any), unpublish to take it back from participants, preview it, and
   see every published version — number, when, and who published it — with the

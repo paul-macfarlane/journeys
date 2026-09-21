@@ -2,6 +2,7 @@
 
 import {
   Background,
+  BaseEdge,
   Controls,
   Handle,
   MarkerType,
@@ -11,8 +12,11 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
   type ColorMode,
   type Edge,
+  type EdgeProps,
+  type EdgeTypes,
   type Node,
   type NodeProps,
   type NodeTypes,
@@ -46,6 +50,13 @@ import "@xyflow/react/dist/style.css";
  * what the map is for is showing the shape the Journey has now. `stepSchema`
  * keeps a `position` field for a later decision; nothing here reads or writes
  * it.
+ *
+ * Arrows are drawn along the route dagre computed for them rather than
+ * stepped between handles, and a box's source anchors are spread in the order
+ * of the boxes they lead to, so dagre's crossing minimization is what the
+ * Author sees. Whichever Step the panel has open, the arrows into and out of
+ * it are drawn at full strength and the rest are dimmed, and its box is
+ * brought onto the map when it is off it.
  *
  * The problems this draws come from `validateForPublish` run in the browser on
  * the document the editor is holding, not from the "Validate" button's server
@@ -98,10 +109,13 @@ type StepNodeData = {
   /** The Step this node opens in the panel when it is clicked. */
   opens: string;
   /**
-   * One source anchor per Choice, in Choice order, so two Choices to the same
-   * Step leave from different points and are drawn as two arrows.
+   * One source anchor per Choice, ordered by the x position of the box each
+   * Choice leads to (`layoutGraph`'s `sourceAnchors`), so arrows leave the
+   * bottom of the box in the direction they travel and cross each other
+   * less. Two Choices to the same Step still leave from different points and
+   * are drawn as two arrows.
    */
-  choiceIds: string[];
+  sourceAnchors: string[];
   marks: NodeMarks;
 };
 
@@ -115,6 +129,115 @@ type MissingNodeData = {
 type StepFlowNode = Node<StepNodeData, "step">;
 type MissingFlowNode = Node<MissingNodeData, "missing">;
 type CanvasFlowNode = StepFlowNode | MissingFlowNode;
+
+/**
+ * How strongly an arrow is drawn, given which Step the panel has open:
+ * `attached` for the arrows into and out of it, `dimmed` for every other one.
+ * `selected` is reserved for an arrow the Author has clicked, which a later
+ * deliverable draws heavier; nothing produces it yet.
+ */
+type Emphasis = "selected" | "attached" | "dimmed";
+
+type ChoiceEdgeData = {
+  /**
+   * dagre's routed points for this Choice, in flow coordinates. The first and
+   * last are dagre's own box-border endpoints, which React Flow supersedes
+   * with the anchor positions it hands the edge; only the interior is route.
+   */
+  points: Array<{ x: number; y: number }>;
+  emphasis: Emphasis;
+};
+
+type ChoiceFlowEdge = Edge<ChoiceEdgeData, "choice">;
+
+/** How much of an arrow is left when it is not the selected Step's. */
+const DIMMED_OPACITY = 0.22;
+
+type Point = { x: number; y: number };
+
+/**
+ * The polyline through `points`, smoothed: a quadratic curve through the
+ * midpoint of each pair of consecutive segments, so a routed corner becomes a
+ * bend rather than a spike. Both ends are exactly the points given, and two
+ * points are a straight line.
+ */
+function smoothPath(points: Point[]): string {
+  const last = points[points.length - 1];
+  let path = `M ${points[0].x},${points[0].y}`;
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const control = points[index];
+    const next = points[index + 1];
+    path += ` Q ${control.x},${control.y} ${(control.x + next.x) / 2},${(control.y + next.y) / 2}`;
+  }
+
+  return `${path} L ${last.x},${last.y}`;
+}
+
+/** Halfway along the polyline, which is where the Choice's label sits. */
+function midwayAlong(points: Point[]): Point {
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    total += Math.hypot(
+      points[index].x - points[index - 1].x,
+      points[index].y - points[index - 1].y,
+    );
+  }
+
+  let remaining = total / 2;
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1];
+    const to = points[index];
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    if (length >= remaining) {
+      const along = length === 0 ? 0 : remaining / length;
+      return {
+        x: from.x + (to.x - from.x) * along,
+        y: from.y + (to.y - from.y) * along,
+      };
+    }
+    remaining -= length;
+  }
+
+  return points[points.length - 1];
+}
+
+/**
+ * One Choice's arrow, drawn along dagre's route: out of the anchor React Flow
+ * put the Choice on, through the interior of the route dagre laid, into the
+ * top of the box it leads to. The opacity is on a group so the arrowhead and
+ * the label dim with the line.
+ */
+function ChoiceEdge({
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  label,
+  style,
+  markerEnd,
+  data,
+}: EdgeProps<ChoiceFlowEdge>) {
+  const points: Point[] = [
+    { x: sourceX, y: sourceY },
+    ...(data?.points ?? []).slice(1, -1),
+    { x: targetX, y: targetY },
+  ];
+  const middle = midwayAlong(points);
+
+  return (
+    <g opacity={data?.emphasis === "dimmed" ? DIMMED_OPACITY : 1}>
+      <BaseEdge
+        path={smoothPath(points)}
+        style={style}
+        markerEnd={markerEnd}
+        label={label}
+        labelX={middle.x}
+        labelY={middle.y}
+      />
+    </g>
+  );
+}
 
 /**
  * The card of a node is a real button — React Flow's own wrapper takes focus
@@ -155,10 +278,12 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
               : "ring-foreground/15",
         )}
       >
-        {/* The Outcome's color, dynamic by nature, so it is an inline style. */}
+        {/* The Outcome's color, dynamic by nature, so it is an inline style.
+            The legend shows the same color against the Outcome's name. */}
         {data.isEnding && data.outcomeColor !== null ? (
           <span
             aria-hidden="true"
+            data-outcome-bar=""
             className="absolute inset-x-0 top-0 h-1.5"
             style={{ backgroundColor: data.outcomeColor }}
           />
@@ -182,14 +307,14 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
         </div>
       </button>
 
-      {data.choiceIds.map((choiceId, index) => (
+      {data.sourceAnchors.map((choiceId, index) => (
         <Handle
           key={choiceId}
           id={choiceId}
           type="source"
           position={Position.Bottom}
           isConnectable={false}
-          style={{ left: handleLeft(index, data.choiceIds.length) }}
+          style={{ left: handleLeft(index, data.sourceAnchors.length) }}
         />
       ))}
     </>
@@ -219,8 +344,9 @@ function MissingNode({ data }: NodeProps<MissingFlowNode>) {
   );
 }
 
-// Module-level: a fresh object each render would remount every node.
+// Module-level: a fresh object each render would remount every node or edge.
 const NODE_TYPES: NodeTypes = { step: StepNode, missing: MissingNode };
+const EDGE_TYPES: EdgeTypes = { choice: ChoiceEdge };
 
 /**
  * "Has this render happened in the browser?" — false through the server
@@ -232,20 +358,11 @@ const subscribeToNothing = () => () => {};
 const isClient = () => true;
 const isServer = () => false;
 
-function LegendEntry({
-  swatch,
-  children,
-}: {
-  swatch: string;
-  children: string;
-}) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={cn("size-2.5 rounded-full", swatch)} />
-      {children}
-    </span>
-  );
-}
+const LEGEND_ENTRY_CLASS = "flex items-center gap-1.5";
+const LEGEND_SWATCH_CLASS = "size-2.5 shrink-0 rounded-full";
+
+/** Sub-pixel rounding, so a box flush against the edge counts as on the map. */
+const IN_VIEW_TOLERANCE = 1;
 
 export type JourneyCanvasProps = {
   document: GraphDocument;
@@ -330,9 +447,7 @@ function CanvasFlow({
           title: node.title,
           isStart: node.isStart,
           isEnding: node.isEnding,
-          choiceIds: document.steps[node.stepId].choices.map(
-            (choice) => choice.id,
-          ),
+          sourceAnchors: node.sourceAnchors,
           outcomeLabel:
             node.outcomeId !== null
               ? (document.outcomes[node.outcomeId]?.label ?? null)
@@ -346,25 +461,34 @@ function CanvasFlow({
       } satisfies StepFlowNode;
     });
 
-    const flowEdges: Edge[] = layout.edges.map((edge) => {
+    const flowEdges: ChoiceFlowEdge[] = layout.edges.map((edge) => {
       const label = choiceLabel(edge.label);
       const problemCount = (addressed.choices.get(edge.id) ?? []).length;
       const marked = problemCount > 0;
+      // The panel always has a Step open, so every arrow is one of the two:
+      // this Step's, or dimmed behind it. A placeholder is opened through the
+      // Step whose Choice dangles, which is this arrow's source.
+      const emphasis: Emphasis =
+        edge.source === selectedStepId || edge.target === selectedStepId
+          ? "attached"
+          : "dimmed";
 
       return {
         id: edge.id,
         source: edge.source,
         sourceHandle: edge.choiceId,
         target: edge.target,
-        type: "smoothstep",
+        type: "choice",
         label,
         ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`,
         markerEnd: { type: MarkerType.ArrowClosed },
+        data: { points: edge.points, emphasis },
         // What a spec reads off an arrow, and what a screen reader calls it.
         domAttributes: {
           "aria-roledescription": "choice",
           "data-choice-id": edge.choiceId,
           "data-problems": String(problemCount),
+          "data-emphasis": emphasis,
         } as Edge["domAttributes"],
         style: marked
           ? { stroke: "var(--destructive)", strokeWidth: 2 }
@@ -373,18 +497,77 @@ function CanvasFlow({
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [addressed, document.outcomes, document.steps, layout, selectedStepId]);
+  }, [addressed, document.outcomes, layout, selectedStepId]);
 
-  const { fitView } = useReactFlow();
+  const outcomeLegend = useMemo(
+    () =>
+      Object.values(document.outcomes).map((outcome, index) => ({
+        id: outcome.id,
+        index,
+        label: outcome.label,
+        color: OUTCOME_COLORS[index % OUTCOME_COLORS.length],
+      })),
+    [document.outcomes],
+  );
+
+  const { fitView, getNodesBounds, getViewport } = useReactFlow();
+  // The size of the map itself, which is what "off the map" is measured
+  // against; React Flow keeps it up to date as the pane resizes.
+  const paneWidth = useStore((state) => state.width);
+  const paneHeight = useStore((state) => state.height);
+
+  const nodeIdKey = nodes
+    .map((node) => node.id)
+    .sort()
+    .join(" ");
+  const lastNodeIdKey = useRef(nodeIdKey);
+
+  // Opening a Step from the list, a problem, or a Choice's target can name a
+  // box that is off the map; the map goes to it. A box already on the map is
+  // left where the Author put it, and so is the rest of the view.
+  //
+  // Declared before the fit-to-all below so that a render which changed the
+  // set of boxes — a Step added, which is also the Step now open — is still
+  // that one's: this effect sees the older key and stands aside.
+  const locatedStepId = useRef<string | null>(null);
+  useEffect(() => {
+    const previous = locatedStepId.current;
+    locatedStepId.current = selectedStepId;
+
+    // The first render is the initial fit-to-all's, which shows everything.
+    if (previous === null || previous === selectedStepId) return;
+    if (lastNodeIdKey.current !== nodeIdKey) return;
+    if (paneWidth === 0 || paneHeight === 0) return;
+    if (!nodes.some((node) => node.id === selectedStepId)) return;
+
+    const bounds = getNodesBounds([selectedStepId]);
+    const { x, y, zoom } = getViewport();
+    const onMap =
+      bounds.x * zoom + x >= -IN_VIEW_TOLERANCE &&
+      bounds.y * zoom + y >= -IN_VIEW_TOLERANCE &&
+      (bounds.x + bounds.width) * zoom + x <= paneWidth + IN_VIEW_TOLERANCE &&
+      (bounds.y + bounds.height) * zoom + y <= paneHeight + IN_VIEW_TOLERANCE;
+    if (onMap) return;
+
+    void fitView({
+      nodes: [{ id: selectedStepId }],
+      maxZoom: 1,
+      duration: 200,
+    });
+  }, [
+    fitView,
+    getNodesBounds,
+    getViewport,
+    nodeIdKey,
+    nodes,
+    paneHeight,
+    paneWidth,
+    selectedStepId,
+  ]);
 
   // A Step added or removed changes which boxes there are to see, and a new
   // one can land off-screen; anything else (a rename, a mark appearing) leaves
   // the view exactly where the Author put it.
-  const nodeIdKey = nodes
-    .map((node) => node.id)
-    .sort()
-    .join(" ");
-  const lastNodeIdKey = useRef(nodeIdKey);
   useEffect(() => {
     if (lastNodeIdKey.current === nodeIdKey) return;
     lastNodeIdKey.current = nodeIdKey;
@@ -407,6 +590,7 @@ function CanvasFlow({
       nodes={nodes}
       edges={edges}
       nodeTypes={NODE_TYPES}
+      edgeTypes={EDGE_TYPES}
       colorMode={colorMode}
       nodesDraggable={false}
       nodesConnectable={false}
@@ -434,11 +618,41 @@ function CanvasFlow({
       </Panel>
 
       <Panel position="top-right">
-        <div className="flex items-center gap-3 rounded-lg bg-background/90 px-2.5 py-1.5 text-xs text-muted-foreground ring-1 ring-foreground/10">
-          <LegendEntry swatch="bg-primary">Start</LegendEntry>
-          <LegendEntry swatch="bg-muted-foreground">Ending</LegendEntry>
-          <LegendEntry swatch="bg-destructive">Problem</LegendEntry>
-        </div>
+        {/* role="list" is explicit: the flex layout strips the list marker,
+            and some browsers drop the implicit role with it. Every Outcome
+            gets an entry, in document order, so the colors on the Endings
+            can be read back to what they group. */}
+        <ul
+          role="list"
+          aria-label="Legend"
+          className="flex max-w-80 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-background/90 px-2.5 py-1.5 text-xs text-muted-foreground ring-1 ring-foreground/10"
+        >
+          <li className={LEGEND_ENTRY_CLASS}>
+            <span className={cn(LEGEND_SWATCH_CLASS, "bg-primary")} />
+            Start
+          </li>
+
+          {outcomeLegend.map((outcome) => (
+            <li
+              key={outcome.id}
+              data-outcome-index={outcome.index}
+              data-outcome-id={outcome.id}
+              className={LEGEND_ENTRY_CLASS}
+            >
+              <span
+                data-outcome-swatch=""
+                className={LEGEND_SWATCH_CLASS}
+                style={{ backgroundColor: outcome.color }}
+              />
+              <span className="max-w-32 truncate">{outcome.label}</span>
+            </li>
+          ))}
+
+          <li className={LEGEND_ENTRY_CLASS}>
+            <span className={cn(LEGEND_SWATCH_CLASS, "bg-destructive")} />
+            Problem
+          </li>
+        </ul>
       </Panel>
     </ReactFlow>
   );
