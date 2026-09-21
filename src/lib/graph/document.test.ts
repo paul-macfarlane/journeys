@@ -187,6 +187,43 @@ describe("graphDocumentSchema", () => {
   });
 });
 
+describe("layoutDirection", () => {
+  it('parses a document without the field as layoutDirection: "TB"', () => {
+    const document = createDraftDocument();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { layoutDirection, ...withoutDirection } = document;
+
+    const result = parseGraphDocument(withoutDirection);
+
+    expect(result).toEqual({ ok: true, document });
+  });
+
+  it('round-trips "LR" through parseGraphDocument and prepareDocumentForWrite', () => {
+    const document = {
+      ...createDraftDocument(),
+      layoutDirection: "LR" as const,
+    };
+
+    expect(parseGraphDocument(document)).toEqual({ ok: true, document });
+    expect(prepareDocumentForWrite(document)).toEqual({
+      ok: true,
+      document,
+    });
+  });
+
+  it('refuses a layoutDirection other than "TB" or "LR"', () => {
+    const result = parseGraphDocument({
+      ...createDraftDocument(),
+      layoutDirection: "RL",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/layoutDirection/);
+    }
+  });
+});
+
 describe("parseGraphDocument", () => {
   it("returns the document when it is valid", () => {
     const document = createDraftDocument();

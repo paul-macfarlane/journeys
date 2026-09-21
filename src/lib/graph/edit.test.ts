@@ -14,6 +14,7 @@ import {
   removeOutcome,
   renameOutcome,
   retargetChoiceToNewStep,
+  setLayoutDirection,
   setStart,
   stepName,
   updateChoice,
@@ -84,6 +85,7 @@ function buildDocument(): GraphDocument {
       outcome("outcome-good", "Good"),
       outcome("outcome-bad", "Bad"),
     ]),
+    layoutDirection: "TB",
   };
 }
 
@@ -175,6 +177,36 @@ describe("setStart", () => {
   });
 });
 
+describe("setLayoutDirection", () => {
+  it("changes the Journey's layout direction", () => {
+    const document = buildDocument();
+    const before = snapshot(document);
+
+    const next = setLayoutDirection(document, "LR");
+
+    expect(document).toEqual(before);
+    expect(next.layoutDirection).toBe("LR");
+  });
+
+  it("returns the same document when the direction is already set", () => {
+    const document = buildDocument();
+
+    const next = setLayoutDirection(document, "TB");
+
+    expect(next).toBe(document);
+  });
+
+  it("leaves every other field untouched", () => {
+    const document = buildDocument();
+
+    const next = setLayoutDirection(document, "LR");
+
+    expect({ ...next, layoutDirection: document.layoutDirection }).toEqual(
+      document,
+    );
+  });
+});
+
 describe("choicesTargeting", () => {
   it("finds every Choice on another Step aimed at the given Step", () => {
     const document = buildDocument();
@@ -195,6 +227,7 @@ describe("choicesTargeting", () => {
       allowBack: true,
       steps: byId([step("start", [choice("choice-loop", "Loop", "start")])]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     expect(choicesTargeting(document, "start")).toEqual([]);
@@ -347,6 +380,7 @@ describe("duplicateStep", () => {
       allowBack: true,
       steps: byId([original]),
       outcomes: byId([outcome("outcome-good", "Good")]),
+      layoutDirection: "TB",
     };
     const before = snapshot(document);
 

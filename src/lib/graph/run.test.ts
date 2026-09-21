@@ -100,6 +100,7 @@ function branchingDocument(): GraphDocument {
       "outcome-a2": { id: "outcome-a2", label: "Reached A2" },
       "outcome-b": { id: "outcome-b", label: "Reached B" },
     },
+    layoutDirection: "TB",
   };
 }
 
@@ -158,6 +159,7 @@ function loopDocument(): GraphDocument {
     outcomes: {
       "outcome-waved": { id: "outcome-waved", label: "Waved through" },
     },
+    layoutDirection: "TB",
   };
 }
 
@@ -203,6 +205,7 @@ function selfChoiceDocument(): GraphDocument {
     outcomes: {
       "outcome-gave-up": { id: "outcome-gave-up", label: "Gave up waiting" },
     },
+    layoutDirection: "TB",
   };
 }
 
@@ -225,6 +228,7 @@ function singleEndingDocument(): GraphDocument {
     outcomes: {
       "outcome-only": { id: "outcome-only", label: "Reached the only Step" },
     },
+    layoutDirection: "TB",
   };
 }
 

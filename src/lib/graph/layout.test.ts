@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Choice, GraphDocument, Step } from "@/lib/graph/document";
+import type {
+  Choice,
+  GraphDocument,
+  LayoutDirection,
+  Step,
+} from "@/lib/graph/document";
 import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import type { CanvasNode } from "@/lib/graph/layout";
@@ -47,7 +52,9 @@ function byId<T extends { id: string }>(items: T[]): Record<string, T> {
  * for and stays a plain tree (no cycles, nothing unreachable, no dangling
  * Choices) so `assertLayoutMatchesDocument` can be reused on it as-is.
  */
-function buildGeneratedDocument(): GraphDocument {
+function buildGeneratedDocument(
+  layoutDirection: LayoutDirection = "TB",
+): GraphDocument {
   const total = 60;
   const ids = Array.from({ length: total }, (_, index) => `gen-${index}`);
   const children: number[][] = Array.from({ length: total }, () => []);
@@ -94,6 +101,7 @@ function buildGeneratedDocument(): GraphDocument {
     allowBack: true,
     steps: byId(steps),
     outcomes: byId(outcomeIds.map((id) => ({ id, label: id }))),
+    layoutDirection,
   };
 }
 
@@ -188,7 +196,11 @@ function assertLayoutMatchesDocument(document: GraphDocument): void {
     }
   }
 
-  expect(layoutGraph(document)).toEqual({ nodes, edges });
+  expect(layoutGraph(document)).toEqual({
+    nodes,
+    edges,
+    direction: document.layoutDirection,
+  });
   expect(document).toEqual(before);
 }
 
@@ -214,6 +226,7 @@ describe("layoutGraph", () => {
         step("start", [choice("choice-to-ghost", "Vanish", "ghost-step")]),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const { nodes, edges } = layoutGraph(document);
@@ -248,6 +261,7 @@ describe("layoutGraph", () => {
         ]),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const { nodes, edges } = layoutGraph(document);
@@ -292,6 +306,7 @@ describe("layoutGraph routed edges", () => {
         step("c", [], { title: "End" }),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const { edges } = layoutGraph(document);
@@ -317,6 +332,7 @@ describe("layoutGraph routed edges", () => {
         step("b", []),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     expect(() => layoutGraph(document)).not.toThrow();
@@ -350,6 +366,7 @@ describe("layoutGraph routed edges", () => {
         step("b", []),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const { nodes, edges } = layoutGraph(document);
@@ -378,6 +395,52 @@ describe("layoutGraph routed edges", () => {
   });
 });
 
+describe("layoutGraph direction", () => {
+  /**
+   * Every Choice's target lies downstream of its source along the direction
+   * dagre laid the map out in: strictly greater on the rank axis, and past
+   * the source box's own far edge on that axis, not merely past its centre.
+   * `buildGeneratedDocument` is a tree with no self-loop and no dangling
+   * Choice, so every edge's source and target are two distinct step nodes.
+   */
+  function assertTargetsAreDownstream(document: GraphDocument): void {
+    const { nodes, edges } = layoutGraph(document);
+    const nodeById = (id: string) =>
+      nodes.find((candidate) => candidate.id === id);
+
+    expect(edges.length).toBeGreaterThan(0);
+    for (const edge of edges) {
+      const source = nodeById(edge.source);
+      const target = nodeById(edge.target);
+      expect(source).toBeDefined();
+      expect(target).toBeDefined();
+      if (!source || !target) {
+        continue;
+      }
+      if (document.layoutDirection === "LR") {
+        expect(target.x).toBeGreaterThan(source.x);
+        expect(target.x).toBeGreaterThan(source.x + source.width);
+      } else {
+        expect(target.y).toBeGreaterThan(source.y);
+        expect(target.y).toBeGreaterThan(source.y + source.height);
+      }
+    }
+  }
+
+  it("places every Choice's target strictly right of its source, past its right edge, left to right", () => {
+    assertTargetsAreDownstream(buildGeneratedDocument("LR"));
+  });
+
+  it("places every Choice's target strictly below its source, past its bottom edge, top to bottom", () => {
+    assertTargetsAreDownstream(buildGeneratedDocument("TB"));
+  });
+
+  it("carries the document's layoutDirection through as the layout's own direction", () => {
+    expect(layoutGraph(buildGeneratedDocument("LR")).direction).toBe("LR");
+    expect(layoutGraph(buildGeneratedDocument("TB")).direction).toBe("TB");
+  });
+});
+
 describe("CanvasNode.sourceAnchors", () => {
   it("orders a Step's Choices by the x position of the box each one targets", () => {
     const document: GraphDocument = {
@@ -401,6 +464,7 @@ describe("CanvasNode.sourceAnchors", () => {
         ]),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const { nodes } = layoutGraph(document);
@@ -427,6 +491,55 @@ describe("CanvasNode.sourceAnchors", () => {
     expect(nodeById("s")?.sourceAnchors).toEqual(expectedOrder);
   });
 
+  it("orders a Step's Choices by the y position of the box each one targets, left to right", () => {
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "s",
+      allowBack: true,
+      steps: byId([
+        step("s", [
+          choice("s-to-t1", "Go to T1", "t1"),
+          choice("s-to-t2", "Go to T2", "t2"),
+          choice("s-to-t3", "Go to T3", "t3"),
+        ]),
+        step("t1", []),
+        step("t2", []),
+        step("t3", []),
+        // Skews dagre's crossing-minimization order so T1..T3 land in a
+        // different top-to-bottom order than the Choices above list them.
+        step("z", [
+          choice("z-to-t3", "Go to T3", "t3"),
+          choice("z-to-t1", "Go to T1", "t1"),
+        ]),
+      ]),
+      outcomes: {},
+      layoutDirection: "LR",
+    };
+
+    const { nodes } = layoutGraph(document);
+    const nodeById = (id: string) =>
+      nodes.find((candidate) => candidate.id === id);
+    const t1Y = nodeById("t1")?.y ?? 0;
+    const t2Y = nodeById("t2")?.y ?? 0;
+    const t3Y = nodeById("t3")?.y ?? 0;
+
+    // Not vacuous: the run before this assertion showed the three targets
+    // really do land at three different y positions.
+    expect(new Set([t1Y, t2Y, t3Y]).size).toBe(3);
+
+    const expectedOrder = (
+      [
+        ["s-to-t1", t1Y],
+        ["s-to-t2", t2Y],
+        ["s-to-t3", t3Y],
+      ] as const
+    )
+      .toSorted((left, right) => left[1] - right[1])
+      .map(([choiceId]) => choiceId);
+
+    expect(nodeById("s")?.sourceAnchors).toEqual(expectedOrder);
+  });
+
   it("gives a Step with no Choices an empty sourceAnchors list", () => {
     const document: GraphDocument = {
       schemaVersion: 1,
@@ -434,6 +547,7 @@ describe("CanvasNode.sourceAnchors", () => {
       allowBack: true,
       steps: byId([step("only", [])]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const { nodes } = layoutGraph(document);
@@ -475,16 +589,52 @@ describe("mapOrder", () => {
         step("start", [choice("choice-to-ghost", "Vanish", "ghost-step")]),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const layout = layoutGraph(document);
     expect(mapOrder(layout)).toEqual(["start"]);
+  });
+
+  it("orders the seeded case-3 Steps top to bottom, then left to right, with no placeholders, left to right", () => {
+    const document = {
+      ...graphDocumentSchema.parse(case3),
+      layoutDirection: "LR" as const,
+    };
+    const layout = layoutGraph(document);
+    const order = mapOrder(layout);
+
+    const stepIds = Object.keys(document.steps);
+    expect(order).toHaveLength(stepIds.length);
+    expect([...order].sort()).toEqual([...stepIds].sort());
+    expect(order.some((id) => id.startsWith("missing:"))).toBe(false);
+
+    const positions = order.map((id) => {
+      const node = layout.nodes.find((candidate) => candidate.id === id);
+      return { y: node?.y ?? 0, x: node?.x ?? 0 };
+    });
+    for (let index = 1; index < positions.length; index += 1) {
+      const previous = positions[index - 1];
+      const current = positions[index];
+      const inOrder =
+        current.y > previous.y ||
+        (current.y === previous.y && current.x >= previous.x);
+      expect(inOrder).toBe(true);
+    }
   });
 });
 
 describe("layoutGraph determinism", () => {
   it("gives deep-equal output, points and sourceAnchors included, for the same input run twice", () => {
     const document = graphDocumentSchema.parse(case3);
+    expect(layoutGraph(document)).toEqual(layoutGraph(document));
+  });
+
+  it("gives deep-equal output for the same left-to-right input run twice", () => {
+    const document = {
+      ...graphDocumentSchema.parse(case3),
+      layoutDirection: "LR" as const,
+    };
     expect(layoutGraph(document)).toEqual(layoutGraph(document));
   });
 });
@@ -500,6 +650,7 @@ describe("problemsByAddress", () => {
         step("orphan", [], { title: "Orphan ending" }),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const problems = validateForPublish(document);
@@ -525,6 +676,7 @@ describe("problemsByAddress", () => {
         step("only", [choice("choice-dangling", "Go nowhere", "ghost")]),
       ]),
       outcomes: {},
+      layoutDirection: "TB",
     };
 
     const problems = validateForPublish(document);

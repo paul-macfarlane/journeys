@@ -551,4 +551,5 @@ export const largeJourney: GraphDocument = {
   allowBack: true,
   steps: byId(steps),
   outcomes: byId(outcomes),
+  layoutDirection: "TB",
 };

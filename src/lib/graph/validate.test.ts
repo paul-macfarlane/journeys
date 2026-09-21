@@ -49,6 +49,7 @@ function graph(
     outcomes: Object.fromEntries(
       (options.outcomes ?? []).map((outcome) => [outcome.id, outcome]),
     ),
+    layoutDirection: "TB",
   };
 }
 
