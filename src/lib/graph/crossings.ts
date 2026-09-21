@@ -7,7 +7,7 @@
  *
  * A "crossing" is two distinct arrows whose paths properly intersect somewhere
  * away from either arrow's ends: arrows that leave the same box from
- * neighbouring anchors, or that converge on the same box's top anchor, meet
+ * neighboring anchors, or that converge on the same box's top anchor, meet
  * at their ends by design and are not counted. A pair counts once however
  * many times its two paths intersect.
  */
