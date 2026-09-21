@@ -39,6 +39,61 @@ export function addStep(
   };
 }
 
+/** The suffix a copy's title carries, and the schema's own limit on a title. */
+const COPY_SUFFIX = " copy";
+const MAX_TITLE_LENGTH = 200;
+
+/**
+ * The original's title with `COPY_SUFFIX` appended, trimming the original's
+ * end so the whole stays within `stepSchema`'s 200-character limit.
+ */
+function suffixedTitle(title: string): string {
+  const maxOriginalLength = MAX_TITLE_LENGTH - COPY_SUFFIX.length;
+  const trimmed =
+    title.length > maxOriginalLength
+      ? title.slice(0, maxOriginalLength)
+      : title;
+  return `${trimmed}${COPY_SUFFIX}`;
+}
+
+/**
+ * Copies a Step: its content, Prompt, and Outcome tag carry over and its
+ * title gains `COPY_SUFFIX`, but it starts with no Choices — an Author builds
+ * outward from the copy the way they would from any new Step, rather than
+ * inheriting where the original led. `position` is left `null`, like every
+ * other new Step; the map lays the copy out wherever dagre puts an
+ * unconnected Step. An unknown `stepId` returns the document unchanged with
+ * `stepId: ""`, the `addChoiceToNewStep` convention.
+ */
+export function duplicateStep(
+  document: GraphDocument,
+  stepId: string,
+): { document: GraphDocument; stepId: string } {
+  if (!hasStep(document, stepId)) {
+    return { document, stepId: "" };
+  }
+
+  const original = document.steps[stepId];
+  const newStepId = crypto.randomUUID();
+  const step: Step = {
+    id: newStepId,
+    title: suffixedTitle(original.title),
+    content: structuredClone(original.content),
+    choices: [],
+    prompt: original.prompt,
+    outcomeId: original.outcomeId,
+    position: null,
+  };
+
+  return {
+    document: {
+      ...document,
+      steps: { ...document.steps, [newStepId]: step },
+    },
+    stepId: newStepId,
+  };
+}
+
 /** Patches a Step's title, content, or outcome tag. */
 export function updateStep(
   document: GraphDocument,

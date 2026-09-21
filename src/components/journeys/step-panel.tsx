@@ -86,6 +86,7 @@ export function StepPanel({
   onContentChange,
   onContentRefused,
   onDeleteStep,
+  onDuplicateStep,
 }: {
   document: GraphDocument;
   step: Step;
@@ -106,6 +107,7 @@ export function StepPanel({
   onContentChange: (stepId: string, content: Content) => void;
   onContentRefused: (error: string) => void;
   onDeleteStep: (stepId: string) => void;
+  onDuplicateStep: (stepId: string) => void;
 }) {
   const isStart = document.startStepId === step.id;
 
@@ -210,20 +212,29 @@ export function StepPanel({
         </div>
       ) : null}
 
-      {/* The two moves that change the Journey's shape around this Step,
-          kept together at the foot of the panel. */}
+      {/* The moves that change the Journey's shape around this Step —
+          making it the Start, duplicating it, and deleting it — kept
+          together at the foot of the panel. Every Step, the Start included,
+          can be duplicated; only the Start has no "Make this the start". */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-foreground/10 pt-4">
-        {isStart ? (
-          <span />
-        ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {isStart ? null : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onChange(setStart(document, step.id))}
+            >
+              Make this the start
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onChange(setStart(document, step.id))}
+            onClick={() => onDuplicateStep(step.id)}
           >
-            Make this the start
+            Duplicate
           </Button>
-        )}
+        </div>
         <DeleteStepDialog
           key={`delete-${step.id}`}
           document={document}

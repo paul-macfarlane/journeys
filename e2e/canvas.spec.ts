@@ -545,6 +545,111 @@ test("canvas-add-next-step", async ({ page, context }) => {
   });
 });
 
+test("canvas-duplicate-step", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+
+  const sentence = "Participants pass through a checkpoint before crossing.";
+  await page.getByLabel("Step content").click();
+  await page.keyboard.type(sentence);
+  await expect(page.getByLabel("Step content")).toContainText(sentence);
+
+  // The Start has no Choices, so it is an Ending and carries an Outcome.
+  await addOutcome(page, "Reached care");
+  const outcomeSelect = page.getByLabel("Outcome", { exact: true });
+  await outcomeSelect.selectOption({ label: "Reached care" });
+  const originalOutcomeValue = await outcomeSelect.inputValue();
+  await expectSaved(page);
+
+  // "Duplicate" on the box's own toolbar — the Start is already the Step
+  // the panel has open.
+  const toolbar = boxToolbar(page, "Border post");
+  await expect(toolbar).toBeVisible();
+  await toolbar.getByRole("button", { name: "Duplicate", exact: true }).click();
+
+  // The copy is what the panel opens on, with its title field focused, and
+  // it carries the original's content and Outcome.
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post copy");
+  await expect(page.getByLabel("Step title")).toBeFocused();
+  await expect(page.getByLabel("Step content")).toContainText(sentence);
+  await expect(page.getByLabel("Outcome", { exact: true })).toHaveValue(
+    originalOutcomeValue,
+  );
+  await expect(canvasNodes(page)).toHaveCount(2);
+
+  await expect
+    .poll(
+      async () =>
+        (await nodeViews(page)).find(
+          (view) => view.title === "Border post copy",
+        )?.fullyInside,
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  await expectSaved(page);
+  const stored = await readDraft(journeyId);
+  const original = Object.values(stored.steps).find(
+    (step) => step.title === "Border post",
+  );
+  expect(original, "the original Step is gone from the Draft").toBeDefined();
+  const copies = Object.values(stored.steps).filter(
+    (step) => step.title === "Border post copy",
+  );
+  expect(copies).toHaveLength(1);
+  expect(copies[0].choices).toEqual([]);
+  expect(copies[0].content).toEqual(original!.content);
+  expect(copies[0].outcomeId).toBe(original!.outcomeId);
+  expect(copies[0].prompt).toBeNull();
+
+  // "Zoom to step" on the copy's own toolbar.
+  const copyToolbar = boxToolbar(page, "Border post copy");
+  await expect(copyToolbar).toBeVisible();
+  await copyToolbar
+    .getByRole("button", { name: "Zoom to step", exact: true })
+    .click();
+
+  await settledTransform(page);
+  await expect
+    .poll(
+      async () =>
+        (await nodeViews(page)).find(
+          (view) => view.title === "Border post copy",
+        )?.fullyInside,
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  const frame = await canvas(page).boundingBox();
+  expect(frame, "the canvas has no box yet").not.toBeNull();
+  const box = await canvasNode(page, "Border post copy").boundingBox();
+  expect(box, "the found box has no box").not.toBeNull();
+  expect(
+    Math.abs(box!.x + box!.width / 2 - (frame!.x + frame!.width / 2)),
+  ).toBeLessThan(frame!.width / 4);
+  expect(
+    Math.abs(box!.y + box!.height / 2 - (frame!.y + frame!.height / 2)),
+  ).toBeLessThan(frame!.height / 4);
+
+  // The panel footer's own "Duplicate", scoped off the box toolbar's.
+  await page
+    .getByRole("region", { name: "Step" })
+    .getByRole("button", { name: "Duplicate", exact: true })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue(
+    "Border post copy copy",
+  );
+  await expect(page.getByLabel("Step title")).toBeFocused();
+  await expect(canvasNodes(page)).toHaveCount(3);
+
+  await expectSaved(page);
+  await page.screenshot({
+    path: "test-results/canvas-duplicate-step/canvas-duplicate-step.png",
+    fullPage: true,
+  });
+});
+
 test.describe("the seeded map", () => {
   // Thirty-six Steps is a map to be read, not a thumbnail: the widest screen
   // an Author would use is what it is laid out against.

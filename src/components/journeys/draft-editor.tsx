@@ -25,6 +25,7 @@ import {
   addChoiceToNewStep,
   addStep,
   deleteStep,
+  duplicateStep,
   removeChoice,
   setStart,
   updateChoice,
@@ -402,6 +403,22 @@ export function DraftEditor({
     [applyEdit, selectStep],
   );
 
+  /**
+   * "Duplicate" on a box's toolbar or the panel footer: a copy of the Step
+   * with no Choices, opened with its title field focused so the Author can
+   * rename it right away — the same opening "Add next step" gives a new one.
+   */
+  const duplicate = useCallback(
+    (stepId: string) => {
+      const created = duplicateStep(documentRef.current, stepId);
+      if (created.stepId === "") return;
+
+      applyEdit(created.document);
+      selectStep(created.stepId, { focusTitle: true });
+    },
+    [applyEdit, selectStep],
+  );
+
   const makeStart = useCallback(
     (stepId: string) => {
       applyEdit(setStart(documentRef.current, stepId));
@@ -687,6 +704,7 @@ export function DraftEditor({
             onSelectStep={selectStep}
             onAddStep={addNewStep}
             onAddNextStep={addNextStep}
+            onDuplicateStep={duplicate}
             onSetStart={makeStart}
             onDeleteStep={removeStep}
             onConnectChoice={connectSteps}
@@ -722,6 +740,7 @@ export function DraftEditor({
               setContentNotice({ stepId: selectedStep.id, message })
             }
             onDeleteStep={removeStep}
+            onDuplicateStep={duplicate}
           />
         ) : null}
       </div>

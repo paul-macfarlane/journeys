@@ -74,12 +74,14 @@ import "@xyflow/react/dist/style.css";
  * round trip, so a mark clears the moment the fix is typed.
  *
  * The map is also where the Journey is built: the open box carries a toolbar
- * for the three moves that change the shape around it, a Choice is made by
- * dragging from a box onto another, an arrow's head is dragged to move where
- * its Choice leads, and a clicked arrow is the Choice in hand — opened in the
- * panel, and removed by the Delete key. Nothing here edits the document: each
- * of those is handed back to the editor in the document's own words (a Step,
- * a Choice), and the map redraws from whatever the editor makes of it.
+ * for the moves that shape it — adding the next step, duplicating it, making
+ * it the start, and deleting it — and one that only moves the view, zooming
+ * to it. A Choice is made by dragging from a box onto another, an arrow's
+ * head is dragged to move where its Choice leads, and a clicked arrow is the
+ * Choice in hand — opened in the panel, and removed by the Delete key.
+ * Nothing here edits the document: each of those is handed back to the
+ * editor in the document's own words (a Step, a Choice), and the map redraws
+ * from whatever the editor makes of it.
  */
 
 /**
@@ -128,6 +130,7 @@ function outcomeColor(outcomeIndex: number | null): string | null {
  */
 type CanvasActions = {
   onAddNextStep: (stepId: string) => void;
+  onDuplicateStep: (stepId: string) => void;
   onSetStart: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
 };
@@ -316,16 +319,19 @@ function handleLeft(index: number, count: number): string {
 function StepNode({ data }: NodeProps<StepFlowNode>) {
   const marked = data.problems.length > 0;
   const actions = useCanvasActions();
+  // "Zoom to step" needs no editor plumbing — this node renders inside the
+  // `ReactFlow` tree, so the hook it calls `fitView` through is its own.
+  const { fitView } = useReactFlow();
 
   return (
     <>
-      {/* The moves that change the Journey's shape around this Step, on the
-          box itself: the same three the panel's foot carries, where the
-          Author is already looking. `nopan`/`nodrag` keep a click on a
-          button from dragging the map out from under it. */}
+      {/* The moves that change the Journey's shape around this Step, and one
+          that only moves the view, on the box itself: the same the panel's
+          foot carries, where the Author is already looking. `nopan`/`nodrag`
+          keep a click on a button from dragging the map out from under it. */}
       {/* `role="group"`, not `role="toolbar"`: a toolbar promises roving
-          tabindex, and these are three ordinary tab stops, the same as the
-          panel's "Leads here from". */}
+          tabindex, and these are ordinary tab stops, the same as the panel's
+          "Leads here from". */}
       <NodeToolbar
         isVisible={data.isSelected}
         position={Position.Top}
@@ -343,6 +349,26 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
           onClick={() => actions.onAddNextStep(data.opens)}
         >
           Add next step
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => actions.onDuplicateStep(data.opens)}
+        >
+          Duplicate
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            void fitView({
+              nodes: [{ id: data.opens }],
+              maxZoom: 1.5,
+              duration: 200,
+            })
+          }
+        >
+          Zoom to step
         </Button>
         <Button
           variant="outline"
@@ -542,8 +568,13 @@ export type JourneyCanvasProps = {
   selectedArrow: CanvasArrow | null;
   onSelectStep: SelectStep;
   onAddStep: () => void;
-  /** The box toolbar's three moves, on whichever Step the panel has open. */
+  /**
+   * The box toolbar's moves, on whichever Step the panel has open. "Zoom to
+   * step" carries no prop here — it calls `fitView` through `useReactFlow`
+   * from inside the node itself.
+   */
   onAddNextStep: (stepId: string) => void;
+  onDuplicateStep: (stepId: string) => void;
   onSetStart: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
   /** A Choice drawn between two boxes, and one whose head was moved. */
@@ -569,6 +600,7 @@ function CanvasFlow({
   onSelectStep,
   onAddStep,
   onAddNextStep,
+  onDuplicateStep,
   onSetStart,
   onDeleteStep,
   onConnectChoice,
@@ -736,8 +768,8 @@ function CanvasFlow({
   );
 
   const actions = useMemo<CanvasActions>(
-    () => ({ onAddNextStep, onSetStart, onDeleteStep }),
-    [onAddNextStep, onSetStart, onDeleteStep],
+    () => ({ onAddNextStep, onDuplicateStep, onSetStart, onDeleteStep }),
+    [onAddNextStep, onDuplicateStep, onSetStart, onDeleteStep],
   );
 
   const outcomeLegend = useMemo(
