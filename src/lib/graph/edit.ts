@@ -369,6 +369,46 @@ export function removeOutcome(
   return { ok: true, document: { ...document, steps, outcomes } };
 }
 
+/**
+ * Step ids in the order a participant could meet them — depth first from the
+ * Start, following each Step's Choices in order, each Step once — followed by
+ * the Steps no walk from the Start reaches, in document order. A list in
+ * this order reads like the Journey instead of like the order it was typed.
+ */
+export function walkOrder(document: GraphDocument): {
+  reachable: string[];
+  unreachable: string[];
+} {
+  const reachable: string[] = [];
+  const seen = new Set<string>();
+  const pending = hasStep(document, document.startStepId)
+    ? [document.startStepId]
+    : [];
+
+  while (pending.length > 0) {
+    const stepId = pending.pop();
+    if (
+      stepId === undefined ||
+      seen.has(stepId) ||
+      !hasStep(document, stepId)
+    ) {
+      continue;
+    }
+    seen.add(stepId);
+    reachable.push(stepId);
+    // Pushed last-to-first so the first Choice's target is walked next.
+    const { choices } = document.steps[stepId];
+    for (let index = choices.length - 1; index >= 0; index -= 1) {
+      pending.push(choices[index].targetStepId);
+    }
+  }
+
+  const unreachable = Object.keys(document.steps).filter(
+    (stepId) => !seen.has(stepId),
+  );
+  return { reachable, unreachable };
+}
+
 /** One count per defined Outcome — zero when none — of the Endings tagged with it. */
 export function endingCountsByOutcome(
   document: GraphDocument,

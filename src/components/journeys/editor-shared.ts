@@ -4,6 +4,15 @@
  * reaches for where the app has no shadcn primitive.
  */
 
+/**
+ * How a Step is opened in the panel. `focusTitle` is for a Step that was just
+ * created from a Choice: it opens with its title field focused so the Author
+ * names it in the same breath.
+ */
+export type SelectStepOptions = { focusTitle?: boolean };
+
+export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
+
 /** "1 step", "44 steps": the count and the noun that agrees with it. */
 export function counted(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;

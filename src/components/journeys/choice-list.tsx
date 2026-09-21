@@ -1,6 +1,9 @@
 import { useState } from "react";
 
-import { SELECT_CLASS } from "@/components/journeys/editor-shared";
+import {
+  SELECT_CLASS,
+  type SelectStep,
+} from "@/components/journeys/editor-shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +38,7 @@ export function ChoiceList({
   document: GraphDocument;
   step: Step;
   onChange: (document: GraphDocument) => void;
-  onSelectStep: (stepId: string) => void;
+  onSelectStep: SelectStep;
 }) {
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
@@ -51,7 +54,7 @@ export function ChoiceList({
     if (value === NEW_STEP) {
       const created = retargetChoiceToNewStep(document, step.id, choiceId);
       onChange(created.document);
-      onSelectStep(created.stepId);
+      onSelectStep(created.stepId, { focusTitle: true });
       return;
     }
 
@@ -64,7 +67,7 @@ export function ChoiceList({
     if (target === NEW_STEP) {
       const created = addChoiceToNewStep(document, step.id, { label });
       onChange(created.document);
-      onSelectStep(created.stepId);
+      onSelectStep(created.stepId, { focusTitle: true });
     } else {
       onChange(
         addChoice(document, step.id, { label, targetStepId: target }).document,
@@ -128,6 +131,16 @@ export function ChoiceList({
                   ))}
                   <option value={NEW_STEP}>New step…</option>
                 </select>
+                {/* Where this Choice goes, one click away; "Leads here from"
+                    on that Step is the way back. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={dangling}
+                  onClick={() => onSelectStep(choice.targetStepId)}
+                >
+                  Open
+                </Button>
 
                 <Button
                   variant="outline"

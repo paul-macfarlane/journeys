@@ -9,7 +9,7 @@ import {
   validateDraftAction,
   type SaveDraftActionResult,
 } from "@/app/projects/[projectId]/journeys/actions";
-import { counted } from "@/components/journeys/editor-shared";
+import { counted, type SelectStep } from "@/components/journeys/editor-shared";
 import { OutcomeList } from "@/components/journeys/outcome-list";
 import { StepList } from "@/components/journeys/step-list";
 import { StepPanel } from "@/components/journeys/step-panel";
@@ -244,10 +244,19 @@ export function DraftEditor({
     [applyEdit],
   );
 
+  // The Step whose title field should take focus when it opens: one that was
+  // just created and has only "Untitled step" for a name.
+  const [titleFocusStepId, setTitleFocusStepId] = useState<string | null>(null);
+
+  const selectStep: SelectStep = useCallback((stepId, options) => {
+    setSelectedStepId(stepId);
+    setTitleFocusStepId(options?.focusTitle ? stepId : null);
+  }, []);
+
   function addNewStep() {
     const created = addStep(documentRef.current);
     applyEdit(created.document);
-    setSelectedStepId(created.stepId);
+    selectStep(created.stepId, { focusTitle: true });
   }
 
   function removeStep(stepId: string) {
@@ -391,7 +400,7 @@ export function DraftEditor({
           <StepList
             document={document}
             selectedStepId={selectedStep?.id ?? ""}
-            onSelectStep={setSelectedStepId}
+            onSelectStep={selectStep}
           />
         </div>
 
@@ -400,8 +409,9 @@ export function DraftEditor({
             document={document}
             step={selectedStep}
             revision={revision}
+            focusTitle={titleFocusStepId === selectedStep.id}
             onChange={applyEdit}
-            onSelectStep={setSelectedStepId}
+            onSelectStep={selectStep}
             onContentChange={handleContentChange}
             onContentRefused={(message) =>
               setContentNotice({ stepId: selectedStep.id, message })

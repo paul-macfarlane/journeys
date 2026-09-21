@@ -89,14 +89,16 @@ function stepButton(page: Page, title: string) {
     .getByRole("button", { name: title, exact: true });
 }
 
+// The panel has no heading repeating the title: the title field is the
+// Step's name there, so it is what these read.
 async function selectStep(page: Page, title: string): Promise<void> {
   await stepButton(page, title).click();
-  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
 async function renameStep(page: Page, title: string): Promise<void> {
   await page.getByLabel("Step title").fill(title);
-  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
 /** "Add choice" pointed at a Step that does not exist yet — the same motion. */
@@ -112,10 +114,10 @@ async function addChoiceToNewStep(
     .selectOption({ label: "New step" });
   await page.getByRole("button", { name: "Add", exact: true }).click();
 
-  // The new Step is what the panel opens on, so it can be named right away.
-  await expect(
-    page.getByRole("heading", { name: "Untitled step" }),
-  ).toBeVisible();
+  // The new Step is what the panel opens on, with its title field focused,
+  // so it can be named right away.
+  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toBeFocused();
   await renameStep(page, title);
 }
 
@@ -142,7 +144,7 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
 
   // The Start is what the panel opens on.
-  await expect(page.getByRole("heading", { name: "Start" })).toBeVisible();
+  await expect(page.getByLabel("Step title")).toHaveValue("Start");
   await renameStep(page, "Border post");
 
   // Six Steps, built forwards: every Choice names the Step it needs and the
@@ -236,9 +238,7 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
   await expect(confirmation).toBeHidden();
 
   // The Start is what the panel falls back to, and its Choice now dangles.
-  await expect(
-    page.getByRole("heading", { name: "Border post" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   const choiceRow = page
     .getByRole("list", { name: "Choices" })
     .getByRole("listitem")
@@ -406,9 +406,8 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
     .nth(1)
     .getByLabel("Choice target")
     .selectOption({ label: "New step…" });
-  await expect(
-    page.getByRole("heading", { name: "Untitled step" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toBeFocused();
   await expect(stepButton(page, "Untitled step")).toHaveAttribute(
     "aria-current",
     "true",
@@ -417,6 +416,23 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
 
   const after = await readDraft(journeyId);
   expect(Object.keys(after.steps)).toHaveLength(4);
+
+  // Walking from the panel: "Leads here from" goes back up the Choice that
+  // made this Step, "Open" on that Choice comes back down, and the Step no
+  // Choice points at any more ("Turned back") is set apart from the walk.
+  await page
+    .getByRole("group", { name: "Leads here from" })
+    .getByRole("button", { name: "Wait your turn on Border post" })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await rows.nth(1).getByRole("button", { name: "Open", exact: true }).click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(
+    page
+      .getByRole("list", { name: "Not yet reached" })
+      .getByRole("button", { name: "Turned back", exact: true }),
+  ).toBeVisible();
+  await expect(stepButton(page, "Turned back")).toHaveCount(0);
 
   await page.screenshot({
     path: "test-results/step-editing-choices-reorder-retarget/step-editing-choices-reorder-retarget.png",
