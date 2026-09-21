@@ -1,6 +1,6 @@
 # 19: Canvas quality of life
 
-Status: in-progress
+Status: ai-review
 Blocked by: 16
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -72,3 +72,48 @@ Once "Find step" and the map keyboard basics land, remove the step list under th
 | N-1 | test `canvas-connect-and-retarget-by-dragging` (self-loop case) | as AC-1 | dragging the connect dot onto its own box adds a Choice targeting itself; the arrow's path midpoint lies outside the box's own rect | `test-results/canvas-connect-and-retarget-by-dragging/….png`, `dod-1-e2e.txt` | after D3 | as AC-1 |
 | DoD-1 | `DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e` | local; docker Postgres | all exit 0; no test retried | `test-results/dod-1-commands.txt`, `test-results/dod-1-e2e.txt` | after D3 | any source, config, or test change |
 | DoD-2 | evidence review at closeout | local | every PASS artifact committed; fixture journeys only | this ticket's `[CLOSEOUT]` | closeout | — |
+
+### [PROGRESS] 2026-09-21 — D1–D3 integrated; aggregate review started
+
+- **D1** — `atlas-worker` on opus — `f6cee8d`: "Find step" combobox above the map (`find-step.tsx`; every Step in map order when empty, case-insensitive title filter, arrow keys, Enter, Escape, click), Cmd/Ctrl+K from anywhere on the Journey page, `SelectStepOptions.center` and the editor's `locate: { request, center }` so a found Step is centered; `step-list.tsx` deleted and the four specs' list reads moved to the listbox (`openFindStep`, `chooseStep` in `e2e/setup/authoring.ts`); README rewritten. e2e `canvas-find-step` (zooms in first so the assertion is not vacuous; asserts centering), `canvas-find-step-lists-map-order` (ticket 16's AC-8 in its new home), `canvas-locate-on-map` choosing from the listbox. 198 unit, 24 e2e across the four specs green.
+- **D2** — `atlas-worker` on sonnet — `5edba39`: `duplicateStep` (title + " copy" trimmed to 200, `structuredClone` content, Prompt and Outcome copied, no Choices) with four Seam A cases; "Duplicate" in the box toolbar and the panel footer; "Zoom to step" in the toolbar through `useReactFlow` inside the node. e2e `canvas-duplicate-step`. 202 unit, 16 canvas e2e green.
+- **D3** — `atlas-worker` on opus — `153c463`: `contentPreview` with six Seam A cases; the peek as a second `NodeToolbar` (`role="tooltip"`, problems first, then the opening or "No content yet", `aria-describedby`, the `title` attribute dropped); arrow keys walk to the nearest box (along + 2 × across), `focus({ preventScroll })`, off-map boxes brought on; Escape to the Canvas `section` (`tabIndex={-1}`) clearing the arrow selection; `selfLoopRoute` beside the box. e2e `canvas-content-peek`, `canvas-keyboard-navigation`, a self-loop case in `canvas-connect-and-retarget-by-dragging`, `canvas-find-duplicate-and-edit` (Seam B: found "Preface" by name, duplicated, renamed and given content in the panel, connected by dragging). 208 unit, 19 canvas e2e, and the full suite prebuilt (55) green.
+- Every worker run is candidate evidence only; the aggregate capture follows the review. Status `in-progress` → `ai-review`.
+
+### [AI CODE REVIEW] 2026-09-21 — aggregate review of `33baeb4..153c463`, fixes in D4
+
+Two fresh reviewers (one per axis, opus) read the whole diff against the ticket, the execution plan, `CONTEXT.md`, ADR-0001, ADR-0002, `docs/agents/testing.md`, `CLAUDE.md`, and the installed `@xyflow/react` source; the orchestrator adjudicated every candidate from the cited hunks. Both reviewers confirmed: every "What to build" bullet is built (the sticky panel omitted under the approved reading), every AC has code and a named e2e test that fails if the feature is removed, S-1 is fully discharged (no `StepList`/`step-list` reference, no `list "Steps"` read, the heading and summary kept, Outcomes at full width), N-1 is routed exactly as the plan says with `layout.ts` untouched; no scope leak; no flaky-test workaround; `src/lib/graph/*` stays pure; no canvas position is read or written; `CONTEXT.md` words throughout (React Flow's own API names aside). **No blocking finding on either axis.**
+
+**Axis 1 — technical implementation and spec conformity** (10 candidates)
+
+| # | Severity | Paths | Disposition |
+|---|---|---|---|
+| T1 Cmd/Ctrl+K captured with Shift/Alt held and while a dialog is open (a focus fight with the dialog's focus scope) | non-blocking | `draft-editor.tsx` | resolved in D4: bails on `shiftKey`/`altKey` and on an open `[role="dialog"]`/`[role="alertdialog"]` |
+| T2 README under-describes the toolbar and omits the peek and arrow keys | non-blocking | `README.md` | resolved in D4 (= S1) |
+| T3 `LOOP_SIDE_CLEARANCE` 32 equals dagre's `nodesep` 32, so a loop can run over a right-hand neighbour packed at minimum separation | non-blocking | `journey-canvas.tsx` | resolved in D4: 16, comment naming the bound |
+| T4 `duplicateStep` clones `content` but shares `prompt` by reference | non-blocking | `edit.ts` | resolved in D4: `structuredClone`, Seam A case |
+| T5 `aria-controls`/`aria-describedby` name ids absent most of the time | non-blocking | `find-step.tsx`, `journey-canvas.tsx` | resolved in D4 (= S10) |
+| T6 Escape lands on a section with `outline-none` and no focus indicator | non-blocking | `journey-canvas.tsx` | resolved in D4: `focus-visible:ring-4 focus-visible:ring-ring` |
+| T7 (a) an untitled Step's copy is titled `" copy"`; (b) title and preview cuts are by UTF-16 code unit | non-blocking | `edit.ts`, `content.ts` | (a) resolved in D4: `stepName(original)`, Seam A case; (b) deviation: the schema's `max(200)` counts code units, so that is the cut that keeps a title valid, and a lone surrogate at a peek boundary is cosmetic |
+| T8 the hand-rolled combobox's keyboard and no-match paths had no test | non-blocking | `canvas.spec.ts` | resolved in D4: `canvas-find-step` now covers no-match, Escape twice, ArrowDown/ArrowUp wrapping, Enter |
+| T9 `canvas-find-step`'s zoom loop read positions mid-animation | non-blocking | `canvas.spec.ts` | resolved in D4: `settledTransform` after each click |
+| T10 a peek can outlive a map move under a stationary pointer | non-blocking | `journey-canvas.tsx` | deviation: cosmetic; clears on the next pointer move; no criterion names it |
+
+**Axis 2 — coding standards** (12 candidates, all non-blocking)
+
+| # | Paths | Disposition |
+|---|---|---|
+| S1 README not extended for D2/D3 | `README.md` | resolved in D4 |
+| S2 centered-on-map assertion copied into two tests | `canvas.spec.ts` | resolved in D4: `expectCenteredOnMap` |
+| S3 Cmd/Ctrl+K find-and-choose copied into two tests | `canvas.spec.ts`, `authoring.ts` | resolved in D4: `findStepByName` in `e2e/setup/authoring.ts` |
+| S4 `fullyInside` poll repeated six times | `canvas.spec.ts` | resolved in D4: `expectBoxOnMap` |
+| S5 bare `140` in tests while the source names `PREVIEW_LIMIT` | `content.ts`, `content.test.ts`, `canvas.spec.ts` | resolved in D4: exported |
+| S6 file-level video comment says "those two tests" | `canvas.spec.ts` | resolved in D4 |
+| S7 ragged comment re-wrap | `journey-canvas.tsx` | resolved in D4 |
+| S8 `ARROW_DIRECTIONS` typed so its `undefined` guard is unreachable; two-branch null check | `journey-canvas.tsx` | resolved in D4 |
+| S9 `contentPreview` doc names consumers that do not exist | `content.ts` | resolved in D4 |
+| S10 IDREFs to unrendered ids (ticket 16's S12 dropped one) | `find-step.tsx`, `journey-canvas.tsx` | resolved in D4: `aria-controls` only while open; `aria-describedby` kept with the reason (the peek exists exactly while the box is focused) |
+| S11 nested describe repeats the outer viewport and comment | `canvas.spec.ts` | resolved in D4: "the seeded map, recorded", cross-reference |
+| S12 commit-body typo in `f6cee8d` | commits | deviation: accepted commits are not rewritten; the PR asks for a squash merge |
+
+**Remaining risks:** (1) the arrow-key walk scores by box centres, so on a wide rank a box straight below but far away can lose to a nearer diagonal one — the weighting (2 × across) favours "straight ahead" but is a heuristic; (2) the self-loop route assumes every box is `NODE_WIDTH` wide (true today; ticket 17 must keep it or measure); (3) the peek is a portal, so a box at the bottom edge of the frame shows its peek clipped by the section's `overflow-hidden`; (4) `findStepByName` types a lower-case fragment and clicks — the keyboard path is proven once, in `canvas-find-step`.
