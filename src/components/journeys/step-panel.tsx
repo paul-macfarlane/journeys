@@ -1,28 +1,18 @@
-import { useState } from "react";
-
 import { ChoiceList } from "@/components/journeys/choice-list";
+import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import {
+  choiceLabel,
   SELECT_CLASS,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Content } from "@/lib/graph/content";
 import { isEnding, type GraphDocument, type Step } from "@/lib/graph/document";
 import { choicesTargeting, setStart, updateStep } from "@/lib/graph/edit";
+import type { PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
 
 /**
@@ -32,11 +22,6 @@ import { cn } from "@/lib/utils";
  * making it the Start and deleting it. The title field is the Step's name on
  * this panel; there is no heading repeating it above.
  */
-
-/** A Choice's label as an Author reads it, when it has one. */
-function choiceLabel(label: string): string {
-  return label.trim().length > 0 ? label : "Untitled choice";
-}
 
 /**
  * The Choices on other Steps that lead here, each a button back to its Step:
@@ -87,87 +72,15 @@ function LeadsHereFrom({
   );
 }
 
-/**
- * Deleting a Step leaves every Choice aimed at it dangling rather than
- * silently rewriting another Step's Choices, so the confirmation names each
- * one the Author is about to break.
- */
-function DeleteStepDialog({
-  document,
-  step,
-  isStart,
-  onDeleteStep,
-}: {
-  document: GraphDocument;
-  step: Step;
-  isStart: boolean;
-  onDeleteStep: (stepId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const affected = choicesTargeting(document, step.id);
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {isStart ? (
-        <span className="text-muted-foreground text-sm">
-          Make another step the start first
-        </span>
-      ) : null}
-
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger
-          render={<Button variant="destructive" size="sm" disabled={isStart} />}
-        >
-          Delete step
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this step?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {affected.length > 0
-                ? "These choices will point at a step that no longer exists:"
-                : "No choices point at this step."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {affected.length > 0 ? (
-            // role="list" is explicit for consistency with the app's other
-            // lists, and so the labelled list is announced inside the dialog.
-            <ul
-              role="list"
-              aria-label="Affected choices"
-              className="flex list-disc flex-col gap-1 pl-5 text-sm"
-            >
-              {affected.map((entry) => (
-                <li key={entry.choice.id}>
-                  {`${choiceLabel(entry.choice.label)} on ${entry.stepTitle}`}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setOpen(false);
-                onDeleteStep(step.id);
-              }}
-            >
-              Delete step
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
 export function StepPanel({
   document,
   step,
+  problems,
+  choiceProblems,
   revision,
   focusTitle,
+  focusChoiceId,
+  focusChoiceRequest,
   onChange,
   onSelectStep,
   onContentChange,
@@ -176,10 +89,18 @@ export function StepPanel({
 }: {
   document: GraphDocument;
   step: Step;
+  /** The live publish problems addressed to this Step. */
+  problems: PublishProblem[];
+  /** This Step's own Choices' live publish problems, keyed by Choice id. */
+  choiceProblems: Map<string, PublishProblem[]>;
   /** Bumped each time the Draft was replaced from outside the editor. */
   revision: number;
   /** True when this Step was just created from a Choice and wants a name. */
   focusTitle: boolean;
+  /** A Choice on this Step whose label field is being asked for. */
+  focusChoiceId: string | null;
+  /** Bumped each time that was asked for, so asking twice focuses twice. */
+  focusChoiceRequest: number;
   onChange: (document: GraphDocument) => void;
   onSelectStep: SelectStep;
   onContentChange: (stepId: string, content: Content) => void;
@@ -219,6 +140,26 @@ export function StepPanel({
         onSelectStep={onSelectStep}
       />
 
+      {problems.length > 0 ? (
+        <section
+          aria-label="Step problems"
+          className="flex flex-col gap-2 rounded-xl px-4 py-3 ring-1 ring-destructive/40"
+        >
+          <h4 className="text-sm font-medium">Problems</h4>
+          <ul
+            role="list"
+            aria-label="Step problems list"
+            className="flex list-disc flex-col gap-1 pl-5 text-sm text-destructive"
+          >
+            {problems.map((problem) => (
+              <li key={`${problem.code}-${problem.choiceId ?? ""}`}>
+                {problem.message}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <RichTextEditor
         resetKey={`${step.id}:${revision}`}
         content={step.content}
@@ -233,6 +174,9 @@ export function StepPanel({
         key={`choices-${step.id}`}
         document={document}
         step={step}
+        choiceProblems={choiceProblems}
+        focusChoiceId={focusChoiceId}
+        focusChoiceRequest={focusChoiceRequest}
         onChange={onChange}
         onSelectStep={onSelectStep}
       />

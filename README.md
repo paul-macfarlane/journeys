@@ -54,9 +54,20 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   break, manage the journey's outcomes and tag each ending with one, and run
   validation on demand. The draft is also drawn as a map on a canvas — laid
   out automatically from the steps and choices themselves, never from stored
-  positions — where clicking a node opens that step in the panel, a step can
+  positions — where clicking a box opens that step in the panel, a step can
   be added from the canvas, and validation problems are marked on the
-  step or choice it is about. The draft autosaves. Publish the draft as an
+  step or choice it is about. Its arrows follow the routes the layout
+  computes, the arrows into and out of the step the panel has open are drawn
+  at full strength while the rest dim, opening a step that is off the map
+  brings it back into view, and the legend names every outcome in the color
+  its endings carry. The journey is built on the map too: dragging from a
+  box's connect dot onto another box makes the choice between them (and
+  dragging an arrow's head onto a third box moves it there), the open box's
+  toolbar adds the next step, makes it the start or deletes it, and clicking
+  an arrow opens its choice for renaming or deletes it with the Delete key.
+  Problems are listed on the step they belong to and in a live count above
+  the map, and the step list under the map follows the map's own order behind
+  a "Steps" disclosure. The draft autosaves. Publish the draft as an
   immutable version (refused, with the problems listed, while the
   draft has any), unpublish to take it back from participants, preview it, and
   see every published version — number, when, and who published it — with the

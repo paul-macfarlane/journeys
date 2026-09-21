@@ -32,6 +32,18 @@ export function idFromHref(href: string | null, prefix: string): string {
   return value.slice(prefix.length);
 }
 
+/**
+ * The "Steps" disclosure beneath the map, opened if it is not already. The
+ * list is the second way around a Draft — the map is the first — so every
+ * spec that reads a Step out of it opens it the same way.
+ */
+export async function openStepList(page: Page): Promise<void> {
+  const button = page.getByRole("button", { name: "Steps", exact: true });
+  if ((await button.getAttribute("aria-expanded")) === "true") return;
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+}
+
 export async function createProject(
   page: Page,
   title: string,

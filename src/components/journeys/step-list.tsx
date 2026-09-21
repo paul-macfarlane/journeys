@@ -1,17 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { counted, type SelectStep } from "@/components/journeys/editor-shared";
 import { Badge } from "@/components/ui/badge";
 import { isEnding, type GraphDocument, type Step } from "@/lib/graph/document";
-import { stepName, walkOrder } from "@/lib/graph/edit";
+import { stepName } from "@/lib/graph/edit";
 import { cn } from "@/lib/utils";
 
 /**
- * Every Step in the Draft, in the order a participant could meet them — a
- * walk from the Start, first Choice first — with any Step no walk reaches
- * set apart underneath, and which one the panel is showing. The button
- * carries the title alone so it reads as the Step's name; the badges and the
- * choice count sit beside it rather than inside it.
+ * Every Step in the Draft, in the same order the map lays them out — top to
+ * bottom, then left to right — behind a disclosure the Author opens to read
+ * it. A Step no walk from the Start reaches is not set apart here any more:
+ * it is marked on the map itself, and named in the live problems list above,
+ * so this list is just the map's order read as text.
+ *
+ * The order is handed down rather than computed here: the editor lays the
+ * document out once and both the map and this list read that one layout.
  */
 
 function StepItem({
@@ -66,57 +69,50 @@ function StepItem({
 
 export function StepList({
   document,
+  order,
   selectedStepId,
   onSelectStep,
 }: {
   document: GraphDocument;
+  /**
+   * Step ids in the order the map lays the boxes out, so the list reads like
+   * the map rather than like the order Steps happened to be created in.
+   */
+  order: string[];
   selectedStepId: string;
   onSelectStep: SelectStep;
 }) {
-  const order = walkOrder(document);
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* role="list" is explicit: the flex layout strips the list marker, and
-          some browsers drop the implicit role with it. */}
-      <ul role="list" aria-label="Steps" className="flex flex-col gap-2">
-        {order.reachable.map((stepId) => (
-          <StepItem
-            key={stepId}
-            document={document}
-            step={document.steps[stepId]}
-            selected={stepId === selectedStepId}
-            onSelectStep={onSelectStep}
-          />
-        ))}
-      </ul>
+    <section aria-label="Step list" className="flex flex-col gap-3">
+      {/* No `aria-controls`: what it would name is not rendered while the
+          disclosure is closed, and `aria-expanded` alone is what the
+          problems disclosure above the map says too. */}
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className="self-start text-sm font-medium hover:underline"
+        onClick={() => setExpanded((current) => !current)}
+      >
+        Steps
+      </button>
 
-      {/* Steps no Choice leads to, kept in sight so they are not lost: they
-          are what "Add step" makes until a Choice points at them, and what
-          a retarget or a delete leaves behind. Its label avoids the word
-          "Steps" so the two lists stay distinguishable by name. */}
-      {order.unreachable.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-muted-foreground text-sm">
-            Not reachable from the start
-          </p>
-          <ul
-            role="list"
-            aria-label="Not yet reached"
-            className="flex flex-col gap-2"
-          >
-            {order.unreachable.map((stepId) => (
-              <StepItem
-                key={stepId}
-                document={document}
-                step={document.steps[stepId]}
-                selected={stepId === selectedStepId}
-                onSelectStep={onSelectStep}
-              />
-            ))}
-          </ul>
-        </div>
+      {expanded ? (
+        // role="list" is explicit: the flex layout strips the list marker,
+        // and some browsers drop the implicit role with it.
+        <ul role="list" aria-label="Steps" className="flex flex-col gap-2">
+          {order.map((stepId) => (
+            <StepItem
+              key={stepId}
+              document={document}
+              step={document.steps[stepId]}
+              selected={stepId === selectedStepId}
+              onSelectStep={onSelectStep}
+            />
+          ))}
+        </ul>
       ) : null}
-    </div>
+    </section>
   );
 }

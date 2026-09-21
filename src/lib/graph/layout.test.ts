@@ -4,7 +4,7 @@ import type { Choice, GraphDocument, Step } from "@/lib/graph/document";
 import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import type { CanvasNode } from "@/lib/graph/layout";
-import { layoutGraph, problemsByAddress } from "@/lib/graph/layout";
+import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish } from "@/lib/graph/validate";
 
 import case3 from "../../../scripts/seed/journey-stories/case-3.json";
@@ -138,7 +138,16 @@ function assertLayoutMatchesDocument(document: GraphDocument): void {
   );
   expect(edges).toHaveLength(expectedEdges.length);
   for (const expected of expectedEdges) {
-    expect(edges.find((edge) => edge.id === expected.id)).toEqual(expected);
+    const edge = edges.find((candidate) => candidate.id === expected.id);
+    // `toMatchObject`, not `toEqual`: every edge also carries dagre's routed
+    // `points`, asserted separately below rather than pinned to a literal
+    // coordinate list here.
+    expect(edge).toMatchObject(expected);
+    expect(edge?.points.length).toBeGreaterThanOrEqual(2);
+    for (const point of edge?.points ?? []) {
+      expect(Number.isFinite(point.x)).toBe(true);
+      expect(Number.isFinite(point.y)).toBe(true);
+    }
   }
 
   for (const node of nodes) {
@@ -146,6 +155,17 @@ function assertLayoutMatchesDocument(document: GraphDocument): void {
     expect(Number.isFinite(node.y)).toBe(true);
     expect(node.x).toBeGreaterThanOrEqual(0);
     expect(node.y).toBeGreaterThanOrEqual(0);
+
+    // Every Step's `sourceAnchors` is exactly its own Choice ids (order is
+    // asserted by the dedicated `sourceAnchors` cases below); a `missing`
+    // placeholder never carries any.
+    if (node.kind === "step") {
+      expect([...node.sourceAnchors].sort()).toEqual(
+        document.steps[node.stepId].choices.map((c) => c.id).sort(),
+      );
+    } else {
+      expect(node.sourceAnchors).toEqual([]);
+    }
   }
 
   assertNoOverlaps(nodes);
@@ -236,6 +256,236 @@ describe("layoutGraph", () => {
     expect(
       edges.filter((edge) => edge.target === "missing:ghost-step"),
     ).toHaveLength(2);
+  });
+});
+
+describe("layoutGraph routed edges", () => {
+  it("gives every edge finite routed points with at least two entries", () => {
+    const { edges } = layoutGraph(graphDocumentSchema.parse(case3));
+    expect(edges.length).toBeGreaterThan(0);
+    for (const edge of edges) {
+      expect(edge.points.length).toBeGreaterThanOrEqual(2);
+      for (const point of edge.points) {
+        expect(Number.isFinite(point.x)).toBe(true);
+        expect(Number.isFinite(point.y)).toBe(true);
+      }
+    }
+  });
+
+  it("routes a Choice spanning more than one rank through more than its two endpoints", () => {
+    // Start has a Choice straight to C and a Choice to A; A leads to B, B
+    // leads to C — so Start -> C skips over two ranks A and B occupy.
+    // Verified against the installed dagre before asserting: the routed
+    // path for Start -> C comes back with interior points beyond its two
+    // endpoints, not a two-point straight line.
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "start",
+      allowBack: true,
+      steps: byId([
+        step("start", [
+          choice("start-to-a", "Go to A", "a"),
+          choice("start-to-c", "Skip to C", "c"),
+        ]),
+        step("a", [choice("a-to-b", "Go to B", "b")]),
+        step("b", [choice("b-to-c", "Go to C", "c")]),
+        step("c", [], { title: "End" }),
+      ]),
+      outcomes: {},
+    };
+
+    const { edges } = layoutGraph(document);
+    const spanning = edges.find((edge) => edge.id === "start:start-to-c");
+    expect(spanning?.points.length).toBeGreaterThan(2);
+    for (const point of spanning?.points ?? []) {
+      expect(Number.isFinite(point.x)).toBe(true);
+      expect(Number.isFinite(point.y)).toBe(true);
+    }
+  });
+
+  it("routes two parallel Choices to the same target as their own distinct point arrays, and a self-loop Choice without throwing", () => {
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "a",
+      allowBack: true,
+      steps: byId([
+        step("a", [
+          choice("a-to-b-1", "Go to B (first way)", "b"),
+          choice("a-to-b-2", "Go to B (second way)", "b"),
+          choice("a-loops", "Stay put", "a"),
+        ]),
+        step("b", []),
+      ]),
+      outcomes: {},
+    };
+
+    expect(() => layoutGraph(document)).not.toThrow();
+    const { edges } = layoutGraph(document);
+    const first = edges.find((edge) => edge.id === "a:a-to-b-1");
+    const second = edges.find((edge) => edge.id === "a:a-to-b-2");
+    const selfLoop = edges.find((edge) => edge.id === "a:a-loops");
+
+    expect(first?.points).toBeDefined();
+    expect(second?.points).toBeDefined();
+    expect(first?.points).not.toBe(second?.points);
+    expect(first?.points).not.toEqual(second?.points);
+
+    expect(selfLoop?.points.length).toBeGreaterThanOrEqual(2);
+    for (const point of selfLoop?.points ?? []) {
+      expect(Number.isFinite(point.x)).toBe(true);
+      expect(Number.isFinite(point.y)).toBe(true);
+    }
+  });
+
+  it("keeps a self-loop Choice's route within or beside its own box", () => {
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "a",
+      allowBack: true,
+      steps: byId([
+        step("a", [
+          choice("a-loops", "Stay put", "a"),
+          choice("a-to-b", "Move on", "b"),
+        ]),
+        step("b", []),
+      ]),
+      outcomes: {},
+    };
+
+    const { nodes, edges } = layoutGraph(document);
+    const box = nodes.find((node) => node.id === "a");
+    const points = edges.find((edge) => edge.id === "a:a-loops")?.points ?? [];
+
+    expect(box).toBeDefined();
+    expect(points.length).toBeGreaterThanOrEqual(2);
+
+    // What dagre actually lays a self-loop out as, pinned: the route stays in
+    // the box's own rank — every point's y inside the box's top and bottom —
+    // and runs out to the right of it and back, never above, below, or left
+    // of the box. On a 220×72 box at (16, 16) that is the zig-zag
+    // (377,16) → (267,52) → (157,88) → (267,52), which reads as a line
+    // through the box rather than as a loop beside it. The visual is known
+    // poor; drawing a proper loop is ticket 19's, and this case is here so
+    // that changing it is a deliberate act rather than a silent one.
+    for (const point of points) {
+      expect(point.x).toBeGreaterThanOrEqual(box!.x);
+      expect(point.y).toBeGreaterThanOrEqual(box!.y);
+      expect(point.y).toBeLessThanOrEqual(box!.y + box!.height);
+    }
+    expect(Math.max(...points.map((point) => point.x))).toBeGreaterThan(
+      box!.x + box!.width,
+    );
+  });
+});
+
+describe("CanvasNode.sourceAnchors", () => {
+  it("orders a Step's Choices by the x position of the box each one targets", () => {
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "s",
+      allowBack: true,
+      steps: byId([
+        step("s", [
+          choice("s-to-t1", "Go to T1", "t1"),
+          choice("s-to-t2", "Go to T2", "t2"),
+          choice("s-to-t3", "Go to T3", "t3"),
+        ]),
+        step("t1", []),
+        step("t2", []),
+        step("t3", []),
+        // Skews dagre's crossing-minimization order so T1..T3 land in a
+        // different left-to-right order than the Choices above list them.
+        step("z", [
+          choice("z-to-t3", "Go to T3", "t3"),
+          choice("z-to-t1", "Go to T1", "t1"),
+        ]),
+      ]),
+      outcomes: {},
+    };
+
+    const { nodes } = layoutGraph(document);
+    const nodeById = (id: string) =>
+      nodes.find((candidate) => candidate.id === id);
+    const t1X = nodeById("t1")?.x ?? 0;
+    const t2X = nodeById("t2")?.x ?? 0;
+    const t3X = nodeById("t3")?.x ?? 0;
+
+    // Not vacuous: the run before this assertion showed the three targets
+    // really do land at three different x positions.
+    expect(new Set([t1X, t2X, t3X]).size).toBe(3);
+
+    const expectedOrder = (
+      [
+        ["s-to-t1", t1X],
+        ["s-to-t2", t2X],
+        ["s-to-t3", t3X],
+      ] as const
+    )
+      .toSorted((left, right) => left[1] - right[1])
+      .map(([choiceId]) => choiceId);
+
+    expect(nodeById("s")?.sourceAnchors).toEqual(expectedOrder);
+  });
+
+  it("gives a Step with no Choices an empty sourceAnchors list", () => {
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "only",
+      allowBack: true,
+      steps: byId([step("only", [])]),
+      outcomes: {},
+    };
+
+    const { nodes } = layoutGraph(document);
+    expect(nodes[0].sourceAnchors).toEqual([]);
+  });
+});
+
+describe("mapOrder", () => {
+  it("orders the seeded case-3 Steps top to bottom, then left to right, with no placeholders", () => {
+    const document = graphDocumentSchema.parse(case3);
+    const layout = layoutGraph(document);
+    const order = mapOrder(layout);
+
+    const stepIds = Object.keys(document.steps);
+    expect(order).toHaveLength(stepIds.length);
+    expect([...order].sort()).toEqual([...stepIds].sort());
+    expect(order.some((id) => id.startsWith("missing:"))).toBe(false);
+
+    const positions = order.map((id) => {
+      const node = layout.nodes.find((candidate) => candidate.id === id);
+      return { y: node?.y ?? 0, x: node?.x ?? 0 };
+    });
+    for (let index = 1; index < positions.length; index += 1) {
+      const previous = positions[index - 1];
+      const current = positions[index];
+      const inOrder =
+        current.y > previous.y ||
+        (current.y === previous.y && current.x >= previous.x);
+      expect(inOrder).toBe(true);
+    }
+  });
+
+  it("excludes the missing placeholder standing in for a dangling Choice", () => {
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "start",
+      allowBack: true,
+      steps: byId([
+        step("start", [choice("choice-to-ghost", "Vanish", "ghost-step")]),
+      ]),
+      outcomes: {},
+    };
+
+    const layout = layoutGraph(document);
+    expect(mapOrder(layout)).toEqual(["start"]);
+  });
+});
+
+describe("layoutGraph determinism", () => {
+  it("gives deep-equal output, points and sourceAnchors included, for the same input run twice", () => {
+    const document = graphDocumentSchema.parse(case3);
+    expect(layoutGraph(document)).toEqual(layoutGraph(document));
   });
 });
 

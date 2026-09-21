@@ -2,7 +2,12 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  openStepList,
+  uniqueSuffix,
+} from "./setup/authoring";
 import {
   cleanup,
   closePools,
@@ -142,6 +147,7 @@ async function addChoiceToStep(
 
 test("step-editing-build-and-publish", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
+  await openStepList(page);
 
   // The Start is what the panel opens on.
   await expect(page.getByLabel("Step title")).toHaveValue("Start");
@@ -227,7 +233,12 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
 
   // Deleting the Step a Choice points at says which Choice it breaks first.
-  await page.getByRole("button", { name: "Delete step", exact: true }).click();
+  // The panel's button: the selected box on the map carries one of its own,
+  // with the same name, that opens the same confirmation.
+  await page
+    .getByRole("region", { name: "Step" })
+    .getByRole("button", { name: "Delete step", exact: true })
+    .click();
   const confirmation = page.getByRole("alertdialog");
   await expect(
     confirmation.getByText("Wait your turn on Border post"),
@@ -244,7 +255,9 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
     .getByRole("listitem")
     .first();
   await expect(
-    choiceRow.getByText("This choice points at a step that no longer exists"),
+    choiceRow.getByText(
+      'Step "Border post" has a choice pointing at a step that no longer exists',
+    ),
   ).toBeVisible();
   await expect(choiceRow.getByLabel("Choice target")).toHaveValue("");
   await expect(
@@ -362,6 +375,7 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
 
 test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
+  await openStepList(page);
 
   await renameStep(page, "Border post");
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
@@ -397,6 +411,7 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
     .selectOption({ label: "Waved through" });
   await expectSaved(page);
   await page.reload();
+  await openStepList(page);
   await expect(rows.nth(0).getByLabel("Choice target")).toHaveValue(
     wavedThroughId,
   );
@@ -419,7 +434,9 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
 
   // Walking from the panel: "Leads here from" goes back up the Choice that
   // made this Step, "Open" on that Choice comes back down, and the Step no
-  // Choice points at any more ("Turned back") is set apart from the walk.
+  // Choice points at any more ("Turned back") now shows up as a live
+  // problem, found through the header's count rather than a separate
+  // "not yet reached" list.
   await page
     .getByRole("group", { name: "Leads here from" })
     .getByRole("button", { name: "Wait your turn on Border post" })
@@ -427,12 +444,27 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await rows.nth(1).getByRole("button", { name: "Open", exact: true }).click();
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
-  await expect(
-    page
-      .getByRole("list", { name: "Not yet reached" })
-      .getByRole("button", { name: "Turned back", exact: true }),
-  ).toBeVisible();
-  await expect(stepButton(page, "Turned back")).toHaveCount(0);
+
+  await openStepList(page);
+  await expect(stepButton(page, "Turned back")).toBeVisible();
+
+  // What the header says now, written out rather than recomputed the way the
+  // app computes it: four problems — "Turned back" dropped out of the walk
+  // when its Choice was retargeted, and each of the three Endings ("Waved
+  // through", "Turned back", "Untitled step") still has no Outcome.
+  const turnedBackMessage =
+    'Step "Turned back" cannot be reached from the start';
+  const problemsButton = page.getByRole("button", {
+    name: "4 problems",
+    exact: true,
+  });
+  await expect(problemsButton).toBeVisible();
+  await problemsButton.click();
+  await page
+    .getByRole("list", { name: "All problems" })
+    .getByRole("button", { name: turnedBackMessage, exact: true })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Turned back");
 
   await page.screenshot({
     path: "test-results/step-editing-choices-reorder-retarget/step-editing-choices-reorder-retarget.png",

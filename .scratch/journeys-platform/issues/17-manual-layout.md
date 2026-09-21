@@ -1,10 +1,10 @@
 # 17: Manual layout
 
 Status: ready-for-agent
-Blocked by: 16
+Blocked by: 16, 21
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: fourth of the graph tidy-up series (18 → 16 → 19 → 17).
+Priority: last of the graph tidy-up series (18 → 16 → 19 → 21 → 17).
 
 **Scope change:** the spec lists "manual canvas layout" as out of scope and ADR-0001 says the canvas lays itself out. Paul decided on 2026-09-21 to support dragging boxes. Record a `[SCOPE CHANGE]` on the spec and an amendment to ADR-0001 as part of this ticket; the graph document's reserved nullable `position` field is what this ticket fills.
 
@@ -20,3 +20,7 @@ Priority: fourth of the graph tidy-up series (18 → 16 → 19 → 17).
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's usage feedback on PR #19, 2026-09-21.
 
 ## Comments
+
+### Note from the ticket 21 decision (Paul, 2026-09-21)
+
+Ticket 21 adds a per-Journey `layoutDirection` to the document. Stored positions belong to the direction they were placed in: switching direction while positions exist asks with this ticket's Auto-arrange confirmation and clears every position, so the map lays itself out again in the new direction. Auto-arrange itself stays as written here (Paul: a hand-arranged map must always be able to go back to auto layout "in case they find themselves making a mess").

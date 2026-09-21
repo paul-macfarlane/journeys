@@ -3,7 +3,12 @@ import { expect, test } from "@playwright/test";
 import { graphDocumentSchema } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  openStepList,
+  uniqueSuffix,
+} from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   cleanup,
@@ -65,6 +70,7 @@ test("journey-draft", async ({ page, context }) => {
   await expect(page.getByRole("heading", { name: "Steps" })).toBeVisible();
   await expect(page.getByText("1 step · 0 outcomes")).toBeVisible();
 
+  await openStepList(page);
   const stepItems = page
     .getByRole("list", { name: "Steps" })
     .getByRole("listitem");
@@ -96,6 +102,7 @@ test("journey-draft", async ({ page, context }) => {
   await page.reload();
 
   await expect(page.getByText("44 steps · 3 outcomes")).toBeVisible();
+  await openStepList(page);
   const startItem = page
     .getByRole("list", { name: "Steps" })
     .getByRole("listitem")

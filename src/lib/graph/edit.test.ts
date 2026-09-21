@@ -17,7 +17,6 @@ import {
   stepName,
   updateChoice,
   updateStep,
-  walkOrder,
 } from "@/lib/graph/edit";
 import type {
   Choice,
@@ -546,41 +545,6 @@ describe("removeOutcome", () => {
     const result = removeOutcome(document, "missing");
 
     expect(result).toEqual({ ok: true, document });
-  });
-});
-
-describe("walkOrder", () => {
-  it("walks from the Start, first Choice first, and lists nothing twice", () => {
-    const document = buildDocument();
-    const start = document.steps[document.startStepId];
-
-    const order = walkOrder(document);
-
-    expect(order.reachable).toEqual([
-      document.startStepId,
-      start.choices[0].targetStepId,
-      start.choices[1].targetStepId,
-    ]);
-    expect(order.unreachable).toEqual([]);
-  });
-
-  it("puts a Step nothing leads to after the walk", () => {
-    const document = buildDocument();
-    const { document: withOrphan, stepId } = addStep(document, "Orphan");
-
-    const order = walkOrder(withOrphan);
-
-    expect(order.reachable).toEqual(walkOrder(document).reachable);
-    expect(order.unreachable).toEqual([stepId]);
-  });
-
-  it("reaches nothing when the Start names no Step", () => {
-    const document = { ...buildDocument(), startStepId: "missing" };
-
-    const order = walkOrder(document);
-
-    expect(order.reachable).toEqual([]);
-    expect(order.unreachable).toEqual(Object.keys(document.steps));
   });
 });
 

@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  openStepList,
+  uniqueSuffix,
+} from "./setup/authoring";
 import {
   loopDocument,
   publishableDocument,
@@ -219,6 +224,7 @@ test("publish-versions-and-restore", async ({ page, context }) => {
 
   // Version 2.
   await page.goto(journeyPath);
+  await openStepList(page);
   await expect(
     page.getByRole("list", { name: "Steps" }).getByText(editedStartTitle),
   ).toBeVisible();
@@ -255,6 +261,7 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   // The Draft is version 1's document again, on the page and in the row —
   // including the rich text of the Start, which was on screen throughout and
   // must show version 1's words, not the edit it showed a moment ago.
+  await openStepList(page);
   await expect(
     page
       .getByRole("list", { name: "Steps" })

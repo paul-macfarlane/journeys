@@ -1,5 +1,6 @@
 import dagre from "@dagrejs/dagre";
 
+import type { Point } from "@/lib/graph/crossings";
 import type { GraphDocument, Step } from "@/lib/graph/document";
 import { hasStep, isEnding, stepName } from "@/lib/graph/document";
 import type { PublishProblem } from "@/lib/graph/validate";
@@ -16,6 +17,28 @@ import type { PublishProblem } from "@/lib/graph/validate";
  * shows the current shape of the Journey rather than wherever a node
  * happened to be left. It never mutates the document it is given, and the
  * same document always lays out the same way.
+ *
+ * dagre runs as a multigraph: every Choice gets its own named dagre edge
+ * (`graph.setEdge(source, target, {}, edge.id)`), so parallel Choices
+ * between the same two Steps and self-loop Choices each get their own
+ * routed path instead of collapsing onto one. Each `CanvasEdge` carries the
+ * routed `points` dagre produced for that Choice, read back with
+ * `graph.edge({ v, w, name })`, in the same coordinate space as the node
+ * positions. Each Step `CanvasNode` carries `sourceAnchors`: its Choice ids
+ * ordered by the x position of the box each Choice leads to, so the canvas
+ * can spread the anchors along the bottom of the box in the direction the
+ * arrows actually travel, cutting down on crossing arrows.
+ *
+ * dagre's own multigraph order phase throws ("Not possible to find
+ * intersection inside of the rectangle") when three or more parallel edges
+ * share the same source and target inside a larger graph — reproduced on
+ * the seeded case-3 document, where `step-14` has three Choices to
+ * `step-22`; two parallel dagre edges between the same pair are fine. Only
+ * the first two Choices between any ordered pair (including a self-loop's
+ * own Step as both ends) become real dagre edges; a third or later Choice
+ * to the same target never reaches dagre at all — it reuses the last
+ * registered sibling's routed points with an interior offset, so it still
+ * gets its own visibly distinct `points` array without tripping the bug.
  */
 
 export const NODE_WIDTH = 220;
@@ -39,6 +62,14 @@ export type CanvasNode = {
   isEnding: boolean;
   outcomeId: string | null;
   outcomeIndex: number | null;
+  /**
+   * For a `step` node, its Choice ids ordered by the x position (center) of
+   * the box each Choice targets — the Step itself, or the `missing:`
+   * placeholder when the target Step no longer exists — ties broken by
+   * Choice order. A self-loop Choice sorts by the node's own center x.
+   * Always `[]` for a `missing` node.
+   */
+  sourceAnchors: string[];
 };
 
 /** One arrow on the canvas, drawn from a Choice. */
@@ -49,10 +80,64 @@ export type CanvasEdge = {
   source: string;
   target: string;
   label: string;
+  /**
+   * dagre's routed points for this Choice, in the same coordinate space as
+   * the node positions. Always at least two points.
+   */
+  points: Point[];
+};
+
+/** Everything one document lays out to: the boxes and the arrows between them. */
+export type GraphLayout = {
+  nodes: CanvasNode[];
+  edges: CanvasEdge[];
 };
 
 function missingNodeId(targetStepId: string): string {
   return `missing:${targetStepId}`;
+}
+
+/**
+ * dagre only reliably routes up to two parallel edges between the same
+ * ordered `(source, target)` pair (see the module doc comment).
+ */
+const MAX_DAGRE_EDGES_PER_PAIR = 2;
+
+/**
+ * How far sideways each overflow Choice's route is nudged from the sibling's
+ * it borrows: wide enough that the two arrows read as two at fit-to-view,
+ * narrow enough that the nudged one stays beside its boxes rather than
+ * wandering across the map.
+ */
+const OVERFLOW_ARROW_OFFSET = 28;
+
+/** A stable, collision-safe key for a `(source, target)` pair. */
+function pairKey(source: string, target: string): string {
+  return JSON.stringify([source, target]);
+}
+
+/**
+ * Nudges the interior of a routed path sideways so a Choice that shares its
+ * dagre pair with an already-routed sibling still draws its own visible
+ * path. Endpoints are left untouched so the arrow still starts and ends at
+ * the box edges dagre computed for the sibling; with only two points (no
+ * interior point to nudge), a synthetic midpoint is inserted instead so the
+ * path still bends away from the shared one.
+ */
+function offsetInteriorPoints(points: Point[], offset: number): Point[] {
+  if (points.length <= 2) {
+    const [start, end] = points;
+    return [
+      start,
+      { x: (start.x + end.x) / 2 + offset, y: (start.y + end.y) / 2 },
+      end,
+    ];
+  }
+  return points.map((point, index) =>
+    index === 0 || index === points.length - 1
+      ? point
+      : { x: point.x + offset, y: point.y },
+  );
 }
 
 /**
@@ -85,6 +170,7 @@ function stepNode(document: GraphDocument, step: Step): CanvasNode {
     isEnding: isEnding(step),
     outcomeId: step.outcomeId,
     outcomeIndex: outcomeIndexOf(document, step.outcomeId),
+    sourceAnchors: [],
   };
 }
 
@@ -102,6 +188,7 @@ function missingNode(targetStepId: string): CanvasNode {
     isEnding: false,
     outcomeId: null,
     outcomeIndex: null,
+    sourceAnchors: [],
   };
 }
 
@@ -109,14 +196,11 @@ function missingNode(targetStepId: string): CanvasNode {
  * One node per Step, one placeholder per distinct dangling Choice target,
  * and one edge per Choice, positioned with dagre. Never mutates `document`.
  */
-export function layoutGraph(document: GraphDocument): {
-  nodes: CanvasNode[];
-  edges: CanvasEdge[];
-} {
+export function layoutGraph(document: GraphDocument): GraphLayout {
   const nodes: CanvasNode[] = [];
   const missingTargets: string[] = [];
   const seenMissingTargets = new Set<string>();
-  const edges: CanvasEdge[] = [];
+  const edges: Array<Omit<CanvasEdge, "points">> = [];
 
   const stepIds = Object.keys(document.steps);
   for (const stepId of stepIds) {
@@ -147,11 +231,11 @@ export function layoutGraph(document: GraphDocument): {
     nodes.push(missingNode(targetStepId));
   }
 
-  const graph = new dagre.graphlib.Graph();
+  const graph = new dagre.graphlib.Graph({ multigraph: true });
   graph.setGraph({
     rankdir: "TB",
     nodesep: 32,
-    ranksep: 72,
+    ranksep: 96,
     marginx: 16,
     marginy: 16,
   });
@@ -160,8 +244,18 @@ export function layoutGraph(document: GraphDocument): {
   for (const node of nodes) {
     graph.setNode(node.id, { width: node.width, height: node.height });
   }
+
+  const pairCounts = new Map<string, number>();
+  const overflowEdgeIds = new Set<string>();
   for (const edge of edges) {
-    graph.setEdge(edge.source, edge.target);
+    const key = pairKey(edge.source, edge.target);
+    const countSoFar = pairCounts.get(key) ?? 0;
+    pairCounts.set(key, countSoFar + 1);
+    if (countSoFar < MAX_DAGRE_EDGES_PER_PAIR) {
+      graph.setEdge(edge.source, edge.target, {}, edge.id);
+    } else {
+      overflowEdgeIds.add(edge.id);
+    }
   }
 
   dagre.layout(graph);
@@ -175,7 +269,67 @@ export function layoutGraph(document: GraphDocument): {
     };
   });
 
-  return { nodes: positioned, edges };
+  const centerXById = new Map<string, number>(
+    positioned.map((node) => [node.id, node.x + node.width / 2]),
+  );
+
+  const lastRoutedPointsByPair = new Map<string, Point[]>();
+  const overflowCountByPair = new Map<string, number>();
+  const routedEdges = edges.map((edge) => {
+    const key = pairKey(edge.source, edge.target);
+    if (!overflowEdgeIds.has(edge.id)) {
+      const { points } = graph.edge({
+        v: edge.source,
+        w: edge.target,
+        name: edge.id,
+      });
+      lastRoutedPointsByPair.set(key, points);
+      return { ...edge, points };
+    }
+    const siblingPoints = lastRoutedPointsByPair.get(key) ?? [];
+    const overflowIndex = overflowCountByPair.get(key) ?? 0;
+    overflowCountByPair.set(key, overflowIndex + 1);
+    const offset =
+      OVERFLOW_ARROW_OFFSET *
+      (overflowIndex + 1) *
+      (overflowIndex % 2 === 0 ? 1 : -1);
+    return { ...edge, points: offsetInteriorPoints(siblingPoints, offset) };
+  });
+
+  const withAnchors = positioned.map((node) => {
+    if (node.kind !== "step") {
+      return node;
+    }
+    const choices = document.steps[node.stepId].choices;
+    const sourceAnchors = choices
+      .map((choiceEntry, index) => {
+        const targetId = hasStep(document, choiceEntry.targetStepId)
+          ? choiceEntry.targetStepId
+          : missingNodeId(choiceEntry.targetStepId);
+        return {
+          choiceId: choiceEntry.id,
+          index,
+          targetX: centerXById.get(targetId) ?? 0,
+        };
+      })
+      .sort((a, b) => a.targetX - b.targetX || a.index - b.index)
+      .map((entry) => entry.choiceId);
+    return { ...node, sourceAnchors };
+  });
+
+  return { nodes: withAnchors, edges: routedEdges };
+}
+
+/**
+ * Step ids (never placeholders) in map order: top to bottom, then left to
+ * right, matching how the canvas arranges boxes on the page.
+ */
+export function mapOrder(layout: { nodes: CanvasNode[] }): string[] {
+  return layout.nodes
+    .filter((node) => node.kind === "step")
+    .slice()
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((node) => node.id);
 }
 
 /**
