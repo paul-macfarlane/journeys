@@ -1,6 +1,6 @@
 # 09: Canvas
 
-Status: ready-for-human
+Status: done
 Blocked by: 04, 08
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -125,3 +125,7 @@ Duplicated e2e helpers (`readDraft`, `expectSaved`, `startJourney`) follow the p
 ### [CLOSEOUT] 2026-09-21 — addendum: HG-1 satisfied, DoD-3 PASS
 
 Paul committed `pnpm-lock.yaml` from his terminal as `aaaa0a8` (199 lines, `@xyflow/react`, `@dagrejs/dagre`, and their dependencies) and pushed. Post-check: `gh pr checks 19` — the `checks` workflow (lint, format, typecheck, migrate, unit, build, e2e) passed in 5m08s at `aaaa0a8` (GitHub Actions run id 35604801090); the Vercel check reports "Canceled by Ignored Build Step", the configured behavior for every branch but `staging` and `main`. **DoD-3: PASS.** Every AC and DoD criterion now carries PASS. Remaining human follow-ups: review and merge PR #19, then move this ticket to `done`.
+
+### [CLOSEOUT] 2026-09-21 — `done` set on the PR itself
+
+Per the tracker rule Paul set on 2026-09-21, the closeout commit carries `Status: done`; merging PR #19 is the acceptance that lands it on `staging`.
