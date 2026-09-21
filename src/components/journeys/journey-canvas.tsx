@@ -25,12 +25,17 @@ import {
 import { useTheme } from "next-themes";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
   type HTMLAttributes,
+  type KeyboardEvent,
+  type RefObject,
 } from "react";
 
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
@@ -40,9 +45,14 @@ import {
 } from "@/components/journeys/editor-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { contentPreview } from "@/lib/graph/content";
 import type { Point } from "@/lib/graph/crossings";
 import type { GraphDocument, Step } from "@/lib/graph/document";
-import { problemsByAddress, type GraphLayout } from "@/lib/graph/layout";
+import {
+  NODE_WIDTH,
+  problemsByAddress,
+  type GraphLayout,
+} from "@/lib/graph/layout";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +92,11 @@ import "@xyflow/react/dist/style.css";
  * Nothing here edits the document: each of those is handed back to the
  * editor in the document's own words (a Step, a Choice), and the map redraws
  * from whatever the editor makes of it.
+ *
+ * And it is a map to be read: hovering or focusing a box peeks at what the
+ * Step says without opening it, and the arrow keys walk from box to nearest
+ * box so the whole map is reachable without a pointer — Enter opens the box
+ * the keyboard is on, and Escape steps back out to the map itself.
  */
 
 /**
@@ -133,7 +148,51 @@ type CanvasActions = {
   onDuplicateStep: (stepId: string) => void;
   onSetStart: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
+  /**
+   * The map's own keyboard, kept here rather than in each box: the nearest
+   * box in a direction is a question about every box, which is something the
+   * canvas knows and a box does not.
+   */
+  onMoveFocus: (fromNodeId: string, direction: Direction) => void;
+  /** Out of the boxes and back to the map itself. */
+  onEscape: () => void;
 };
+
+/** Which way an arrow key asks to go. */
+type Direction = "up" | "down" | "left" | "right";
+
+const ARROW_DIRECTIONS: Record<string, Direction> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
+
+/**
+ * The keyboard on a box, the same for a Step's and for a placeholder's: an
+ * arrow key moves to the nearest box that way, and Escape leaves the boxes for
+ * the map. Enter and Space are the button's own — they click it, and a click
+ * is what opens a Step in the panel.
+ */
+function boxKeyDown(
+  event: KeyboardEvent<HTMLButtonElement>,
+  nodeId: string,
+  actions: CanvasActions,
+): void {
+  const direction = ARROW_DIRECTIONS[event.key];
+  if (direction !== undefined) {
+    // Otherwise the browser scrolls the page and React Flow pans the map out
+    // from under the box the Author is walking across.
+    event.preventDefault();
+    actions.onMoveFocus(nodeId, direction);
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    actions.onEscape();
+  }
+}
 
 const CanvasActionsContext = createContext<CanvasActions | null>(null);
 
@@ -155,6 +214,11 @@ type StepNodeData = {
   outcomeLabel: string | null;
   outcomeColor: string | null;
   problems: string[];
+  /**
+   * The opening of the Step's content as plain text, read once where the
+   * nodes are built rather than on every hover.
+   */
+  preview: string;
   isSelected: boolean;
   /** The Step this node opens in the panel when it is clicked. */
   opens: string;
@@ -259,13 +323,51 @@ function midwayAlong(points: Point[]): Point {
   return points[points.length - 1];
 }
 
+/** How far below a box a loop drops, and how far above its top it returns. */
+const LOOP_CLEARANCE = 24;
+
+/** How far past the box's right edge a loop runs. */
+const LOOP_SIDE_CLEARANCE = 32;
+
+/**
+ * A Choice that leads back to its own Step, routed beside its box: down out of
+ * the anchor, out past the box's right edge, up over its top, and back down
+ * into the handle every arrow ends at.
+ *
+ * Hand-built rather than dagre's: dagre keeps a loop in its box's own rank and
+ * runs it straight through the box, which reads as an arrow crossing the Step
+ * rather than returning to it.
+ */
+function selfLoopRoute(
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number,
+): Point[] {
+  // Every arrow ends at the handle in the middle of the box's top edge, so
+  // the box's right edge is half a box across from where this one ends.
+  const right = targetX + NODE_WIDTH / 2 + LOOP_SIDE_CLEARANCE;
+
+  return [
+    { x: sourceX, y: sourceY },
+    { x: sourceX, y: sourceY + LOOP_CLEARANCE },
+    { x: right, y: sourceY + LOOP_CLEARANCE },
+    { x: right, y: targetY - LOOP_CLEARANCE },
+    { x: targetX, y: targetY - LOOP_CLEARANCE },
+    { x: targetX, y: targetY },
+  ];
+}
+
 /**
  * One Choice's arrow, drawn along dagre's route: out of the anchor React Flow
  * put the Choice on, through the interior of the route dagre laid, into the
- * top of the box it leads to. The opacity is on a group so the arrowhead and
- * the label dim with the line.
+ * top of the box it leads to. A loop is the one arrow dagre does not route
+ * usefully, so it is routed here instead. The opacity is on a group so the
+ * arrowhead and the label dim with the line.
  */
 function ChoiceEdge({
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -275,11 +377,14 @@ function ChoiceEdge({
   markerEnd,
   data,
 }: EdgeProps<ChoiceFlowEdge>) {
-  const points: Point[] = [
-    { x: sourceX, y: sourceY },
-    ...(data?.points ?? []).slice(1, -1),
-    { x: targetX, y: targetY },
-  ];
+  const points: Point[] =
+    source === target
+      ? selfLoopRoute(sourceX, sourceY, targetX, targetY)
+      : [
+          { x: sourceX, y: sourceY },
+          ...(data?.points ?? []).slice(1, -1),
+          { x: targetX, y: targetY },
+        ];
   const middle = midwayAlong(points);
 
   return (
@@ -316,15 +421,49 @@ function handleLeft(index: number, count: number): string {
   return `${((index + 1) / (count + 1)) * 100}%`;
 }
 
-function StepNode({ data }: NodeProps<StepFlowNode>) {
+/** What a peek reads when the Step has nothing written on it yet. */
+const NOTHING_WRITTEN = "No content yet";
+
+/** The peek, styled like the legend: the map's other piece of quiet reading. */
+const PEEK_CLASS =
+  "nopan nodrag pointer-events-none max-w-72 rounded-lg bg-background px-2.5 py-1.5 text-xs whitespace-pre-line ring-1 ring-foreground/10";
+
+function StepNode({ id, data }: NodeProps<StepFlowNode>) {
   const marked = data.problems.length > 0;
   const actions = useCanvasActions();
   // "Zoom to step" needs no editor plumbing — this node renders inside the
   // `ReactFlow` tree, so the hook it calls `fitView` through is its own.
   const { fitView } = useReactFlow();
 
+  // A peek is shown to whoever is on the box, by pointer or by keyboard, and
+  // the two are held apart so that a pointer wandering off a focused box does
+  // not take the keyboard's peek with it.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const peekId = useId();
+  const peek = [
+    ...data.problems,
+    data.preview.length > 0 ? data.preview : NOTHING_WRITTEN,
+  ].join("\n");
+
   return (
     <>
+      {/* What the Step says, without opening it: everything wrong with it
+          first, a message to a line, and then the opening of its content.
+          A second toolbar rather than something inside the box, because a
+          portal neither scales with the zoom nor is clipped by the box; and
+          inert to the pointer, so it is never what a click or a drag lands
+          on. */}
+      <NodeToolbar
+        isVisible={hovered || focused}
+        position={Position.Bottom}
+        id={peekId}
+        role="tooltip"
+        className={PEEK_CLASS}
+      >
+        {peek}
+      </NodeToolbar>
+
       {/* The moves that change the Journey's shape around this Step, and one
           that only moves the view, on the box itself: the same the panel's
           foot carries, where the Author is already looking. `nopan`/`nodrag`
@@ -424,7 +563,14 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
         type="button"
         {...data.marks}
         aria-label={data.title}
-        title={marked ? data.problems.join("\n") : undefined}
+        // The peek is this box's description: the problems on it and the
+        // opening of what it says, read out wherever the Author is.
+        aria-describedby={peekId}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={(event) => boxKeyDown(event, id, actions)}
         className={cn(
           NODE_BUTTON_CLASS,
           data.isSelected ? "ring-4" : "ring-2",
@@ -451,8 +597,9 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
         <div className="flex items-center gap-1 overflow-hidden">
           {data.isStart ? <Badge>Start</Badge> : null}
           {data.isEnding ? <Badge>Ending</Badge> : null}
-          {/* The count; the messages are the button's `title`, where a hover
-              shows them and assistive technology reads them as its description. */}
+          {/* The count; the messages are in the peek below the box, where a
+              hover or a focus shows them and assistive technology reads them
+              out as the box's description. */}
           {marked ? (
             <Badge tone="destructive">{data.problems.length}</Badge>
           ) : null}
@@ -499,7 +646,9 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
   );
 }
 
-function MissingNode({ data }: NodeProps<MissingFlowNode>) {
+function MissingNode({ id, data }: NodeProps<MissingFlowNode>) {
+  const actions = useCanvasActions();
+
   return (
     <>
       {/* Named `top` like a Step's, because the arrow that ends here names
@@ -516,6 +665,8 @@ function MissingNode({ data }: NodeProps<MissingFlowNode>) {
         type="button"
         {...data.marks}
         aria-label="Missing step"
+        // A placeholder is a box like any other to walk across.
+        onKeyDown={(event) => boxKeyDown(event, id, actions)}
         className={cn(
           NODE_BUTTON_CLASS,
           "items-center border-2 border-dashed border-destructive",
@@ -549,6 +700,13 @@ const LEGEND_SWATCH_CLASS = "size-2.5 shrink-0 rounded-full";
 
 /** Sub-pixel rounding, so a box flush against the edge counts as on the map. */
 const IN_VIEW_TOLERANCE = 1;
+
+/**
+ * How much a box's offset to the side counts against the distance to it when
+ * an arrow key asks for the nearest one: enough that the box straight ahead
+ * wins over a closer one away to the side, which is what "that way" means.
+ */
+const ACROSS_WEIGHT = 2;
 
 export type JourneyCanvasProps = {
   document: GraphDocument;
@@ -597,6 +755,7 @@ function CanvasFlow({
   locate,
   problems,
   selectedArrow,
+  canvasRef,
   onSelectStep,
   onAddStep,
   onAddNextStep,
@@ -607,7 +766,10 @@ function CanvasFlow({
   onRetargetChoice,
   onSelectArrow,
   onRemoveChoices,
-}: JourneyCanvasProps) {
+}: JourneyCanvasProps & {
+  /** The Canvas itself, which is what Escape hands the keyboard back to. */
+  canvasRef: RefObject<HTMLElement | null>;
+}) {
   const addressed = useMemo(() => problemsByAddress(problems), [problems]);
 
   const { nodes, edges, arrows } = useMemo(() => {
@@ -674,6 +836,8 @@ function CanvasFlow({
           node.outcomeIndex === null ? "" : String(node.outcomeIndex),
       };
 
+      const step = document.steps[node.stepId];
+
       return {
         ...common,
         type: "step",
@@ -682,7 +846,8 @@ function CanvasFlow({
           isStart: node.isStart,
           isEnding: node.isEnding,
           document,
-          step: document.steps[node.stepId],
+          step,
+          preview: contentPreview(step.content),
           sourceAnchors: node.sourceAnchors,
           outcomeLabel:
             node.outcomeId !== null
@@ -767,9 +932,131 @@ function CanvasFlow({
     [document.steps],
   );
 
+  const { fitView, getNodesBounds, getViewport } = useReactFlow();
+  // The size of the map itself, which is what "off the map" is measured
+  // against; React Flow keeps it up to date as the pane resizes.
+  const paneWidth = useStore((state) => state.width);
+  const paneHeight = useStore((state) => state.height);
+
+  /** Whether the whole of a box is inside the map's frame right now. */
+  const isOnMap = useCallback(
+    (nodeId: string): boolean => {
+      const bounds = getNodesBounds([nodeId]);
+      const { x, y, zoom } = getViewport();
+      return (
+        bounds.x * zoom + x >= -IN_VIEW_TOLERANCE &&
+        bounds.y * zoom + y >= -IN_VIEW_TOLERANCE &&
+        (bounds.x + bounds.width) * zoom + x <= paneWidth + IN_VIEW_TOLERANCE &&
+        (bounds.y + bounds.height) * zoom + y <= paneHeight + IN_VIEW_TOLERANCE
+      );
+    },
+    [getNodesBounds, getViewport, paneHeight, paneWidth],
+  );
+
+  /** A box left off the map is brought onto it; one already on it stays put. */
+  const bringOntoMap = useCallback(
+    (nodeId: string) => {
+      if (paneWidth === 0 || paneHeight === 0) return;
+      if (isOnMap(nodeId)) return;
+      void fitView({ nodes: [{ id: nodeId }], maxZoom: 1, duration: 200 });
+    },
+    [fitView, isOnMap, paneHeight, paneWidth],
+  );
+
+  // The boxes as they stand, for the arrow keys: a lookup that ran off the
+  // render's own `nodes` would change identity on every render, and with it
+  // every node's `data`, which is what React Flow re-measures boxes on.
+  const nodesRef = useRef(nodes);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  // The nearest box in a direction, and the keyboard moved to it: candidates
+  // are the boxes whose middle lies on that side of this one's, scored by how
+  // far along the way they are plus twice how far off it, so a box straight
+  // ahead beats a nearer one away to the side. Nothing that way leaves the
+  // keyboard where it is. Which Step the panel has open is not touched —
+  // Enter is what opens one — but a box walked onto off the map is brought
+  // onto it, exactly as opening one by name does.
+  const moveFocus = useCallback(
+    (fromNodeId: string, direction: Direction) => {
+      const boxes = nodesRef.current;
+      const from = boxes.find((node) => node.id === fromNodeId);
+      if (from === undefined) return;
+
+      const middleOf = (node: CanvasFlowNode) => ({
+        x: node.position.x + (node.width ?? 0) / 2,
+        y: node.position.y + (node.height ?? 0) / 2,
+      });
+      const origin = middleOf(from);
+
+      let nearest: { id: string; score: number } | null = null;
+      for (const node of boxes) {
+        if (node.id === fromNodeId) continue;
+
+        const middle = middleOf(node);
+        const along =
+          direction === "up"
+            ? origin.y - middle.y
+            : direction === "down"
+              ? middle.y - origin.y
+              : direction === "left"
+                ? origin.x - middle.x
+                : middle.x - origin.x;
+        if (along <= 0) continue;
+
+        const across =
+          direction === "up" || direction === "down"
+            ? Math.abs(middle.x - origin.x)
+            : Math.abs(middle.y - origin.y);
+        const score = along + ACROSS_WEIGHT * across;
+        if (nearest === null || score < nearest.score) {
+          nearest = { id: node.id, score };
+        }
+      }
+      if (nearest === null) return;
+
+      // React Flow's own name for a box's wrapper; the button inside it is
+      // the box, and the thing that takes focus.
+      const button = canvasRef.current?.querySelector<HTMLButtonElement>(
+        `.react-flow__node[data-id="${nearest.id}"] button`,
+      );
+      if (button === null || button === undefined) return;
+
+      // Without `preventScroll` the browser scrolls the map's pane to reveal
+      // the box it just focused, and React Flow scrolls the pane straight
+      // back — a jolt, and one that leaves the map exactly where it was
+      // anyway. Bringing the box onto the map is this next line's job.
+      button.focus({ preventScroll: true });
+      bringOntoMap(nearest.id);
+    },
+    [bringOntoMap, canvasRef],
+  );
+
+  // Escape is a step back out: off the boxes, onto the map itself, with
+  // whichever arrow was in hand let go of.
+  const escape = useCallback(() => {
+    onSelectArrow(null);
+    canvasRef.current?.focus();
+  }, [canvasRef, onSelectArrow]);
+
   const actions = useMemo<CanvasActions>(
-    () => ({ onAddNextStep, onDuplicateStep, onSetStart, onDeleteStep }),
-    [onAddNextStep, onDuplicateStep, onSetStart, onDeleteStep],
+    () => ({
+      onAddNextStep,
+      onDuplicateStep,
+      onSetStart,
+      onDeleteStep,
+      onMoveFocus: moveFocus,
+      onEscape: escape,
+    }),
+    [
+      onAddNextStep,
+      onDuplicateStep,
+      onSetStart,
+      onDeleteStep,
+      moveFocus,
+      escape,
+    ],
   );
 
   const outcomeLegend = useMemo(
@@ -782,12 +1069,6 @@ function CanvasFlow({
       })),
     [document.outcomes],
   );
-
-  const { fitView, getNodesBounds, getViewport } = useReactFlow();
-  // The size of the map itself, which is what "off the map" is measured
-  // against; React Flow keeps it up to date as the pane resizes.
-  const paneWidth = useStore((state) => state.width);
-  const paneHeight = useStore((state) => state.height);
 
   const nodeIdKey = nodes
     .map((node) => node.id)
@@ -825,16 +1106,7 @@ function CanvasFlow({
     if (paneWidth === 0 || paneHeight === 0) return;
     if (!nodes.some((node) => node.id === selectedStepId)) return;
 
-    if (!locate.center) {
-      const bounds = getNodesBounds([selectedStepId]);
-      const { x, y, zoom } = getViewport();
-      const onMap =
-        bounds.x * zoom + x >= -IN_VIEW_TOLERANCE &&
-        bounds.y * zoom + y >= -IN_VIEW_TOLERANCE &&
-        (bounds.x + bounds.width) * zoom + x <= paneWidth + IN_VIEW_TOLERANCE &&
-        (bounds.y + bounds.height) * zoom + y <= paneHeight + IN_VIEW_TOLERANCE;
-      if (onMap) return;
-    }
+    if (!locate.center && isOnMap(selectedStepId)) return;
 
     void fitView({
       nodes: [{ id: selectedStepId }],
@@ -843,8 +1115,7 @@ function CanvasFlow({
     });
   }, [
     fitView,
-    getNodesBounds,
-    getViewport,
+    isOnMap,
     locate.center,
     locate.request,
     nodeIdKey,
@@ -1026,16 +1297,23 @@ function CanvasFlow({
 }
 
 export function JourneyCanvas(props: JourneyCanvasProps) {
+  // Where Escape on a box hands the keyboard back to, and what the boxes are
+  // looked up inside. Focusable only to be given focus — never a tab stop of
+  // its own, which would be a stop that does nothing.
+  const canvasRef = useRef<HTMLElement>(null);
+
   return (
     <section
+      ref={canvasRef}
       aria-label="Canvas"
+      tabIndex={-1}
       // Most of the viewport on a tall screen, never less than a map's worth:
       // a real-sized Journey is dozens of ranks deep, and every pixel of
       // height is legibility at fit-to-view.
-      className="h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10"
+      className="h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10 outline-none"
     >
       <ReactFlowProvider>
-        <CanvasFlow {...props} />
+        <CanvasFlow {...props} canvasRef={canvasRef} />
       </ReactFlowProvider>
     </section>
   );

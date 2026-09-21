@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { contentSchema, sanitizeContent } from "@/lib/graph/content";
+import {
+  contentPreview,
+  contentSchema,
+  sanitizeContent,
+  type Content,
+} from "@/lib/graph/content";
 
 /**
  * A Step's rich text that already satisfies every rule. The sanitizer has
@@ -498,5 +503,74 @@ describe("sanitizeContent", () => {
     );
 
     expect(() => contentSchema.parse(sanitized(hostile))).not.toThrow();
+  });
+});
+
+/** The same wrapper as `docOf`, typed for the reader rather than the sanitizer. */
+function contentOf(...blocks: unknown[]): Content {
+  return contentSchema.parse({ type: "doc", content: blocks });
+}
+
+/** One paragraph, which is what an Author who typed a sentence has. */
+function sentence(text: string): Content {
+  return contentOf({ type: "paragraph", content: [{ type: "text", text }] });
+}
+
+describe("contentPreview", () => {
+  it("reads the paragraphs, headings, and list items in document order", () => {
+    // The whole of `cleanContent`, in the order it is written, with the image
+    // contributing nothing: what an Author peeking at the box would read.
+    expect(contentPreview(contentSchema.parse(cleanContent))).toBe(
+      "The lamp room The wick is already trimmed. Oil Climb the stair The keeper's log",
+    );
+  });
+
+  it("collapses the whitespace inside and between blocks", () => {
+    const content = contentOf(
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "  The wick\n\n" }],
+      },
+      { type: "paragraph" },
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "\tis   already trimmed.  " }],
+      },
+    );
+
+    expect(contentPreview(content)).toBe("The wick is already trimmed.");
+  });
+
+  it("has nothing to show for a Step whose content is only an image", () => {
+    const content = contentOf({
+      type: "image",
+      attrs: {
+        src: "https://example.test/lamp.jpg",
+        credit: "Trinity House",
+        alt: "The lamp",
+      },
+    });
+
+    expect(contentPreview(content)).toBe("");
+  });
+
+  it("leaves content exactly the length of the limit whole", () => {
+    const exact = "x".repeat(140);
+
+    expect(contentPreview(sentence(exact))).toBe(exact);
+    expect(contentPreview(sentence(exact))).toHaveLength(140);
+  });
+
+  it("cuts content one character past the limit and marks the cut", () => {
+    const overLong = "x".repeat(141);
+
+    expect(contentPreview(sentence(overLong))).toBe(`${"x".repeat(140)}…`);
+    expect(contentPreview(sentence(overLong))).toHaveLength(141);
+  });
+
+  it("cuts at the limit it is given", () => {
+    expect(contentPreview(sentence("The lamp room is dark"), 10)).toBe(
+      "The lamp r…",
+    );
   });
 });

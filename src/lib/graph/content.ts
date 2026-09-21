@@ -352,3 +352,53 @@ export function sanitizeContent(input: unknown): SanitizeContentResult {
     throw error;
   }
 }
+
+/** How much of a Step's content a peek at its box on the map shows. */
+const PREVIEW_LIMIT = 140;
+
+/** The mark a cut preview ends with, so a glance reads as an opening. */
+const ELLIPSIS = "…";
+
+/** Every block's words, in the order the Step is written. */
+function collectText(blocks: Array<Block | ListItem>, into: string[]): void {
+  for (const block of blocks) {
+    switch (block.type) {
+      case "paragraph":
+      case "heading":
+        into.push((block.content ?? []).map((run) => run.text).join(""));
+        break;
+      case "bulletList":
+      case "orderedList":
+        collectText(block.content, into);
+        break;
+      case "listItem":
+        collectText(block.content ?? [], into);
+        break;
+      case "image":
+        // An image's words are its credit and its alt text, and both are
+        // about the image rather than about the Step.
+        break;
+    }
+  }
+}
+
+/**
+ * The opening of a Step's content as plain text: what a box on the map shows
+ * when an Author hovers or focuses it, so the map can be skimmed without
+ * opening every Step.
+ *
+ * Every paragraph, heading, and list item in document order, joined by single
+ * spaces with the whitespace collapsed; content longer than `limit` is cut
+ * there and marked with an ellipsis. Pure — no DOM — so the runner, the seed
+ * script, and a test can all ask for the same reading.
+ */
+export function contentPreview(
+  content: Content,
+  limit = PREVIEW_LIMIT,
+): string {
+  const pieces: string[] = [];
+  collectText(content.content, pieces);
+
+  const text = pieces.join(" ").replace(/\s+/g, " ").trim();
+  return text.length > limit ? `${text.slice(0, limit)}${ELLIPSIS}` : text;
+}
