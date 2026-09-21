@@ -56,7 +56,11 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   out automatically from the steps and choices themselves, never from stored
   positions — where clicking a box opens that step in the panel, a step can
   be added from the canvas, and validation problems are marked on the
-  step or choice it is about. Its arrows follow the routes the layout
+  step or choice it is about. The map is drawn either top to bottom or left
+  to right, switched from the control beside "Add step" and stored on the
+  draft rather than in the browser, so every member of the project sees the
+  journey the same way round; changing it re-fits the whole map. Its arrows
+  follow the routes the layout
   computes, the arrows into and out of the step the panel has open are drawn
   at full strength while the rest dim, opening a step that is off the map
   brings it back into view, and the legend names every outcome in the color

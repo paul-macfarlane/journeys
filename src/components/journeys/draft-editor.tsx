@@ -19,7 +19,11 @@ import { OutcomeList } from "@/components/journeys/outcome-list";
 import { StepPanel } from "@/components/journeys/step-panel";
 import { Button } from "@/components/ui/button";
 import type { Content } from "@/lib/graph/content";
-import { documentsEqual, type GraphDocument } from "@/lib/graph/document";
+import {
+  documentsEqual,
+  type GraphDocument,
+  type LayoutDirection,
+} from "@/lib/graph/document";
 import {
   addChoice,
   addChoiceToNewStep,
@@ -27,6 +31,7 @@ import {
   deleteStep,
   duplicateStep,
   removeChoice,
+  setLayoutDirection,
   setStart,
   updateChoice,
   updateStep,
@@ -440,6 +445,19 @@ export function DraftEditor({
   );
 
   /**
+   * Which way the map runs, asked for from the control on the canvas. A
+   * property of the Journey rather than of the browser looking at it, so it
+   * takes the same path as every other edit: into the document, out through
+   * the one autosave, and on to the next Member who opens the Draft.
+   */
+  const setDirection = useCallback(
+    (direction: LayoutDirection) => {
+      applyEdit(setLayoutDirection(documentRef.current, direction));
+    },
+    [applyEdit],
+  );
+
+  /**
    * An arrow drawn from one box onto another: the Choice exists the moment
    * the Author lets go, and the panel opens on the Step it leaves with the
    * label field waiting — the drag said where it goes, not what it says.
@@ -716,6 +734,7 @@ export function DraftEditor({
             problems={liveProblems}
             onSelectStep={selectStep}
             onAddStep={addNewStep}
+            onSetLayoutDirection={setDirection}
             onAddNextStep={addNextStep}
             onDuplicateStep={duplicate}
             onSetStart={makeStart}

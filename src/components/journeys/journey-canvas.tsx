@@ -47,8 +47,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { contentPreview } from "@/lib/graph/content";
 import type { Point } from "@/lib/graph/crossings";
-import type { GraphDocument, Step } from "@/lib/graph/document";
+import type {
+  GraphDocument,
+  LayoutDirection,
+  Step,
+} from "@/lib/graph/document";
 import {
+  NODE_HEIGHT,
   NODE_WIDTH,
   problemsByAddress,
   type GraphLayout,
@@ -70,6 +75,16 @@ import "@xyflow/react/dist/style.css";
  * moment a Choice was added: what the map is for is showing the shape the
  * Journey has now. `stepSchema` keeps a `position` field for a later
  * decision; nothing here reads or writes it.
+ *
+ * Which way the map runs is the Draft's, not this component's: `layout`
+ * arrives laid out top to bottom or left to right, and the control beside
+ * "Add step" hands a new direction back to the editor the way every other
+ * edit is handed back, so the direction is stored on the Journey and every
+ * Member sees the same map. Everything on a box follows it — arrows leave the
+ * side facing the way they travel (the bottom running top to bottom, the
+ * right running left to right) and arrive at the opposite side of the box
+ * they lead to — and a change of direction fits the whole map again, because
+ * the map the Author was reading has just been redrawn.
  *
  * Arrows are drawn along the route dagre computed for them rather than
  * stepped between handles, and a box's source anchors are spread in the order
@@ -222,13 +237,15 @@ type StepNodeData = {
   /** The Step this node opens in the panel when it is clicked. */
   opens: string;
   /**
-   * One source anchor per Choice, ordered by the x position of the box each
-   * Choice leads to (`layoutGraph`'s `sourceAnchors`), so arrows leave the
-   * bottom of the box in the direction they travel and cross each other
-   * less. Two Choices to the same Step still leave from different points and
-   * are drawn as two arrows.
+   * One source anchor per Choice, ordered by the position of the box each
+   * Choice leads to across the direction the map runs (`layoutGraph`'s
+   * `sourceAnchors`), so arrows leave the side of the box they travel towards
+   * in the order they travel in and cross each other less. Two Choices to the
+   * same Step still leave from different points and are drawn as two arrows.
    */
   sourceAnchors: string[];
+  /** Which way the map runs, which is which side every handle is on. */
+  direction: LayoutDirection;
   marks: NodeMarks;
 };
 
@@ -237,6 +254,8 @@ type MissingNodeData = {
   isSelected: boolean;
   /** The Step whose Choice points at nothing — what there is to go and fix. */
   opens: string | null;
+  /** The same as a Step's: where the arrow that ends here comes in. */
+  direction: LayoutDirection;
 };
 
 /** One Choice, named the way the document names it. */
@@ -268,6 +287,8 @@ type ChoiceEdgeData = {
    */
   points: Point[];
   emphasis: Emphasis;
+  /** Which way the map runs, which is which way a loop is routed around. */
+  direction: LayoutDirection;
 };
 
 type ChoiceFlowEdge = Edge<ChoiceEdgeData, "choice">;
@@ -322,33 +343,59 @@ function midwayAlong(points: Point[]): Point {
   return points[points.length - 1];
 }
 
-/** How far below a box a loop drops, and how far above its top it returns. */
+/**
+ * How far out of the anchor a loop runs before it turns, and how far short of
+ * the handle it comes back down (or across) to.
+ */
 const LOOP_CLEARANCE = 24;
 
 /**
- * How far past the box's right edge a loop runs. Kept under the 32 of dagre's
- * `nodesep` in `src/lib/graph/layout.ts`, so a loop never runs over the box
- * beside it when the layout has packed the two at minimum separation.
+ * How far past the side of the box a loop runs on its way round: past the
+ * right edge running top to bottom, past the bottom edge running left to
+ * right. Kept under the 32 of dagre's `nodesep` in `src/lib/graph/layout.ts`,
+ * so a loop never runs over the box beside it when the layout has packed the
+ * two at minimum separation.
  */
 const LOOP_SIDE_CLEARANCE = 16;
 
 /**
- * A Choice that leads back to its own Step, routed beside its box: down out of
- * the anchor, out past the box's right edge, up over its top, and back down
- * into the handle every arrow ends at.
+ * A Choice that leads back to its own Step, routed beside its box rather than
+ * through it. Running top to bottom: down out of the anchor, out past the
+ * box's right edge, up over its top, and back down into the handle every arrow
+ * ends at. Running left to right it is the same route turned a quarter: out of
+ * the anchor to the right, down under the box's bottom edge, back across past
+ * its left edge, and in to the handle.
  *
  * Hand-built rather than dagre's: dagre keeps a loop in its box's own rank and
  * runs it straight through the box, which reads as an arrow crossing the Step
  * rather than returning to it.
  */
 function selfLoopRoute(
+  direction: LayoutDirection,
   sourceX: number,
   sourceY: number,
   targetX: number,
   targetY: number,
 ): Point[] {
-  // Every arrow ends at the handle in the middle of the box's top edge, so
-  // the box's right edge is half a box across from where this one ends.
+  if (direction === "LR") {
+    // Running left to right an arrow ends at the handle in the middle of the
+    // box's left edge, so the box's bottom edge is half a box below where this
+    // one ends.
+    const bottom = targetY + NODE_HEIGHT / 2 + LOOP_SIDE_CLEARANCE;
+
+    return [
+      { x: sourceX, y: sourceY },
+      { x: sourceX + LOOP_CLEARANCE, y: sourceY },
+      { x: sourceX + LOOP_CLEARANCE, y: bottom },
+      { x: targetX - LOOP_CLEARANCE, y: bottom },
+      { x: targetX - LOOP_CLEARANCE, y: targetY },
+      { x: targetX, y: targetY },
+    ];
+  }
+
+  // Running top to bottom an arrow ends at the handle in the middle of the
+  // box's top edge, so the box's right edge is half a box across from where
+  // this one ends.
   const right = targetX + NODE_WIDTH / 2 + LOOP_SIDE_CLEARANCE;
 
   return [
@@ -364,9 +411,9 @@ function selfLoopRoute(
 /**
  * One Choice's arrow, drawn along dagre's route: out of the anchor React Flow
  * put the Choice on, through the interior of the route dagre laid, into the
- * top of the box it leads to. A loop is the one arrow dagre does not route
- * usefully, so it is routed here instead. The opacity is on a group so the
- * arrowhead and the label dim with the line.
+ * side of the box it leads to that faces back the way it came. A loop is the
+ * one arrow dagre does not route usefully, so it is routed here instead. The
+ * opacity is on a group so the arrowhead and the label dim with the line.
  */
 function ChoiceEdge({
   source,
@@ -382,7 +429,13 @@ function ChoiceEdge({
 }: EdgeProps<ChoiceFlowEdge>) {
   const points: Point[] =
     source === target
-      ? selfLoopRoute(sourceX, sourceY, targetX, targetY)
+      ? selfLoopRoute(
+          data?.direction ?? "TB",
+          sourceX,
+          sourceY,
+          targetX,
+          targetY,
+        )
       : [
           { x: sourceX, y: sourceY },
           ...(data?.points ?? []).slice(1, -1),
@@ -419,9 +472,23 @@ function ChoiceEdge({
 const NODE_BUTTON_CLASS =
   "relative flex h-full w-full cursor-pointer flex-col justify-center gap-1 overflow-hidden rounded-xl bg-background px-3 py-2 text-left ring-inset outline-none focus-visible:ring-4 focus-visible:ring-ring";
 
-/** Where a Choice's arrow leaves the node: spread evenly along its bottom. */
-function handleLeft(index: number, count: number): string {
+/**
+ * Where a Choice's arrow leaves the node: spread evenly along the side of the
+ * box the arrows travel towards — along its bottom running top to bottom,
+ * down its right running left to right.
+ */
+function handleOffset(index: number, count: number): string {
   return `${((index + 1) / (count + 1)) * 100}%`;
+}
+
+/** The side every arrow leaves a box from, which way round the map is drawn. */
+function sourceSide(direction: LayoutDirection): Position {
+  return direction === "LR" ? Position.Right : Position.Bottom;
+}
+
+/** And the side, opposite it, that every arrow arrives at. */
+function targetSide(direction: LayoutDirection): Position {
+  return direction === "LR" ? Position.Left : Position.Top;
 }
 
 /** What a peek reads when the Step has nothing written on it yet. */
@@ -528,12 +595,13 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
         />
       </NodeToolbar>
 
-      {/* Where every arrow into this Step lands: one point at the top, which
-          every edge names as its `targetHandle`. */}
+      {/* Where every arrow into this Step lands: one point on the side the
+          arrows come from — the top running top to bottom, the left running
+          left to right — which every edge names as its `targetHandle`. */}
       <Handle
-        id="top"
+        id="in"
         type="target"
-        position={Position.Top}
+        position={targetSide(data.direction)}
         isConnectableStart={false}
       />
 
@@ -541,8 +609,8 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
           a handle `pointer-events` only while a connection is in progress
           (its `connectionindicator` rule), and this one can never start one,
           so at rest it is inert and a click goes straight to the button
-          under it. It is never an arrow's endpoint — `targetHandle: "top"`
-          is — so it stays invisible. */}
+          under it. It is never an arrow's endpoint — `targetHandle: "in"`
+          is — so it stays invisible, and its own `position` never shows. */}
       <Handle
         id="drop"
         type="target"
@@ -617,29 +685,34 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
         </div>
       </button>
 
-      {data.sourceAnchors.map((choiceId, index) => (
-        <Handle
-          key={choiceId}
-          id={choiceId}
-          type="source"
-          position={Position.Bottom}
-          isConnectable={false}
-          style={{ left: handleLeft(index, data.sourceAnchors.length) }}
-        />
-      ))}
+      {data.sourceAnchors.map((choiceId, index) => {
+        const offset = handleOffset(index, data.sourceAnchors.length);
+        return (
+          <Handle
+            key={choiceId}
+            id={choiceId}
+            type="source"
+            position={sourceSide(data.direction)}
+            isConnectable={false}
+            style={data.direction === "LR" ? { top: offset } : { left: offset }}
+          />
+        );
+      })}
 
       {/* The one control on the box: drag from here onto another box to make
           a Choice. Set apart from the Choice anchors — bigger, colored, and
-          out at the corner where none of them is ever spread to — because
-          those are where arrows leave from, not something to take hold of. */}
+          out at the bottom-right corner where none of them is ever spread to
+          whichever way the map runs — because those are where arrows leave
+          from, not something to take hold of. */}
       <Handle
         id="connect"
         type="source"
-        position={Position.Bottom}
+        position={sourceSide(data.direction)}
         title="Drag onto another step to add a choice"
         style={{
-          left: "auto",
-          right: 12,
+          ...(data.direction === "LR"
+            ? { top: "auto", bottom: 12, right: 0 }
+            : { left: "auto", right: 12 }),
           width: 14,
           height: 14,
           borderRadius: 9999,
@@ -657,13 +730,14 @@ function MissingNode({ id, data }: NodeProps<MissingFlowNode>) {
 
   return (
     <>
-      {/* Named `top` like a Step's, because the arrow that ends here names
-          the handle it ends at. Not connectable: a Step that is gone is not
-          somewhere another Choice can be pointed. */}
+      {/* Named `in` like a Step's, and on the same side of the box, because
+          the arrow that ends here names the handle it ends at. Not
+          connectable: a Step that is gone is not somewhere another Choice can
+          be pointed. */}
       <Handle
-        id="top"
+        id="in"
         type="target"
-        position={Position.Top}
+        position={targetSide(data.direction)}
         isConnectable={false}
       />
 
@@ -714,6 +788,79 @@ const IN_VIEW_TOLERANCE = 1;
  */
 const ACROSS_WEIGHT = 2;
 
+/** The two ways the map can be drawn, in the order the control offers them. */
+const LAYOUT_DIRECTIONS: { direction: LayoutDirection; label: string }[] = [
+  { direction: "TB", label: "Top to bottom" },
+  { direction: "LR", label: "Left to right" },
+];
+
+/**
+ * Which way the map runs, beside the "Add step" it shares the corner with: a
+ * radio group, because the two are one choice with one answer, and the answer
+ * is the Draft's — switching it is an edit like any other, stored on the
+ * Journey and seen by every Member of the project.
+ *
+ * One tab stop, as a radio group is: the checked direction is the tab stop and
+ * the other is skipped, and an arrow key moves onto the other and chooses it,
+ * which is what arrow keys do in a radio group.
+ */
+function DirectionControl({
+  direction,
+  onSetLayoutDirection,
+}: {
+  direction: LayoutDirection;
+  onSetLayoutDirection: (direction: LayoutDirection) => void;
+}) {
+  const groupRef = useRef<HTMLDivElement>(null);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
+    if (ARROW_DIRECTIONS[event.key] === undefined) return;
+    // Otherwise the browser scrolls the page and React Flow pans the map.
+    event.preventDefault();
+
+    const other = LAYOUT_DIRECTIONS.find(
+      (entry) => entry.direction !== direction,
+    );
+    if (other === undefined) return;
+
+    onSetLayoutDirection(other.direction);
+    groupRef.current
+      ?.querySelector<HTMLButtonElement>(
+        `[data-direction="${other.direction}"]`,
+      )
+      ?.focus();
+  }
+
+  return (
+    <div
+      ref={groupRef}
+      role="radiogroup"
+      aria-label="Layout direction"
+      className="flex items-center gap-1"
+    >
+      {LAYOUT_DIRECTIONS.map((entry) => {
+        const checked = entry.direction === direction;
+        return (
+          <Button
+            key={entry.direction}
+            variant="outline"
+            size="sm"
+            role="radio"
+            aria-checked={checked}
+            tabIndex={checked ? 0 : -1}
+            data-direction={entry.direction}
+            onClick={() => onSetLayoutDirection(entry.direction)}
+            onKeyDown={handleKeyDown}
+            className={cn(checked && "bg-accent")}
+          >
+            {entry.label}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
 export type JourneyCanvasProps = {
   document: GraphDocument;
   /** The document laid out, computed once by the editor and shared. */
@@ -732,6 +879,8 @@ export type JourneyCanvasProps = {
   selectedArrow: CanvasArrow | null;
   onSelectStep: SelectStep;
   onAddStep: () => void;
+  /** Which way the map is asked to run, from the control beside "Add step". */
+  onSetLayoutDirection: (direction: LayoutDirection) => void;
   /**
    * The box toolbar's moves, on whichever Step the panel has open. "Zoom to
    * step" carries no prop here — it calls `fitView` through `useReactFlow`
@@ -764,6 +913,7 @@ function CanvasFlow({
   canvasRef,
   onSelectStep,
   onAddStep,
+  onSetLayoutDirection,
   onAddNextStep,
   onDuplicateStep,
   onSetStart,
@@ -829,6 +979,7 @@ function CanvasFlow({
             marks,
             isSelected,
             opens: opensByMissingId.get(node.id) ?? null,
+            direction: layout.direction,
           },
         } satisfies MissingFlowNode;
       }
@@ -855,6 +1006,7 @@ function CanvasFlow({
           step,
           preview: contentPreview(step.content),
           sourceAnchors: node.sourceAnchors,
+          direction: layout.direction,
           outcomeLabel:
             node.outcomeId !== null
               ? (document.outcomes[node.outcomeId]?.label ?? null)
@@ -910,7 +1062,7 @@ function CanvasFlow({
         target: edge.target,
         // Named rather than left to React Flow's first target handle: the
         // box has a second, invisible one covering it for drops to land on.
-        targetHandle: "top",
+        targetHandle: "in",
         // The head of the arrow can be picked up and dropped on another box;
         // where a Choice leaves from is the Step it is written on, which is
         // not something to drag.
@@ -920,7 +1072,7 @@ function CanvasFlow({
         label,
         ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`,
         markerEnd: { type: MarkerType.ArrowClosed },
-        data: { points: edge.points, emphasis },
+        data: { points: edge.points, emphasis, direction: layout.direction },
         domAttributes,
         style: isSelected
           ? { ...marks, strokeWidth: SELECTED_STROKE_WIDTH }
@@ -1140,6 +1292,17 @@ function CanvasFlow({
     void fitView({ duration: 200 });
   }, [fitView, nodeIdKey]);
 
+  // Turning the map a quarter puts every box somewhere else, so wherever the
+  // Author had panned and zoomed to is about a map that no longer exists:
+  // the whole of the new one is shown instead, which is what the first render
+  // already does on its own.
+  const lastDirection = useRef(layout.direction);
+  useEffect(() => {
+    if (lastDirection.current === layout.direction) return;
+    lastDirection.current = layout.direction;
+    void fitView({ duration: 200 });
+  }, [fitView, layout.direction]);
+
   // next-themes reads the browser's stored choice, which the server render
   // cannot know: asking before hydration is done would put a different color
   // mode on the first client render than the server sent. Until then the map
@@ -1255,9 +1418,16 @@ function CanvasFlow({
         <MiniMap pannable zoomable />
 
         <Panel position="top-left">
-          <Button variant="outline" size="sm" onClick={onAddStep}>
-            Add step
-          </Button>
+          <div className="flex flex-wrap items-center gap-1">
+            <Button variant="outline" size="sm" onClick={onAddStep}>
+              Add step
+            </Button>
+
+            <DirectionControl
+              direction={layout.direction}
+              onSetLayoutDirection={onSetLayoutDirection}
+            />
+          </div>
         </Panel>
 
         <Panel position="top-right">
