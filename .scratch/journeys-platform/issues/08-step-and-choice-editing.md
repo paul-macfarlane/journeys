@@ -135,3 +135,7 @@ Both axes confirmed: no new file under `src/lib/` or `src/components/` imports a
 **Deviations:** T7a/S10 (`insertContent` for the credited image), T7c (Cancel buttons), S5 (`as const` kept, required), S8 (`document` naming kept) — all orchestrator-approved, non-blocking, recorded above.
 
 **Human follow-ups:** (1) **HG-1 / DoD-3:** from your own terminal on `feat/08-step-and-choice-editing`, `git add pnpm-lock.yaml && git commit -m "chore: commit pnpm-lock.yaml" && git push`; CI cannot install until it lands, and `gh pr checks 16` is the post-check. (2) Review and merge PR #16. (3) Move this ticket to `done` after merging; that unblocks 07 (with 05), 09 (with 04), 12 (with 06), and 14.
+
+### [CLOSEOUT] 2026-09-21 — addendum: HG-1 satisfied, DoD-3 PASS
+
+Paul committed `pnpm-lock.yaml` from his terminal as `d2c844f` (68 lines, `@tiptap/react` and its dependencies) and pushed. Post-check: `gh pr checks 16` — the `checks` workflow (lint, format, typecheck, migrate, unit, build, e2e) passed in 2m30s at `d2c844f` (GitHub Actions run id 35550152930, linked from the PR's checks); the Vercel check reports "Canceled by Ignored Build Step", which is the configured behavior for every branch but `staging` and `main`. **DoD-3: PASS.** Every AC and DoD criterion now carries PASS. Remaining human follow-ups: review and merge PR #16, then move this ticket to `done`.
