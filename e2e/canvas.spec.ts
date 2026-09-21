@@ -116,6 +116,30 @@ function canvas(page: Page) {
   return page.getByRole("region", { name: "Canvas" });
 }
 
+/**
+ * The panel beside the map, on whichever Step the Author has open. Named
+ * exactly, because the problems a Step carries are a region inside it.
+ */
+function stepPanel(page: Page) {
+  return page.getByRole("region", { name: "Step", exact: true });
+}
+
+/** The button on the canvas that brings a hidden panel back. */
+function showPanelButton(page: Page) {
+  return canvas(page).getByRole("button", { name: "Show panel", exact: true });
+}
+
+/**
+ * The map given the whole width: the panel put away from its own button. The
+ * map is waited out afterwards, because giving it the width re-fits it and a
+ * coordinate read mid-fit is a coordinate of somewhere a box no longer is.
+ */
+async function hidePanel(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Hide panel", exact: true }).click();
+  await expect(stepPanel(page)).toHaveCount(0);
+  await settledTransform(page);
+}
+
 /** One box on the map, named by the Step it stands for. */
 function canvasNode(page: Page, title: string) {
   return canvas(page).getByRole("button", { name: title, exact: true });
@@ -951,6 +975,83 @@ test("canvas-keyboard-navigation", async ({ page, context }) => {
   await expect.poll(focusedBox).toBe(opened);
   await page.keyboard.press("Escape");
   await expect.poll(focusedBox).toBe("Canvas");
+});
+
+test("canvas-hide-and-show-panel", async ({ page, context }) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+  await addStepFromCanvas(page, "Clinic tent");
+  await addStepFromCanvas(page, "Waved through");
+  await expect.poll(() => mapFaults(page, 3), { timeout: 20_000 }).toEqual([]);
+
+  // How wide the map is with the panel beside it, to measure the rest by.
+  await settledTransform(page);
+  const beside = await canvas(page).boundingBox();
+  expect(beside, "the canvas has no box yet").not.toBeNull();
+  const besideWidth = beside!.width;
+
+  // Put away, the panel gives the map the whole width — and the map is laid
+  // out into it rather than left sitting in the middle of it.
+  await hidePanel(page);
+  await expect
+    .poll(async () => (await canvas(page).boundingBox())?.width ?? 0, {
+      timeout: 10_000,
+    })
+    .toBeGreaterThan(besideWidth);
+  await expect.poll(() => mapFaults(page, 3), { timeout: 20_000 }).toEqual([]);
+
+  // Remembered by the browser, never written to the Journey: how an Author
+  // reads the map is theirs, and the Draft says nothing about it.
+  expect(
+    await page.evaluate(() =>
+      window.localStorage.getItem("journeys:step-panel"),
+    ),
+  ).toBe("hidden");
+  await expect(showPanelButton(page)).toBeVisible();
+
+  // Opening a Step brings the panel back on its own: the gesture an Author
+  // edits with never changes for the panel being away.
+  await canvasNode(page, "Clinic tent").click();
+  await expect(stepPanel(page)).toBeVisible();
+  await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+
+  await hidePanel(page);
+  await expectSaved(page);
+  await page.reload();
+  await expect(canvas(page)).toBeVisible();
+
+  // The choice outlives the page: the panel is still away after a reload.
+  await expect.poll(() => stepPanel(page).count(), { timeout: 10_000 }).toBe(0);
+  await expect(showPanelButton(page)).toBeVisible();
+
+  await showPanelButton(page).click();
+  await expect(stepPanel(page)).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        Math.abs(
+          ((await canvas(page).boundingBox())?.width ?? 0) - besideWidth,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBeLessThanOrEqual(1);
+
+  // Escape off a box lands the keyboard on the map; a second Escape, with the
+  // map itself holding it, puts the panel away.
+  await canvasNode(page, "Border post").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await canvasNode(page, "Border post").focus();
+  await page.keyboard.press("Escape");
+  await expect(canvas(page)).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(stepPanel(page)).toHaveCount(0);
+
+  await settledTransform(page);
+  await page.screenshot({
+    path: "test-results/canvas-hide-and-show-panel/canvas-hide-and-show-panel.png",
+    fullPage: true,
+  });
 });
 
 test.describe("the seeded map", () => {
@@ -2251,6 +2352,120 @@ test.describe("authoring from the map", () => {
 
       await participant.screenshot({
         path: "test-results/canvas-build-by-dragging-and-walk/canvas-build-by-dragging-and-walk-runner.png",
+        fullPage: true,
+      });
+    } finally {
+      await participantContext.close();
+    }
+  });
+
+  test("canvas-build-left-to-right-and-walk", async ({ page, context }) => {
+    const { journeyId } = await startJourney(page, context);
+
+    // The same branch as the test above, built on a map that runs left to
+    // right and with the panel away for most of it: turning the map and
+    // putting the panel aside changes where an Author works, not what the
+    // moves are.
+    await setDirection(page, "Left to right");
+    await renameStep(page, "Border post");
+    await hidePanel(page);
+
+    // "Add step" opens the Step it made, so the panel comes back on its own:
+    // the title field the helper types the name into is only there because
+    // it did.
+    await addStepFromCanvas(page, "Waved through");
+    await hidePanel(page);
+    await addStepFromCanvas(page, "Turned back");
+    await hidePanel(page);
+    await expect
+      .poll(() => mapFaults(page, 3), { timeout: 20_000 })
+      .toEqual([]);
+
+    // A Choice drawn on the full-width map, and the panel back again on the
+    // Step it leaves with the new Choice's label waiting.
+    await connectByDragging(page, "Border post", "Waved through", 1);
+    await expect(stepPanel(page)).toBeVisible();
+    await page.keyboard.type("Wait your turn");
+    await expect(page.getByLabel("Choice label").last()).toHaveValue(
+      "Wait your turn",
+    );
+
+    // The first Choice gave "Waved through" a rank of its own and the panel
+    // came back beside the map, so the whole map is taken back before the
+    // next box is dragged onto.
+    await fitWholeMap(page, 3);
+
+    await connectByDragging(page, "Border post", "Turned back", 2);
+    await page.keyboard.type("Walk away");
+    await expect(page.getByLabel("Choice label").last()).toHaveValue(
+      "Walk away",
+    );
+    await expect(canvasEdges(page)).toHaveCount(2);
+
+    // Both Steps the branch leads to stand past the Start's right edge: the
+    // Journey was drawn the way the map runs.
+    await expectTargetsPast(
+      page,
+      "Border post",
+      ["Waved through", "Turned back"],
+      "right",
+    );
+
+    await addOutcome(page, "Reached care");
+    for (const ending of ["Waved through", "Turned back"]) {
+      await canvasNode(page, ending).click();
+      await expect(page.getByLabel("Step title")).toHaveValue(ending);
+      await page
+        .getByLabel("Outcome", { exact: true })
+        .selectOption({ label: "Reached care" });
+      await expect(canvasNode(page, ending)).toHaveAttribute(
+        "data-problems",
+        "0",
+      );
+    }
+
+    await page.getByRole("button", { name: "Validate", exact: true }).click();
+    await expect(page.getByText("No problems found.")).toBeVisible();
+
+    await expectSaved(page);
+    const publish = page.getByRole("button", { name: "Publish", exact: true });
+    await expect(publish).toBeEnabled();
+    await publish.click();
+    await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+    // Which way the map runs is the Journey's and was stored with the rest of
+    // it; whether the panel was away is the browser's and is nowhere in it.
+    const stored = await readDraft(journeyId);
+    expect(stored.layoutDirection).toBe("LR");
+    expect(stored.steps[stored.startStepId].choices).toHaveLength(2);
+
+    await page.screenshot({
+      path: "test-results/canvas-build-left-to-right-and-walk/canvas-build-left-to-right-and-walk.png",
+      fullPage: true,
+    });
+
+    // And a Participant walks it: how an Author was looking at the map is
+    // nothing the Journey they walk knows about.
+    const participantContext = await context.browser()!.newContext({
+      baseURL: E2E_BASE_URL,
+    });
+    try {
+      const participant = await participantContext.newPage();
+
+      await participant.goto(`/j/${journeyId}`);
+      await participant.getByRole("button", { name: "Begin" }).click();
+      await expect(
+        participant.getByRole("heading", { name: "Border post" }),
+      ).toBeVisible();
+
+      await participant.getByRole("link", { name: "Walk away" }).click();
+      await expect(
+        participant.getByRole("heading", { name: "Turned back" }),
+      ).toBeVisible();
+      await expect(participant.getByText("The end")).toBeVisible();
+
+      await participant.screenshot({
+        path: "test-results/canvas-build-left-to-right-and-walk/canvas-build-left-to-right-and-walk-runner.png",
         fullPage: true,
       });
     } finally {

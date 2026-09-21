@@ -38,6 +38,7 @@ import {
 } from "@/lib/graph/edit";
 import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
+import { cn } from "@/lib/utils";
 
 /**
  * The Draft editor: the map of the Journey beside a panel on the Step the
@@ -53,6 +54,14 @@ import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /** Long enough that a sentence is one save, short enough to feel immediate. */
 const SAVE_DEBOUNCE_MS = 600;
+
+/**
+ * Where the browser remembers whether the panel is put away. Reading the map
+ * with the panel out of the way is how one Author is looking at the Journey
+ * right now, not something about the Journey: it belongs here rather than in
+ * the document, where it would follow every other Member around.
+ */
+const PANEL_STORAGE_KEY = "journeys:step-panel";
 
 type SaveStatus = "saved" | "saving" | "unsaved";
 
@@ -98,6 +107,21 @@ export function DraftEditor({
    * press puts the Author back in it with what they typed selected.
    */
   const [findFocusRequest, setFindFocusRequest] = useState(0);
+
+  /**
+   * Whether the panel is beside the map. Shown on the first render whatever
+   * the browser remembers, so the server's render and the hydrating one agree
+   * — what it remembers is read a moment later, on mount.
+   */
+  const [panelShown, setPanelShown] = useState(true);
+  const panelShownRef = useRef(true);
+  /**
+   * Counts the times the map was asked to fit itself again because the width
+   * it has changed. Bumped when the panel goes or comes back and again when
+   * the columns finish moving, so the fit lands on the width the map ends up
+   * with whether or not the transition ran.
+   */
+  const [fitRequest, setFitRequest] = useState(0);
 
   // The save loop reads these rather than state: it runs from a timer and
   // from an event handler, both of which would otherwise see whatever render
@@ -342,28 +366,79 @@ export function DraftEditor({
    */
   const [locate, setLocate] = useState({ request: 0, center: false });
 
-  const selectStep: SelectStep = useCallback((stepId, options) => {
-    setSelectedStepId(stepId);
-    setLocate((current) => ({
-      request: current.request + 1,
-      center: options?.center === true,
-    }));
-    setTitleFocusStepId(options?.focusTitle ? stepId : null);
+  /**
+   * The panel put away or brought back, and remembered as it is. Nothing is
+   * said when it is already where it is asked to be: opening a Step asks for
+   * it every time, and a map re-fitted on every box click would be a map that
+   * never stays where the Author left it.
+   */
+  const applyPanelShown = useCallback((shown: boolean) => {
+    if (panelShownRef.current === shown) return;
+    panelShownRef.current = shown;
+    setPanelShown(shown);
+    setFitRequest((current) => current + 1);
 
-    const focusChoiceId = options?.focusChoiceId;
-    setChoiceFocus((current) =>
-      focusChoiceId === undefined
-        ? null
-        : {
-            stepId,
-            choiceId: focusChoiceId,
-            request: (current?.request ?? 0) + 1,
-          },
-    );
-    // Opening a Step is the Author's attention leaving the arrow — except
-    // when the Step was opened by clicking that very arrow.
-    if (focusChoiceId === undefined) setArrowSelection(null);
+    try {
+      window.localStorage.setItem(
+        PANEL_STORAGE_KEY,
+        shown ? "shown" : "hidden",
+      );
+    } catch {
+      // A browser that refuses storage — a private window, storage blocked —
+      // is one where the choice lasts as long as the page. That is no reason
+      // to refuse the click.
+    }
   }, []);
+
+  const hidePanel = useCallback(
+    () => applyPanelShown(false),
+    [applyPanelShown],
+  );
+  const showPanel = useCallback(() => applyPanelShown(true), [applyPanelShown]);
+
+  // What this browser last chose, read once the page is the browser's: the
+  // server cannot know it, and a first render that assumed it would not be
+  // the render the server sent.
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(PANEL_STORAGE_KEY);
+    } catch {
+      // As above: unreadable storage is a browser with nothing to remember.
+    }
+    if (stored === "hidden") applyPanelShown(false);
+  }, [applyPanelShown]);
+
+  const selectStep: SelectStep = useCallback(
+    (stepId, options) => {
+      // Opening a Step is asking to edit it, from wherever the Author asked:
+      // a box, an arrow, a problem, "Leads here from", "Open", "Find step", or
+      // any of the moves that make a Step. The panel comes back for all of them,
+      // so the editing gesture never changes for the panel being away.
+      showPanel();
+      setSelectedStepId(stepId);
+      setLocate((current) => ({
+        request: current.request + 1,
+        center: options?.center === true,
+      }));
+      setTitleFocusStepId(options?.focusTitle ? stepId : null);
+
+      const focusChoiceId = options?.focusChoiceId;
+      setChoiceFocus((current) =>
+        focusChoiceId === undefined
+          ? null
+          : {
+              stepId,
+              choiceId: focusChoiceId,
+              request: (current?.request ?? 0) + 1,
+            },
+      );
+      // Opening a Step is the Author's attention leaving the arrow — except
+      // when the Step was opened by clicking that very arrow.
+      if (focusChoiceId === undefined) setArrowSelection(null);
+    },
+    [showPanel],
+  );
 
   /**
    * A selected arrow can outlive the Choice it draws — deleted here, or by
@@ -701,7 +776,7 @@ export function DraftEditor({
                       <button
                         type="button"
                         className="text-left underline underline-offset-4"
-                        onClick={() => setSelectedStepId(stepId)}
+                        onClick={() => selectStep(stepId)}
                       >
                         {problem.message}
                       </button>
@@ -716,7 +791,26 @@ export function DraftEditor({
         </section>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+      {/* The panel's column closes to nothing when it is put away, and the
+          map takes the width as the columns move. The map is fitted again
+          when they stop: until then it would be fitting to a width it is
+          halfway through having. */}
+      <div
+        className={cn(
+          "grid gap-6 transition-[grid-template-columns] duration-200 motion-reduce:transition-none",
+          panelShown
+            ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]"
+            : "lg:grid-cols-[minmax(0,1fr)_0fr]",
+        )}
+        onTransitionEnd={(event) => {
+          if (
+            event.target === event.currentTarget &&
+            event.propertyName === "grid-template-columns"
+          ) {
+            setFitRequest((current) => current + 1);
+          }
+        }}
+      >
         <div className="flex flex-col gap-6">
           {/* Above the map, because what it finds is on the map. */}
           <FindStep
@@ -735,6 +829,10 @@ export function DraftEditor({
             onSelectStep={selectStep}
             onAddStep={addNewStep}
             onSetLayoutDirection={setDirection}
+            panelShown={panelShown}
+            fitRequest={fitRequest}
+            onShowPanel={showPanel}
+            onHidePanel={hidePanel}
             onAddNextStep={addNextStep}
             onDuplicateStep={duplicate}
             onSetStart={makeStart}
@@ -751,30 +849,35 @@ export function DraftEditor({
           <OutcomeList document={document} onChange={applyEdit} />
         </div>
 
-        {selectedStep ? (
-          <StepPanel
-            document={document}
-            step={selectedStep}
-            problems={selectedStepProblems}
-            choiceProblems={selectedStepChoiceProblems}
-            revision={revision}
-            focusTitle={titleFocusStepId === selectedStep.id}
-            focusChoiceId={
-              choiceFocus?.stepId === selectedStep.id
-                ? choiceFocus.choiceId
-                : null
-            }
-            focusChoiceRequest={choiceFocus?.request ?? 0}
-            onChange={applyEdit}
-            onSelectStep={selectStep}
-            onContentChange={handleContentChange}
-            onContentRefused={(message) =>
-              setContentNotice({ stepId: selectedStep.id, message })
-            }
-            onDeleteStep={removeStep}
-            onDuplicateStep={duplicate}
-          />
-        ) : null}
+        {/* Nothing of a panel that is away is left behind to be tabbed into
+            or read out: the column closes over it and it is not rendered. */}
+        <div className="min-w-0 overflow-hidden">
+          {selectedStep && panelShown ? (
+            <StepPanel
+              document={document}
+              step={selectedStep}
+              problems={selectedStepProblems}
+              choiceProblems={selectedStepChoiceProblems}
+              revision={revision}
+              focusTitle={titleFocusStepId === selectedStep.id}
+              focusChoiceId={
+                choiceFocus?.stepId === selectedStep.id
+                  ? choiceFocus.choiceId
+                  : null
+              }
+              focusChoiceRequest={choiceFocus?.request ?? 0}
+              onChange={applyEdit}
+              onSelectStep={selectStep}
+              onContentChange={handleContentChange}
+              onContentRefused={(message) =>
+                setContentNotice({ stepId: selectedStep.id, message })
+              }
+              onDeleteStep={removeStep}
+              onDuplicateStep={duplicate}
+              onHidePanel={hidePanel}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

@@ -882,6 +882,20 @@ export type JourneyCanvasProps = {
   /** Which way the map is asked to run, from the control beside "Add step". */
   onSetLayoutDirection: (direction: LayoutDirection) => void;
   /**
+   * Whether the panel is beside the map. The map carries the way back to a
+   * panel that is away, because the map is all there is to reach for then.
+   */
+  panelShown: boolean;
+  /**
+   * Bumped by the editor each time the map's width changes — the panel put
+   * away or brought back — so the whole map is shown in whatever width it
+   * ends up with.
+   */
+  fitRequest: number;
+  onShowPanel: () => void;
+  /** Escape, with the map itself holding the keyboard. */
+  onHidePanel: () => void;
+  /**
    * The box toolbar's moves, on whichever Step the panel has open. "Zoom to
    * step" carries no prop here — it calls `fitView` through `useReactFlow`
    * from inside the node itself.
@@ -910,6 +924,7 @@ function CanvasFlow({
   locate,
   problems,
   selectedArrow,
+  fitRequest,
   canvasRef,
   onSelectStep,
   onAddStep,
@@ -1303,6 +1318,20 @@ function CanvasFlow({
     void fitView({ duration: 200 });
   }, [fitView, layout.direction]);
 
+  // A map that has just been given the whole width, or had it taken back:
+  // the boxes are where they were, but the frame around them is not, so the
+  // whole map is shown in the frame it now has. Asked for a frame later than
+  // the render that asked, because the width the browser has settled on is
+  // not the width it had when the class changed.
+  const lastFitRequest = useRef(fitRequest);
+  useEffect(() => {
+    if (lastFitRequest.current === fitRequest) return;
+    lastFitRequest.current = fitRequest;
+
+    const frame = requestAnimationFrame(() => void fitView({ duration: 200 }));
+    return () => cancelAnimationFrame(frame);
+  }, [fitRequest, fitView]);
+
   // next-themes reads the browser's stored choice, which the server render
   // cannot know: asking before hydration is done would put a different color
   // mode on the first client render than the server sent. Until then the map
@@ -1483,16 +1512,38 @@ export function JourneyCanvas(props: JourneyCanvasProps) {
       ref={canvasRef}
       aria-label="Canvas"
       tabIndex={-1}
+      // Escape on a box lands the keyboard here (`boxKeyDown`); pressed again
+      // with the map itself holding it, there is nothing left to step back
+      // out of but the panel, so it is put away. Only the map's own Escape:
+      // a press inside a box, a dialog, or a field is that thing's to answer.
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") return;
+        if (event.target !== event.currentTarget) return;
+        props.onHidePanel();
+      }}
       // Most of the viewport on a tall screen, never less than a map's worth:
       // a real-sized Journey is dozens of ranks deep, and every pixel of
       // height is legibility at fit-to-view. Escape on a box lands the
       // keyboard here, and the focus ring is what shows the Author where it
       // went — the quiet ring at rest, the heavier one while it holds focus.
-      className="h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10 focus-visible:ring-4 focus-visible:ring-ring"
+      className="relative h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10 focus-visible:ring-4 focus-visible:ring-ring"
     >
       <ReactFlowProvider>
         <CanvasFlow {...props} canvasRef={canvasRef} />
       </ReactFlowProvider>
+
+      {/* The way back to a panel that is away, on the edge of the map the
+          panel sits against — and nothing at all while it is there. */}
+      {props.panelShown ? null : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute right-2 top-1/2 z-10 -translate-y-1/2"
+          onClick={props.onShowPanel}
+        >
+          Show panel
+        </Button>
+      )}
     </section>
   );
 }
