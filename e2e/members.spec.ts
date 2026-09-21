@@ -64,7 +64,11 @@ test("members-add-and-edit", async ({ page, context, browser }) => {
     const authorBRow = membersList.getByRole("listitem").filter({
       hasText: authorB.email,
     });
-    await expect(authorBRow.getByText(authorB.email)).toBeVisible();
+    // Exact, so the lower-cased address is what is shown, not merely a
+    // case-insensitive match of what was typed.
+    await expect(
+      authorBRow.getByText(authorB.email, { exact: true }),
+    ).toBeVisible();
 
     await page.screenshot({
       path: "test-results/members-add-and-edit/members-add-and-edit.png",

@@ -67,6 +67,8 @@ export function MemberList({
     <section aria-label="Members" className="flex flex-col gap-4">
       <h2 className="text-lg font-medium tracking-tight">Members</h2>
 
+      {/* role="list" is explicit: the flex layout below strips the list
+          marker, and some browsers drop the implicit role with it. */}
       <ul role="list" aria-label="Members" className="flex flex-col gap-3">
         {members.map((memberRow) => (
           <MemberRow
@@ -79,8 +81,12 @@ export function MemberList({
         ))}
       </ul>
 
+      {/* noValidate: the browser's own email check would otherwise swallow
+          the first malformed submit and show its bubble instead of the
+          schema's message. */}
       <form
         className="flex flex-col gap-2"
+        noValidate
         onSubmit={form.handleSubmit(onSubmit)}
       >
         <Label htmlFor="add-member-email">Email</Label>
@@ -90,7 +96,12 @@ export function MemberList({
             type="email"
             autoComplete="off"
             className="max-w-xs"
-            {...form.register("email")}
+            {...form.register("email", {
+              // A server answer is about the address it was given; editing
+              // the address retires it rather than leaving it beside a
+              // newer field error.
+              onChange: () => setServerError(null),
+            })}
           />
           <Button type="submit" disabled={form.formState.isSubmitting}>
             Add member
@@ -137,14 +148,11 @@ function MemberRow({
         return;
       }
 
+      setOpen(false);
       if (isSelf) {
         // Removing yourself takes away the page you are looking at.
         router.push("/projects");
-        router.refresh();
-        return;
       }
-
-      setOpen(false);
       router.refresh();
     });
   }
@@ -168,7 +176,8 @@ function MemberRow({
           }}
         >
           <AlertDialogTrigger
-            render={<Button variant="outline" disabled={isLastMember} />}
+            disabled={isLastMember}
+            render={<Button variant="outline" />}
           >
             Remove
           </AlertDialogTrigger>
