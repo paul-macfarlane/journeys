@@ -1,7 +1,7 @@
 # ADR-0002: Allow cycles; keep every visit on the Run's path
 
 - Status: Accepted
-- Decided: 2026-09-21 by Paul Macfarlane
+- Decided: 2026-09-21 (canvas feedback)
 - Deciders: Paul Macfarlane
 
 ## Context
@@ -54,39 +54,73 @@ one substantive change to `src/lib/graph/run.ts`'s contract; the reducer's
 own doc comment says so directly rather than continuing to cite a no-cycles
 guarantee that no longer holds.
 
-**Resolution order for a navigation to Step X:**
+**Resolution order for a navigation to Step X**, the rules
+`src/lib/graph/run.ts` documents and applies, in the order it applies them:
 
-1. X is a Choice of the current Step → forward: append X. Checked first, so
-   closing a loop by choosing is always a forward move, never mistaken for a
-   backtrack.
-2. X is already on the path → backtrack to its **latest** occurrence:
+1. X is not a Step of this document at all → refused.
+2. The navigation carries a path index (`at`) naming an entry of the path
+   that holds X → that entry. An earlier entry is a backtrack to it (the path
+   truncates there, one backtrack counted); the last entry is a stay. Any
+   other index — out of range, a different Step, not a whole number — is
+   stale or made up, and is ignored from here on.
+3. X is the current Step → stay. Because this is checked before rule 4, a
+   Choice that targets its own Step is a stay too: the Participant never left
+   the screen, so the path records no second visit for it.
+4. X is a Choice of the current Step → forward: append X. Checked before
+   rule 5, so closing a loop by choosing is always a forward move, never
+   mistaken for a backtrack. With the path already at its cap there is
+   nowhere to append, and the move is refused (see below).
+5. X is already on the path → backtrack to its **latest** occurrence:
    truncate the path there and count one backtrack.
-3. X is offered by an earlier Step on the path (ticket 06's cached-page
-   rule) → truncate to that Step, count a backtrack, then append X.
-4. Otherwise → refused; the Participant is redirected to the current Step.
+6. X is offered by an earlier Step on the path (ticket 06's cached-page
+   rule), the **latest** such Step → truncate to that Step, count a
+   backtrack, then append X.
+7. Otherwise → refused; the Participant is redirected to the current Step.
 
 **The one genuinely ambiguous case is disambiguated by an index, not
 content.** Browser Back on a loop-closing Step — where the Step behind the
 Participant is both the previous path entry and a Choice of the Step they are
 on — cannot be told apart by X alone: it is simultaneously "the target of
-rule 1" and "the target of rule 2". The runner writes the path's index into
-`history.state` on every step page render (`RunHistory`, replacing
-`ReloadOnRestore`); a restored page (a `pageshow` with `persisted`, or a
-navigation of type `back_forward`) sends that index back to the server as
-`?at=<n>` instead of reloading plainly. A request that carries `at` naming an
-index earlier than the current one, for a Step that path already holds at
-that index, is a backtrack to that index and skips rules 1–3 entirely. The
-in-app Back link also carries `?at=<current index − 1>`, for the same reason.
-An entry from before this shipped carries no usable index and falls back to
-the plain reload — still correct for every Journey that has no loop, and the
-one case where a loop-closing Back might briefly read as a fresh Choice
-instead.
+rule 4" and "the target of rule 5". Every step page stores the path's index
+in `history.state`, and a back navigation sends that index back to the server
+as `?at=<n>`. A request that carries `at` naming an index earlier than the
+current one, for a Step the path already holds at that index, is a backtrack
+to that index and skips rules 3–6 entirely. The in-app Back link carries
+`?at=<current index − 1>`, for the same reason.
+
+As built, that is two pieces, split by **when** each has to run, not by what
+it does. Both replace `ReloadOnRestore`.
+
+- An **inline script** the step page renders at the top of its output
+  (`RunHistoryScript`) runs while the browser is still parsing, before any
+  bundle loads. It remembers the index, and it corrects a _fresh_ document
+  built by a back/forward navigation whose URL carries no index — when either
+  the document came from the browser's cache (the server never saw the
+  navigation) or the index it was rendered with differs from the one this
+  history entry remembers (the server saw it and resolved it as a Choice).
+  Both jobs are here because both are lost if they wait: a Participant can
+  leave a Step the instant it is readable, and on a busy server hydration can
+  be minutes behind that. An entry left before hydration would remember no
+  index at all, and the Back returning to it would read as a Choice.
+- The **client component** (`RunHistory`) keeps what genuinely needs React: a
+  document restored from the back/forward cache, which fires `pageshow` with
+  `persisted` and makes no request at all, is always sent back to the server
+  at the remembered index; and `?at` and `?notice`, read by the server and
+  wanted nowhere else, are stripped from the URL through the `replaceState`
+  Next.js patches, so the router's canonical URL stays in step.
+
+An entry from before this shipped carries no usable index, and both pieces
+fall back to a plain reload — still correct for every Journey that has no
+loop, and the one case where a loop-closing Back might briefly read as a
+fresh Choice instead.
 
 **The path is capped at 500 entries.** A loop can be walked forever; the path
 is one row's worth of JSON, so a forward move that would grow it past the cap
-is refused with a short, Participant-facing notice ("This journey has gone on
-too long to continue; start over to keep going") instead of growing
-unbounded.
+is refused with a short, Participant-facing notice — "This journey has gone
+on too long to continue. Start over to keep going." — instead of growing
+unbounded. The Start over control is rendered beside that notice, since the
+Step a refused Participant is left on is never an Ending and would otherwise
+offer no way to act on what it just told them.
 
 **The four legacy Choices are restored.** `scripts/seed/journey-stories/`
 case-1 and case-2 regain the Choices dropped in ticket 04, in their legacy
@@ -173,6 +207,13 @@ sees or shares.
   a plain reload. That fallback is correct for a loop-free Journey and only
   slightly wrong for a loop-closing Back on a very stale cached page — an
   acceptable edge over building anything sturdier for it.
+- The index is a query parameter, so a Participant can forge one. `?at=<n>`
+  naming an earlier occurrence of the Step they are on truncates their own
+  path further than Back would have, and counts a backtrack that no Back
+  took. The damage is self-inflicted analytics noise, confined to entries
+  that Run already holds: the rule only accepts an index whose entry is the
+  Step being navigated to, so a forged index can never add a Step, jump to
+  one the Participant never reached, or touch another Participant's Run.
 - 500 is an arbitrary cap, chosen to bound the JSON one `run` row stores
   without ever being visibly reachable by a legitimate walk through a
   36–64-Step legacy journey; a Participant (or a bot) who wants to hit it

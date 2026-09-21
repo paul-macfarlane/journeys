@@ -2,8 +2,10 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
-import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
+import { MAX_PATH_LENGTH } from "@/lib/graph/run";
+
 import caseTwoJson from "../scripts/seed/journey-stories/case-2.json";
+import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
   loopDocument,
@@ -91,7 +93,10 @@ function shortestRouteTo(
   ];
 
   while (queue.length > 0) {
-    const { stepId, route } = queue.shift()!;
+    const next = queue.shift();
+    if (!next) break;
+
+    const { stepId, route } = next;
     if (stepId === targetStepId) return route;
 
     for (const choice of document.steps[stepId].choices) {
@@ -295,8 +300,11 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     // The browser restores the previous page from its own cache and the page
     // sends itself back to the server, so the row settles a moment after the
     // heading is on screen — the two screens look identical either way.
+    // 30s budgets a second full page load on a busy development server.
     await expect
-      .poll(async () => (await readRuns(versionId))[0].path)
+      .poll(async () => (await readRuns(versionId))[0].path, {
+        timeout: 30_000,
+      })
       .toEqual([START_STEP_ID, QUEUE_STEP_ID]);
 
     const afterBrowserBack = await readRuns(versionId);
@@ -424,8 +432,11 @@ test("runner-loop-and-back", async ({ page, context, browser }) => {
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
 
+    // 30s budgets a second full page load on a busy development server.
     await expect
-      .poll(async () => (await readRuns(versionId))[0].path)
+      .poll(async () => (await readRuns(versionId))[0].path, {
+        timeout: 30_000,
+      })
       .toEqual([START_STEP_ID, QUEUE_STEP_ID, START_STEP_ID, QUEUE_STEP_ID]);
 
     const afterBrowserBack = await readRuns(versionId);
@@ -477,6 +488,91 @@ test("runner-loop-and-back", async ({ page, context, browser }) => {
     expect(ended[0].outcome_id).toBe("reached-care");
     expect(ended[0].ended_at).not.toBeNull();
     expect(ended[0].backtrack_count).toBe(1);
+  } finally {
+    await participantContext.close();
+  }
+});
+
+test("runner-path-cap", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Endless Queue ${suffix}`,
+  );
+
+  const versionId = await publishDocument(journeyId, loopDocument());
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    const started = await readRuns(versionId);
+    expect(started).toHaveLength(1);
+
+    // Walking to the cap would take a thousand clicks and prove nothing the
+    // reducer's own cases do not; the row is grown to it directly so this
+    // spec is about what a Participant is told when the walk stops. The cap
+    // is an even number, so the path ends on the queue Step.
+    const cappedPath = Array.from({ length: MAX_PATH_LENGTH }, (_, index) =>
+      index % 2 === 0 ? START_STEP_ID : QUEUE_STEP_ID,
+    );
+    await queryE2eDatabase('UPDATE "run" SET path = $1::jsonb WHERE id = $2', [
+      JSON.stringify(cappedPath),
+      started[0].id,
+    ]);
+
+    // The Step the Run already stands on is a stay: nothing to append.
+    await participant.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    // A forward move past the cap is refused, and said so in one sentence.
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByText(
+        "This journey has gone on too long to continue. Start over to keep going.",
+      ),
+    ).toBeVisible();
+
+    // Refused means the Participant is left where they stood. The notice
+    // travels as a query parameter the page strips once it hydrates, so the
+    // Step is what this asserts, not whether the stripping has happened yet.
+    await expect(participant).toHaveURL(
+      new RegExp(`/j/${journeyId}/${QUEUE_STEP_ID}(\\?|$)`),
+    );
+
+    // Starting over is the way out, and it is offered.
+    await expect(
+      participant.getByRole("button", { name: "Start over" }),
+    ).toBeVisible();
+
+    await participant.screenshot({
+      path: "test-results/runner-path-cap/runner-path-cap.png",
+      fullPage: true,
+    });
+
+    // Nothing was recorded: not an entry, and not a backtrack either.
+    const capped = await readRuns(versionId);
+    expect(capped).toHaveLength(1);
+    expect(capped[0].path).toHaveLength(MAX_PATH_LENGTH);
+    expect(capped[0].backtrack_count).toBe(0);
   } finally {
     await participantContext.close();
   }

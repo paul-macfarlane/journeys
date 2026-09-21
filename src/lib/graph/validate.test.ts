@@ -216,7 +216,7 @@ describe("validateForPublish", () => {
     expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("does not call branches that merge back together a problem", () => {
+  it("accepts branches that merge back together", () => {
     const document = graph(
       [
         step("step-start", [
@@ -390,7 +390,9 @@ describe("the seeded Journey Stories documents", () => {
     },
   );
 
-  it("case 1 and case 2 carry the Choices ticket 18 restored, with their legacy labels", () => {
+  // The four Choices ticket 18 restored, dropped in ticket 04 because each
+  // closed a loop the no-cycles rule refused to publish.
+  it("case 1 and case 2 carry the legacy looping Choices, with their labels and targets", () => {
     const case1 = documentOf(case1Document);
     const case2 = documentOf(case2Document);
 
@@ -398,7 +400,8 @@ describe("the seeded Journey Stories documents", () => {
       document: GraphDocument,
       stepId: string,
       label: string,
-    ) => document.steps[stepId].choices.find((c) => c.label === label);
+    ) =>
+      document.steps[stepId].choices.find((choice) => choice.label === label);
 
     expect(findChoice(case1, "step-46", "Yes")?.targetStepId).toBe("step-1");
     expect(

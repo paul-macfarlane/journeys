@@ -67,6 +67,19 @@ export function startRun(document: GraphDocument, now: Date): RunState {
   };
 }
 
+/**
+ * The `at` query parameter as `navigateTo` wants it: a path index, or
+ * nothing. A run of digits is an index; anything else — a negative number, a
+ * fraction, a word, an empty string, or the array Next.js hands over when the
+ * parameter is repeated — is stale or made up, and becomes null rather than
+ * a number the reducer would have to distrust.
+ */
+export function parsePathIndex(
+  raw: string | string[] | undefined,
+): number | null {
+  return typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : null;
+}
+
 /** Why a navigation was refused; the step page reads these. */
 export type RefusalReason = "unknown-step" | "not-offered" | "path-full";
 
@@ -113,25 +126,27 @@ function offers(
  * returning to, when one travelled with it (`?at=` on the step URL, written
  * from `history.state`); null when it did not. The rules, in order:
  *
- * 0. `stepId` is not a Step of this document at all: refused.
- * 1. `at` is an index of the path whose entry is `stepId`: the Participant
+ * 1. `stepId` is not a Step of this document at all: refused.
+ * 2. `at` is an index of the path whose entry is `stepId`: the Participant
  *    named the entry they are on or came back to. An earlier entry is a
  *    backtrack (the path truncates to it, `backtrackCount` increments); the
  *    last entry is a stay. Any other `at` — out of range, a different Step,
  *    not a whole number — is stale or made up, and is ignored from here on.
- * 2. `stepId` is the current Step: stay (a reload of the same URL).
- * 3. `stepId` is a Choice of the current Step: forward, appended — even if it
+ * 3. `stepId` is the current Step: stay (a reload of the same URL). Because
+ *    this comes before rule 4, a Choice that targets its own Step is a stay
+ *    too, rather than a second entry for a screen never left.
+ * 4. `stepId` is a Choice of the current Step: forward, appended — even if it
  *    is already on the path, which is how a loop is walked. Once the path
  *    holds `MAX_PATH_LENGTH` entries there is nowhere to append: refused.
- * 4. `stepId` is already on the path: a backtrack to its **latest**
+ * 5. `stepId` is already on the path: a backtrack to its **latest**
  *    occurrence. The path truncates to it (inclusive), `backtrackCount`
  *    increments, and any Ending is cleared.
- * 5. `stepId` is a Choice of some earlier Step on the path — the **latest**
+ * 6. `stepId` is a Choice of some earlier Step on the path — the **latest**
  *    such Step, so a Choice taken from a page the Participant reached via
  *    browser back still resolves. The path truncates to that Step first
- *    (incrementing `backtrackCount`, as rule 4 does) before the target is
+ *    (incrementing `backtrackCount`, as rule 5 does) before the target is
  *    appended.
- * 6. Otherwise refused.
+ * 7. Otherwise refused.
  *
  * Landing on an Ending (from any of these) sets `endedAt` and `outcomeId`;
  * landing anywhere else clears both. A refusal returns the unmodified

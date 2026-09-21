@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { RunHistoryScript } from "@/components/runner/run-history-script";
 import { RunHistory } from "@/components/runner/run-history";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import { choiceLinkClassName, StepView } from "@/components/runner/step-view";
 import { getRunForJourney, saveRunState } from "@/db/runs";
-import { navigateTo } from "@/lib/graph/run";
+import { navigateTo, parsePathIndex } from "@/lib/graph/run";
 import { runCookieName } from "@/lib/run-cookies";
 
 import { beginRunAction } from "../actions";
@@ -27,22 +28,20 @@ import { beginRunAction } from "../actions";
  * Two query parameters travel with a navigation and are read here, never
  * kept: `at` is the path index the browser came back to, which is what tells
  * a Back on a loop-closing Step from a Choice to that same Step, and `notice`
- * carries the one refusal a Participant is told about. `RunHistory` writes
- * the index into `history.state` for the next Back and strips both from the
- * address bar.
+ * carries the one refusal a Participant is told about. `RunHistoryScript` and
+ * `RunHistory` between them write the index into `history.state` for the next
+ * Back, correct a Back the server read as a Choice, and strip both parameters
+ * from the address bar.
  */
-
-/** The `at` parameter as the reducer wants it: a path index, or nothing. */
-function parsePathIndex(raw: string | undefined): number | null {
-  return raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : null;
-}
-
 export default async function RunStepPage({
   params,
   searchParams,
 }: {
   params: Promise<{ journeyId: string; stepId: string }>;
-  searchParams: Promise<{ at?: string; notice?: string }>;
+  searchParams: Promise<{
+    at?: string | string[];
+    notice?: string | string[];
+  }>;
 }) {
   const { journeyId, stepId } = await params;
   const { at, notice } = await searchParams;
@@ -81,11 +80,28 @@ export default async function RunStepPage({
   const previousStepId = path.length > 1 ? path[path.length - 2] : null;
   const step = version.document.steps[stepId];
 
+  // A native button rather than the shared Button, for the same reason as on
+  // the start screen: the page stays a Server Component. An Ending offers it
+  // below the Outcome; the path-full notice offers it beside the notice,
+  // since telling a Participant to start over without a way to is no help.
+  // Only one of the two ever renders — a Step that refused a forward move
+  // had a Choice to refuse, so it is not an Ending.
+  const startOver = (
+    <form action={beginRunAction.bind(null, journeyId)}>
+      <button type="submit" className={choiceLinkClassName}>
+        Start over
+      </button>
+    </form>
+  );
+
   return (
     <RunnerFrame>
-      {/* A back navigation restored from the browser's cache would record
-          nothing; this sends it back to the server, saying which entry of
-          the path it came back to. */}
+      {/* The index this page stands at is remembered while the page is still
+          parsing, and a back navigation the server has already read as a
+          Choice is corrected there and then; a page restored from the
+          browser's cache records nothing at all, and is sent back to the
+          server once React is running. */}
+      <RunHistoryScript pathIndex={path.length - 1} />
       <RunHistory pathIndex={path.length - 1} />
 
       <div className="flex flex-col gap-3">
@@ -102,26 +118,21 @@ export default async function RunStepPage({
         ) : null}
       </div>
 
-      {notice === "path-full" ? (
-        <p className="text-muted-foreground text-sm">
-          This journey has gone on too long to continue. Start over to keep
-          going.
-        </p>
+      {typeof notice === "string" && notice === "path-full" ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-muted-foreground text-sm">
+            This journey has gone on too long to continue. Start over to keep
+            going.
+          </p>
+          {startOver}
+        </div>
       ) : null}
 
       <StepView
         step={step}
         document={version.document}
         stepHref={(targetStepId) => `/j/${journeyId}/${targetStepId}`}
-        // A native button rather than the shared Button, for the same reason
-        // as on the start screen: the page stays a Server Component.
-        startOver={
-          <form action={beginRunAction.bind(null, journeyId)}>
-            <button type="submit" className={choiceLinkClassName}>
-              Start over
-            </button>
-          </form>
-        }
+        startOver={startOver}
       />
     </RunnerFrame>
   );

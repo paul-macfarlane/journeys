@@ -236,8 +236,10 @@ export const publishedVersion = pgTable(
 // `id` is the Run's only write credential (see `src/lib/run-cookies.ts`), so
 // it is `crypto.randomUUID()`, unguessable, never sequential.
 // `participantId` is a pseudonymous cookie id, never linked to an account.
-// `path` is the current linear route from the Start, owned by the pure
-// reducer in `src/lib/graph/run.ts`; `backtrackCount`, `endedAt`, and
+// `path` is the route walked from the Start, one entry per visit — repeats
+// included since ADR-0002 — owned by the pure reducer in
+// `src/lib/graph/run.ts`; the current Step is its last entry.
+// `backtrackCount`, `endedAt`, and
 // `outcomeId` are that reducer's other state, mirrored here so a resumed Run
 // reads back exactly the state it left off at. `outcomeId` names an Outcome
 // inside the pinned version's document, not a foreign key — Outcomes live

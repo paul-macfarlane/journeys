@@ -5,6 +5,7 @@ import {
   currentStepId,
   MAX_PATH_LENGTH,
   navigateTo,
+  parsePathIndex,
   startRun,
   type RunState,
 } from "@/lib/graph/run";
@@ -156,6 +157,51 @@ function loopDocument(): GraphDocument {
     },
     outcomes: {
       "outcome-waved": { id: "outcome-waved", label: "Waved through" },
+    },
+  };
+}
+
+/**
+ * The smallest loop a Published Version may hold: one Step whose Choice
+ * points back at itself.
+ *
+ *   waiting-room --"Wait a little longer"--> waiting-room
+ *   waiting-room --"Give up"--> gave-up (Ending, outcome-gave-up)
+ */
+function selfChoiceDocument(): GraphDocument {
+  return {
+    schemaVersion: 1,
+    startStepId: "waiting-room",
+    allowBack: true,
+    steps: {
+      "waiting-room": step({
+        id: "waiting-room",
+        title: "Waiting room",
+        choices: [
+          {
+            id: "sc1",
+            label: "Wait a little longer",
+            targetStepId: "waiting-room",
+            condition: null,
+            effect: null,
+          },
+          {
+            id: "sc2",
+            label: "Give up",
+            targetStepId: "gave-up",
+            condition: null,
+            effect: null,
+          },
+        ],
+      }),
+      "gave-up": step({
+        id: "gave-up",
+        title: "Gave up",
+        outcomeId: "outcome-gave-up",
+      }),
+    },
+    outcomes: {
+      "outcome-gave-up": { id: "outcome-gave-up", label: "Gave up waiting" },
     },
   };
 }
@@ -497,6 +543,43 @@ describe("navigateTo around a loop", () => {
     });
   });
 
+  it("treats a Choice onto the Step's own Step as a stay, not a second entry", () => {
+    const document = selfChoiceDocument();
+    const state = startRun(document, now);
+
+    // The Participant never left the screen, so the path records one visit.
+    expect(navigateTo(document, state, "waiting-room", later)).toEqual({
+      kind: "stay",
+    });
+  });
+
+  it("ignores an index outside the path and resolves the navigation itself", () => {
+    const document = loopDocument();
+    const state: RunState = {
+      path: ["loop-start", "queue", "loop-start"],
+      backtrackCount: 0,
+      endedAt: null,
+      outcomeId: null,
+    };
+    const asTheChoice = {
+      kind: "moved",
+      state: {
+        path: ["loop-start", "queue", "loop-start", "queue"],
+        backtrackCount: 0,
+        endedAt: null,
+        outcomeId: null,
+      },
+    };
+
+    // Before the first entry and one past the last: neither names anything.
+    expect(navigateTo(document, state, "queue", later, -1)).toEqual(
+      asTheChoice,
+    );
+    expect(
+      navigateTo(document, state, "queue", later, state.path.length),
+    ).toEqual(asTheChoice);
+  });
+
   it("stays when the index names the current entry", () => {
     const document = loopDocument();
     const state: RunState = {
@@ -564,5 +647,23 @@ describe("navigateTo around a loop", () => {
       reason: "path-full",
     });
     expect(state).toEqual(before);
+  });
+});
+
+/** The `?at=` parameter arrives from a Participant's browser: distrust it. */
+describe("parsePathIndex", () => {
+  it("reads a run of digits as an index", () => {
+    expect(parsePathIndex("3")).toBe(3);
+    expect(parsePathIndex("0")).toBe(0);
+  });
+
+  it("refuses anything that is not one", () => {
+    expect(parsePathIndex("-1")).toBeNull();
+    expect(parsePathIndex("1.5")).toBeNull();
+    expect(parsePathIndex("abc")).toBeNull();
+    expect(parsePathIndex("")).toBeNull();
+    expect(parsePathIndex(undefined)).toBeNull();
+    // Next.js hands over an array when the parameter is repeated.
+    expect(parsePathIndex(["1", "2"])).toBeNull();
   });
 });

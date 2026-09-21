@@ -346,7 +346,7 @@ test("canvas-validation-marks", async ({ page, context }) => {
     "0",
   );
 
-  // Taking that Choice away leaves the loop just as unmarked as it was.
+  // Taking the Choice away removes the arrow; there was never a mark to clear.
   await page
     .getByRole("button", { name: "Remove choice", exact: true })
     .click();
