@@ -1,15 +1,15 @@
 # 16: Canvas authoring
 
 Status: ready-for-agent
-Blocked by: 09
+Blocked by: 09, 18
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: first of the graph tidy-up series (Paul, 2026-09-21): 16 → 19 → 17; 18 is a decision Paul makes alongside.
+Priority: second of the graph tidy-up series (Paul, 2026-09-21): 18 → 16 → 19 → 17.
 
 **What to build:** Turn the ticket-09 canvas from a viewer into the place an Author edits structure. Everything that connects Steps happens on the graph where possible; problems are readable, not just counted; the layout crosses itself less; and the step list under the canvas follows the map's order.
 
 - **Add a next step from a box.** The selected box shows a small toolbar (React Flow `NodeToolbar`) with "Add next step", "Make this the start", and "Delete step". "Add next step" creates a Step reachable through a new Choice on the selected Step (`addChoiceToNewStep`), opens it in the panel with the title focused, and the map fits to show it. The canvas-level "Add step" stays for a deliberately unconnected Step.
-- **Connect by dragging.** Boxes are connectable: dragging from a box's bottom anchor onto another box adds a Choice from the source Step to the target (empty label), selects the source Step, and focuses the new Choice's label in the panel. Dragging the end of an existing arrow onto another box retargets that Choice. A drop onto nothing does nothing. A connection that would close a loop is allowed and marked as a cycle problem, exactly as the panel allows it today — refusal at drop time waits on ticket 18.
+- **Connect by dragging.** Boxes are connectable: dragging from a box's bottom anchor onto another box adds a Choice from the source Step to the target (empty label), selects the source Step, and focuses the new Choice's label in the panel. Dragging the end of an existing arrow onto another box retargets that Choice. A drop onto nothing does nothing. A connection that closes a loop is simply allowed: ticket 18 removes the no-cycles rule, so there is nothing to mark or refuse.
 - **Arrows are selectable.** Clicking an arrow selects its source Step and focuses that Choice's label in the panel; the selected arrow is drawn heavier. Delete/Backspace on a selected arrow removes the Choice after the same confirmation the panel's "Remove choice" gives (none today, so none here).
 - **Problems are readable.** The panel gains a "Problems" section for the selected Step listing every live problem message that names it (node or one of its Choices); a Choice's problem is also shown inline under that Choice row. The editor header shows a live count ("2 problems") that toggles the full live list, each entry a button that selects the Step; "Validate" keeps its server-side role as the publish gate. The hover-only tooltip on the box stays.
 - **Fewer crossings.** Source anchors on a box are ordered by the target box's x position rather than Choice order; `ranksep` widens to 96; arrows follow dagre's routed points (a custom edge rendering the polyline dagre returns, smoothed) so its crossing minimization shows. Selecting a box highlights its incoming and outgoing arrows and dims the rest.

@@ -267,4 +267,8 @@ Refines "Back navigation": a navigation to a Step not yet on the path is refused
 
 ### [SCOPE CHANGE] 2026-09-21 — graph tidy-up series takes priority
 
-After using the ticket-09 canvas (PR #19), Paul decided that all next work tidies the graph editor before anything else in the priority order: tickets 16 (canvas authoring), 19 (canvas quality of life), then 17 (manual layout, which amends the "manual canvas layout" exclusion and ADR-0001). Ticket 18 asks whether the no-cycles rule stays; until decided it stands. Analytics (10) and the rest of the order resume afterwards.
+After using the ticket-09 canvas (PR #19), Paul decided that all next work tidies the graph editor before anything else in the priority order: ticket 18 (allow cycles), then 16 (canvas authoring), 19 (canvas quality of life), and 17 (manual layout, which amends the "manual canvas layout" exclusion and ADR-0001). Analytics (10) and the rest of the order resume afterwards.
+
+### [SCOPE CHANGE] 2026-09-21 — cycles allowed
+
+Paul decided that Choices may target a Step that can reach them ("as long as we have a fix, we shouldn't limit users"). The publish rule "the graph has no cycles" and the "Back navigation" argument that rests on it are amended by ticket 18: the Run path keeps repeats, the runner resolves a navigation as a Choice first and a backtrack second, and browser Back is disambiguated by a path index in history state. The four legacy Choices dropped in ticket 04 are restored. ADR-0002 records the decision when 18 lands.

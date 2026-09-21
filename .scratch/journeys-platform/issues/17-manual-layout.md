@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: 16
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: third of the graph tidy-up series (16 → 19 → 17).
+Priority: fourth of the graph tidy-up series (18 → 16 → 19 → 17).
 
 **Scope change:** the spec lists "manual canvas layout" as out of scope and ADR-0001 says the canvas lays itself out. Paul decided on 2026-09-21 to support dragging boxes. Record a `[SCOPE CHANGE]` on the spec and an amendment to ADR-0001 as part of this ticket; the graph document's reserved nullable `position` field is what this ticket fills.
 

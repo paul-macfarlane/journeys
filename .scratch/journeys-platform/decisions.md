@@ -185,6 +185,8 @@ public URLs, custom theme editor, manual canvas layout.
   never creates user rows.
 - Back navigation stays; publish-time validation rejects cycles so "go back"
   and "take a Choice" are never ambiguous. `allow_back` stays reserved.
+  **Amended 2026-09-21 (Paul):** cycles are allowed; the path keeps repeats
+  and a history-state index disambiguates Back. Ticket 18; ADR-0002.
 - Sanitization constrains link/image URLs to http(s); Preview is Member-only;
   Published Versions record `publishedBy`; Run cookies are per-journey.
 - Publish-immutability is proven in Seam B (database), not Seam A.
