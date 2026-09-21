@@ -66,11 +66,10 @@ import "@xyflow/react/dist/style.css";
  * Layout is recomputed by `layoutGraph` from the document on every change and
  * never stored — once, by the editor, which hands the same layout to the map
  * and to the "Find step" field above it. No Author drags a node, so there is
- * no hand-placed position to
- * preserve, and a stored one would go stale the moment a Choice was added:
- * what the map is for is showing the shape the Journey has now. `stepSchema`
- * keeps a `position` field for a later decision; nothing here reads or writes
- * it.
+ * no hand-placed position to preserve, and a stored one would go stale the
+ * moment a Choice was added: what the map is for is showing the shape the
+ * Journey has now. `stepSchema` keeps a `position` field for a later
+ * decision; nothing here reads or writes it.
  *
  * Arrows are drawn along the route dagre computed for them rather than
  * stepped between handles, and a box's source anchors are spread in the order
@@ -161,7 +160,7 @@ type CanvasActions = {
 /** Which way an arrow key asks to go. */
 type Direction = "up" | "down" | "left" | "right";
 
-const ARROW_DIRECTIONS: Record<string, Direction> = {
+const ARROW_DIRECTIONS: Record<string, Direction | undefined> = {
   ArrowUp: "up",
   ArrowDown: "down",
   ArrowLeft: "left",
@@ -326,8 +325,12 @@ function midwayAlong(points: Point[]): Point {
 /** How far below a box a loop drops, and how far above its top it returns. */
 const LOOP_CLEARANCE = 24;
 
-/** How far past the box's right edge a loop runs. */
-const LOOP_SIDE_CLEARANCE = 32;
+/**
+ * How far past the box's right edge a loop runs. Kept under the 32 of dagre's
+ * `nodesep` in `src/lib/graph/layout.ts`, so a loop never runs over the box
+ * beside it when the layout has packed the two at minimum separation.
+ */
+const LOOP_SIDE_CLEARANCE = 16;
 
 /**
  * A Choice that leads back to its own Step, routed beside its box: down out of
@@ -564,7 +567,10 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
         {...data.marks}
         aria-label={data.title}
         // The peek is this box's description: the problems on it and the
-        // opening of what it says, read out wherever the Author is.
+        // opening of what it says, read out wherever the Author is. The peek
+        // is rendered exactly while the box is hovered or focused, and a
+        // description is read when the box is focused, so the id always
+        // resolves at the moment it is used.
         aria-describedby={peekId}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -1021,7 +1027,7 @@ function CanvasFlow({
       const button = canvasRef.current?.querySelector<HTMLButtonElement>(
         `.react-flow__node[data-id="${nearest.id}"] button`,
       );
-      if (button === null || button === undefined) return;
+      if (!button) return;
 
       // Without `preventScroll` the browser scrolls the map's pane to reveal
       // the box it just focused, and React Flow scrolls the pane straight
@@ -1309,8 +1315,10 @@ export function JourneyCanvas(props: JourneyCanvasProps) {
       tabIndex={-1}
       // Most of the viewport on a tall screen, never less than a map's worth:
       // a real-sized Journey is dozens of ranks deep, and every pixel of
-      // height is legibility at fit-to-view.
-      className="h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10 outline-none"
+      // height is legibility at fit-to-view. Escape on a box lands the
+      // keyboard here, and the focus ring is what shows the Author where it
+      // went — the quiet ring at rest, the heavier one while it holds focus.
+      className="h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10 focus-visible:ring-4 focus-visible:ring-ring"
     >
       <ReactFlowProvider>
         <CanvasFlow {...props} canvasRef={canvasRef} />

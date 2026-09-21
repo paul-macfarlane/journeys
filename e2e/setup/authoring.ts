@@ -57,6 +57,30 @@ export async function chooseStep(page: Page, title: string): Promise<void> {
   await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
+/**
+ * One Step found the way an Author finds one from the keyboard: Cmd/Ctrl+K
+ * from anywhere on the Journey page, part of the title typed into "Find step",
+ * and the Step of that name chosen from what is offered. `query` is what is
+ * typed and `title` the whole title of the Step it has to pick out.
+ */
+export async function findStepByName(
+  page: Page,
+  query: string,
+  title: string,
+): Promise<void> {
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(page.getByRole("combobox", { name: "Find step" })).toBeFocused();
+
+  await page.keyboard.type(query);
+  const option = page
+    .getByRole("listbox", { name: "Steps" })
+    .getByRole("option", { name: title, exact: true });
+  await expect(option).toBeVisible();
+  await option.click();
+
+  await expect(page.getByLabel("Step title")).toHaveValue(title);
+}
+
 export async function createProject(
   page: Page,
   title: string,

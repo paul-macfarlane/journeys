@@ -44,8 +44,8 @@ const COPY_SUFFIX = " copy";
 const MAX_TITLE_LENGTH = 200;
 
 /**
- * The original's title with `COPY_SUFFIX` appended, trimming the original's
- * end so the whole stays within `stepSchema`'s 200-character limit.
+ * The name given it with `COPY_SUFFIX` appended, trimming its end so the
+ * whole stays within `stepSchema`'s 200-character limit.
  */
 function suffixedTitle(title: string): string {
   const maxOriginalLength = MAX_TITLE_LENGTH - COPY_SUFFIX.length;
@@ -57,8 +57,11 @@ function suffixedTitle(title: string): string {
 }
 
 /**
- * Copies a Step: its content, Prompt, and Outcome tag carry over and its
- * title gains `COPY_SUFFIX`, but it starts with no Choices — an Author builds
+ * Copies a Step: its content, Prompt, and Outcome tag carry over and the name
+ * the Author knows it by gains `COPY_SUFFIX` — `stepName`, so a Step with a
+ * blank title yields `"<id> copy"` rather than a copy called `" copy"`, which
+ * is what the panel and the map would then show. It starts with no Choices —
+ * an Author builds
  * outward from the copy the way they would from any new Step, rather than
  * inheriting where the original led. `position` is left `null`, like every
  * other new Step; the map lays the copy out wherever dagre puts an
@@ -77,10 +80,12 @@ export function duplicateStep(
   const newStepId = crypto.randomUUID();
   const step: Step = {
     id: newStepId,
-    title: suffixedTitle(original.title),
+    title: suffixedTitle(stepName(original)),
     content: structuredClone(original.content),
     choices: [],
-    prompt: original.prompt,
+    // Cloned like the content: a Prompt is an object, and two Steps sharing
+    // one would be two Steps an edit to either changed.
+    prompt: structuredClone(original.prompt),
     outcomeId: original.outcomeId,
     position: null,
   };

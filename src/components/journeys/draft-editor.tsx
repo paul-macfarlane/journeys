@@ -260,12 +260,25 @@ export function DraftEditor({
   // field, because the point of it is not having to reach for the field; the
   // Journey page is the only page that mounts this editor, so nothing else in
   // the app hears it. A press something else has already answered is left
-  // alone.
+  // alone. So is a press carrying Shift or Alt as well, which is a different
+  // shortcut entirely — the browser's own among them — and not this one. And
+  // so is any press made while a dialog is open: the keyboard belongs to the
+  // dialog, and pulling focus to a field behind it would leave the Author
+  // typing into something they cannot see.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
       if (!event.metaKey && !event.ctrlKey) return;
+      if (event.shiftKey || event.altKey) return;
       if (event.key.toLowerCase() !== "k") return;
+      // `window.document`: the Draft is what `document` names in here.
+      if (
+        window.document.querySelector(
+          '[role="dialog"], [role="alertdialog"]',
+        ) !== null
+      ) {
+        return;
+      }
 
       event.preventDefault();
       setFindFocusRequest((current) => current + 1);

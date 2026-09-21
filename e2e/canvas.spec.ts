@@ -6,7 +6,7 @@ import {
   type Page,
 } from "@playwright/test";
 
-import { contentPreview } from "@/lib/graph/content";
+import { contentPreview, PREVIEW_LIMIT } from "@/lib/graph/content";
 import {
   countCrossingPairs,
   type Point,
@@ -20,6 +20,7 @@ import {
   chooseStep,
   createJourney,
   createProject,
+  findStepByName,
   openFindStep,
   uniqueSuffix,
 } from "./setup/authoring";
@@ -53,10 +54,11 @@ import {
 test.describe.configure({ timeout: 180_000 });
 
 // `docs/agents/testing.md` names the canvas editor as the case for video: what
-// the two authoring tests below prove is a sequence of moves, not a final
-// screen. `video` is a worker option, which Playwright refuses inside a
-// describe, so it is set for the file; only those two tests keep their
-// recording, and the rest is Playwright's own scratch output.
+// the authoring tests below prove is a sequence of moves, not a final screen.
+// `video` is a worker option, which Playwright refuses inside a describe, so it
+// is set for the file; only the tests under the "authoring from the map"
+// describe keep their recording — its `afterEach` saves each one under the test
+// that made it — and the rest is Playwright's own scratch output.
 test.use({ video: "on" });
 
 const mintedAuthorIds: string[] = [];
@@ -384,6 +386,43 @@ async function settledTransform(page: Page): Promise<string> {
   return last ?? "";
 }
 
+/**
+ * One box brought onto the map: the whole of it inside the Canvas frame.
+ * Polled, because bringing it there is an animation the browser finishes when
+ * it finishes.
+ */
+async function expectBoxOnMap(page: Page, title: string): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        (await nodeViews(page)).find((view) => view.title === title)
+          ?.fullyInside,
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
+/**
+ * The map centered on a box rather than nudged just far enough to fit it in:
+ * the box's middle within a quarter of the frame's width and height of the
+ * frame's own middle.
+ */
+async function expectCenteredOnMap(page: Page, title: string): Promise<void> {
+  await settledTransform(page);
+
+  const frame = await canvas(page).boundingBox();
+  expect(frame).not.toBeNull();
+  const box = await canvasNode(page, title).boundingBox();
+  expect(box).not.toBeNull();
+
+  expect(
+    Math.abs(box!.x + box!.width / 2 - (frame!.x + frame!.width / 2)),
+  ).toBeLessThan(frame!.width / 4);
+  expect(
+    Math.abs(box!.y + box!.height / 2 - (frame!.y + frame!.height / 2)),
+  ).toBeLessThan(frame!.height / 4);
+}
+
 /** One box's wrapper on the map, which is what carries its handles. */
 function canvasNodeBox(page: Page, title: string) {
   return canvas(page)
@@ -559,15 +598,7 @@ test("canvas-add-next-step", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toBeFocused();
 
   // And the map went to where it put it.
-  await expect
-    .poll(
-      async () =>
-        (await nodeViews(page))
-          .filter((view) => view.title === "Untitled step")
-          .map((view) => view.fullyInside),
-      { timeout: 10_000 },
-    )
-    .toEqual([true]);
+  await expectBoxOnMap(page, "Untitled step");
 
   await renameStep(page, "Clinic tent");
   await expect(canvasEdges(page)).toHaveAttribute(
@@ -626,15 +657,7 @@ test("canvas-duplicate-step", async ({ page, context }) => {
   );
   await expect(canvasNodes(page)).toHaveCount(2);
 
-  await expect
-    .poll(
-      async () =>
-        (await nodeViews(page)).find(
-          (view) => view.title === "Border post copy",
-        )?.fullyInside,
-      { timeout: 10_000 },
-    )
-    .toBe(true);
+  await expectBoxOnMap(page, "Border post copy");
 
   await expectSaved(page);
   const stored = await readDraft(journeyId);
@@ -658,27 +681,8 @@ test("canvas-duplicate-step", async ({ page, context }) => {
     .getByRole("button", { name: "Zoom to step", exact: true })
     .click();
 
-  await settledTransform(page);
-  await expect
-    .poll(
-      async () =>
-        (await nodeViews(page)).find(
-          (view) => view.title === "Border post copy",
-        )?.fullyInside,
-      { timeout: 10_000 },
-    )
-    .toBe(true);
-
-  const frame = await canvas(page).boundingBox();
-  expect(frame, "the canvas has no box yet").not.toBeNull();
-  const box = await canvasNode(page, "Border post copy").boundingBox();
-  expect(box, "the found box has no box").not.toBeNull();
-  expect(
-    Math.abs(box!.x + box!.width / 2 - (frame!.x + frame!.width / 2)),
-  ).toBeLessThan(frame!.width / 4);
-  expect(
-    Math.abs(box!.y + box!.height / 2 - (frame!.y + frame!.height / 2)),
-  ).toBeLessThan(frame!.height / 4);
+  await expectBoxOnMap(page, "Border post copy");
+  await expectCenteredOnMap(page, "Border post copy");
 
   // The panel footer's own "Duplicate", scoped off the box toolbar's.
   await page
@@ -703,11 +707,11 @@ test("canvas-content-peek", async ({ page, context }) => {
 
   await renameStep(page, "Border post");
 
-  // Longer than the 140 characters a peek shows, so what the box offers is the
-  // opening of the Step rather than the whole of it.
+  // Longer than a peek shows, so what the box offers is the opening of the
+  // Step rather than the whole of it.
   const opening =
     "Participants queue at the border post from before first light, holding papers they cannot read, waiting on a stamp that decides where the day ends.";
-  expect(opening.length).toBeGreaterThan(140);
+  expect(opening.length).toBeGreaterThan(PREVIEW_LIMIT);
 
   await page.getByLabel("Step content").click();
   await page.keyboard.type(opening);
@@ -731,8 +735,8 @@ test("canvas-content-peek", async ({ page, context }) => {
 
   await hoverBox(page, "Border post");
   await expect(peek).toBeVisible();
-  expect(await peek.textContent()).toBe(`${opening.slice(0, 140)}…`);
-  expect(await peek.textContent()).toHaveLength(141);
+  expect(await peek.textContent()).toBe(`${opening.slice(0, PREVIEW_LIMIT)}…`);
+  expect(await peek.textContent()).toHaveLength(PREVIEW_LIMIT + 1);
 
   await page.screenshot({
     path: "test-results/canvas-content-peek/canvas-content-peek.png",
@@ -747,7 +751,7 @@ test("canvas-content-peek", async ({ page, context }) => {
   // Focus alone shows it: skimming the map is not only a pointer's.
   await canvasNode(page, "Border post").focus();
   await expect(peek).toBeVisible();
-  expect(await peek.textContent()).toBe(`${opening.slice(0, 140)}…`);
+  expect(await peek.textContent()).toBe(`${opening.slice(0, PREVIEW_LIMIT)}…`);
 
   // A Step with nothing written on it says so, under the problems it carries:
   // this one is a Step nothing leads to, and an Ending with no Outcome.
@@ -962,14 +966,7 @@ test.describe("the seeded map", () => {
 
     // Opening it brought its box onto the map — centered on it, as a Step
     // chosen from "Find step" always is.
-    await expect
-      .poll(
-        async () =>
-          (await nodeViews(page)).find((view) => view.title === target)
-            ?.fullyInside,
-        { timeout: 10_000 },
-      )
-      .toBe(true);
+    await expectBoxOnMap(page, target);
 
     await page.screenshot({
       path: "test-results/canvas-locate-on-map/canvas-locate-on-map.png",
@@ -1098,14 +1095,7 @@ test.describe("the seeded map", () => {
     await lostTentEntry.click();
 
     await expect(page.getByLabel("Step title")).toHaveValue("Lost tent");
-    await expect
-      .poll(
-        async () =>
-          (await nodeViews(page)).find((view) => view.title === "Lost tent")
-            ?.fullyInside,
-        { timeout: 10_000 },
-      )
-      .toBe(true);
+    await expectBoxOnMap(page, "Lost tent");
 
     // Asking for the Step that is already open counts too: the map is dragged
     // away from "Lost tent", and the same entry brings it back rather than
@@ -1133,14 +1123,7 @@ test.describe("the seeded map", () => {
     await lostTentEntry.click();
 
     await expect(page.getByLabel("Step title")).toHaveValue("Lost tent");
-    await expect
-      .poll(
-        async () =>
-          (await nodeViews(page)).find((view) => view.title === "Lost tent")
-            ?.fullyInside,
-        { timeout: 10_000 },
-      )
-      .toBe(true);
+    await expectBoxOnMap(page, "Lost tent");
   });
 
   test("canvas-find-step", async ({ page, context }) => {
@@ -1172,6 +1155,9 @@ test.describe("the seeded map", () => {
     let offMap = false;
     for (let click = 0; click < 8 && !offMap; click += 1) {
       await zoomIn.click();
+      // Each zoom animates, and a box read while the map is still moving is
+      // read at coordinates it is no longer at.
+      await settledTransform(page);
       offMap =
         (await nodeViews(page)).find((view) => view.title === bottomMost.title)
           ?.fullyInside === false;
@@ -1181,55 +1167,83 @@ test.describe("the seeded map", () => {
       `"${bottomMost.title}" was still fully inside the canvas frame after zooming in`,
     ).toBe(true);
 
-    // Cmd/Ctrl+K from anywhere on the Journey page is the way into the field.
-    await page.keyboard.press("ControlOrMeta+k");
-    const find = page.getByRole("combobox", { name: "Find step" });
-    await expect(find).toBeFocused();
+    // Cmd/Ctrl+K from anywhere on the Journey page, and part of the title in
+    // lower case: what is matched on is the letters, not the capitals.
+    await findStepByName(
+      page,
+      bottomMost.title.slice(0, 6).toLowerCase(),
+      bottomMost.title,
+    );
 
-    // Part of the title, in lower case: what is matched on is the letters,
-    // not the capitals.
-    await page.keyboard.type(bottomMost.title.slice(0, 6).toLowerCase());
-    const option = page
-      .getByRole("listbox", { name: "Steps" })
-      .getByRole("option", { name: bottomMost.title, exact: true });
-    await expect(option).toBeVisible();
-    await option.click();
-
-    // Choosing it opens that Step in the panel and brings its box back onto
-    // the map.
-    await expect(page.getByLabel("Step title")).toHaveValue(bottomMost.title);
-    await expect
-      .poll(
-        async () =>
-          (await nodeViews(page)).find(
-            (view) => view.title === bottomMost.title,
-          )?.fullyInside,
-        { timeout: 10_000 },
-      )
-      .toBe(true);
-
-    // Centered on it, rather than nudged just far enough to fit it in: a
-    // Step found by name is one the Author is going to read.
-    await settledTransform(page);
-    const frame = await canvas(page).boundingBox();
-    expect(frame, "the canvas has no box yet").not.toBeNull();
-    const box = await canvasNode(page, bottomMost.title).boundingBox();
-    expect(box, "the found box has no box").not.toBeNull();
-    expect(
-      Math.abs(box!.x + box!.width / 2 - (frame!.x + frame!.width / 2)),
-    ).toBeLessThan(frame!.width / 4);
-    expect(
-      Math.abs(box!.y + box!.height / 2 - (frame!.y + frame!.height / 2)),
-    ).toBeLessThan(frame!.height / 4);
+    // Choosing it brought its box back onto the map, and centered it there
+    // rather than nudging it just far enough in to fit: a Step found by name
+    // is one the Author is going to read.
+    await expectBoxOnMap(page, bottomMost.title);
+    await expectCenteredOnMap(page, bottomMost.title);
 
     // And the field is closed and empty behind it, ready for the next find.
-    await expect(page.getByRole("listbox", { name: "Steps" })).toHaveCount(0);
+    const find = page.getByRole("combobox", { name: "Find step" });
+    const stepsListbox = page.getByRole("listbox", { name: "Steps" });
+    await expect(stepsListbox).toHaveCount(0);
     await expect(find).toHaveValue("");
 
     await page.screenshot({
       path: "test-results/canvas-find-step/canvas-find-step.png",
       fullPage: true,
     });
+
+    // The same field without the pointer, on the same seeded map: back into
+    // it with Cmd/Ctrl+K, and everything after this is typed.
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(find).toBeFocused();
+
+    // A query no Step answers: nothing to choose from, and the field says so
+    // rather than offering an empty list.
+    const options = stepsListbox.getByRole("option");
+    await page.keyboard.type("zzzzz");
+    await expect(options).toHaveCount(0);
+    await expect(
+      page.getByText("No steps match", { exact: true }),
+    ).toBeVisible();
+
+    // Escape twice: the list first, so an Author who opened it by mistake
+    // still has what they typed, and what they typed second.
+    await page.keyboard.press("Escape");
+    await expect(stepsListbox).toHaveCount(0);
+    await expect(find).toHaveValue("zzzzz");
+    await page.keyboard.press("Escape");
+    await expect(find).toHaveValue("");
+
+    // Arrowing opens the list on its first Step, and wraps round its end.
+    await page.keyboard.press("ArrowDown");
+    await expect(options.first()).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowUp");
+    await expect(options.last()).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowDown");
+    await expect(options.first()).toHaveAttribute("aria-selected", "true");
+
+    // Another Step entirely, typed and taken with Enter: one whose title no
+    // other Step's title contains, so the single match is the Step meant.
+    const everyTitle = await optionNames(stepsListbox);
+    const another = everyTitle.find(
+      (title) =>
+        title !== bottomMost.title &&
+        everyTitle.filter((other) =>
+          other.toLowerCase().includes(title.toLowerCase()),
+        ).length === 1,
+    );
+    expect(another, "no Step's title picks out only itself").toBeDefined();
+
+    await page.keyboard.type(another!);
+    await expect(options).toHaveCount(1);
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+
+    // That Step is what the panel opens on, and the field is empty and closed
+    // behind it again.
+    await expect(page.getByLabel("Step title")).toHaveValue(another!);
+    await expect(find).toHaveValue("");
+    await expect(stepsListbox).toHaveCount(0);
   });
 
   test("canvas-find-step-lists-map-order", async ({ page, context }) => {
@@ -2081,9 +2095,8 @@ test.describe("authoring from the map", () => {
     });
   });
 
-  test.describe("on the seeded map", () => {
-    // Thirty-six Steps is a map to be read rather than a thumbnail: the widest
-    // screen an Author would use is what a Journey this size is worked on.
+  test.describe("the seeded map, recorded", () => {
+    // The wide viewport, for the reason the outer "the seeded map" gives.
     test.use({ viewport: { width: 1600, height: 1200 } });
 
     test("canvas-find-duplicate-and-edit", async ({ page, context }) => {
@@ -2107,15 +2120,7 @@ test.describe("authoring from the map", () => {
 
       // Found by name from anywhere on the Journey page: part of the title,
       // in lower case, and the Step is opened and centered on the map.
-      await page.keyboard.press("ControlOrMeta+k");
-      const find = page.getByRole("combobox", { name: "Find step" });
-      await expect(find).toBeFocused();
-      await page.keyboard.type("prefa");
-      await page
-        .getByRole("listbox", { name: "Steps" })
-        .getByRole("option", { name: "Preface", exact: true })
-        .click();
-      await expect(page.getByLabel("Step title")).toHaveValue("Preface");
+      await findStepByName(page, "prefa", "Preface");
 
       // Duplicated from its own box on the map.
       await boxToolbar(page, "Preface")
@@ -2156,7 +2161,7 @@ test.describe("authoring from the map", () => {
       expect(copy, "the copy is gone from the Draft").toBeDefined();
       expect(copy!.choices).toEqual([]);
       // What the Author typed into it, within the content it was copied with:
-      // the whole reading rather than the peek's opening 140 characters.
+      // the whole reading rather than the peek's opening `PREVIEW_LIMIT`.
       expect(contentPreview(copy!.content, 10_000)).toContain(opening);
 
       const original = Object.values(stored.steps).find(

@@ -377,6 +377,32 @@ describe("duplicateStep", () => {
     );
   });
 
+  it("does not share the copy's Prompt object identity with the original's", () => {
+    const prompted: Step = {
+      ...step("prompted", [], { title: "Prompted" }),
+      prompt: { type: "free_text", label: "Name?", required: true },
+    };
+    const document: GraphDocument = {
+      ...buildDocument(),
+      steps: byId([prompted]),
+      startStepId: "prompted",
+    };
+
+    const { document: next, stepId } = duplicateStep(document, "prompted");
+
+    expect(next.steps[stepId].prompt).toEqual(prompted.prompt);
+    expect(next.steps[stepId].prompt).not.toBe(prompted.prompt);
+  });
+
+  it("names the copy of a Step with a blank title from its id", () => {
+    const document = buildDocument();
+    const untitled = updateStep(document, "ending-a", { title: "   " });
+
+    const { document: next, stepId } = duplicateStep(untitled, "ending-a");
+
+    expect(next.steps[stepId].title).toBe("ending-a copy");
+  });
+
   it("trims the title so the whole stays within the schema's 200 characters", () => {
     const document = buildDocument();
     const withLongTitle = updateStep(document, "ending-a", {

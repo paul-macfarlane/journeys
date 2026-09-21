@@ -354,7 +354,7 @@ export function sanitizeContent(input: unknown): SanitizeContentResult {
 }
 
 /** How much of a Step's content a peek at its box on the map shows. */
-const PREVIEW_LIMIT = 140;
+export const PREVIEW_LIMIT = 140;
 
 /** The mark a cut preview ends with, so a glance reads as an opening. */
 const ELLIPSIS = "…";
@@ -389,8 +389,8 @@ function collectText(blocks: Array<Block | ListItem>, into: string[]): void {
  *
  * Every paragraph, heading, and list item in document order, joined by single
  * spaces with the whitespace collapsed; content longer than `limit` is cut
- * there and marked with an ellipsis. Pure — no DOM — so the runner, the seed
- * script, and a test can all ask for the same reading.
+ * there and marked with an ellipsis. Pure — no DOM — so the map and a test
+ * read the same thing.
  */
 export function contentPreview(
   content: Content,

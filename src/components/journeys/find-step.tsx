@@ -160,7 +160,9 @@ export function FindStep({
         placeholder="Find step…"
         aria-autocomplete="list"
         aria-expanded={open}
-        aria-controls={listboxId}
+        // The listbox is rendered only while the field is open, so the id is
+        // only named while there is something for it to name.
+        aria-controls={open ? listboxId : undefined}
         aria-activedescendant={
           open && active >= 0 ? `${optionIdPrefix}-${active}` : undefined
         }

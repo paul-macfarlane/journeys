@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   contentPreview,
   contentSchema,
+  PREVIEW_LIMIT,
   sanitizeContent,
   type Content,
 } from "@/lib/graph/content";
@@ -555,17 +556,19 @@ describe("contentPreview", () => {
   });
 
   it("leaves content exactly the length of the limit whole", () => {
-    const exact = "x".repeat(140);
+    const exact = "x".repeat(PREVIEW_LIMIT);
 
     expect(contentPreview(sentence(exact))).toBe(exact);
-    expect(contentPreview(sentence(exact))).toHaveLength(140);
+    expect(contentPreview(sentence(exact))).toHaveLength(PREVIEW_LIMIT);
   });
 
   it("cuts content one character past the limit and marks the cut", () => {
-    const overLong = "x".repeat(141);
+    const overLong = "x".repeat(PREVIEW_LIMIT + 1);
 
-    expect(contentPreview(sentence(overLong))).toBe(`${"x".repeat(140)}…`);
-    expect(contentPreview(sentence(overLong))).toHaveLength(141);
+    expect(contentPreview(sentence(overLong))).toBe(
+      `${"x".repeat(PREVIEW_LIMIT)}…`,
+    );
+    expect(contentPreview(sentence(overLong))).toHaveLength(PREVIEW_LIMIT + 1);
   });
 
   it("cuts at the limit it is given", () => {

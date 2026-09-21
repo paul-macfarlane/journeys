@@ -63,8 +63,13 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   its endings carry. The journey is built on the map too: dragging from a
   box's connect dot onto another box makes the choice between them (and
   dragging an arrow's head onto a third box moves it there), the open box's
-  toolbar adds the next step, makes it the start or deletes it, and clicking
-  an arrow opens its choice for renaming or deletes it with the Delete key.
+  toolbar adds the next step, duplicates the step, zooms the map to it, makes
+  it the start or deletes it — the panel's footer duplicates it too — and
+  clicking an arrow opens its choice for renaming or deletes it with the
+  Delete key. The map is read as well as built: hovering or focusing a box
+  shows the opening of that step's content without opening it, and the arrow
+  keys walk from box to nearest box, where Enter opens the one the keyboard is
+  on and Escape steps back out to the map itself.
   Problems are listed on the step they belong to and in a live count above
   the map, and the "Find step" field above the map — reached with Cmd/Ctrl+K
   from anywhere on the page — filters the steps by title as they are typed,
