@@ -10,11 +10,14 @@
  * created from a Choice: it opens with its title field focused so the Author
  * names it in the same breath. `focusChoiceId` is the same move one level
  * down — a Choice drawn on the map, or one whose arrow was clicked, opens its
- * Step with that Choice's label field focused.
+ * Step with that Choice's label field focused. `center` is for a Step opened
+ * from "Find step": the map goes to its box and centers on it, rather than
+ * leaving a box that is already on the map where it stands.
  */
 export type SelectStepOptions = {
   focusTitle?: boolean;
   focusChoiceId?: string;
+  center?: boolean;
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;

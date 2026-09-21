@@ -10,12 +10,12 @@ import {
   type SaveDraftActionResult,
 } from "@/app/projects/[projectId]/journeys/actions";
 import { counted, type SelectStep } from "@/components/journeys/editor-shared";
+import { FindStep } from "@/components/journeys/find-step";
 import {
   JourneyCanvas,
   type CanvasArrow,
 } from "@/components/journeys/journey-canvas";
 import { OutcomeList } from "@/components/journeys/outcome-list";
-import { StepList } from "@/components/journeys/step-list";
 import { StepPanel } from "@/components/journeys/step-panel";
 import { Button } from "@/components/ui/button";
 import type { Content } from "@/lib/graph/content";
@@ -34,8 +34,9 @@ import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /**
- * The Draft editor: a step list beside a panel, with the Journey's Outcomes
- * above the list. Everything an Author changes happens in the document this
+ * The Draft editor: the map of the Journey beside a panel on the Step the
+ * Author has open, with "Find step" above the map and the Journey's Outcomes
+ * beneath it. Everything an Author changes happens in the document this
  * component holds; the server hears about it through one autosave.
  *
  * Why the whole document rather than per-field actions: a Draft is one jsonb
@@ -86,6 +87,11 @@ export function DraftEditor({
   // Counts the times the Draft was replaced from outside this editor, so the
   // rich text surface can be re-fed even when the selected Step is the same.
   const [revision, setRevision] = useState(0);
+  /**
+   * Counts the times Cmd/Ctrl+K asked for the "Find step" field, so a second
+   * press puts the Author back in it with what they typed selected.
+   */
+  const [findFocusRequest, setFindFocusRequest] = useState(0);
 
   // The save loop reads these rather than state: it runs from a timer and
   // from an event handler, both of which would otherwise see whatever render
@@ -248,6 +254,26 @@ export function DraftEditor({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [journeyId, projectId]);
 
+  // Cmd/Ctrl+K from anywhere on the Journey page is the way into "Find step",
+  // wherever the Author's hands happen to be. On `window` rather than on the
+  // field, because the point of it is not having to reach for the field; the
+  // Journey page is the only page that mounts this editor, so nothing else in
+  // the app hears it. A press something else has already answered is left
+  // alone.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      if (!event.metaKey && !event.ctrlKey) return;
+      if (event.key.toLowerCase() !== "k") return;
+
+      event.preventDefault();
+      setFindFocusRequest((current) => current + 1);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   /** Focus leaving the editor entirely is the Author pausing: write now. */
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     const next = event.relatedTarget;
@@ -289,15 +315,20 @@ export function DraftEditor({
   );
 
   /**
-   * Counts the times a Step was opened, the one already open included, so the
-   * map can bring its box back each time rather than only when the Step
-   * changed.
+   * What the map is asked for each time a Step is opened: `request` counts
+   * the openings, the one already open included, so the map can bring its box
+   * back each time rather than only when the Step changed, and `center` says
+   * the Step was found by name, which is shown in the middle of the map
+   * rather than left where it stands.
    */
-  const [locateRequest, setLocateRequest] = useState(0);
+  const [locate, setLocate] = useState({ request: 0, center: false });
 
   const selectStep: SelectStep = useCallback((stepId, options) => {
     setSelectedStepId(stepId);
-    setLocateRequest((current) => current + 1);
+    setLocate((current) => ({
+      request: current.request + 1,
+      center: options?.center === true,
+    }));
     setTitleFocusStepId(options?.focusTitle ? stepId : null);
 
     const focusChoiceId = options?.focusChoiceId;
@@ -446,9 +477,9 @@ export function DraftEditor({
   // button and its list stay a deliberate, server-side question.
   const liveProblems = useMemo(() => validateForPublish(document), [document]);
 
-  // The document laid out once: the map draws from it, and the step list
-  // beneath the map reads its order off the same boxes rather than laying the
-  // whole document out a second time on every change.
+  // The document laid out once: the map draws from it, and "Find step" above
+  // the map reads its order off the same boxes rather than laying the whole
+  // document out a second time on every change.
   const layout = useMemo(() => layoutGraph(document), [document]);
   const stepOrder = useMemo(() => mapOrder(layout), [layout]);
 
@@ -639,11 +670,19 @@ export function DraftEditor({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <div className="flex flex-col gap-6">
+          {/* Above the map, because what it finds is on the map. */}
+          <FindStep
+            document={document}
+            order={stepOrder}
+            focusRequest={findFocusRequest}
+            onSelectStep={selectStep}
+          />
+
           <JourneyCanvas
             document={document}
             layout={layout}
             selectedStepId={selectedStep?.id ?? ""}
-            locateRequest={locateRequest}
+            locate={locate}
             problems={liveProblems}
             onSelectStep={selectStep}
             onAddStep={addNewStep}
@@ -657,17 +696,9 @@ export function DraftEditor({
             onRemoveChoices={removeChoices}
           />
 
-          {/* The map is the way around the Draft; the list stays as the
-              second one, for reading every Step in walk order. */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <OutcomeList document={document} onChange={applyEdit} />
-            <StepList
-              document={document}
-              order={stepOrder}
-              selectedStepId={selectedStep?.id ?? ""}
-              onSelectStep={selectStep}
-            />
-          </div>
+          {/* The Journey's Outcomes, beneath the map the Endings they group
+              are drawn on. */}
+          <OutcomeList document={document} onChange={applyEdit} />
         </div>
 
         {selectedStep ? (

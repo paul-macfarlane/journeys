@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   createJourney,
   createProject,
-  openStepList,
+  openFindStep,
   uniqueSuffix,
 } from "./setup/authoring";
 import {
@@ -224,9 +224,9 @@ test("publish-versions-and-restore", async ({ page, context }) => {
 
   // Version 2.
   await page.goto(journeyPath);
-  await openStepList(page);
+  await openFindStep(page);
   await expect(
-    page.getByRole("list", { name: "Steps" }).getByText(editedStartTitle),
+    page.getByRole("listbox", { name: "Steps" }).getByText(editedStartTitle),
   ).toBeVisible();
   await expect(page.getByLabel("Step content")).toContainText(editedStartText);
   // The edit is something participants have not seen, so Publish is back.
@@ -261,10 +261,10 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   // The Draft is version 1's document again, on the page and in the row —
   // including the rich text of the Start, which was on screen throughout and
   // must show version 1's words, not the edit it showed a moment ago.
-  await openStepList(page);
+  await openFindStep(page);
   await expect(
     page
-      .getByRole("list", { name: "Steps" })
+      .getByRole("listbox", { name: "Steps" })
       .getByText(START_STEP_TITLE, { exact: true }),
   ).toBeVisible();
   await expect(page.getByLabel("Step content")).toContainText(

@@ -18,7 +18,7 @@ import case3 from "../scripts/seed/journey-stories/case-3.json";
 import {
   createJourney,
   createProject,
-  openStepList,
+  openFindStep,
   uniqueSuffix,
 } from "./setup/authoring";
 import { dimmingDocument, writeDraftDocument } from "./setup/documents";
@@ -130,6 +130,36 @@ function canvasEdges(page: Page) {
 /** The arrows marked with a problem. */
 function problemEdges(page: Page) {
   return canvas(page).locator('[data-choice-id]:not([data-problems="0"])');
+}
+
+/**
+ * The Steps "Find step" is offering, in the order it offers them. An option's
+ * accessible name is the Step's title alone — the Start and Ending badges and
+ * the choice count inside it are decoration — so the name is read rather than
+ * the text.
+ */
+function optionNames(listbox: Locator): Promise<string[]> {
+  return listbox
+    .getByRole("option")
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("aria-label") ?? ""),
+    );
+}
+
+/** Every box's title and where it sits on screen, in one round trip. */
+function boxPositions(
+  page: Page,
+): Promise<{ title: string; top: number; left: number }[]> {
+  return canvasNodes(page).evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        title: element.getAttribute("aria-label") ?? "",
+        top: Math.round(rect.top),
+        left: Math.round(rect.left),
+      };
+    }),
+  );
 }
 
 async function renameStep(page: Page, title: string): Promise<void> {
@@ -623,11 +653,11 @@ test.describe("the seeded map", () => {
       )
       .toBeGreaterThan(0);
 
-    // The Step to open: the last one the list offers that is off the map
+    // The Step to open: the last one "Find step" offers that is off the map
     // right now, falling back to any that is not wholly on it.
-    await openStepList(page);
-    const stepsList = page.getByRole("list", { name: "Steps" });
-    const listed = await stepsList.getByRole("button").allInnerTexts();
+    await openFindStep(page);
+    const stepsListbox = page.getByRole("listbox", { name: "Steps" });
+    const listed = await optionNames(stepsListbox);
     const views = await nodeViews(page);
     const isOffScreen = (title: string) =>
       views.some((view) => view.title === title && !view.showing);
@@ -637,10 +667,13 @@ test.describe("the seeded map", () => {
       listed.findLast(isOffScreen) ?? listed.findLast(isPartly) ?? "";
     expect(target).not.toBe("");
 
-    await stepsList.getByRole("button", { name: target, exact: true }).click();
+    await stepsListbox
+      .getByRole("option", { name: target, exact: true })
+      .click();
     await expect(page.getByLabel("Step title")).toHaveValue(target);
 
-    // Opening it brought its box onto the map.
+    // Opening it brought its box onto the map — centered on it, as a Step
+    // chosen from "Find step" always is.
     await expect
       .poll(
         async () =>
@@ -822,7 +855,7 @@ test.describe("the seeded map", () => {
       .toBe(true);
   });
 
-  test("canvas-step-list-follows-map", async ({ page, context }) => {
+  test("canvas-find-step", async ({ page, context }) => {
     const { journeyId } = await startJourney(page, context);
 
     const document = graphDocumentSchema.parse(case3);
@@ -837,23 +870,104 @@ test.describe("the seeded map", () => {
       .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
       .toEqual([]);
 
-    await openStepList(page);
-    const stepsList = page.getByRole("list", { name: "Steps" });
-    const listedTitles = await stepsList.getByRole("button").allInnerTexts();
+    // The Step at the foot of the map, read off the map itself: the furthest
+    // one from where an Author zoomed into the top of it is looking.
+    const bottomMost = (await boxPositions(page))
+      .slice()
+      .sort((a, b) => b.top - a.top)[0];
+    expect(bottomMost.title).not.toBe("");
+
+    // Zoomed in until that box is no longer wholly on the map, which is the
+    // state a Step found by name has to be brought back from. Bounded, so a
+    // layout that never pushes it off fails the assertion rather than hangs.
+    const zoomIn = canvas(page).getByRole("button", { name: /zoom in/i });
+    let offMap = false;
+    for (let click = 0; click < 8 && !offMap; click += 1) {
+      await zoomIn.click();
+      offMap =
+        (await nodeViews(page)).find((view) => view.title === bottomMost.title)
+          ?.fullyInside === false;
+    }
+    expect(
+      offMap,
+      `"${bottomMost.title}" was still fully inside the canvas frame after zooming in`,
+    ).toBe(true);
+
+    // Cmd/Ctrl+K from anywhere on the Journey page is the way into the field.
+    await page.keyboard.press("ControlOrMeta+k");
+    const find = page.getByRole("combobox", { name: "Find step" });
+    await expect(find).toBeFocused();
+
+    // Part of the title, in lower case: what is matched on is the letters,
+    // not the capitals.
+    await page.keyboard.type(bottomMost.title.slice(0, 6).toLowerCase());
+    const option = page
+      .getByRole("listbox", { name: "Steps" })
+      .getByRole("option", { name: bottomMost.title, exact: true });
+    await expect(option).toBeVisible();
+    await option.click();
+
+    // Choosing it opens that Step in the panel and brings its box back onto
+    // the map.
+    await expect(page.getByLabel("Step title")).toHaveValue(bottomMost.title);
+    await expect
+      .poll(
+        async () =>
+          (await nodeViews(page)).find(
+            (view) => view.title === bottomMost.title,
+          )?.fullyInside,
+        { timeout: 10_000 },
+      )
+      .toBe(true);
+
+    // Centered on it, rather than nudged just far enough to fit it in: a
+    // Step found by name is one the Author is going to read.
+    await settledTransform(page);
+    const frame = await canvas(page).boundingBox();
+    expect(frame, "the canvas has no box yet").not.toBeNull();
+    const box = await canvasNode(page, bottomMost.title).boundingBox();
+    expect(box, "the found box has no box").not.toBeNull();
+    expect(
+      Math.abs(box!.x + box!.width / 2 - (frame!.x + frame!.width / 2)),
+    ).toBeLessThan(frame!.width / 4);
+    expect(
+      Math.abs(box!.y + box!.height / 2 - (frame!.y + frame!.height / 2)),
+    ).toBeLessThan(frame!.height / 4);
+
+    // And the field is closed and empty behind it, ready for the next find.
+    await expect(page.getByRole("listbox", { name: "Steps" })).toHaveCount(0);
+    await expect(find).toHaveValue("");
+
+    await page.screenshot({
+      path: "test-results/canvas-find-step/canvas-find-step.png",
+      fullPage: true,
+    });
+  });
+
+  test("canvas-find-step-lists-map-order", async ({ page, context }) => {
+    const { journeyId } = await startJourney(page, context);
+
+    const document = graphDocumentSchema.parse(case3);
+    const stepCount = Object.keys(document.steps).length;
+
+    await expectSaved(page);
+    await writeDraftDocument(journeyId, document);
+    await page.reload();
+
+    await expect(canvasNodes(page)).toHaveCount(stepCount);
+    await expect
+      .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
+      .toEqual([]);
+
+    // Nothing typed: every Step in the Draft is offered.
+    await openFindStep(page);
+    const listedTitles = await optionNames(
+      page.getByRole("listbox", { name: "Steps" }),
+    );
 
     // Every box's title and rect in one round trip, sorted the way
     // `mapOrder` orders the canvas: top to bottom, then left to right.
-    const boxes = await canvasNodes(page).evaluateAll((elements) =>
-      elements.map((element) => {
-        const rect = element.getBoundingClientRect();
-        return {
-          title: element.getAttribute("aria-label") ?? "",
-          top: Math.round(rect.top),
-          left: Math.round(rect.left),
-        };
-      }),
-    );
-    const mapOrderedTitles = boxes
+    const mapOrderedTitles = (await boxPositions(page))
       .slice()
       .sort((a, b) => a.top - b.top || a.left - b.left)
       .map((box) => box.title);
@@ -861,13 +975,8 @@ test.describe("the seeded map", () => {
     expect(listedTitles).toHaveLength(stepCount);
     expect(listedTitles).toEqual(mapOrderedTitles);
 
-    await expect(
-      page.getByRole("list", { name: "Not yet reached" }),
-    ).toHaveCount(0);
-    await expect(page.getByText("Not reachable from the start")).toHaveCount(0);
-
     await page.screenshot({
-      path: "test-results/canvas-step-list-follows-map/canvas-step-list-follows-map.png",
+      path: "test-results/canvas-find-step-lists-map-order/canvas-find-step-lists-map-order.png",
       fullPage: true,
     });
   });

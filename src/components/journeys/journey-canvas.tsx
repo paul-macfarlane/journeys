@@ -55,8 +55,8 @@ import "@xyflow/react/dist/style.css";
  *
  * Layout is recomputed by `layoutGraph` from the document on every change and
  * never stored — once, by the editor, which hands the same layout to the map
- * and to the step list beneath it. No Author drags a node, so there is no
- * hand-placed position to
+ * and to the "Find step" field above it. No Author drags a node, so there is
+ * no hand-placed position to
  * preserve, and a stored one would go stale the moment a Choice was added:
  * what the map is for is showing the shape the Journey has now. `stepSchema`
  * keeps a `position` field for a later decision; nothing here reads or writes
@@ -530,10 +530,13 @@ export type JourneyCanvasProps = {
   layout: GraphLayout;
   selectedStepId: string;
   /**
-   * Bumped every time a Step is opened, the same Step included, so re-opening
-   * the one already in the panel brings its box back onto the map.
+   * What the last opening of a Step asked the map for. `request` is bumped
+   * every time one is opened, the same Step included, so re-opening the one
+   * already in the panel brings its box back onto the map. `center` is set
+   * for a Step found by name, which is shown in the middle of the map rather
+   * than left where it stands.
    */
-  locateRequest: number;
+  locate: { request: number; center: boolean };
   problems: PublishProblem[];
   /** The one arrow the Author has clicked, if any. */
   selectedArrow: CanvasArrow | null;
@@ -560,7 +563,7 @@ function CanvasFlow({
   document,
   layout,
   selectedStepId,
-  locateRequest,
+  locate,
   problems,
   selectedArrow,
   onSelectStep,
@@ -760,13 +763,14 @@ function CanvasFlow({
     .join(" ");
   const lastNodeIdKey = useRef(nodeIdKey);
 
-  // Opening a Step from the list, a problem, or a Choice's target can name a
-  // box that is off the map; the map goes to it. Every opening counts, the
-  // Step already in the panel included — the editor bumps `locateRequest`
-  // each time it opens one — so a second click on the same list entry after
-  // the Author has panned away brings the box back rather than doing
-  // nothing. A box already on the map is left where the Author put it, and so
-  // is the rest of the view.
+  // Opening a Step from "Find step", a problem, or a Choice's target can name
+  // a box that is off the map; the map goes to it. Every opening counts, the
+  // Step already in the panel included — the editor bumps `locate.request`
+  // each time it opens one — so a second choice of the same Step after the
+  // Author has panned away brings the box back rather than doing nothing. A
+  // box already on the map is left where the Author put it, and so is the
+  // rest of the view — except for a Step found by name, which the Author has
+  // gone looking for and is shown in the middle of the map wherever it was.
   //
   // Declared before the fit-to-all below so that a render which changed the
   // set of boxes — a Step added, which is also the Step now open — is still
@@ -774,14 +778,14 @@ function CanvasFlow({
   const located = useRef<{ stepId: string; request: number } | null>(null);
   useEffect(() => {
     const previous = located.current;
-    located.current = { stepId: selectedStepId, request: locateRequest };
+    located.current = { stepId: selectedStepId, request: locate.request };
 
     // The first render is the initial fit-to-all's, which shows everything.
     if (previous === null) return;
     // Nothing was asked for: this render is about something else entirely.
     if (
       previous.stepId === selectedStepId &&
-      previous.request === locateRequest
+      previous.request === locate.request
     ) {
       return;
     }
@@ -789,14 +793,16 @@ function CanvasFlow({
     if (paneWidth === 0 || paneHeight === 0) return;
     if (!nodes.some((node) => node.id === selectedStepId)) return;
 
-    const bounds = getNodesBounds([selectedStepId]);
-    const { x, y, zoom } = getViewport();
-    const onMap =
-      bounds.x * zoom + x >= -IN_VIEW_TOLERANCE &&
-      bounds.y * zoom + y >= -IN_VIEW_TOLERANCE &&
-      (bounds.x + bounds.width) * zoom + x <= paneWidth + IN_VIEW_TOLERANCE &&
-      (bounds.y + bounds.height) * zoom + y <= paneHeight + IN_VIEW_TOLERANCE;
-    if (onMap) return;
+    if (!locate.center) {
+      const bounds = getNodesBounds([selectedStepId]);
+      const { x, y, zoom } = getViewport();
+      const onMap =
+        bounds.x * zoom + x >= -IN_VIEW_TOLERANCE &&
+        bounds.y * zoom + y >= -IN_VIEW_TOLERANCE &&
+        (bounds.x + bounds.width) * zoom + x <= paneWidth + IN_VIEW_TOLERANCE &&
+        (bounds.y + bounds.height) * zoom + y <= paneHeight + IN_VIEW_TOLERANCE;
+      if (onMap) return;
+    }
 
     void fitView({
       nodes: [{ id: selectedStepId }],
@@ -807,7 +813,8 @@ function CanvasFlow({
     fitView,
     getNodesBounds,
     getViewport,
-    locateRequest,
+    locate.center,
+    locate.request,
     nodeIdKey,
     nodes,
     paneHeight,

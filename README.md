@@ -47,8 +47,8 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   adds one by the email of an account that has signed in before, and removes
   one — never the last. Members only; anyone else gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
-  title and description, delete it, and edit its draft — pick a step from the
-  list and change its title and rich text in the panel, add, reorder,
+  title and description, delete it, and edit its draft — find a step by name
+  and change its title and rich text in the panel, add, reorder,
   retarget and remove its choices (creating the step a choice needs in the
   same motion), make a step the start, delete a step and see which choices
   break, manage the journey's outcomes and tag each ending with one, and run
@@ -66,8 +66,10 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   toolbar adds the next step, makes it the start or deletes it, and clicking
   an arrow opens its choice for renaming or deletes it with the Delete key.
   Problems are listed on the step they belong to and in a live count above
-  the map, and the step list under the map follows the map's own order behind
-  a "Steps" disclosure. The draft autosaves. Publish the draft as an
+  the map, and the "Find step" field above the map — reached with Cmd/Ctrl+K
+  from anywhere on the page — filters the steps by title as they are typed,
+  lists every one of them in the map's own order when nothing is, and centers
+  the map on whichever is chosen. The draft autosaves. Publish the draft as an
   immutable version (refused, with the problems listed, while the
   draft has any), unpublish to take it back from participants, preview it, and
   see every published version — number, when, and who published it — with the

@@ -6,7 +6,7 @@ import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import {
   createJourney,
   createProject,
-  openStepList,
+  openFindStep,
   uniqueSuffix,
 } from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
@@ -70,17 +70,17 @@ test("journey-draft", async ({ page, context }) => {
   await expect(page.getByRole("heading", { name: "Steps" })).toBeVisible();
   await expect(page.getByText("1 step · 0 outcomes")).toBeVisible();
 
-  await openStepList(page);
-  const stepItems = page
-    .getByRole("list", { name: "Steps" })
-    .getByRole("listitem");
-  await expect(stepItems).toHaveCount(1);
+  await openFindStep(page);
+  const stepOptions = page
+    .getByRole("listbox", { name: "Steps" })
+    .getByRole("option");
+  await expect(stepOptions).toHaveCount(1);
 
   // The one Step is titled "Start", is the Start, and — having no Choices
   // yet — is also an Ending, so "Start" reads twice: once as its title and
   // once as its badge.
-  await expect(stepItems.getByText("Start", { exact: true })).toHaveCount(2);
-  await expect(stepItems.getByText("Ending", { exact: true })).toBeVisible();
+  await expect(stepOptions.getByText("Start", { exact: true })).toHaveCount(2);
+  await expect(stepOptions.getByText("Ending", { exact: true })).toBeVisible();
 
   // What the page summarizes is what the row holds.
   const created = await readDraftRow(journeyId);
@@ -102,13 +102,13 @@ test("journey-draft", async ({ page, context }) => {
   await page.reload();
 
   await expect(page.getByText("44 steps · 3 outcomes")).toBeVisible();
-  await openStepList(page);
-  const startItem = page
-    .getByRole("list", { name: "Steps" })
-    .getByRole("listitem")
+  await openFindStep(page);
+  const startOption = page
+    .getByRole("listbox", { name: "Steps" })
+    .getByRole("option")
     .filter({ hasText: "The light fails" });
-  await expect(startItem).toHaveCount(1);
-  await expect(startItem.getByText("Start", { exact: true })).toBeVisible();
+  await expect(startOption).toHaveCount(1);
+  await expect(startOption.getByText("Start", { exact: true })).toBeVisible();
 
   // The round trip that matters: stored and read back, unchanged.
   const stored = await readDraftRow(journeyId);
