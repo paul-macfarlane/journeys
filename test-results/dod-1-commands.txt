@@ -1,29 +1,31 @@
-# DoD-1 command output, ticket 09 (canvas) — captured by the orchestrator at commit f24a106
-# Command: DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
-# Sanitized: dotenv tip lines were removed. No migration in this ticket, so db:migrate is not part of the run.
-commit: f24a106
-date: 2026-09-21T04:49:55Z
-=== pnpm lint
+# DoD-1 verified run command, captured at 9ad350f on 2026-09-21T15:30Z
+# Removed before commit: 0 dotenv tip lines, 0 React development-only notices about the runner's inline script on client-rendered step pages (no effect in production builds), 0 Next dev 'Error: aborted' lines from clients closing mid-request. Nothing else edited.
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=... pnpm test:e2e
+
+## pnpm lint
 
 > journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
 > eslint
 
-exit: 0
-=== pnpm format:check
+exit=0
+
+## pnpm format:check
 
 > journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
 > prettier --check .
 
 Checking formatting...
 All matched files use Prettier code style!
-exit: 0
-=== pnpm typecheck
+exit=0
+
+## pnpm typecheck
 
 > journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
 > tsc --noEmit
 
-exit: 0
-=== pnpm test
+exit=0
+
+## pnpm test
 
 > journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
 > vitest run
@@ -36,12 +38,13 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
 
  Test Files  10 passed (10)
-      Tests  172 passed (172)
-   Start at  00:50:02
-   Duration  440ms (transform 554ms, setup 0ms, import 1.33s, tests 220ms, environment 1ms)
+      Tests  183 passed (183)
+   Start at  11:30:27
+   Duration  422ms (transform 544ms, setup 0ms, import 1.33s, tests 218ms, environment 1ms)
 
-exit: 0
-=== pnpm build
+exit=0
+
+## pnpm build
 
 > journeys@0.1.0 build /Users/paulmacfarlane/Code/journeys
 > next build
@@ -50,15 +53,15 @@ exit: 0
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 4.4s
+✓ Compiled successfully in 4.7s
   Running TypeScript ...
-  Finished TypeScript in 4.0s ...
+  Finished TypeScript in 4.2s ...
   Collecting page data using 9 workers ...
   Generating static pages using 9 workers (0/5) ...
   Generating static pages using 9 workers (1/5) 
   Generating static pages using 9 workers (2/5) 
   Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 122ms
+✓ Generating static pages using 9 workers (5/5) in 118ms
   Finalizing page optimization ...
 
 Route (app)
@@ -80,4 +83,4 @@ Route (app)
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
 
-exit: 0
+exit=0
