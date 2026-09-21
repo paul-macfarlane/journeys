@@ -1,6 +1,6 @@
 # 18: Allow cycles
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -104,3 +104,35 @@ Two fresh reviewers (one per axis, opus) read the whole diff against the ticket,
 | risk: ADR-0001's body keeps the withdrawn rule; `decisions.md` line 96 had no cross-reference | ADR-0001, `decisions.md` | ADR-0001 by design (amendment line under Status); cross-reference added |
 
 **Remaining risks:** (1) the disambiguation rests on browsers restoring `history.state` per entry and on Next's `preserveCustomHistoryState` staying true — only the e2e would notice a regression; (2) a back/forward-cache restore still needs hydration to register `pageshow`, so a bfcache Back on a starved page is the one uncorrected path (Chromium never took bfcache in these runs); (3) `next dev` logs a React development-only "script tag while rendering" notice on step pages reached by a server-action redirect, where the inline script does not execute and `RunHistory` records the index instead — no effect in production builds, filtered from the e2e evidence; (4) ticket 10 inherits a path that is not a set (contract recorded on ticket 10 and in ADR-0002); (5) the 500 cap is arbitrary and reachable by a bot.
+
+### [CLOSEOUT] 2026-09-21 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/21 (`feat/18-allow-cycles` → `staging`). Per the tracker rule Paul set on 2026-09-21, this closeout commit carries `Status: done`; merging the PR is the acceptance that lands it on `staging`.
+
+**Repository delivery:** `journeys`, base `staging` at `0296893`, five commits: `400c3a2` D1 (opus), `8536675` D2 (sonnet), `8e4c5da` D3 (sonnet), `9ad350f` D4 review fixes (opus), `6fee81e` evidence and records (orchestrator). Direct checkout, no worktrees.
+
+**Exact verified run command** (local; docker Postgres on 5436; evidence captured at `9ad350f`, committed in `6fee81e`):
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+```
+
+Every command exits 0; Vitest 183 passed; Playwright 40 passed. The e2e evidence file notes the dev-only lines removed before commit (dotenv tips, the React development notice about the inline script, one Next dev "aborted" line).
+
+**Criterion verdicts (evidence under `test-results/`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 reducer cases (loop walked forward, Back by index, Choice preferred without an index, cap refuses the 501st, latest occurrence, self-loop stay, out-of-range index ignored); `validateForPublish` returns `[]` for a 2-cycle and a self-loop | PASS | `ac-1-seam-a-reducer-and-validation.txt` (60 tests) |
+| AC-2 the three seeded documents validate; case-1 70 Choices, case-2 105; `step-46`, `step-19`, `step-27`, `step-52` carry the restored Choices with the legacy labels and targets | PASS | `ac-2-seeded-documents.txt` (19 tests plus the printed Choices) |
+| AC-3 publishing a Draft with a loop succeeds | PASS | `publish-draft-with-loop/publish-draft-with-loop.png`, `dod-1-e2e.txt` ✓ |
+| AC-4 `runner-loop-and-back`: loop twice, browser Back truncates to the previous index with `backtrack_count` 1, loop again forward, reach the Ending; row path `[start, queue, start, queue, start, queue, waved-through]` | PASS | `runner-loop-and-back/runner-loop-and-back.png`, `dod-1-e2e.txt` ✓ |
+| AC-5 case 2 published from the committed document, BFS route to "I quit!", "Call your bunkmate's cousin's friend" lands on "Trafficking?" with the path ending `step-27, step-32` | PASS | `runner-case-2-restored-choice/runner-case-2-restored-choice.png`, `dod-1-e2e.txt` ✓ |
+| AC-6 ADR-0002 written; spec `[SCOPE CHANGE]` on file (PR #20) and the rule list, Back-navigation paragraph, and Seam A list amended; ADR-0001 amendment line; README updated | PASS | `ac-6-docs.txt` |
+| Path cap: forward move past 500 refused with the notice and a Start over control, nothing recorded (review addition) | PASS | `runner-path-cap/runner-path-cap.png`, `dod-1-e2e.txt` ✓ |
+| DoD-1 verified run command green | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` |
+| DoD-2 every PASS artifact committed; fixture journeys only, no participant data | PASS | `6fee81e`; the seeded case-2 walk and the loop fixtures hold authored narrative only |
+
+**Deviations (all approved by the orchestrator under the plan):** ticket 06's Choice-from-an-earlier-page rule kept as rule 6 (the ticket requires every existing reducer case to pass); the restore correction and index recording run from an inline pre-hydration script rather than only the client component (the ticket names the mechanism — history state and a path index — not where it runs); "Start over" is offered beside the path-full notice; a self-targeting Choice renders as a zero-length canvas edge (cosmetic, ticket 19); the D3 commit's `feat(seed)` scope undersells its docs content; ADR-0002 is longer than the plan's estimate.
+
+**Human follow-ups:** (1) review and merge PR #21; (2) if the seeded cases live on staging, rerun `DATABASE_URL=<Neon staging pooled string> pnpm seed:journey-stories pauljosephmacfarlane@gmail.com` after the merge so case 1 and case 2 regain their loops there; (3) ticket 16 (canvas authoring) becomes available once this PR merges, since it is blocked by 18.
