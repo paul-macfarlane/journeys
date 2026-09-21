@@ -6,6 +6,7 @@ import {
   type Page,
 } from "@playwright/test";
 
+import { contentPreview, PREVIEW_LIMIT } from "@/lib/graph/content";
 import {
   countCrossingPairs,
   type Point,
@@ -16,9 +17,11 @@ import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import case3 from "../scripts/seed/journey-stories/case-3.json";
 
 import {
+  chooseStep,
   createJourney,
   createProject,
-  openStepList,
+  findStepByName,
+  openFindStep,
   uniqueSuffix,
 } from "./setup/authoring";
 import { dimmingDocument, writeDraftDocument } from "./setup/documents";
@@ -51,10 +54,11 @@ import {
 test.describe.configure({ timeout: 180_000 });
 
 // `docs/agents/testing.md` names the canvas editor as the case for video: what
-// the two authoring tests below prove is a sequence of moves, not a final
-// screen. `video` is a worker option, which Playwright refuses inside a
-// describe, so it is set for the file; only those two tests keep their
-// recording, and the rest is Playwright's own scratch output.
+// the authoring tests below prove is a sequence of moves, not a final screen.
+// `video` is a worker option, which Playwright refuses inside a describe, so it
+// is set for the file; only the tests under the "authoring from the map"
+// describe keep their recording — its `afterEach` saves each one under the test
+// that made it — and the rest is Playwright's own scratch output.
 test.use({ video: "on" });
 
 const mintedAuthorIds: string[] = [];
@@ -132,6 +136,36 @@ function problemEdges(page: Page) {
   return canvas(page).locator('[data-choice-id]:not([data-problems="0"])');
 }
 
+/**
+ * The Steps "Find step" is offering, in the order it offers them. An option's
+ * accessible name is the Step's title alone — the Start and Ending badges and
+ * the choice count inside it are decoration — so the name is read rather than
+ * the text.
+ */
+function optionNames(listbox: Locator): Promise<string[]> {
+  return listbox
+    .getByRole("option")
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("aria-label") ?? ""),
+    );
+}
+
+/** Every box's title and where it sits on screen, in one round trip. */
+function boxPositions(
+  page: Page,
+): Promise<{ title: string; top: number; left: number }[]> {
+  return canvasNodes(page).evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        title: element.getAttribute("aria-label") ?? "",
+        top: Math.round(rect.top),
+        left: Math.round(rect.left),
+      };
+    }),
+  );
+}
+
 async function renameStep(page: Page, title: string): Promise<void> {
   await page.getByLabel("Step title").fill(title);
   await expect(page.getByLabel("Step title")).toHaveValue(title);
@@ -182,21 +216,26 @@ async function addOutcome(page: Page, label: string): Promise<void> {
 
 /** Every arrow's rendered path, sampled every 4 units into a polyline in flow coordinates. */
 function sampleArrowPaths(page: Page): Promise<Polyline[]> {
-  return canvas(page)
-    .locator("[data-choice-id] path.react-flow__edge-path")
-    .evaluateAll((paths) =>
-      paths.map((element) => {
-        const path = element as SVGPathElement;
-        const length = path.getTotalLength();
-        const samples = Math.max(16, Math.ceil(length / 4));
-        const points: { x: number; y: number }[] = [];
-        for (let index = 0; index <= samples; index += 1) {
-          const point = path.getPointAtLength((length * index) / samples);
-          points.push({ x: point.x, y: point.y });
-        }
-        return points;
-      }),
-    );
+  return samplePaths(
+    canvas(page).locator("[data-choice-id] path.react-flow__edge-path"),
+  );
+}
+
+/** The same sampling, over whichever arrows' drawn paths are handed to it. */
+function samplePaths(paths: Locator): Promise<Polyline[]> {
+  return paths.evaluateAll((elements) =>
+    elements.map((element) => {
+      const path = element as SVGPathElement;
+      const length = path.getTotalLength();
+      const samples = Math.max(16, Math.ceil(length / 4));
+      const points: { x: number; y: number }[] = [];
+      for (let index = 0; index <= samples; index += 1) {
+        const point = path.getPointAtLength((length * index) / samples);
+        points.push({ x: point.x, y: point.y });
+      }
+      return points;
+    }),
+  );
 }
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -217,6 +256,13 @@ function nodeBoxes(page: Page): Promise<Box[]> {
 
 /** Sub-pixel rounding, so a node flush against the edge is not "outside". */
 const TOLERANCE = 1;
+
+/**
+ * A handle's own centre sits a pixel inside the box it belongs to, so an arrow
+ * that leaves one starts a pixel inside too: a route that runs "through the
+ * box" is one that goes further in than that.
+ */
+const ROUTE_TOLERANCE = 2;
 
 function overlaps(a: Box, b: Box): boolean {
   return (
@@ -340,11 +386,69 @@ async function settledTransform(page: Page): Promise<string> {
   return last ?? "";
 }
 
+/**
+ * One box brought onto the map: the whole of it inside the Canvas frame.
+ * Polled, because bringing it there is an animation the browser finishes when
+ * it finishes.
+ */
+async function expectBoxOnMap(page: Page, title: string): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        (await nodeViews(page)).find((view) => view.title === title)
+          ?.fullyInside,
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
+/**
+ * The map centered on a box rather than nudged just far enough to fit it in:
+ * the box's middle within a quarter of the frame's width and height of the
+ * frame's own middle.
+ */
+async function expectCenteredOnMap(page: Page, title: string): Promise<void> {
+  await settledTransform(page);
+
+  const frame = await canvas(page).boundingBox();
+  expect(frame).not.toBeNull();
+  const box = await canvasNode(page, title).boundingBox();
+  expect(box).not.toBeNull();
+
+  expect(
+    Math.abs(box!.x + box!.width / 2 - (frame!.x + frame!.width / 2)),
+  ).toBeLessThan(frame!.width / 4);
+  expect(
+    Math.abs(box!.y + box!.height / 2 - (frame!.y + frame!.height / 2)),
+  ).toBeLessThan(frame!.height / 4);
+}
+
 /** One box's wrapper on the map, which is what carries its handles. */
 function canvasNodeBox(page: Page, title: string) {
   return canvas(page)
     .locator(".react-flow__node")
     .filter({ has: page.getByRole("button", { name: title, exact: true }) });
+}
+
+/**
+ * One box's rectangle in flow coordinates — the coordinates an arrow's path is
+ * drawn in, so the two can be compared. React Flow places a box by translating
+ * it inside the viewport, and the viewport carries the zoom, so the box's own
+ * offsets are its flow size whatever the map is zoomed to.
+ */
+function nodeFlowRect(page: Page, title: string): Promise<Box> {
+  return canvasNodeBox(page, title).evaluate((element) => {
+    const node = element as HTMLElement;
+    const at = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(
+      node.style.transform,
+    );
+    return {
+      x: at === null ? Number.NaN : Number(at[1]),
+      y: at === null ? Number.NaN : Number(at[2]),
+      width: node.offsetWidth,
+      height: node.offsetHeight,
+    };
+  });
 }
 
 /** The dot an Author drags from to connect a box to another. */
@@ -390,6 +494,19 @@ async function dragTo(
   // from the last move it saw, not from the mouse-up.
   await page.mouse.move(end.x, end.y);
   await page.mouse.up();
+}
+
+/**
+ * The pointer moved onto a box, at the coordinates the box is actually at.
+ * Playwright's own `hover()` first asks the browser to scroll the box into
+ * view, which scrolls the map's pane; React Flow answers a scrolled pane by
+ * scrolling it straight back, and the box slides out from under the pointer
+ * that had just arrived on it.
+ */
+async function hoverBox(page: Page, title: string): Promise<void> {
+  await settledTransform(page);
+  const at = await centerOf(canvasNode(page, title));
+  await page.mouse.move(at.x, at.y);
 }
 
 /**
@@ -481,15 +598,7 @@ test("canvas-add-next-step", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toBeFocused();
 
   // And the map went to where it put it.
-  await expect
-    .poll(
-      async () =>
-        (await nodeViews(page))
-          .filter((view) => view.title === "Untitled step")
-          .map((view) => view.fullyInside),
-      { timeout: 10_000 },
-    )
-    .toEqual([true]);
+  await expectBoxOnMap(page, "Untitled step");
 
   await renameStep(page, "Clinic tent");
   await expect(canvasEdges(page)).toHaveAttribute(
@@ -513,6 +622,219 @@ test("canvas-add-next-step", async ({ page, context }) => {
     path: "test-results/canvas-add-next-step/canvas-add-next-step.png",
     fullPage: true,
   });
+});
+
+test("canvas-duplicate-step", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+
+  const sentence = "Participants pass through a checkpoint before crossing.";
+  await page.getByLabel("Step content").click();
+  await page.keyboard.type(sentence);
+  await expect(page.getByLabel("Step content")).toContainText(sentence);
+
+  // The Start has no Choices, so it is an Ending and carries an Outcome.
+  await addOutcome(page, "Reached care");
+  const outcomeSelect = page.getByLabel("Outcome", { exact: true });
+  await outcomeSelect.selectOption({ label: "Reached care" });
+  const originalOutcomeValue = await outcomeSelect.inputValue();
+  await expectSaved(page);
+
+  // "Duplicate" on the box's own toolbar — the Start is already the Step
+  // the panel has open.
+  const toolbar = boxToolbar(page, "Border post");
+  await expect(toolbar).toBeVisible();
+  await toolbar.getByRole("button", { name: "Duplicate", exact: true }).click();
+
+  // The copy is what the panel opens on, with its title field focused, and
+  // it carries the original's content and Outcome.
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post copy");
+  await expect(page.getByLabel("Step title")).toBeFocused();
+  await expect(page.getByLabel("Step content")).toContainText(sentence);
+  await expect(page.getByLabel("Outcome", { exact: true })).toHaveValue(
+    originalOutcomeValue,
+  );
+  await expect(canvasNodes(page)).toHaveCount(2);
+
+  await expectBoxOnMap(page, "Border post copy");
+
+  await expectSaved(page);
+  const stored = await readDraft(journeyId);
+  const original = Object.values(stored.steps).find(
+    (step) => step.title === "Border post",
+  );
+  expect(original, "the original Step is gone from the Draft").toBeDefined();
+  const copies = Object.values(stored.steps).filter(
+    (step) => step.title === "Border post copy",
+  );
+  expect(copies).toHaveLength(1);
+  expect(copies[0].choices).toEqual([]);
+  expect(copies[0].content).toEqual(original!.content);
+  expect(copies[0].outcomeId).toBe(original!.outcomeId);
+  expect(copies[0].prompt).toBeNull();
+
+  // "Zoom to step" on the copy's own toolbar.
+  const copyToolbar = boxToolbar(page, "Border post copy");
+  await expect(copyToolbar).toBeVisible();
+  await copyToolbar
+    .getByRole("button", { name: "Zoom to step", exact: true })
+    .click();
+
+  await expectBoxOnMap(page, "Border post copy");
+  await expectCenteredOnMap(page, "Border post copy");
+
+  // The panel footer's own "Duplicate", scoped off the box toolbar's.
+  await page
+    .getByRole("region", { name: "Step" })
+    .getByRole("button", { name: "Duplicate", exact: true })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue(
+    "Border post copy copy",
+  );
+  await expect(page.getByLabel("Step title")).toBeFocused();
+  await expect(canvasNodes(page)).toHaveCount(3);
+
+  await expectSaved(page);
+  await page.screenshot({
+    path: "test-results/canvas-duplicate-step/canvas-duplicate-step.png",
+    fullPage: true,
+  });
+});
+
+test("canvas-content-peek", async ({ page, context }) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+
+  // Longer than a peek shows, so what the box offers is the opening of the
+  // Step rather than the whole of it.
+  const opening =
+    "Participants queue at the border post from before first light, holding papers they cannot read, waiting on a stamp that decides where the day ends.";
+  expect(opening.length).toBeGreaterThan(PREVIEW_LIMIT);
+
+  await page.getByLabel("Step content").click();
+  await page.keyboard.type(opening);
+  await expect(page.getByLabel("Step content")).toContainText(opening);
+
+  // The Start is an Ending until it leads somewhere, and a box reads out its
+  // problems above its content: tagged, so this peek is the content alone.
+  await addOutcome(page, "Reached care");
+  await page
+    .getByLabel("Outcome", { exact: true })
+    .selectOption({ label: "Reached care" });
+  await expect(canvasNode(page, "Border post")).toHaveAttribute(
+    "data-problems",
+    "0",
+  );
+  await expectSaved(page);
+
+  // Nothing is peeked at until a box is hovered or focused.
+  const peek = page.getByRole("tooltip");
+  await expect(peek).toHaveCount(0);
+
+  await hoverBox(page, "Border post");
+  await expect(peek).toBeVisible();
+  expect(await peek.textContent()).toBe(`${opening.slice(0, PREVIEW_LIMIT)}…`);
+  expect(await peek.textContent()).toHaveLength(PREVIEW_LIMIT + 1);
+
+  await page.screenshot({
+    path: "test-results/canvas-content-peek/canvas-content-peek.png",
+    fullPage: true,
+  });
+
+  // Off the box, and the peek goes with it.
+  const nowhere = await emptySpot(page);
+  await page.mouse.move(nowhere.x, nowhere.y);
+  await expect(peek).toHaveCount(0);
+
+  // Focus alone shows it: skimming the map is not only a pointer's.
+  await canvasNode(page, "Border post").focus();
+  await expect(peek).toBeVisible();
+  expect(await peek.textContent()).toBe(`${opening.slice(0, PREVIEW_LIMIT)}…`);
+
+  // A Step with nothing written on it says so, under the problems it carries:
+  // this one is a Step nothing leads to, and an Ending with no Outcome.
+  await addStepFromCanvas(page, "Empty tent");
+  await expect(canvasNode(page, "Empty tent")).toHaveAttribute(
+    "data-problems",
+    "2",
+  );
+
+  await hoverBox(page, "Empty tent");
+  await expect(peek).toBeVisible();
+  expect((await peek.textContent())?.split("\n")).toEqual([
+    'Step "Empty tent" cannot be reached from the start',
+    'Ending "Empty tent" has no outcome',
+    "No content yet",
+  ]);
+});
+
+test("canvas-keyboard-navigation", async ({ page, context }) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+
+  // A Start with two children: the shape the arrow keys are for.
+  await boxToolbar(page, "Border post")
+    .getByRole("button", { name: "Add next step", exact: true })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await renameStep(page, "Waved through");
+
+  await chooseStep(page, "Border post");
+  await boxToolbar(page, "Border post")
+    .getByRole("button", { name: "Add next step", exact: true })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await renameStep(page, "Turned back");
+  await expectSaved(page);
+  await expect.poll(() => mapFaults(page, 3), { timeout: 20_000 }).toEqual([]);
+
+  /** Which box the keyboard is on, by the name the map gives it. */
+  const focusedBox = () =>
+    page.evaluate(
+      () => window.document.activeElement?.getAttribute("aria-label") ?? "",
+    );
+
+  await canvasNode(page, "Border post").focus();
+  await expect.poll(focusedBox).toBe("Border post");
+
+  // Down from the Start reaches one of the two children below it.
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(focusedBox).toMatch(/^(Waved through|Turned back)$/);
+  const child = await focusedBox();
+  const sibling = child === "Waved through" ? "Turned back" : "Waved through";
+
+  // And sideways reaches the other, whichever side of it the map laid it on.
+  const positions = await boxPositions(page);
+  const leftOf = (title: string) =>
+    positions.find((box) => box.title === title)?.left ?? 0;
+  await page.keyboard.press(
+    leftOf(sibling) > leftOf(child) ? "ArrowRight" : "ArrowLeft",
+  );
+  await expect.poll(focusedBox).toBe(sibling);
+
+  // Up returns to the Start: the only box above either child.
+  await page.keyboard.press("ArrowUp");
+  await expect.poll(focusedBox).toBe("Border post");
+
+  // Enter on a focused box opens it in the panel, as a click does.
+  await page.keyboard.press("ArrowDown");
+  const opened = await focusedBox();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Step title")).toHaveValue(opened);
+
+  await page.screenshot({
+    path: "test-results/canvas-keyboard-navigation/canvas-keyboard-navigation.png",
+    fullPage: true,
+  });
+
+  // Escape leaves the map itself holding the keyboard, and no box.
+  await canvasNode(page, opened).focus();
+  await expect.poll(focusedBox).toBe(opened);
+  await page.keyboard.press("Escape");
+  await expect.poll(focusedBox).toBe("Canvas");
 });
 
 test.describe("the seeded map", () => {
@@ -623,11 +945,11 @@ test.describe("the seeded map", () => {
       )
       .toBeGreaterThan(0);
 
-    // The Step to open: the last one the list offers that is off the map
+    // The Step to open: the last one "Find step" offers that is off the map
     // right now, falling back to any that is not wholly on it.
-    await openStepList(page);
-    const stepsList = page.getByRole("list", { name: "Steps" });
-    const listed = await stepsList.getByRole("button").allInnerTexts();
+    await openFindStep(page);
+    const stepsListbox = page.getByRole("listbox", { name: "Steps" });
+    const listed = await optionNames(stepsListbox);
     const views = await nodeViews(page);
     const isOffScreen = (title: string) =>
       views.some((view) => view.title === title && !view.showing);
@@ -637,18 +959,14 @@ test.describe("the seeded map", () => {
       listed.findLast(isOffScreen) ?? listed.findLast(isPartly) ?? "";
     expect(target).not.toBe("");
 
-    await stepsList.getByRole("button", { name: target, exact: true }).click();
+    await stepsListbox
+      .getByRole("option", { name: target, exact: true })
+      .click();
     await expect(page.getByLabel("Step title")).toHaveValue(target);
 
-    // Opening it brought its box onto the map.
-    await expect
-      .poll(
-        async () =>
-          (await nodeViews(page)).find((view) => view.title === target)
-            ?.fullyInside,
-        { timeout: 10_000 },
-      )
-      .toBe(true);
+    // Opening it brought its box onto the map — centered on it, as a Step
+    // chosen from "Find step" always is.
+    await expectBoxOnMap(page, target);
 
     await page.screenshot({
       path: "test-results/canvas-locate-on-map/canvas-locate-on-map.png",
@@ -777,14 +1095,7 @@ test.describe("the seeded map", () => {
     await lostTentEntry.click();
 
     await expect(page.getByLabel("Step title")).toHaveValue("Lost tent");
-    await expect
-      .poll(
-        async () =>
-          (await nodeViews(page)).find((view) => view.title === "Lost tent")
-            ?.fullyInside,
-        { timeout: 10_000 },
-      )
-      .toBe(true);
+    await expectBoxOnMap(page, "Lost tent");
 
     // Asking for the Step that is already open counts too: the map is dragged
     // away from "Lost tent", and the same entry brings it back rather than
@@ -812,17 +1123,10 @@ test.describe("the seeded map", () => {
     await lostTentEntry.click();
 
     await expect(page.getByLabel("Step title")).toHaveValue("Lost tent");
-    await expect
-      .poll(
-        async () =>
-          (await nodeViews(page)).find((view) => view.title === "Lost tent")
-            ?.fullyInside,
-        { timeout: 10_000 },
-      )
-      .toBe(true);
+    await expectBoxOnMap(page, "Lost tent");
   });
 
-  test("canvas-step-list-follows-map", async ({ page, context }) => {
+  test("canvas-find-step", async ({ page, context }) => {
     const { journeyId } = await startJourney(page, context);
 
     const document = graphDocumentSchema.parse(case3);
@@ -837,23 +1141,135 @@ test.describe("the seeded map", () => {
       .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
       .toEqual([]);
 
-    await openStepList(page);
-    const stepsList = page.getByRole("list", { name: "Steps" });
-    const listedTitles = await stepsList.getByRole("button").allInnerTexts();
+    // The Step at the foot of the map, read off the map itself: the furthest
+    // one from where an Author zoomed into the top of it is looking.
+    const bottomMost = (await boxPositions(page))
+      .slice()
+      .sort((a, b) => b.top - a.top)[0];
+    expect(bottomMost.title).not.toBe("");
+
+    // Zoomed in until that box is no longer wholly on the map, which is the
+    // state a Step found by name has to be brought back from. Bounded, so a
+    // layout that never pushes it off fails the assertion rather than hangs.
+    const zoomIn = canvas(page).getByRole("button", { name: /zoom in/i });
+    let offMap = false;
+    for (let click = 0; click < 8 && !offMap; click += 1) {
+      await zoomIn.click();
+      // Each zoom animates, and a box read while the map is still moving is
+      // read at coordinates it is no longer at.
+      await settledTransform(page);
+      offMap =
+        (await nodeViews(page)).find((view) => view.title === bottomMost.title)
+          ?.fullyInside === false;
+    }
+    expect(
+      offMap,
+      `"${bottomMost.title}" was still fully inside the canvas frame after zooming in`,
+    ).toBe(true);
+
+    // Cmd/Ctrl+K from anywhere on the Journey page, and part of the title in
+    // lower case: what is matched on is the letters, not the capitals.
+    await findStepByName(
+      page,
+      bottomMost.title.slice(0, 6).toLowerCase(),
+      bottomMost.title,
+    );
+
+    // Choosing it brought its box back onto the map, and centered it there
+    // rather than nudging it just far enough in to fit: a Step found by name
+    // is one the Author is going to read.
+    await expectBoxOnMap(page, bottomMost.title);
+    await expectCenteredOnMap(page, bottomMost.title);
+
+    // And the field is closed and empty behind it, ready for the next find.
+    const find = page.getByRole("combobox", { name: "Find step" });
+    const stepsListbox = page.getByRole("listbox", { name: "Steps" });
+    await expect(stepsListbox).toHaveCount(0);
+    await expect(find).toHaveValue("");
+
+    await page.screenshot({
+      path: "test-results/canvas-find-step/canvas-find-step.png",
+      fullPage: true,
+    });
+
+    // The same field without the pointer, on the same seeded map: back into
+    // it with Cmd/Ctrl+K, and everything after this is typed.
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(find).toBeFocused();
+
+    // A query no Step answers: nothing to choose from, and the field says so
+    // rather than offering an empty list.
+    const options = stepsListbox.getByRole("option");
+    await page.keyboard.type("zzzzz");
+    await expect(options).toHaveCount(0);
+    await expect(
+      page.getByText("No steps match", { exact: true }),
+    ).toBeVisible();
+
+    // Escape twice: the list first, so an Author who opened it by mistake
+    // still has what they typed, and what they typed second.
+    await page.keyboard.press("Escape");
+    await expect(stepsListbox).toHaveCount(0);
+    await expect(find).toHaveValue("zzzzz");
+    await page.keyboard.press("Escape");
+    await expect(find).toHaveValue("");
+
+    // Arrowing opens the list on its first Step, and wraps round its end.
+    await page.keyboard.press("ArrowDown");
+    await expect(options.first()).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowUp");
+    await expect(options.last()).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowDown");
+    await expect(options.first()).toHaveAttribute("aria-selected", "true");
+
+    // Another Step entirely, typed and taken with Enter: one whose title no
+    // other Step's title contains, so the single match is the Step meant.
+    const everyTitle = await optionNames(stepsListbox);
+    const another = everyTitle.find(
+      (title) =>
+        title !== bottomMost.title &&
+        everyTitle.filter((other) =>
+          other.toLowerCase().includes(title.toLowerCase()),
+        ).length === 1,
+    );
+    expect(another, "no Step's title picks out only itself").toBeDefined();
+
+    await page.keyboard.type(another!);
+    await expect(options).toHaveCount(1);
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+
+    // That Step is what the panel opens on, and the field is empty and closed
+    // behind it again.
+    await expect(page.getByLabel("Step title")).toHaveValue(another!);
+    await expect(find).toHaveValue("");
+    await expect(stepsListbox).toHaveCount(0);
+  });
+
+  test("canvas-find-step-lists-map-order", async ({ page, context }) => {
+    const { journeyId } = await startJourney(page, context);
+
+    const document = graphDocumentSchema.parse(case3);
+    const stepCount = Object.keys(document.steps).length;
+
+    await expectSaved(page);
+    await writeDraftDocument(journeyId, document);
+    await page.reload();
+
+    await expect(canvasNodes(page)).toHaveCount(stepCount);
+    await expect
+      .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
+      .toEqual([]);
+
+    // Nothing typed: every Step in the Draft is offered.
+    await openFindStep(page);
+    const listedTitles = await optionNames(
+      page.getByRole("listbox", { name: "Steps" }),
+    );
 
     // Every box's title and rect in one round trip, sorted the way
     // `mapOrder` orders the canvas: top to bottom, then left to right.
-    const boxes = await canvasNodes(page).evaluateAll((elements) =>
-      elements.map((element) => {
-        const rect = element.getBoundingClientRect();
-        return {
-          title: element.getAttribute("aria-label") ?? "",
-          top: Math.round(rect.top),
-          left: Math.round(rect.left),
-        };
-      }),
-    );
-    const mapOrderedTitles = boxes
+    const mapOrderedTitles = (await boxPositions(page))
       .slice()
       .sort((a, b) => a.top - b.top || a.left - b.left)
       .map((box) => box.title);
@@ -861,13 +1277,8 @@ test.describe("the seeded map", () => {
     expect(listedTitles).toHaveLength(stepCount);
     expect(listedTitles).toEqual(mapOrderedTitles);
 
-    await expect(
-      page.getByRole("list", { name: "Not yet reached" }),
-    ).toHaveCount(0);
-    await expect(page.getByText("Not reachable from the start")).toHaveCount(0);
-
     await page.screenshot({
-      path: "test-results/canvas-step-list-follows-map/canvas-step-list-follows-map.png",
+      path: "test-results/canvas-find-step-lists-map-order/canvas-find-step-lists-map-order.png",
       fullPage: true,
     });
   });
@@ -1489,6 +1900,60 @@ test.describe("authoring from the map", () => {
     await expect(canvasEdges(page)).toHaveCount(1);
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
 
+    // A Choice that leads back to its own Step, drawn the same way: from a
+    // box's connect dot onto the box it belongs to.
+    await dragTo(
+      page,
+      connectHandle(page, "Clinic tent"),
+      canvasNode(page, "Clinic tent"),
+    );
+
+    await expect(canvasEdges(page)).toHaveCount(2);
+    await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+    const loopLabel = page.getByLabel("Choice label").last();
+    await expect(loopLabel).toBeFocused();
+    await page.keyboard.type("Wait here");
+    await expect(loopLabel).toHaveValue("Wait here");
+
+    await expectSaved(page);
+    const looped = await readDraft(journeyId);
+    const clinic = Object.values(looped.steps).find(
+      (step) => step.title === "Clinic tent",
+    );
+    expect(clinic, "the Step the loop was drawn on is gone").toBeDefined();
+    expect(clinic!.choices).toHaveLength(1);
+    expect(clinic!.choices[0].targetStepId).toBe(clinic!.id);
+
+    // And it is routed beside its box rather than through it: no sample of the
+    // arrow's path lies inside the box's own rectangle, and the path runs out
+    // past the box's right edge and back.
+    await settledTransform(page);
+    const [loop] = await samplePaths(
+      canvasEdge(page, clinic!.choices[0].id).locator(
+        "path.react-flow__edge-path",
+      ),
+    );
+    expect(loop.length).toBeGreaterThanOrEqual(16);
+
+    const clinicRect = await nodeFlowRect(page, "Clinic tent");
+    const through = loop.filter(
+      (point) =>
+        point.x > clinicRect.x + ROUTE_TOLERANCE &&
+        point.x < clinicRect.x + clinicRect.width - ROUTE_TOLERANCE &&
+        point.y > clinicRect.y + ROUTE_TOLERANCE &&
+        point.y < clinicRect.y + clinicRect.height - ROUTE_TOLERANCE,
+    );
+    expect(
+      through,
+      `the loop runs through its own box ${JSON.stringify(clinicRect)}`,
+    ).toEqual([]);
+
+    const middle = loop[Math.floor(loop.length / 2)];
+    expect(middle.x).toBeGreaterThan(clinicRect.x + clinicRect.width);
+    expect(Math.max(...loop.map((point) => point.x))).toBeGreaterThan(
+      clinicRect.x + clinicRect.width,
+    );
+
     await page.screenshot({
       path: "test-results/canvas-connect-and-retarget-by-dragging/canvas-connect-and-retarget-by-dragging.png",
       fullPage: true,
@@ -1627,6 +2092,95 @@ test.describe("authoring from the map", () => {
     await page.screenshot({
       path: "test-results/canvas-build-branch-and-publish/canvas-build-branch-and-publish.png",
       fullPage: true,
+    });
+  });
+
+  test.describe("the seeded map, recorded", () => {
+    // The wide viewport, for the reason the outer "the seeded map" gives.
+    test.use({ viewport: { width: 1600, height: 1200 } });
+
+    test("canvas-find-duplicate-and-edit", async ({ page, context }) => {
+      const { journeyId } = await startJourney(page, context);
+
+      const seeded = graphDocumentSchema.parse(case3);
+      const stepCount = Object.keys(seeded.steps).length;
+      const choiceCount = Object.values(seeded.steps).reduce(
+        (total, step) => total + step.choices.length,
+        0,
+      );
+
+      await expectSaved(page);
+      await writeDraftDocument(journeyId, seeded);
+      await page.reload();
+
+      await expect(canvasNodes(page)).toHaveCount(stepCount);
+      await expect
+        .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
+        .toEqual([]);
+
+      // Found by name from anywhere on the Journey page: part of the title,
+      // in lower case, and the Step is opened and centered on the map.
+      await findStepByName(page, "prefa", "Preface");
+
+      // Duplicated from its own box on the map.
+      await boxToolbar(page, "Preface")
+        .getByRole("button", { name: "Duplicate", exact: true })
+        .click();
+      await expect(page.getByLabel("Step title")).toHaveValue("Preface copy");
+      await expect(page.getByLabel("Step title")).toBeFocused();
+      await expect(canvasNodes(page)).toHaveCount(stepCount + 1);
+
+      // And edited in the panel beside the map: renamed, and given content.
+      await renameStep(page, "Second opinion");
+      const opening = "A second reading of the same chart, by another doctor.";
+      await page.getByLabel("Step content").click();
+      await page.keyboard.type(opening);
+      await expect(page.getByLabel("Step content")).toContainText(opening);
+
+      await expect
+        .poll(() => mapFaults(page, stepCount + 1), { timeout: 20_000 })
+        .toEqual([]);
+
+      // Then reached from the Step it was copied from, by dragging on the map.
+      await connectByDragging(
+        page,
+        "Preface",
+        "Second opinion",
+        choiceCount + 1,
+      );
+      await page.keyboard.type("Ask again");
+      await expect(page.getByLabel("Choice label").last()).toHaveValue(
+        "Ask again",
+      );
+
+      await expectSaved(page);
+      const stored = await readDraft(journeyId);
+      const copy = Object.values(stored.steps).find(
+        (step) => step.title === "Second opinion",
+      );
+      expect(copy, "the copy is gone from the Draft").toBeDefined();
+      expect(copy!.choices).toEqual([]);
+      // What the Author typed into it, within the content it was copied with:
+      // the whole reading rather than the peek's opening `PREVIEW_LIMIT`.
+      expect(contentPreview(copy!.content, 10_000)).toContain(opening);
+
+      const original = Object.values(stored.steps).find(
+        (step) => step.title === "Preface",
+      );
+      expect(original, "the Step copied from is gone").toBeDefined();
+      const added = original!.choices.find(
+        (choice) => choice.label === "Ask again",
+      );
+      expect(
+        added,
+        '"Preface" holds no Choice labelled "Ask again"',
+      ).toBeDefined();
+      expect(added!.targetStepId).toBe(copy!.id);
+
+      await page.screenshot({
+        path: "test-results/canvas-find-duplicate-and-edit/canvas-find-duplicate-and-edit.png",
+        fullPage: true,
+      });
     });
   });
 });

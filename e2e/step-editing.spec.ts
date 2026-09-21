@@ -3,9 +3,10 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
 import {
+  chooseStep,
   createJourney,
   createProject,
-  openStepList,
+  openFindStep,
   uniqueSuffix,
 } from "./setup/authoring";
 import {
@@ -88,17 +89,11 @@ async function startJourney(
   return { projectId, journeyId };
 }
 
-function stepButton(page: Page, title: string) {
+/** One Step offered by "Find step", named by its title alone. */
+function stepOption(page: Page, title: string) {
   return page
-    .getByRole("list", { name: "Steps" })
-    .getByRole("button", { name: title, exact: true });
-}
-
-// The panel has no heading repeating the title: the title field is the
-// Step's name there, so it is what these read.
-async function selectStep(page: Page, title: string): Promise<void> {
-  await stepButton(page, title).click();
-  await expect(page.getByLabel("Step title")).toHaveValue(title);
+    .getByRole("listbox", { name: "Steps" })
+    .getByRole("option", { name: title, exact: true });
 }
 
 async function renameStep(page: Page, title: string): Promise<void> {
@@ -147,7 +142,6 @@ async function addChoiceToStep(
 
 test("step-editing-build-and-publish", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
-  await openStepList(page);
 
   // The Start is what the panel opens on.
   await expect(page.getByLabel("Step title")).toHaveValue("Start");
@@ -157,18 +151,18 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
   // panel opens that Step to be written.
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
 
-  await selectStep(page, "Border post");
+  await chooseStep(page, "Border post");
   await addChoiceToNewStep(page, "Walk away", "Turned back");
 
   await addChoiceToNewStep(page, "Find the clinic", "Clinic tent");
 
-  await selectStep(page, "Waved through");
+  await chooseStep(page, "Waved through");
   await addChoiceToStep(page, "Follow the road", "Clinic tent");
 
-  await selectStep(page, "Clinic tent");
+  await chooseStep(page, "Clinic tent");
   await addChoiceToNewStep(page, "Ask for help", "Reached the ward");
 
-  await selectStep(page, "Clinic tent");
+  await chooseStep(page, "Clinic tent");
   await addChoiceToNewStep(page, "Wait outside", "Sent away");
 
   await expect(page.getByText("6 steps · 0 outcomes")).toBeVisible();
@@ -189,11 +183,11 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
   await page.getByRole("button", { name: "Add outcome", exact: true }).click();
   await expect(page.getByText("6 steps · 2 outcomes")).toBeVisible();
 
-  await selectStep(page, "Reached the ward");
+  await chooseStep(page, "Reached the ward");
   await page
     .getByLabel("Outcome", { exact: true })
     .selectOption({ label: "Reached care" });
-  await selectStep(page, "Sent away");
+  await chooseStep(page, "Sent away");
   await page
     .getByLabel("Outcome", { exact: true })
     .selectOption({ label: "Turned away" });
@@ -375,13 +369,12 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
 
 test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
-  await openStepList(page);
 
   await renameStep(page, "Border post");
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
-  await selectStep(page, "Border post");
+  await chooseStep(page, "Border post");
   await addChoiceToNewStep(page, "Walk away", "Turned back");
-  await selectStep(page, "Border post");
+  await chooseStep(page, "Border post");
 
   const rows = page
     .getByRole("list", { name: "Choices" })
@@ -411,7 +404,6 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
     .selectOption({ label: "Waved through" });
   await expectSaved(page);
   await page.reload();
-  await openStepList(page);
   await expect(rows.nth(0).getByLabel("Choice target")).toHaveValue(
     wavedThroughId,
   );
@@ -423,10 +415,10 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
     .selectOption({ label: "New step…" });
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
   await expect(page.getByLabel("Step title")).toBeFocused();
-  await expect(stepButton(page, "Untitled step")).toHaveAttribute(
-    "aria-current",
-    "true",
-  );
+  // And it is a Step of the Draft like any other: "Find step" offers it.
+  await openFindStep(page);
+  await expect(stepOption(page, "Untitled step")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expectSaved(page);
 
   const after = await readDraft(journeyId);
@@ -445,8 +437,9 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   await rows.nth(1).getByRole("button", { name: "Open", exact: true }).click();
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
 
-  await openStepList(page);
-  await expect(stepButton(page, "Turned back")).toBeVisible();
+  await openFindStep(page);
+  await expect(stepOption(page, "Turned back")).toBeVisible();
+  await page.keyboard.press("Escape");
 
   // What the header says now, written out rather than recomputed the way the
   // app computes it: four problems — "Turned back" dropped out of the walk

@@ -39,6 +39,66 @@ export function addStep(
   };
 }
 
+/** The suffix a copy's title carries, and the schema's own limit on a title. */
+const COPY_SUFFIX = " copy";
+const MAX_TITLE_LENGTH = 200;
+
+/**
+ * The name given it with `COPY_SUFFIX` appended, trimming its end so the
+ * whole stays within `stepSchema`'s 200-character limit.
+ */
+function suffixedTitle(title: string): string {
+  const maxOriginalLength = MAX_TITLE_LENGTH - COPY_SUFFIX.length;
+  const trimmed =
+    title.length > maxOriginalLength
+      ? title.slice(0, maxOriginalLength)
+      : title;
+  return `${trimmed}${COPY_SUFFIX}`;
+}
+
+/**
+ * Copies a Step: its content, Prompt, and Outcome tag carry over and the name
+ * the Author knows it by gains `COPY_SUFFIX` — `stepName`, so a Step with a
+ * blank title yields `"<id> copy"` rather than a copy called `" copy"`, which
+ * is what the panel and the map would then show. It starts with no Choices —
+ * an Author builds
+ * outward from the copy the way they would from any new Step, rather than
+ * inheriting where the original led. `position` is left `null`, like every
+ * other new Step; the map lays the copy out wherever dagre puts an
+ * unconnected Step. An unknown `stepId` returns the document unchanged with
+ * `stepId: ""`, the `addChoiceToNewStep` convention.
+ */
+export function duplicateStep(
+  document: GraphDocument,
+  stepId: string,
+): { document: GraphDocument; stepId: string } {
+  if (!hasStep(document, stepId)) {
+    return { document, stepId: "" };
+  }
+
+  const original = document.steps[stepId];
+  const newStepId = crypto.randomUUID();
+  const step: Step = {
+    id: newStepId,
+    title: suffixedTitle(stepName(original)),
+    content: structuredClone(original.content),
+    choices: [],
+    // Cloned like the content: a Prompt is an object, and two Steps sharing
+    // one would be two Steps an edit to either changed.
+    prompt: structuredClone(original.prompt),
+    outcomeId: original.outcomeId,
+    position: null,
+  };
+
+  return {
+    document: {
+      ...document,
+      steps: { ...document.steps, [newStepId]: step },
+    },
+    stepId: newStepId,
+  };
+}
+
 /** Patches a Step's title, content, or outcome tag. */
 export function updateStep(
   document: GraphDocument,

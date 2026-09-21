@@ -7,6 +7,7 @@ import {
   addStep,
   choicesTargeting,
   deleteStep,
+  duplicateStep,
   endingCountsByOutcome,
   moveChoice,
   removeChoice,
@@ -321,6 +322,105 @@ describe("addChoiceToNewStep", () => {
         problem.code === "unreachable-step" && problem.stepId === stepId,
     );
     expect(unreachable).toEqual([]);
+  });
+});
+
+describe("duplicateStep", () => {
+  it("copies a Step's content, prompt, and outcomeId with no Choices, and leaves the document unchanged", () => {
+    const original: Step = {
+      id: "prompted",
+      title: "Prompted",
+      content: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Hello" }] },
+        ],
+      },
+      choices: [choice("choice-a", "Go", "prompted")],
+      prompt: { type: "free_text", label: "Name?", required: true },
+      outcomeId: "outcome-good",
+      position: null,
+    };
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "prompted",
+      allowBack: true,
+      steps: byId([original]),
+      outcomes: byId([outcome("outcome-good", "Good")]),
+    };
+    const before = snapshot(document);
+
+    const { document: next, stepId } = duplicateStep(document, "prompted");
+
+    expect(document).toEqual(before);
+    expect(next.steps[stepId]).toEqual({
+      id: stepId,
+      title: "Prompted copy",
+      content: original.content,
+      choices: [],
+      prompt: original.prompt,
+      outcomeId: "outcome-good",
+      position: null,
+    });
+  });
+
+  it("does not share the copy's content object identity with the original's", () => {
+    const document = buildDocument();
+
+    const { document: next, stepId } = duplicateStep(document, "ending-a");
+
+    expect(next.steps[stepId].content).toEqual(
+      document.steps["ending-a"].content,
+    );
+    expect(next.steps[stepId].content).not.toBe(
+      document.steps["ending-a"].content,
+    );
+  });
+
+  it("does not share the copy's Prompt object identity with the original's", () => {
+    const prompted: Step = {
+      ...step("prompted", [], { title: "Prompted" }),
+      prompt: { type: "free_text", label: "Name?", required: true },
+    };
+    const document: GraphDocument = {
+      ...buildDocument(),
+      steps: byId([prompted]),
+      startStepId: "prompted",
+    };
+
+    const { document: next, stepId } = duplicateStep(document, "prompted");
+
+    expect(next.steps[stepId].prompt).toEqual(prompted.prompt);
+    expect(next.steps[stepId].prompt).not.toBe(prompted.prompt);
+  });
+
+  it("names the copy of a Step with a blank title from its id", () => {
+    const document = buildDocument();
+    const untitled = updateStep(document, "ending-a", { title: "   " });
+
+    const { document: next, stepId } = duplicateStep(untitled, "ending-a");
+
+    expect(next.steps[stepId].title).toBe("ending-a copy");
+  });
+
+  it("trims the title so the whole stays within the schema's 200 characters", () => {
+    const document = buildDocument();
+    const withLongTitle = updateStep(document, "ending-a", {
+      title: "x".repeat(200),
+    });
+
+    const { document: next, stepId } = duplicateStep(withLongTitle, "ending-a");
+
+    expect(next.steps[stepId].title).toBe(`${"x".repeat(195)} copy`);
+    expect(next.steps[stepId].title).toHaveLength(200);
+  });
+
+  it("leaves the document unchanged for an unknown Step", () => {
+    const document = buildDocument();
+
+    const result = duplicateStep(document, "missing");
+
+    expect(result).toEqual({ document, stepId: "" });
   });
 });
 

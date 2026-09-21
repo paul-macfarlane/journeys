@@ -33,15 +33,52 @@ export function idFromHref(href: string | null, prefix: string): string {
 }
 
 /**
- * The "Steps" disclosure beneath the map, opened if it is not already. The
- * list is the second way around a Draft — the map is the first — so every
- * spec that reads a Step out of it opens it the same way.
+ * The "Find step" field above the map, opened on the listbox of every Step in
+ * the Draft. Finding a Step by name is the second way around a Draft — the
+ * map is the first — so every spec that reads a Step out of it opens it the
+ * same way. With nothing typed the listbox holds every Step, in map order.
  */
-export async function openStepList(page: Page): Promise<void> {
-  const button = page.getByRole("button", { name: "Steps", exact: true });
-  if ((await button.getAttribute("aria-expanded")) === "true") return;
-  await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
+export async function openFindStep(page: Page): Promise<void> {
+  await page.getByRole("combobox", { name: "Find step" }).click();
+  await expect(page.getByRole("listbox", { name: "Steps" })).toBeVisible();
+}
+
+/**
+ * One Step opened the way an Author opens one by name: found in "Find step"
+ * and chosen. Choosing closes the listbox, so a spec that reads it again
+ * opens it again.
+ */
+export async function chooseStep(page: Page, title: string): Promise<void> {
+  await openFindStep(page);
+  await page
+    .getByRole("listbox", { name: "Steps" })
+    .getByRole("option", { name: title, exact: true })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue(title);
+}
+
+/**
+ * One Step found the way an Author finds one from the keyboard: Cmd/Ctrl+K
+ * from anywhere on the Journey page, part of the title typed into "Find step",
+ * and the Step of that name chosen from what is offered. `query` is what is
+ * typed and `title` the whole title of the Step it has to pick out.
+ */
+export async function findStepByName(
+  page: Page,
+  query: string,
+  title: string,
+): Promise<void> {
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(page.getByRole("combobox", { name: "Find step" })).toBeFocused();
+
+  await page.keyboard.type(query);
+  const option = page
+    .getByRole("listbox", { name: "Steps" })
+    .getByRole("option", { name: title, exact: true });
+  await expect(option).toBeVisible();
+  await option.click();
+
+  await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
 export async function createProject(
