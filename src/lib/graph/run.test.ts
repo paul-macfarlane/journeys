@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { GraphDocument, Step } from "@/lib/graph/document";
-import { currentStepId, navigateTo, startRun } from "@/lib/graph/run";
+import {
+  currentStepId,
+  navigateTo,
+  startRun,
+  type RunState,
+} from "@/lib/graph/run";
 
 /**
  * Seam A for ticket 06: the pure path reducer that turns a Participant's
@@ -54,6 +59,13 @@ function branchingDocument(): GraphDocument {
             condition: null,
             effect: null,
           },
+          {
+            id: "c4",
+            label: "Give up now",
+            targetStepId: "shared",
+            condition: null,
+            effect: null,
+          },
         ],
       }),
       a: step({
@@ -67,10 +79,20 @@ function branchingDocument(): GraphDocument {
             condition: null,
             effect: null,
           },
+          {
+            id: "c5",
+            label: "Give up here",
+            targetStepId: "shared",
+            condition: null,
+            effect: null,
+          },
         ],
       }),
       a2: step({ id: "a2", title: "A2", outcomeId: "outcome-a2" }),
       b: step({ id: "b", title: "B", outcomeId: "outcome-b" }),
+      // Reachable from both `start` and `a`: the diamond that tells the
+      // latest-offering-Step rule apart from an earliest-first scan.
+      shared: step({ id: "shared", title: "Shared", outcomeId: "outcome-b" }),
     },
     outcomes: {
       "outcome-a2": { id: "outcome-a2", label: "Reached A2" },
@@ -203,6 +225,32 @@ describe("navigateTo", () => {
         path: ["start", "b"],
         backtrackCount: 1,
         endedAt: later,
+        outcomeId: "outcome-b",
+      },
+    });
+  });
+
+  it("appends from the current Step when an earlier path Step also offers the target", () => {
+    // `shared` is offered by both `start` and `a`. On the path [start, a]
+    // the current Step offers it, so this is a plain Choice — not a
+    // backtrack to `start` — and the latest offering Step must win.
+    const document = branchingDocument();
+    const now = new Date("2026-09-21T00:00:00Z");
+    const state: RunState = {
+      path: ["start", "a"],
+      backtrackCount: 0,
+      endedAt: null,
+      outcomeId: null,
+    };
+
+    const result = navigateTo(document, state, "shared", now);
+
+    expect(result).toEqual({
+      kind: "moved",
+      state: {
+        path: ["start", "a", "shared"],
+        backtrackCount: 0,
+        endedAt: now,
         outcomeId: "outcome-b",
       },
     });

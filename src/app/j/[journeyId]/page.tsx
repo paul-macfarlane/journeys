@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { choiceLinkClassName } from "@/components/runner/step-view";
 import { RunnerFrame } from "@/components/runner/runner-frame";
+import { choiceLinkClassName } from "@/components/runner/step-view";
 import { getPublicJourney, getRunForJourney } from "@/db/runs";
 import { currentStepId } from "@/lib/graph/run";
 import { runCookieName } from "@/lib/run-cookies";
@@ -56,7 +56,7 @@ export default async function JourneyStartPage({
   return (
     <RunnerFrame>
       <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {journey.title}
         </h1>
         {journey.description ? (
@@ -75,7 +75,9 @@ export default async function JourneyStartPage({
         ) : null}
 
         {/* Starting a Run writes a row and two cookies, so it is a POST an
-            action owns, not a link somebody can prefetch. */}
+            action owns, not a link somebody can prefetch. A native button
+            rather than the shared Button: this page stays a Server Component
+            with no client bundle, and the class already matches the Choices. */}
         <form action={beginRunAction.bind(null, journeyId)}>
           <button type="submit" className={choiceLinkClassName}>
             {inProgress ? "Start over" : "Begin"}

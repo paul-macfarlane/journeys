@@ -77,6 +77,8 @@ export default async function RunStepPage({
         step={step}
         document={version.document}
         stepHref={(targetStepId) => `/j/${journeyId}/${targetStepId}`}
+        // A native button rather than the shared Button, for the same reason
+        // as on the start screen: the page stays a Server Component.
         startOver={
           <form action={beginRunAction.bind(null, journeyId)}>
             <button type="submit" className={choiceLinkClassName}>

@@ -62,16 +62,26 @@ export async function getPublicJourney(
     .limit(1);
 
   if (!row) return null;
-  if (row.versionId === null) return { kind: "unavailable" };
 
-  // The join matched on `versionId`, so every other column selected from
-  // `published_version` came from that same row and is present too.
+  // The left join fills every `published_version` column from one row or
+  // none, so the four are null together; narrowing on all of them keeps the
+  // types honest without asserting.
+  const { versionId, title, description, document } = row;
+  if (
+    versionId === null ||
+    title === null ||
+    description === null ||
+    document === null
+  ) {
+    return { kind: "unavailable" };
+  }
+
   return {
     kind: "live",
-    versionId: row.versionId,
-    title: row.title!,
-    description: row.description!,
-    document: graphDocumentSchema.parse(row.document),
+    versionId,
+    title,
+    description,
+    document: graphDocumentSchema.parse(document),
   };
 }
 

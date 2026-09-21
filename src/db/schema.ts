@@ -137,7 +137,7 @@ export const member = pgTable(
 // A Journey: a graph of steps and choices, authored inside one Project.
 // Like a Project, a Journey is addressed by its id — inside the Project at
 // `/projects/<project-id>/journeys/<journey-id>`, and publicly at
-// `/j/<journey-id>` once ticket 06 builds the runner.
+// `/j/<journey-id>` for the participant runner.
 //
 // A Journey's Draft is the `draft` row below, created with it, and its
 // Published Versions are the `published_version` rows further down.

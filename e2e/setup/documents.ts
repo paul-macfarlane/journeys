@@ -6,8 +6,10 @@ import type { Choice, GraphDocument, Step } from "@/lib/graph/document";
 import { queryE2eDatabase } from "./session";
 
 /**
- * Draft documents a spec needs in front of the app, and the one way to put
- * them there.
+ * The documents a spec needs in front of the app, and the ways to put them
+ * there without driving the editor or the Publish button: written into a
+ * Draft, published straight into a `published_version` row, and — for the
+ * participant runner — the Run rows read back afterwards.
  *
  * Writing the `draft` row directly keeps a spec about publishing, previewing,
  * or restoring from also being a spec about the editor (`step-editing.spec.ts`

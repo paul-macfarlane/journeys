@@ -296,6 +296,24 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
       path: "test-results/runner-back-and-choose-again/runner-back-and-choose-again.png",
       fullPage: true,
     });
+
+    // Starting over from the Ending is a new Run, not a reset: the finished
+    // one keeps its path and Outcome, and the walk begins again at the Start.
+    await participant.getByRole("button", { name: "Start over" }).click();
+    await expect(participant).toHaveURL(
+      `${E2E_BASE_URL}/j/${journeyId}/${START_STEP_ID}`,
+    );
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    const afterStartOver = await readRuns(versionId);
+    expect(afterStartOver).toHaveLength(2);
+    expect(afterStartOver[0].id).toBe(afterSecondChoice[0].id);
+    expect(afterStartOver[0].path).toEqual([START_STEP_ID, "turned-back"]);
+    expect(afterStartOver[0].outcome_id).toBe("turned-away");
+    expect(afterStartOver[1].path).toEqual([START_STEP_ID]);
+    expect(afterStartOver[1].ended_at).toBeNull();
   } finally {
     await participantContext.close();
   }
@@ -440,6 +458,20 @@ test("runner-pinned-version", async ({ page, context, browser }) => {
     await expect(
       midRun.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
+
+    // A rename after publishing changes the Journey row, not what a
+    // Participant sees: the start screen reads version 1's own title.
+    const journeyTitle = `Border Crossing ${suffix}`;
+    await queryE2eDatabase('UPDATE "journey" SET title = $1 WHERE id = $2', [
+      `Renamed after publishing ${suffix}`,
+      journeyId,
+    ]);
+    await midRun.goto(`/j/${journeyId}`);
+    await expect(
+      midRun.getByRole("heading", { name: journeyTitle, exact: true }),
+    ).toBeVisible();
+    await expect(midRun.getByText("Renamed after publishing")).toHaveCount(0);
+    await midRun.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
 
     // Version 2 goes live under the Participant's feet.
     const retitled = runnerDocument();
