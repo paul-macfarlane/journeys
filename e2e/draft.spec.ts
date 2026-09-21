@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { graphDocumentSchema } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
@@ -39,6 +39,14 @@ function readDraftRow(journeyId: string): Promise<DraftRow[]> {
   );
 }
 
+/** The "Steps" disclosure beneath the map, opened if it is not already. */
+async function openStepList(page: Page): Promise<void> {
+  const button = page.getByRole("button", { name: "Steps", exact: true });
+  if ((await button.getAttribute("aria-expanded")) === "true") return;
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+}
+
 test("journey-draft", async ({ page, context }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
@@ -65,6 +73,7 @@ test("journey-draft", async ({ page, context }) => {
   await expect(page.getByRole("heading", { name: "Steps" })).toBeVisible();
   await expect(page.getByText("1 step · 0 outcomes")).toBeVisible();
 
+  await openStepList(page);
   const stepItems = page
     .getByRole("list", { name: "Steps" })
     .getByRole("listitem");
@@ -96,6 +105,7 @@ test("journey-draft", async ({ page, context }) => {
   await page.reload();
 
   await expect(page.getByText("44 steps · 3 outcomes")).toBeVisible();
+  await openStepList(page);
   const startItem = page
     .getByRole("list", { name: "Steps" })
     .getByRole("listitem")

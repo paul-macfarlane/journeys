@@ -64,7 +64,10 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   box's connect dot onto another box makes the choice between them (and
   dragging an arrow's head onto a third box moves it there), the open box's
   toolbar adds the next step, makes it the start or deletes it, and clicking
-  an arrow opens its choice for renaming or deletes it with the Delete key. The draft autosaves. Publish the draft as an
+  an arrow opens its choice for renaming or deletes it with the Delete key.
+  Problems are listed on the step they belong to and in a live count above
+  the map, and the step list under the map follows the map's own order behind
+  a "Steps" disclosure. The draft autosaves. Publish the draft as an
   immutable version (refused, with the problems listed, while the
   draft has any), unpublish to take it back from participants, preview it, and
   see every published version — number, when, and who published it — with the

@@ -1,6 +1,8 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+import { counted } from "@/components/journeys/editor-shared";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
+import { validateForPublish } from "@/lib/graph/validate";
 
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
@@ -89,6 +91,14 @@ function stepButton(page: Page, title: string) {
     .getByRole("button", { name: title, exact: true });
 }
 
+/** The "Steps" disclosure beneath the map, opened if it is not already. */
+async function openStepList(page: Page): Promise<void> {
+  const button = page.getByRole("button", { name: "Steps", exact: true });
+  if ((await button.getAttribute("aria-expanded")) === "true") return;
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+}
+
 // The panel has no heading repeating the title: the title field is the
 // Step's name there, so it is what these read.
 async function selectStep(page: Page, title: string): Promise<void> {
@@ -142,6 +152,7 @@ async function addChoiceToStep(
 
 test("step-editing-build-and-publish", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
+  await openStepList(page);
 
   // The Start is what the panel opens on.
   await expect(page.getByLabel("Step title")).toHaveValue("Start");
@@ -249,7 +260,9 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
     .getByRole("listitem")
     .first();
   await expect(
-    choiceRow.getByText("This choice points at a step that no longer exists"),
+    choiceRow.getByText(
+      'Step "Border post" has a choice pointing at a step that no longer exists',
+    ),
   ).toBeVisible();
   await expect(choiceRow.getByLabel("Choice target")).toHaveValue("");
   await expect(
@@ -367,6 +380,7 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
 
 test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
+  await openStepList(page);
 
   await renameStep(page, "Border post");
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
@@ -402,6 +416,7 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
     .selectOption({ label: "Waved through" });
   await expectSaved(page);
   await page.reload();
+  await openStepList(page);
   await expect(rows.nth(0).getByLabel("Choice target")).toHaveValue(
     wavedThroughId,
   );
@@ -424,7 +439,9 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
 
   // Walking from the panel: "Leads here from" goes back up the Choice that
   // made this Step, "Open" on that Choice comes back down, and the Step no
-  // Choice points at any more ("Turned back") is set apart from the walk.
+  // Choice points at any more ("Turned back") now shows up as a live
+  // problem, found through the header's count rather than a separate
+  // "not yet reached" list.
   await page
     .getByRole("group", { name: "Leads here from" })
     .getByRole("button", { name: "Wait your turn on Border post" })
@@ -432,12 +449,30 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await rows.nth(1).getByRole("button", { name: "Open", exact: true }).click();
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
-  await expect(
-    page
-      .getByRole("list", { name: "Not yet reached" })
-      .getByRole("button", { name: "Turned back", exact: true }),
-  ).toBeVisible();
-  await expect(stepButton(page, "Turned back")).toHaveCount(0);
+
+  await openStepList(page);
+  await expect(stepButton(page, "Turned back")).toBeVisible();
+
+  // The document's own live problems, not a guessed count: "Turned back"
+  // dropped out of the walk, and every Ending here still has no Outcome.
+  const liveProblems = validateForPublish(after);
+  const turnedBackMessage =
+    'Step "Turned back" cannot be reached from the start';
+  expect(
+    liveProblems.some((problem) => problem.message === turnedBackMessage),
+  ).toBe(true);
+
+  const problemsButton = page.getByRole("button", {
+    name: counted(liveProblems.length, "problem"),
+    exact: true,
+  });
+  await expect(problemsButton).toBeVisible();
+  await problemsButton.click();
+  await page
+    .getByRole("list", { name: "All problems" })
+    .getByRole("button", { name: turnedBackMessage, exact: true })
+    .click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Turned back");
 
   await page.screenshot({
     path: "test-results/step-editing-choices-reorder-retarget/step-editing-choices-reorder-retarget.png",

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import type { Content } from "@/lib/graph/content";
 import { isEnding, type GraphDocument, type Step } from "@/lib/graph/document";
 import { choicesTargeting, setStart, updateStep } from "@/lib/graph/edit";
+import type { PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
 
 /**
@@ -78,6 +79,8 @@ function LeadsHereFrom({
 export function StepPanel({
   document,
   step,
+  problems,
+  choiceProblems,
   revision,
   focusTitle,
   focusChoiceId,
@@ -90,6 +93,10 @@ export function StepPanel({
 }: {
   document: GraphDocument;
   step: Step;
+  /** The live publish problems addressed to this Step. */
+  problems: PublishProblem[];
+  /** This Step's own Choices' live publish problems, keyed by Choice id. */
+  choiceProblems: Map<string, PublishProblem[]>;
   /** Bumped each time the Draft was replaced from outside the editor. */
   revision: number;
   /** True when this Step was just created from a Choice and wants a name. */
@@ -137,6 +144,26 @@ export function StepPanel({
         onSelectStep={onSelectStep}
       />
 
+      {problems.length > 0 ? (
+        <section
+          aria-label="Step problems"
+          className="flex flex-col gap-2 rounded-xl px-4 py-3 ring-1 ring-destructive/40"
+        >
+          <h4 className="text-sm font-medium">Problems</h4>
+          <ul
+            role="list"
+            aria-label="Step problems list"
+            className="flex list-disc flex-col gap-1 pl-5 text-sm text-destructive"
+          >
+            {problems.map((problem) => (
+              <li key={`${problem.code}-${problem.choiceId ?? ""}`}>
+                {problem.message}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <RichTextEditor
         resetKey={`${step.id}:${revision}`}
         content={step.content}
@@ -151,6 +178,7 @@ export function StepPanel({
         key={`choices-${step.id}`}
         document={document}
         step={step}
+        choiceProblems={choiceProblems}
         focusChoiceId={focusChoiceId}
         focusChoiceRequest={focusChoiceRequest}
         onChange={onChange}

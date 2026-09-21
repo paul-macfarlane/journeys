@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
@@ -55,6 +55,14 @@ function readVersionRows(journeyId: string): Promise<VersionRow[]> {
     'SELECT id, version_number, description, document FROM "published_version" WHERE journey_id = $1 ORDER BY version_number',
     [journeyId],
   );
+}
+
+/** The "Steps" disclosure beneath the map, opened if it is not already. */
+async function openStepList(page: Page): Promise<void> {
+  const button = page.getByRole("button", { name: "Steps", exact: true });
+  if ((await button.getAttribute("aria-expanded")) === "true") return;
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
 }
 
 test("publish-invalid-draft", async ({ page, context }) => {
@@ -219,6 +227,7 @@ test("publish-versions-and-restore", async ({ page, context }) => {
 
   // Version 2.
   await page.goto(journeyPath);
+  await openStepList(page);
   await expect(
     page.getByRole("list", { name: "Steps" }).getByText(editedStartTitle),
   ).toBeVisible();
@@ -255,6 +264,7 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   // The Draft is version 1's document again, on the page and in the row —
   // including the rich text of the Start, which was on screen throughout and
   // must show version 1's words, not the edit it showed a moment ago.
+  await openStepList(page);
   await expect(
     page
       .getByRole("list", { name: "Steps" })

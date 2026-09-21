@@ -17,6 +17,7 @@ import {
   stepName,
   updateChoice,
 } from "@/lib/graph/edit";
+import type { PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
 
 /**
@@ -32,6 +33,7 @@ const NEW_STEP = "__new__";
 export function ChoiceList({
   document,
   step,
+  choiceProblems,
   focusChoiceId,
   focusChoiceRequest,
   onChange,
@@ -39,6 +41,8 @@ export function ChoiceList({
 }: {
   document: GraphDocument;
   step: Step;
+  /** This Step's own Choices' live publish problems, keyed by Choice id. */
+  choiceProblems: Map<string, PublishProblem[]>;
   /** A Choice here whose label field is being asked for — one drawn on the
    * map, or one whose arrow the Author clicked. */
   focusChoiceId: string | null;
@@ -201,11 +205,11 @@ export function ChoiceList({
                 </Button>
               </div>
 
-              {dangling ? (
-                <p className="text-sm text-destructive">
-                  This choice points at a step that no longer exists
+              {(choiceProblems.get(choice.id) ?? []).map((problem) => (
+                <p key={problem.code} className="text-sm text-destructive">
+                  {problem.message}
                 </p>
-              ) : null}
+              ))}
             </li>
           );
         })}

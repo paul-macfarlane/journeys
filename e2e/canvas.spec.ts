@@ -123,6 +123,14 @@ function problemEdges(page: Page) {
   return canvas(page).locator('[data-choice-id]:not([data-problems="0"])');
 }
 
+/** The "Steps" disclosure beneath the map, opened if it is not already. */
+async function openStepList(page: Page): Promise<void> {
+  const button = page.getByRole("button", { name: "Steps", exact: true });
+  if ((await button.getAttribute("aria-expanded")) === "true") return;
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+}
+
 async function renameStep(page: Page, title: string): Promise<void> {
   await page.getByLabel("Step title").fill(title);
   await expect(page.getByLabel("Step title")).toHaveValue(title);
@@ -601,6 +609,7 @@ test.describe("the seeded map", () => {
 
     // The Step to open: the last one the list offers that is off the map
     // right now, falling back to any that is not wholly on it.
+    await openStepList(page);
     const stepsList = page.getByRole("list", { name: "Steps" });
     const listed = await stepsList.getByRole("button").allInnerTexts();
     const views = await nodeViews(page);
@@ -654,6 +663,161 @@ test.describe("the seeded map", () => {
     await canvasNode(page, showingTitle).click();
     await expect(page.getByLabel("Step title")).toHaveValue(showingTitle);
     expect(await settledTransform(page)).toBe(before);
+
+    // A Step no walk reaches is found the same way: through the problem it
+    // shows up as, not only through the Steps list.
+    const withUnreachable: GraphDocument = graphDocumentSchema.parse({
+      ...seeded,
+      steps: {
+        ...seeded.steps,
+        "lost-tent": {
+          id: "lost-tent",
+          title: "Lost tent",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  { type: "text", text: "The tent is gone by morning." },
+                ],
+              },
+            ],
+          },
+          choices: [],
+          prompt: null,
+          // Reused from an existing case-3 Ending so this Step carries
+          // exactly one live problem — unreachable — not also a missing
+          // Outcome of its own.
+          outcomeId: "outcome-good-control",
+          position: null,
+        },
+      },
+    });
+    await writeDraftDocument(journeyId, withUnreachable);
+    await page.reload();
+
+    await expect(canvasNodes(page)).toHaveCount(stepCount + 1);
+    await expect
+      .poll(() => mapFaults(page, stepCount + 1), { timeout: 20_000 })
+      .toEqual([]);
+
+    // Zoomed in until "Lost tent" is no longer fully on screen — panning if a
+    // zoom step alone leaves it inside, bounded so a layout that never pushes
+    // it off screen fails the assertion below instead of hanging.
+    const zoomInFurther = canvas(page).getByRole("button", {
+      name: /zoom in/i,
+    });
+    let lostTentOutside = false;
+    let zoomAttempts = 0;
+    const maxZoomAttempts = 15;
+    while (!lostTentOutside && zoomAttempts < maxZoomAttempts) {
+      zoomAttempts += 1;
+      await zoomInFurther.click();
+      const lostTent = (await nodeViews(page)).find(
+        (view) => view.title === "Lost tent",
+      );
+      if (lostTent !== undefined && !lostTent.fullyInside) {
+        lostTentOutside = true;
+        break;
+      }
+      // A zoom that carried "Lost tent" clean off screen still needs a pan
+      // back toward the middle, or the next zoom only zooms in on empty map.
+      if (lostTent !== undefined && !lostTent.showing) {
+        const frame = await canvas(page).boundingBox();
+        if (frame !== null) {
+          await page.mouse.move(
+            frame.x + frame.width / 2,
+            frame.y + frame.height / 2,
+          );
+          await page.mouse.down();
+          await page.mouse.move(
+            frame.x + frame.width * 0.75,
+            frame.y + frame.height * 0.75,
+            { steps: 8 },
+          );
+          await page.mouse.up();
+        }
+      }
+    }
+    expect(
+      lostTentOutside,
+      `"Lost tent" was still fully inside the canvas frame after ${zoomAttempts} zoom attempts`,
+    ).toBe(true);
+
+    const problemsButton = page.getByRole("button", {
+      name: "1 problem",
+      exact: true,
+    });
+    await expect(problemsButton).toBeVisible();
+    await problemsButton.click();
+    await page
+      .getByRole("list", { name: "All problems" })
+      .getByRole("button", {
+        name: 'Step "Lost tent" cannot be reached from the start',
+        exact: true,
+      })
+      .click();
+
+    await expect(page.getByLabel("Step title")).toHaveValue("Lost tent");
+    await expect
+      .poll(
+        async () =>
+          (await nodeViews(page)).find((view) => view.title === "Lost tent")
+            ?.fullyInside,
+        { timeout: 10_000 },
+      )
+      .toBe(true);
+  });
+
+  test("canvas-step-list-follows-map", async ({ page, context }) => {
+    const { journeyId } = await startJourney(page, context);
+
+    const document = graphDocumentSchema.parse(case3);
+    const stepCount = Object.keys(document.steps).length;
+
+    await expectSaved(page);
+    await writeDraftDocument(journeyId, document);
+    await page.reload();
+
+    await expect(canvasNodes(page)).toHaveCount(stepCount);
+    await expect
+      .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
+      .toEqual([]);
+
+    await openStepList(page);
+    const stepsList = page.getByRole("list", { name: "Steps" });
+    const listedTitles = await stepsList.getByRole("button").allInnerTexts();
+
+    // Every box's title and rect in one round trip, sorted the way
+    // `mapOrder` orders the canvas: top to bottom, then left to right.
+    const boxes = await canvasNodes(page).evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          title: element.getAttribute("aria-label") ?? "",
+          top: Math.round(rect.top),
+          left: Math.round(rect.left),
+        };
+      }),
+    );
+    const mapOrderedTitles = boxes
+      .slice()
+      .sort((a, b) => a.top - b.top || a.left - b.left)
+      .map((box) => box.title);
+
+    expect(listedTitles).toHaveLength(stepCount);
+    expect(listedTitles).toEqual(mapOrderedTitles);
+
+    await expect(
+      page.getByRole("list", { name: "Not yet reached" }),
+    ).toHaveCount(0);
+    await expect(page.getByText("Not reachable from the start")).toHaveCount(0);
+
+    await page.screenshot({
+      path: "test-results/canvas-step-list-follows-map/canvas-step-list-follows-map.png",
+      fullPage: true,
+    });
   });
 });
 
@@ -773,6 +937,87 @@ test("canvas-validation-marks", async ({ page, context }) => {
     "data-problems",
     "0",
   );
+});
+
+test("canvas-problems-readable", async ({ page, context }) => {
+  await startJourney(page, context);
+
+  // A brand-new Draft's one Step is an Ending with no Outcome: read on the
+  // Step's own panel, in the header count, and in the live list the count
+  // opens.
+  await renameStep(page, "Border post");
+
+  const stepProblemsMessage = 'Ending "Border post" has no outcome';
+  const stepProblems = page
+    .getByRole("region", { name: "Step" })
+    .getByRole("list", { name: "Step problems list" });
+  await expect(stepProblems.getByRole("listitem")).toHaveCount(1);
+  await expect(stepProblems).toHaveText(stepProblemsMessage);
+
+  const problemsButton = page.getByRole("button", {
+    name: "1 problem",
+    exact: true,
+  });
+  await expect(problemsButton).toBeVisible();
+  await problemsButton.click();
+  const allProblems = page.getByRole("list", { name: "All problems" });
+  await expect(allProblems.getByRole("listitem")).toHaveCount(1);
+  await expect(allProblems).toHaveText(stepProblemsMessage);
+
+  await page.screenshot({
+    path: "test-results/canvas-problems-readable/canvas-problems-readable.png",
+    fullPage: true,
+  });
+
+  // Giving it an Outcome clears the problem everywhere it was shown.
+  await addOutcome(page, "Reached care");
+  await page
+    .getByLabel("Outcome", { exact: true })
+    .selectOption({ label: "Reached care" });
+
+  await expect(page.getByRole("region", { name: "Step problems" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText("No problems", { exact: true })).toBeVisible();
+  await expect(page.getByRole("list", { name: "All problems" })).toHaveCount(0);
+
+  // A dangling Choice: read the same live message on the Choice row that
+  // dangles and in that Step's own Problems section.
+  await addStepFromCanvas(page, "Clinic tent");
+  await canvasNode(page, "Border post").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await addChoiceToStep(page, "Find the clinic", "Clinic tent");
+
+  await canvasNode(page, "Clinic tent").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+  await page
+    .getByRole("region", { name: "Step" })
+    .getByRole("button", { name: "Delete step", exact: true })
+    .click();
+  const confirmation = page.getByRole("alertdialog");
+  await confirmation
+    .getByRole("button", { name: "Delete step", exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  const danglingMessage =
+    'Step "Border post" has a choice pointing at a step that no longer exists';
+  const choiceRow = page
+    .getByRole("list", { name: "Choices" })
+    .getByRole("listitem")
+    .first();
+  await expect(choiceRow.getByText(danglingMessage)).toBeVisible();
+
+  const stepProblemsAfter = page
+    .getByRole("region", { name: "Step" })
+    .getByRole("list", { name: "Step problems list" });
+  await expect(stepProblemsAfter.getByRole("listitem")).toHaveCount(1);
+  await expect(stepProblemsAfter).toHaveText(danglingMessage);
+
+  await expect(
+    page.getByRole("button", { name: "1 problem", exact: true }),
+  ).toBeVisible();
 });
 
 /**

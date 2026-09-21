@@ -30,6 +30,7 @@ import {
   updateChoice,
   updateStep,
 } from "@/lib/graph/edit";
+import { problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -72,6 +73,10 @@ export function DraftEditor({
   const [problems, setProblems] = useState<PublishProblem[] | null>(null);
   const [validateError, setValidateError] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
+  // Whether the live "All problems" list is open. Left as the Author set it
+  // across document changes — it is the count reaching zero, not a toggle,
+  // that ever makes the section disappear on its own.
+  const [liveProblemsOpen, setLiveProblemsOpen] = useState(false);
   // Something the rich text surface did on the Author's behalf (removing a
   // pasted image that had no credit), shown while that Step stays selected.
   const [contentNotice, setContentNotice] = useState<{
@@ -415,6 +420,13 @@ export function DraftEditor({
   // button and its list stay a deliberate, server-side question.
   const liveProblems = useMemo(() => validateForPublish(document), [document]);
 
+  // The same problems, addressed by Step and by Choice, so the panel can show
+  // each one where it belongs rather than only in the flat list above.
+  const liveProblemAddresses = useMemo(
+    () => problemsByAddress(liveProblems),
+    [liveProblems],
+  );
+
   const steps = Object.values(document.steps);
   const summary = [
     counted(steps.length, "step"),
@@ -426,6 +438,30 @@ export function DraftEditor({
   const selectedStep = Object.hasOwn(document.steps, selectedStepId)
     ? document.steps[selectedStepId]
     : (document.steps[document.startStepId] ?? null);
+
+  const selectedStepProblems = useMemo(
+    () =>
+      selectedStep !== null
+        ? (liveProblemAddresses.steps.get(selectedStep.id) ?? [])
+        : [],
+    [liveProblemAddresses, selectedStep],
+  );
+
+  // The open Step's own Choice problems, stripped of the "<stepId>:" prefix
+  // `problemsByAddress` files them under, so the panel can key straight off
+  // the Choice id.
+  const selectedStepChoiceProblems = useMemo(() => {
+    const byChoice = new Map<string, PublishProblem[]>();
+    if (selectedStep === null) return byChoice;
+
+    const prefix = `${selectedStep.id}:`;
+    for (const [key, choiceProblems] of liveProblemAddresses.choices) {
+      if (key.startsWith(prefix)) {
+        byChoice.set(key.slice(prefix.length), choiceProblems);
+      }
+    }
+    return byChoice;
+  }, [liveProblemAddresses, selectedStep]);
 
   return (
     <div ref={rootRef} onBlur={handleBlur} className="flex flex-col gap-6">
@@ -439,6 +475,18 @@ export function DraftEditor({
           <p role="status" className="text-muted-foreground text-sm">
             {STATUS_TEXT[status]}
           </p>
+          {liveProblems.length > 0 ? (
+            <button
+              type="button"
+              aria-expanded={liveProblemsOpen}
+              className="text-sm text-destructive underline underline-offset-4"
+              onClick={() => setLiveProblemsOpen((current) => !current)}
+            >
+              {counted(liveProblems.length, "problem")}
+            </button>
+          ) : (
+            <p className="text-muted-foreground text-sm">No problems</p>
+          )}
           {/* "Add step" lives on the canvas, beside the map it adds to. */}
           <Button
             variant="outline"
@@ -449,6 +497,43 @@ export function DraftEditor({
           </Button>
         </div>
       </div>
+
+      {liveProblemsOpen && liveProblems.length > 0 ? (
+        <section
+          aria-label="Live problems"
+          className="flex flex-col gap-2 rounded-xl px-4 py-3 ring-1 ring-destructive/40"
+        >
+          {/* role="list" is explicit for consistency with the app's other
+              lists. One rule can name the same Step more than once (one entry
+              per dangling Choice), so the Choice id is part of the key. */}
+          <ul
+            role="list"
+            aria-label="All problems"
+            className="flex list-disc flex-col gap-1 pl-5 text-sm"
+          >
+            {liveProblems.map((problem, index) => {
+              const { stepId } = problem;
+              return (
+                <li
+                  key={`${problem.code}-${stepId ?? ""}-${problem.choiceId ?? index}`}
+                >
+                  {stepId !== undefined ? (
+                    <button
+                      type="button"
+                      className="text-left text-destructive underline underline-offset-4"
+                      onClick={() => selectStep(stepId)}
+                    >
+                      {problem.message}
+                    </button>
+                  ) : (
+                    problem.message
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       {saveError ? (
         <p
@@ -554,6 +639,8 @@ export function DraftEditor({
           <StepPanel
             document={document}
             step={selectedStep}
+            problems={selectedStepProblems}
+            choiceProblems={selectedStepChoiceProblems}
             revision={revision}
             focusTitle={titleFocusStepId === selectedStep.id}
             focusChoiceId={
