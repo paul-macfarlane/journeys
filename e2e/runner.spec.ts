@@ -5,6 +5,7 @@ import { graphDocumentSchema } from "@/lib/graph/document";
 import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
+  loopDocument,
   publishDocument,
   QUEUE_STEP_ID,
   QUEUE_STEP_TITLE,
@@ -314,6 +315,134 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     expect(afterStartOver[0].outcome_id).toBe("turned-away");
     expect(afterStartOver[1].path).toEqual([START_STEP_ID]);
     expect(afterStartOver[1].ended_at).toBeNull();
+  } finally {
+    await participantContext.close();
+  }
+});
+
+test("runner-loop-and-back", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Queue ${suffix}`,
+  );
+
+  const versionId = await publishDocument(journeyId, loopDocument());
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    // Twice around the loop: every visit is its own entry, and choosing the
+    // Step behind you is a forward move, not a backtrack.
+    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    const aroundTheLoop = await readRuns(versionId);
+    expect(aroundTheLoop).toHaveLength(1);
+    expect(aroundTheLoop[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+    ]);
+    expect(aroundTheLoop[0].backtrack_count).toBe(0);
+
+    // The ambiguous navigation: the queue Step is both the entry behind the
+    // Participant and a Choice of the Step they are on. Back means the entry,
+    // which only holds if the index reaches the server.
+    await participant.goBack();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await expect
+      .poll(async () => (await readRuns(versionId))[0].path)
+      .toEqual([START_STEP_ID, QUEUE_STEP_ID, START_STEP_ID, QUEUE_STEP_ID]);
+
+    const afterBrowserBack = await readRuns(versionId);
+    expect(afterBrowserBack[0].backtrack_count).toBe(1);
+    expect(afterBrowserBack[0].ended_at).toBeNull();
+
+    // The index did its work and left: the address bar shows the Step alone.
+    await expect(participant).toHaveURL(
+      `${E2E_BASE_URL}/j/${journeyId}/${QUEUE_STEP_ID}`,
+    );
+
+    // Round the loop once more from there, and out.
+    await participant.getByRole("link", { name: "Ask again" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    const afterLoopingAgain = await readRuns(versionId);
+    expect(afterLoopingAgain[0].path).toHaveLength(5);
+    expect(afterLoopingAgain[0].backtrack_count).toBe(1);
+
+    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Show your papers" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Waved through" }),
+    ).toBeVisible();
+    await expect(participant.getByText("The end")).toBeVisible();
+
+    await participant.screenshot({
+      path: "test-results/runner-loop-and-back/runner-loop-and-back.png",
+      fullPage: true,
+    });
+
+    const ended = await readRuns(versionId);
+    expect(ended).toHaveLength(1);
+    expect(ended[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      "waved-through",
+    ]);
+    expect(ended[0].outcome_id).toBe("reached-care");
+    expect(ended[0].ended_at).not.toBeNull();
+    expect(ended[0].backtrack_count).toBe(1);
   } finally {
     await participantContext.close();
   }

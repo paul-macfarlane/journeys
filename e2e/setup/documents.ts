@@ -161,6 +161,53 @@ export function runnerDocument(): GraphDocument {
   };
 }
 
+/**
+ * A Journey with a loop in it, which a Published Version is allowed to hold
+ * since ticket 18: the queue Step leads back to the Start, so a Participant
+ * may walk the same two Steps as many times as they like before showing their
+ * papers. The Start is the loop-closing Step — from there the queue Step is
+ * both the entry behind the Participant and a Choice in front of them, which
+ * is the one navigation the path index has to settle.
+ */
+export function loopDocument(): GraphDocument {
+  const steps = [
+    step(
+      START_STEP_ID,
+      START_STEP_TITLE,
+      "The queue has not moved in an hour.",
+      [choice("choice-wait", "Wait your turn", QUEUE_STEP_ID)],
+      null,
+    ),
+    step(
+      QUEUE_STEP_ID,
+      QUEUE_STEP_TITLE,
+      "The line inches forward, then stops again.",
+      [
+        choice("choice-ask", "Ask again", START_STEP_ID),
+        choice("choice-papers", "Show your papers", "waved-through"),
+      ],
+      null,
+    ),
+    step(
+      "waved-through",
+      "Waved through",
+      "The officer stamps the paper and points you on.",
+      [],
+      "reached-care",
+    ),
+  ];
+
+  const outcomes = [{ id: "reached-care", label: "Reached care" }];
+
+  return {
+    schemaVersion: 1,
+    startStepId: START_STEP_ID,
+    allowBack: true,
+    steps: Object.fromEntries(steps.map((item) => [item.id, item])),
+    outcomes: Object.fromEntries(outcomes.map((item) => [item.id, item])),
+  };
+}
+
 /** Writes a document into a Journey's Draft, replacing what is there. */
 export async function writeDraftDocument(
   journeyId: string,
