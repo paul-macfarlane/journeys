@@ -1,6 +1,6 @@
 # 08: Step and Choice editing
 
-Status: ready-for-human
+Status: done
 Blocked by: 03
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-20
 Parent: `.scratch/journeys-platform/spec.md`
@@ -150,3 +150,7 @@ Paul's review of PR #16, decided in the session of 2026-09-21:
 ### [PROGRESS] 2026-09-21 — rework after Paul's PR #16 review
 
 Applied by the orchestrator in `3025966`: `walkOrder` in `src/lib/graph/edit.ts` (depth first from the Start, first Choice first, then the unreached Steps in document order; three Seam A cases); `StepList` renders the walk as the "Steps" list and the rest under "Not reachable from the start" in a second list labelled "Not yet reached" (a label without the word "Steps", so the two stay distinguishable by name), scrolling the selected Step into view; `StepPanel` loses the title heading, gains "Leads here from" (a `group` of buttons, or "the beginning — participants start here" on the Start, or "nothing yet — no choice points at this step"), keys the title field by Step and focuses it when the Step was just created (`selectStep(stepId, { focusTitle })` in `DraftEditor`), and puts "Make this the start" beside "Delete step" in a footer; each Choice row has "Open". `e2e/step-editing.spec.ts` reads the panel's title field instead of the removed heading, asserts the focus on a just-created Step, and walks back with "Leads here from", forward with "Open", and finds the orphaned "Turned back" under "Not yet reached". Verified run command all exit 0 at `3025966`: 150 unit tests in 7 files, 24 e2e specs (`[e2e] database: journeys_e2e on localhost:5436`); evidence recaptured under `test-results/`. The criterion table in the closeout stands with the evidence recaptured at `3025966`.
+
+### [CLOSEOUT] 2026-09-21 — moved to `done` at Paul's direction
+
+PR #16 merged to `staging` on 2026-09-21. Paul stated in the session of 2026-09-21 that 05 and 08 are done; the orchestrator applied the `ready-for-human` → `done` transition on that direction. Unblocks 07 (with 05), 09 (with 04), 12 (with 06), and 14.

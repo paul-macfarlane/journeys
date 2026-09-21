@@ -1,6 +1,6 @@
 # 05: Publish, Preview, Unpublish, versions, and restore
 
-Status: ready-for-human
+Status: done
 Blocked by: 03
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-20
 Parent: `.scratch/journeys-platform/spec.md`
@@ -162,3 +162,7 @@ Applied by the orchestrator in `6050798`: migration `0004_massive_khan` adds `pu
 ### [PROGRESS] 2026-09-20 — publish hint removed (Paul, PR #15 review)
 
 The sentence beside the Publish button ("Publish to make what is here live." / "Everything here is live.") read wrongly next to Unpublish and is gone; the Publish button's enabled state carries the meaning. Copy-only change no spec references: lint, format, typecheck, unit tests, and build rerun green (`dod-1-commands.txt`); the e2e suite was not rerun for this commit because Paul's `pnpm dev` held the checkout, so `dod-1-e2e.txt` stays the green run at `6050798`.
+
+### [CLOSEOUT] 2026-09-21 — moved to `done` at Paul's direction
+
+PR #15 merged to `staging` on 2026-09-20. Paul stated in the session of 2026-09-21 that 05 and 08 are done; the orchestrator applied the `ready-for-human` → `done` transition on that direction. Unblocks 06 (with 04) and 07 (with 08).
