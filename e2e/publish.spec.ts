@@ -158,8 +158,10 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   const versionOneDocument = published[0].document;
   expect(versionOneDocument).toEqual(original);
 
-  // An Author edits the Draft afterwards. The editor arrives with ticket 08,
-  // so the edit goes straight into the row.
+  // An Author edits the Draft afterwards: the Start's title and its text. The
+  // edit goes straight into the row so this stays a spec about versions, not
+  // about the editor.
+  const editedStartText = "The queue moved at last.";
   const edited = {
     ...original,
     steps: {
@@ -167,6 +169,15 @@ test("publish-versions-and-restore", async ({ page, context }) => {
       [START_STEP_ID]: {
         ...original.steps[START_STEP_ID],
         title: editedStartTitle,
+        content: {
+          type: "doc" as const,
+          content: [
+            {
+              type: "paragraph" as const,
+              content: [{ type: "text" as const, text: editedStartText }],
+            },
+          ],
+        },
       },
     },
   };
@@ -177,6 +188,7 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await expect(
     page.getByRole("list", { name: "Steps" }).getByText(editedStartTitle),
   ).toBeVisible();
+  await expect(page.getByLabel("Step content")).toContainText(editedStartText);
   // The edit is something participants have not seen, so Publish is back.
   await expect(
     page.getByRole("button", { name: "Publish", exact: true }),
@@ -206,12 +218,20 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await page.getByRole("button", { name: "Restore version" }).click();
   await expect(page.getByRole("alertdialog")).toBeHidden();
 
-  // The Draft is version 1's document again, on the page and in the row.
+  // The Draft is version 1's document again, on the page and in the row —
+  // including the rich text of the Start, which was on screen throughout and
+  // must show version 1's words, not the edit it showed a moment ago.
   await expect(
     page
       .getByRole("list", { name: "Steps" })
       .getByText(START_STEP_TITLE, { exact: true }),
   ).toBeVisible();
+  await expect(page.getByLabel("Step content")).toContainText(
+    "The queue has not moved in an hour.",
+  );
+  await expect(page.getByLabel("Step content")).not.toContainText(
+    editedStartText,
+  );
   const restored = await readDraftDocument(journeyId);
   expect(restored[0].document).toEqual(versionOneDocument);
 

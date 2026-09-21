@@ -46,9 +46,13 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   journeys inside it, with a dialog to create one. Members only; anyone else
   gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
-  title and description, delete it, and see its draft — the steps it holds,
-  which is the start, which are endings (editing arrives later). Publish the
-  draft as an immutable version (refused, with the problems listed, while the
+  title and description, delete it, and edit its draft — pick a step from the
+  list and change its title and rich text in the panel, add, reorder,
+  retarget and remove its choices (creating the step a choice needs in the
+  same motion), make a step the start, delete a step and see which choices
+  break, manage the journey's outcomes and tag each ending with one, and run
+  validation on demand. The draft autosaves. Publish the draft as an
+  immutable version (refused, with the problems listed, while the
   draft has any), unpublish to take it back from participants, preview it, and
   see every published version — number, when, and who published it — with the
   live one marked and any of them restorable into the draft. Members of the

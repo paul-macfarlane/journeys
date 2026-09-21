@@ -1,68 +1,36 @@
-# DoD-1 (publish hint removed) — 2026-09-20T23:12:56Z
+# Verified run command, commit 3025966, 2026-09-21T02:13:46Z
 
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint
-
-> journeys@0.1.0 lint .
+$ pnpm lint
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
 > eslint
+exit: 0
 
-exit 0
-
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm format:check
-
-> journeys@0.1.0 format:check .
+$ pnpm format:check
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
 > prettier --check .
-
 Checking formatting...
 All matched files use Prettier code style!
-exit 0
+exit: 0
 
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm typecheck
-
-> journeys@0.1.0 typecheck .
+$ pnpm typecheck
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
 > tsc --noEmit
+exit: 0
 
-exit 0
-
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test
-
-> journeys@0.1.0 test .
+$ pnpm test
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
 > vitest run
-
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+ Test Files  7 passed (7)
+      Tests  150 passed (150)
+   Start at  22:13:52
+   Duration  456ms (transform 407ms, setup 0ms, import 1.01s, tests 95ms, environment 0ms)
+exit: 0
 
- RUN  v4.1.11 .
-
-
- Test Files  6 passed (6)
-      Tests  111 passed (111)
-   Start at  19:13:02
-   Duration  423ms (transform 297ms, setup 0ms, import 791ms, tests 86ms, environment 0ms)
-
-exit 0
-
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm build
-
-> journeys@0.1.0 build .
-> next build
-
-▲ Next.js 16.2.10 (Turbopack)
-- Environments: .env.local
-
-  Creating an optimized production build ...
-✓ Compiled successfully in 4.0s
-  Running TypeScript ...
-  Finished TypeScript in 3.6s ...
-  Collecting page data using 9 workers ...
-  Generating static pages using 9 workers (0/5) ...
-  Generating static pages using 9 workers (1/5) 
-  Generating static pages using 9 workers (2/5) 
-  Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 78ms
-  Finalizing page optimization ...
-
-Route (app)
+$ pnpm build
 ┌ ƒ /
 ├ ○ /_not-found
 ├ ƒ /api/auth/[...all]
@@ -72,11 +40,7 @@ Route (app)
 ├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
 ├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
 └ ƒ /sign-in
-
-
 ƒ Proxy (Middleware)
-
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
-
-exit 0
+exit: 0
