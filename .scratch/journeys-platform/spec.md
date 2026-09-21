@@ -274,3 +274,7 @@ After using the ticket-09 canvas (PR #19), Paul decided that all next work tidie
 ### [SCOPE CHANGE] 2026-09-21 — cycles allowed
 
 Paul decided that Choices may target a Step that can reach them ("as long as we have a fix, we shouldn't limit users"). The publish rule "the graph has no cycles" and the "Back navigation" argument that rests on it are amended by ticket 18: the Run path keeps repeats, the runner resolves a navigation as a Choice first and a backtrack second, and browser Back is disambiguated by a path index in history state. The four legacy Choices dropped in ticket 04 are restored. ADR-0002 records the decision when 18 lands.
+
+### [SCOPE CHANGE] 2026-09-21 — layout direction stored on the Journey (ticket 21)
+
+Amends "Graph document": the document gains a Journey-level `layoutDirection` field, `"TB"` or `"LR"`, defaulting to `"TB"` in the zod schema so every stored document parses. It is a property of the Journey, not of the Author: Members share one view and switch it freely; it lives in the Draft and autosaves like every other edit (last write wins); publishing copies it with the document; nothing reads it at run time. Step positions are still not stored (that is ticket 17). Whether the Step panel is shown is a way of reading, remembered per browser and never stored on the Journey. Decided by Paul, 2026-09-21; recorded in ticket 21's [EXECUTION PLAN].
