@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: 16
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: third of the graph tidy-up series (18 → 16 → 19 → 17).
+Priority: third of the graph tidy-up series (18 → 16 → 19 → 21 → 17).
 
 **What to build:** the smaller editor conveniences a writer who lives on the canvas will reach for.
 
