@@ -69,7 +69,9 @@ jobs:
 
       - run: pnpm exec playwright install --with-deps chromium
 
-      # Starts its own Next server on its own port against its own
-      # `journeys_e2e` database (derived from this job's DATABASE_URL) — see
-      # e2e/setup/. Never touches the service database above.
-      - run: pnpm test:e2e
+      # Starts its own production Next server (`next start`, over the build
+      # made above) on its own port against its own `journeys_e2e` database
+      # (derived from this job's DATABASE_URL) — see e2e/setup/. Never
+      # touches the service database above. Retries are 0 by config: a test
+      # that needs a second attempt fails the job on purpose.
+      - run: pnpm test:e2e:prebuilt

@@ -300,7 +300,7 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     // The browser restores the previous page from its own cache and the page
     // sends itself back to the server, so the row settles a moment after the
     // heading is on screen — the two screens look identical either way.
-    // 30s budgets a second full page load on a busy development server.
+    // 30s budgets a second full page load on a busy server.
     await expect
       .poll(async () => (await readRuns(versionId))[0].path, {
         timeout: 30_000,
@@ -432,7 +432,7 @@ test("runner-loop-and-back", async ({ page, context, browser }) => {
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
 
-    // 30s budgets a second full page load on a busy development server.
+    // 30s budgets a second full page load on a busy server.
     await expect
       .poll(async () => (await readRuns(versionId))[0].path, {
         timeout: 30_000,

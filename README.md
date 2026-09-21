@@ -176,9 +176,16 @@ dev database or a running `pnpm dev`:
 - Global setup creates and migrates a dedicated `journeys_e2e` database
   (derived from `DATABASE_URL` by swapping the database name) and logs the
   database name it ran against.
-- The suite starts its own Next server on port 3100 — never port 3000 —
-  with `DATABASE_URL` and `BETTER_AUTH_URL` overridden to match, and never
-  reuses an already-running server.
+- `pnpm test:e2e` builds the app first and the suite starts its own
+  production server (`next start`) over that build on port 3100 — never
+  port 3000 — with `DATABASE_URL` and `BETTER_AUTH_URL` overridden to match,
+  and never reuses an already-running server. It is never `next dev`: a dev
+  server compiles routes on demand and delivers the editor's bundle slowly
+  under load, which is what made tests flaky in CI. `pnpm test:e2e:prebuilt`
+  skips the build when one is already in `.next` (CI uses it after its own
+  build step; locally, remember a stale build tests stale code).
+- Retries are off everywhere. A test that fails once fails the run; a flaky
+  test is fixed at its cause or deleted, never retried.
 - Specs sign in by minting a real better-auth session directly (through
   better-auth's internal adapter) rather than driving OAuth; there is no
   test-only auth provider and no mocking of better-auth.
