@@ -1,6 +1,6 @@
 # 19: Canvas quality of life
 
-Status: ai-review
+Status: done
 Blocked by: 16
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -117,3 +117,35 @@ Two fresh reviewers (one per axis, opus) read the whole diff against the ticket,
 | S12 commit-body typo in `f6cee8d` | commits | deviation: accepted commits are not rewritten; the PR asks for a squash merge |
 
 **Remaining risks:** (1) the arrow-key walk scores by box centres, so on a wide rank a box straight below but far away can lose to a nearer diagonal one — the weighting (2 × across) favours "straight ahead" but is a heuristic; (2) the self-loop route assumes every box is `NODE_WIDTH` wide (true today; ticket 17 must keep it or measure); (3) the peek is a portal, so a box at the bottom edge of the frame shows its peek clipped by the section's `overflow-hidden`; (4) `findStepByName` types a lower-case fragment and clicks — the keyboard path is proven once, in `canvas-find-step`.
+
+### [CLOSEOUT] 2026-09-21 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/24 (`feat/19-canvas-quality-of-life` → `staging`). Per the tracker rule Paul set on 2026-09-21, this closeout commit carries `Status: done`; merging the PR is the acceptance that lands it on `staging`. Status log: `ready-for-agent` → `in-progress` → `ai-review` → `done`.
+
+**Repository delivery:** `journeys`, base `staging` at `33baeb4`, direct checkout, no worktrees, seven commits: `e8492e8` claim and execution plan (orchestrator), `f6cee8d` D1 find step and step list removal (opus), `5edba39` D2 duplicate and zoom to step (sonnet), `153c463` D3 content peek, keyboard basics, self-loop route, Seam B (opus), `db9945b` D4 review fixes (opus), `d7068e8` evidence and records (orchestrator; also carries the proof-root clear), and this closeout. Closeout re-check of the isolation record against the real diffs: `journey-canvas.tsx` changed in every implementation commit (7, 7, and 22 hunks) and `e2e/canvas.spec.ts` in every one (7, 1, 9); D1 and D2 both changed the JSX prop region of `draft-editor.tsx` (D1 at 670–704, D2 at 687 and 722); the shared e2e port and database held. The predicted overlaps materialized, so the sequential structure stands as written.
+
+**Exact verified run command** (local; docker Postgres on 5436; evidence captured at `db9945b`, committed in `d7068e8`):
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+```
+
+Every command exits 0; Vitest 210 passed in 11 files; Playwright 55 passed (production build on port 3100, `retries` 0, nothing flaky, no console noise). No deployed-target check (Paul's 2026-09-20 decision); no migration and no dependency change, so no lockfile gate.
+
+**Criterion verdicts (evidence under `test-results/`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 typing part of a title in "Find step" and choosing it selects the Step and brings its box into the viewport (case-3, bottom-most box) | PASS | `canvas-find-step/….png`, `dod-1-e2e.txt` ✓ (Cmd/Ctrl+K focuses the field; the lowest box on the map, found by a lower-case fragment after zooming it off-screen, is opened and centered; the combobox's no-match, Escape, ArrowDown/ArrowUp wrap, and Enter paths too) |
+| AC-2 "Duplicate" creates a Step with the same content and Outcome, no Choices, title suffixed " copy", opened in the panel | PASS | `canvas-duplicate-step/….png`, `dod-1-e2e.txt` ✓ (toolbar and panel-footer Duplicate; the `draft` row's copy holds equal content, Outcome, and Prompt with `choices: []`; "Zoom to step" centers the copy), `dod-1-commands.txt` (Seam A `duplicateStep`: copy, identity, 200-character trim, untitled, unknown) |
+| AC-3 hovering a box shows its content's opening text | PASS | `canvas-content-peek/….png`, `dod-1-e2e.txt` ✓ (hover and focus both show the 140-character opening with `…`; a Step with problems and no content reads its problems then "No content yet"), `dod-1-commands.txt` (Seam A `contentPreview`, six cases) |
+| AC-4 arrow keys move focus between boxes; Enter opens the focused one | PASS | `canvas-keyboard-navigation/….png`, `dod-1-e2e.txt` ✓ (Down to a child, sideways to its sibling, Up to the Start, Enter opens, Escape lands on the Canvas region) |
+| AC-5 Seam B: find, duplicate, and edit through the map | PASS | `canvas-find-duplicate-and-edit/….png` and `….webm`, `dod-1-e2e.txt` ✓ ("Preface" found by name on case-3, duplicated from its toolbar, renamed and given content in the panel, connected from the original by dragging; the `draft` row holds both) |
+| S-1 the step list is removed; the find field lists every Step in map order | PASS | `canvas-find-step-lists-map-order/….png`, `s-1-step-list-removed.txt` (no `StepList`/`step-list`/`openStepList`/`list "Steps"` reference; the heading kept), `dod-1-e2e.txt` ✓ (36 option names equal the boxes' top-to-bottom, left-to-right order) |
+| N-1 a self-loop Choice is routed beside its box | PASS | `canvas-connect-and-retarget-by-dragging/….png` and `….webm`, `dod-1-e2e.txt` ✓ (drawn from the connect dot onto its own box; no path sample inside the box; the route runs past its right edge) |
+| DoD-1 verified run command green | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` |
+| DoD-2 every PASS artifact committed; fixture journeys only, no participant data | PASS | `d7068e8`; minted `Test Author` accounts, invented Border-post Journeys, the committed case-3 seed; nothing from a Participant |
+
+**Deviations (approved by the orchestrator under the plan):** the sticky panel is not built (superseded by ticket 21); Duplicate lands the copy where dagre puts an unconnected Step and fits the map; `canvas-find-step` zooms in before finding and asserts centering; `step-editing.spec.ts`'s `aria-current` read became "Find step offers the new Step"; the peek lists problems above the content; AC-5 asserts the typed sentence is contained in the copy's content; a `hoverBox` helper and `focus({ preventScroll })` because Playwright's scroll-into-view fights React Flow's pane; the loop's side clearance is 16 (under dagre's `nodesep`) rather than the plan's 32; titles and previews cut by UTF-16 code unit (the schema counts the same way); a peek can outlive a map move under a stationary pointer; accepted commits not rewritten (the PR asks for a squash merge); worker trailers name the worker's own model.
+
+**Human follow-ups:** (1) review and **squash-merge** PR #24 — it carries `Status: done`; (2) after the merge, 21 (canvas direction and a slidable panel) becomes available, then 17 (manual layout); 20 (empty Choice label as a publish problem) is available at any time.
