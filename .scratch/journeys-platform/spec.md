@@ -264,3 +264,7 @@ Amends "Domain model", "Public URL and runner", and "Public pages and discovery"
 ### Note 2026-09-21 — Back navigation, as built (ticket 06)
 
 Refines "Back navigation": a navigation to a Step not yet on the path is refused **unless some Step already on the path offers it as a Choice**. The runner then takes the Choice from the latest such Step — appending when that is the current Step, and truncating to it first (counting a backtrack) when it is earlier. Browsers serve back navigations from cache without asking the server, so a Participant can choose from a page the server never saw as current; because published graphs have no cycles, the resolution is never ambiguous. The reducer is `src/lib/graph/run.ts`; ticket 10's analytics read the paths it writes. Recorded in ticket 06's [EXECUTION PLAN] and [AI CODE REVIEW].
+
+### [SCOPE CHANGE] 2026-09-21 — graph tidy-up series takes priority
+
+After using the ticket-09 canvas (PR #19), Paul decided that all next work tidies the graph editor before anything else in the priority order: tickets 16 (canvas authoring), 19 (canvas quality of life), then 17 (manual layout, which amends the "manual canvas layout" exclusion and ADR-0001). Ticket 18 asks whether the no-cycles rule stays; until decided it stands. Analytics (10) and the rest of the order resume afterwards.
