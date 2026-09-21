@@ -2,10 +2,11 @@
 // through its Drizzle adapter — column names and types are the adapter's
 // contract, not ours, so nothing there is extended. Journeys' own domain
 // tables follow, each landing with its ticket; Project, Member, Journey,
-// Draft and Published Version are here, and Run and Response follow later.
+// Draft, Published Version, and Run are here, and Response follows later.
 
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -136,7 +137,7 @@ export const member = pgTable(
 // A Journey: a graph of steps and choices, authored inside one Project.
 // Like a Project, a Journey is addressed by its id — inside the Project at
 // `/projects/<project-id>/journeys/<journey-id>`, and publicly at
-// `/j/<journey-id>` once ticket 06 builds the runner.
+// `/j/<journey-id>` for the participant runner.
 //
 // A Journey's Draft is the `draft` row below, created with it, and its
 // Published Versions are the `published_version` rows further down.
@@ -224,4 +225,41 @@ export const publishedVersion = pgTable(
     }),
   },
   (table) => [unique().on(table.journeyId, table.versionNumber)],
+);
+
+// A Run: one anonymous Participant's walk of a Published Version, pinned to
+// it at start so publishing a new version mid-run never changes what an
+// in-progress Run reads. There is no `journey_id` column — the version it is
+// pinned to already names the Journey — so deleting a Journey cascades its
+// Published Versions and, through them, every Run.
+//
+// `id` is the Run's only write credential (see `src/lib/run-cookies.ts`), so
+// it is `crypto.randomUUID()`, unguessable, never sequential.
+// `participantId` is a pseudonymous cookie id, never linked to an account.
+// `path` is the current linear route from the Start, owned by the pure
+// reducer in `src/lib/graph/run.ts`; `backtrackCount`, `endedAt`, and
+// `outcomeId` are that reducer's other state, mirrored here so a resumed Run
+// reads back exactly the state it left off at. `outcomeId` names an Outcome
+// inside the pinned version's document, not a foreign key — Outcomes live
+// inside the document (see ADR-0001), not in a table of their own.
+export const run = pgTable(
+  "run",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    versionId: text("version_id")
+      .notNull()
+      .references(() => publishedVersion.id, { onDelete: "cascade" }),
+    participantId: text("participant_id").notNull(),
+    path: jsonb("path").$type<string[]>().notNull(),
+    backtrackCount: integer("backtrack_count").notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    outcomeId: text("outcome_id"),
+  },
+  // Ticket 10's per-version analytics read every Run of a version.
+  (table) => [index("run_version_id_idx").on(table.versionId)],
 );

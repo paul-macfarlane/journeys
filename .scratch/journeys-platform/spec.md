@@ -260,3 +260,7 @@ Participant state or variables (Choices that set values later Steps read); condi
 ### [SCOPE CHANGE] 2026-09-19 — slugs dropped (approved by Paul during PR #10 review)
 
 Amends "Domain model", "Public URL and runner", and "Public pages and discovery": Project and Journey have **no slug**. Every route uses the id: Author routes `/projects/{project-id}` and `/projects/{project-id}/journeys/{journey-id}`; public `/j/{journey-id}` and `/p/{project-id}`. "Slug editable until first publish and frozen afterward" no longer applies. Reason: Authors should only think about the title, and an id path parameter needs no syncing with it; readable links are traded away (QR codes are unaffected). Recorded in ticket 02's [SCOPE CHANGE]; tickets 05, 06, 07 carry a pointer.
+
+### Note 2026-09-21 — Back navigation, as built (ticket 06)
+
+Refines "Back navigation": a navigation to a Step not yet on the path is refused **unless some Step already on the path offers it as a Choice**. The runner then takes the Choice from the latest such Step — appending when that is the current Step, and truncating to it first (counting a backtrack) when it is earlier. Browsers serve back navigations from cache without asking the server, so a Participant can choose from a page the server never saw as current; because published graphs have no cycles, the resolution is never ambiguous. The reducer is `src/lib/graph/run.ts`; ticket 10's analytics read the paths it writes. Recorded in ticket 06's [EXECUTION PLAN] and [AI CODE REVIEW].

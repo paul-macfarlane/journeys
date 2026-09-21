@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 
 import { PreviewFrame } from "@/components/journeys/preview-frame";
 import { StepView } from "@/components/runner/step-view";
+import { buttonVariants } from "@/components/ui/button";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { requireSession } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 /**
  * Preview's per-Step screen: one Step of the Draft, walked exactly the way a
@@ -42,7 +44,17 @@ export default async function PreviewStepPage({
         stepHref={(targetStepId) =>
           `/projects/${projectId}/journeys/${journeyId}/preview/${targetStepId}`
         }
-        startOverHref={`/projects/${projectId}/journeys/${journeyId}/preview`}
+        // Preview records nothing, so starting over is just a link back to
+        // its start screen — the runner posts a server action here instead,
+        // because starting over there creates a Run.
+        startOver={
+          <a
+            href={`/projects/${projectId}/journeys/${journeyId}/preview`}
+            className={cn(buttonVariants({ variant: "outline" }), "self-start")}
+          >
+            Start over
+          </a>
+        }
       />
     </PreviewFrame>
   );

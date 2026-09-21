@@ -1,4 +1,4 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { RichText } from "@/components/runner/rich-text";
 import { buttonVariants } from "@/components/ui/button";
@@ -6,21 +6,36 @@ import { isEnding, type GraphDocument, type Step } from "@/lib/graph/document";
 import { cn } from "@/lib/utils";
 
 /**
- * One Step, rendered for whoever is walking the graph — the Preview runner
- * today (ticket 05), and the participant runner at `/j/{journey-id}` later
- * (ticket 06). This component knows nothing about Preview, Runs, or
- * Responses: the caller supplies every URL, so the same component serves
- * both.
+ * One Step, rendered for whoever is walking the graph — Preview (ticket 05)
+ * and the participant runner at `/j/{journey-id}` (ticket 06). This component
+ * knows nothing about Preview, Runs, or Responses: the caller supplies every
+ * URL and the whole "Start over" control, so the same component serves both.
+ *
+ * Every navigation here is a plain `<a>`, never `next/link`. A prefetched
+ * Choice would reach the runner's step page and append a Step the Participant
+ * never chose, and the browser's own back button has to reach the server for
+ * the backtrack to be recorded at all. Preview inherits full-page navigation,
+ * which changes nothing it proves.
  */
+
+/**
+ * A Choice: full width, wrapping, and tall enough to be a comfortable tap
+ * target on a phone. Exported so the runner's own controls — "Begin", "Start
+ * over", "Continue where you left off" — match the Choices they sit beside.
+ */
+export const choiceLinkClassName = cn(
+  buttonVariants({ variant: "outline" }),
+  "h-auto min-h-11 w-full justify-start py-3 text-left whitespace-normal",
+);
 
 function EndingView({
   step,
   document,
-  startOverHref,
+  startOver,
 }: {
   step: Step;
   document: GraphDocument;
-  startOverHref: string;
+  startOver: ReactNode;
 }) {
   // `Object.hasOwn`, not `in` or bare indexing: the maps are plain objects
   // parsed from JSON, so an id like "toString" would otherwise find a
@@ -35,12 +50,7 @@ function EndingView({
     <div className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold tracking-tight">The end</h2>
       <p>Outcome: {outcomeLabel}</p>
-      <Link
-        href={startOverHref}
-        className={cn(buttonVariants({ variant: "outline" }), "self-start")}
-      >
-        Start over
-      </Link>
+      {startOver}
     </div>
   );
 }
@@ -49,12 +59,12 @@ export function StepView({
   step,
   document,
   stepHref,
-  startOverHref,
+  startOver,
 }: {
   step: Step;
   document: GraphDocument;
   stepHref: (stepId: string) => string;
-  startOverHref: string;
+  startOver: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -62,11 +72,7 @@ export function StepView({
       <RichText content={step.content} />
 
       {isEnding(step) ? (
-        <EndingView
-          step={step}
-          document={document}
-          startOverHref={startOverHref}
-        />
+        <EndingView step={step} document={document} startOver={startOver} />
       ) : (
         // role="list" is explicit: the flex layout strips the list marker, and
         // some browsers drop the implicit role with it.
@@ -80,15 +86,12 @@ export function StepView({
             return (
               <li key={choice.id}>
                 {targetExists ? (
-                  <Link
+                  <a
                     href={stepHref(choice.targetStepId)}
-                    className={cn(
-                      buttonVariants({ variant: "outline" }),
-                      "w-full justify-start",
-                    )}
+                    className={choiceLinkClassName}
                   >
                     {choice.label}
-                  </Link>
+                  </a>
                 ) : (
                   <span className="text-muted-foreground">
                     {choice.label} (missing step)

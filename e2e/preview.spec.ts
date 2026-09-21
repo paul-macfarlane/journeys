@@ -82,11 +82,27 @@ test("preview", async ({ page, context }) => {
   await page.getByRole("link", { name: "Start over" }).click();
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
 
-  // Nothing exists that Preview could have written to.
-  const runTables = await queryE2eDatabase(
-    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('run', 'response')",
+  // Preview records nothing. A Run needs two things Preview must never
+  // produce: a Published Version to pin to, and a Run cookie naming it — so
+  // both are checked, and either would fail the moment Preview recorded a
+  // walk. (Counting `run` rows would prove nothing here: with no Published
+  // Version this Journey cannot own a Run, and the suite runs in parallel.)
+  // Responses are ticket 12's and have no table yet.
+  const versionRows = await queryE2eDatabase(
+    'SELECT id FROM "published_version" WHERE journey_id = $1',
+    [journeyId],
   );
-  expect(runTables).toHaveLength(0);
+  expect(versionRows).toHaveLength(0);
+
+  const runCookies = (await context.cookies()).filter((cookie) =>
+    cookie.name.startsWith("journeys.run."),
+  );
+  expect(runCookies).toHaveLength(0);
+
+  const responseTable = await queryE2eDatabase(
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'response'",
+  );
+  expect(responseTable).toHaveLength(0);
 });
 
 test("preview-non-member", async ({ page, context, browser }) => {
