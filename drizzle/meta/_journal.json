@@ -36,6 +36,13 @@
       "when": 1789945631599,
       "tag": "0004_massive_khan",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789959593232,
+      "tag": "0005_stormy_leo",
+      "breakpoints": true
     }
   ]
 }
