@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
+import { addMemberByEmail, removeMember } from "@/db/members";
 import { createProject, deleteProject, editProject } from "@/db/projects";
 import { requireSession } from "@/lib/session";
+import { addMemberSchema } from "@/lib/validation/member";
 import {
   createProjectSchema,
   editProjectSchema,
@@ -66,4 +68,58 @@ export async function deleteProjectAction(
   revalidatePath("/projects");
   revalidatePath("/projects/[projectId]", "page");
   return { ok: true, id: projectId };
+}
+
+const addMemberErrors = {
+  "no-project": "That project no longer exists",
+  "unknown-email":
+    "No account has that email — they need to sign in once first",
+  "already-member": "Already a member of this project",
+} as const;
+
+export async function addMemberAction(
+  projectId: string,
+  input: unknown,
+): Promise<ProjectActionResult> {
+  const session = await requireSession();
+
+  const parsed = addMemberSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error.issues) };
+  }
+
+  const result = await addMemberByEmail(
+    projectId,
+    parsed.data.email,
+    session.user.id,
+  );
+  if (!result.ok) {
+    return { ok: false, error: addMemberErrors[result.reason] };
+  }
+
+  revalidatePath("/projects");
+  revalidatePath("/projects/[projectId]", "page");
+  return { ok: true, id: result.userId };
+}
+
+const removeMemberErrors = {
+  "no-project": "That project no longer exists",
+  "not-a-member": "That member has already been removed",
+  "last-member": "A project must keep at least one member",
+} as const;
+
+export async function removeMemberAction(
+  projectId: string,
+  userId: string,
+): Promise<ProjectActionResult> {
+  const session = await requireSession();
+
+  const result = await removeMember(projectId, userId, session.user.id);
+  if (!result.ok) {
+    return { ok: false, error: removeMemberErrors[result.reason] };
+  }
+
+  revalidatePath("/projects");
+  revalidatePath("/projects/[projectId]", "page");
+  return { ok: true, id: userId };
 }

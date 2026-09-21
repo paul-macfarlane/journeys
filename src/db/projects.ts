@@ -9,7 +9,8 @@ import { db } from "@/db";
 import { member, project } from "@/db/schema";
 
 /**
- * Data access for Projects and their Members.
+ * Data access for Projects. Their Members live in `@/db/members`; only the
+ * first one, written with the Project, is created here.
  *
  * A Project is addressed by its id, so nothing here resolves a name to a
  * row and renaming one can never move it. Membership is the only
