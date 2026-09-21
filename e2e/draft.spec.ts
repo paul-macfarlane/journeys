@@ -1,9 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { graphDocumentSchema } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  openStepList,
+  uniqueSuffix,
+} from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   cleanup,
@@ -37,14 +42,6 @@ function readDraftRow(journeyId: string): Promise<DraftRow[]> {
     'SELECT document FROM "draft" WHERE journey_id = $1',
     [journeyId],
   );
-}
-
-/** The "Steps" disclosure beneath the map, opened if it is not already. */
-async function openStepList(page: Page): Promise<void> {
-  const button = page.getByRole("button", { name: "Steps", exact: true });
-  if ((await button.getAttribute("aria-expanded")) === "true") return;
-  await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
 }
 
 test("journey-draft", async ({ page, context }) => {

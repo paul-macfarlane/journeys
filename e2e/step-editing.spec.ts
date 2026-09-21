@@ -1,10 +1,13 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { counted } from "@/components/journeys/editor-shared";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
-import { validateForPublish } from "@/lib/graph/validate";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  openStepList,
+  uniqueSuffix,
+} from "./setup/authoring";
 import {
   cleanup,
   closePools,
@@ -89,14 +92,6 @@ function stepButton(page: Page, title: string) {
   return page
     .getByRole("list", { name: "Steps" })
     .getByRole("button", { name: title, exact: true });
-}
-
-/** The "Steps" disclosure beneath the map, opened if it is not already. */
-async function openStepList(page: Page): Promise<void> {
-  const button = page.getByRole("button", { name: "Steps", exact: true });
-  if ((await button.getAttribute("aria-expanded")) === "true") return;
-  await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
 }
 
 // The panel has no heading repeating the title: the title field is the
@@ -453,17 +448,14 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   await openStepList(page);
   await expect(stepButton(page, "Turned back")).toBeVisible();
 
-  // The document's own live problems, not a guessed count: "Turned back"
-  // dropped out of the walk, and every Ending here still has no Outcome.
-  const liveProblems = validateForPublish(after);
+  // What the header says now, written out rather than recomputed the way the
+  // app computes it: four problems — "Turned back" dropped out of the walk
+  // when its Choice was retargeted, and each of the three Endings ("Waved
+  // through", "Turned back", "Untitled step") still has no Outcome.
   const turnedBackMessage =
     'Step "Turned back" cannot be reached from the start';
-  expect(
-    liveProblems.some((problem) => problem.message === turnedBackMessage),
-  ).toBe(true);
-
   const problemsButton = page.getByRole("button", {
-    name: counted(liveProblems.length, "problem"),
+    name: "4 problems",
     exact: true,
   });
   await expect(problemsButton).toBeVisible();

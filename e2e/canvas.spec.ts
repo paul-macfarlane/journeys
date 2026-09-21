@@ -6,13 +6,22 @@ import {
   type Page,
 } from "@playwright/test";
 
-import { countCrossingPairs, type Polyline } from "@/lib/graph/crossings";
+import {
+  countCrossingPairs,
+  type Point,
+  type Polyline,
+} from "@/lib/graph/crossings";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
 import case3 from "../scripts/seed/journey-stories/case-3.json";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
-import { writeDraftDocument } from "./setup/documents";
+import {
+  createJourney,
+  createProject,
+  openStepList,
+  uniqueSuffix,
+} from "./setup/authoring";
+import { dimmingDocument, writeDraftDocument } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   cleanup,
@@ -121,14 +130,6 @@ function canvasEdges(page: Page) {
 /** The arrows marked with a problem. */
 function problemEdges(page: Page) {
   return canvas(page).locator('[data-choice-id]:not([data-problems="0"])');
-}
-
-/** The "Steps" disclosure beneath the map, opened if it is not already. */
-async function openStepList(page: Page): Promise<void> {
-  const button = page.getByRole("button", { name: "Steps", exact: true });
-  if ((await button.getAttribute("aria-expanded")) === "true") return;
-  await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
 }
 
 async function renameStep(page: Page, title: string): Promise<void> {
@@ -339,8 +340,6 @@ async function settledTransform(page: Page): Promise<string> {
   return last ?? "";
 }
 
-type Point = { x: number; y: number };
-
 /** One box's wrapper on the map, which is what carries its handles. */
 function canvasNodeBox(page: Page, title: string) {
   return canvas(page)
@@ -353,9 +352,9 @@ function connectHandle(page: Page, title: string) {
   return canvasNodeBox(page, title).locator('[data-handleid="connect"]');
 }
 
-/** The toolbar the selected box shows. */
+/** The group of moves the selected box shows above itself. */
 function boxToolbar(page: Page, title: string) {
-  return canvas(page).getByRole("toolbar", { name: `${title} actions` });
+  return canvas(page).getByRole("group", { name: `${title} actions` });
 }
 
 async function centerOf(locator: Locator): Promise<Point> {
@@ -562,15 +561,32 @@ test.describe("the seeded map", () => {
     // How tangled the map is, counted off the arrows the browser drew. The
     // baseline — 15 crossing pairs over these 36 boxes and 50 arrows — was
     // measured on ticket 09's `f24a106`, with this same sampling and the same
-    // `countCrossingPairs`, so the two numbers are comparable.
+    // `countCrossingPairs` (`test-results/ac-5-crossings.txt`), so the two
+    // numbers are comparable.
+    const F24A106_CROSSING_BASELINE = 15;
+
+    // And comparable only against the fixture it was measured on: a case-3
+    // that grew or shrank is a different map, and a baseline quietly compared
+    // against a different map proves nothing.
+    expect(
+      stepCount,
+      "the crossing baseline was measured on a 36-step case-3",
+    ).toBe(36);
+    expect(
+      choiceCount,
+      "the crossing baseline was measured on a 50-choice case-3",
+    ).toBe(50);
+
     const arrows = await sampleArrowPaths(page);
     expect(arrows).toHaveLength(choiceCount);
     for (const arrow of arrows) {
       expect(arrow.length).toBeGreaterThanOrEqual(16);
     }
     const crossings = countCrossingPairs(arrows);
-    console.log(`case-3 crossing pairs: f24a106 baseline=15 now=${crossings}`);
-    expect(crossings).toBeLessThan(15);
+    console.log(
+      `case-3 crossing pairs: f24a106 baseline=${F24A106_CROSSING_BASELINE} now=${crossings}`,
+    );
+    expect(crossings).toBeLessThan(F24A106_CROSSING_BASELINE);
 
     await page.screenshot({
       path: "test-results/canvas-case-3-map/canvas-case-3-map.png",
@@ -751,13 +767,49 @@ test.describe("the seeded map", () => {
     });
     await expect(problemsButton).toBeVisible();
     await problemsButton.click();
-    await page
+
+    const lostTentEntry = page
       .getByRole("list", { name: "All problems" })
       .getByRole("button", {
         name: 'Step "Lost tent" cannot be reached from the start',
         exact: true,
-      })
-      .click();
+      });
+    await lostTentEntry.click();
+
+    await expect(page.getByLabel("Step title")).toHaveValue("Lost tent");
+    await expect
+      .poll(
+        async () =>
+          (await nodeViews(page)).find((view) => view.title === "Lost tent")
+            ?.fullyInside,
+        { timeout: 10_000 },
+      )
+      .toBe(true);
+
+    // Asking for the Step that is already open counts too: the map is dragged
+    // away from "Lost tent", and the same entry brings it back rather than
+    // doing nothing because the panel never changed.
+    let pushedOff = false;
+    for (let pan = 0; pan < 8 && !pushedOff; pan += 1) {
+      const from = await emptySpot(page);
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x - 300, from.y - 220, { steps: 8 });
+      await page.mouse.move(from.x - 300, from.y - 220);
+      await page.mouse.up();
+      pushedOff =
+        (await nodeViews(page)).find((view) => view.title === "Lost tent")
+          ?.fullyInside === false;
+    }
+    expect(
+      pushedOff,
+      '"Lost tent" was still fully inside the canvas frame after panning away',
+    ).toBe(true);
+
+    // The list is a toggle the Author left open; a pan is not something that
+    // closes it, but it is reopened rather than assumed.
+    if ((await lostTentEntry.count()) === 0) await problemsButton.click();
+    await lostTentEntry.click();
 
     await expect(page.getByLabel("Step title")).toHaveValue("Lost tent");
     await expect
@@ -1020,68 +1072,54 @@ test("canvas-problems-readable", async ({ page, context }) => {
   ).toBeVisible();
 });
 
-/**
- * The smallest Draft with an arrow attached to neither end of a selection:
- * a Start with a Choice to each of two Steps, and a Choice from the first of
- * those to the second, so whichever box is open one arrow is always someone
- * else's.
- */
-function dimmingDocument(): GraphDocument {
-  const text = (value: string) => ({
-    type: "doc",
-    content: [{ type: "paragraph", content: [{ type: "text", text: value }] }],
-  });
-  const choice = (id: string, label: string, targetStepId: string) => ({
-    id,
-    label,
-    targetStepId,
-    condition: null,
-    effect: null,
-  });
-
-  return graphDocumentSchema.parse({
-    schemaVersion: 1,
-    startStepId: "start",
-    allowBack: true,
-    steps: {
-      start: {
-        id: "start",
-        title: "Border post",
-        content: text("The queue has not moved in an hour."),
-        choices: [
-          choice("to-clinic", "Find the clinic", "clinic"),
-          choice("to-ward", "Walk away", "ward"),
-        ],
-        prompt: null,
-        outcomeId: null,
-        position: null,
-      },
-      clinic: {
-        id: "clinic",
-        title: "Clinic tent",
-        content: text("A nurse looks up from her notes."),
-        choices: [choice("clinic-to-ward", "Ask for help", "ward")],
-        prompt: null,
-        outcomeId: null,
-        position: null,
-      },
-      ward: {
-        id: "ward",
-        title: "Waved through",
-        content: text("The officer stamps the paper and points you on."),
-        choices: [],
-        prompt: null,
-        outcomeId: "reached-care",
-        position: null,
-      },
-    },
-    outcomes: { "reached-care": { id: "reached-care", label: "Reached care" } },
-  });
-}
-
 /** One arrow on the map, named by the Choice it draws. */
 function canvasEdge(page: Page, choiceId: string) {
   return canvas(page).locator(`[data-choice-id="${choiceId}"]`);
+}
+
+/**
+ * One arrow on the map, named by the Choice's label instead of its id — for a
+ * Journey built through the browser, where the ids are the app's to invent.
+ * The arrow's accessible name is `"<label>: <from> → <to>"`.
+ */
+function arrowLabelled(page: Page, label: string) {
+  return canvas(page).locator(`[data-choice-id][aria-label^="${label}:"]`);
+}
+
+/**
+ * A click on an arrow's own line rather than on the label chip sitting over
+ * its middle: the interaction path React Flow lays over every arrow is
+ * sampled along its length, and the first sample the browser says is on top
+ * is the one clicked. Falling back to the midpoint keeps a browser that
+ * hit-tests the transparent stroke differently from failing here rather than
+ * where the assertion is.
+ */
+async function clickArrow(page: Page, arrow: Locator): Promise<void> {
+  await settledTransform(page);
+  const path = arrow.locator("path.react-flow__edge-interaction");
+  await expect(path).toHaveCount(1);
+
+  const point = await path.evaluate((element) => {
+    const line = element as SVGPathElement;
+    const length = line.getTotalLength();
+    const matrix = line.getScreenCTM();
+    if (matrix === null) return null;
+
+    let midpoint: Point | null = null;
+    for (const fraction of [0.5, 0.35, 0.65, 0.2, 0.8]) {
+      const at = line
+        .getPointAtLength(length * fraction)
+        .matrixTransform(matrix);
+      midpoint ??= { x: at.x, y: at.y };
+      if (window.document.elementFromPoint(at.x, at.y) === line) {
+        return { x: at.x, y: at.y };
+      }
+    }
+    return midpoint;
+  });
+
+  expect(point, "the arrow's line has no point to click").not.toBeNull();
+  await page.mouse.click(point!.x, point!.y);
 }
 
 test("canvas-selection-dims-arrows", async ({ page, context }) => {
@@ -1101,6 +1139,17 @@ test("canvas-selection-dims-arrows", async ({ page, context }) => {
     }
   }
 
+  /** What the arrow is actually drawn at, off the group carrying its opacity. */
+  async function arrowOpacity(choiceId: string): Promise<number> {
+    const group = canvasEdge(page, choiceId).locator("[data-emphasis-group]");
+    await expect(group).toHaveCount(1);
+    return Number(
+      await group.evaluate(
+        (element) => window.getComputedStyle(element).opacity,
+      ),
+    );
+  }
+
   // The panel opens on the Start, so the Start's two arrows are the ones in
   // hand and the arrow between the other two Steps is not.
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
@@ -1118,6 +1167,11 @@ test("canvas-selection-dims-arrows", async ({ page, context }) => {
     "clinic-to-ward": "attached",
     "to-ward": "dimmed",
   });
+
+  // And "dimmed" is a thing the Author can see, not only an attribute: the
+  // arrow that is nobody's is drawn faint, and the one in hand at full.
+  expect(await arrowOpacity("to-ward")).toBeLessThan(0.5);
+  expect(await arrowOpacity("to-clinic")).toBe(1);
 
   await page.screenshot({
     path: "test-results/canvas-selection-dims-arrows/canvas-selection-dims-arrows.png",
@@ -1175,7 +1229,7 @@ test("canvas-legend-outcomes", async ({ page, context }) => {
     "Problem",
   ]);
 
-  // The colour a legend entry shows is the colour its Endings carry.
+  // The color a legend entry shows is the color its Endings carry.
   for (const [index, [ending]] of assigned.entries()) {
     const swatch = legend.locator(
       `[data-outcome-index="${index}"] [data-outcome-swatch]`,
@@ -1263,6 +1317,67 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
     "data-problems",
     "1",
   );
+
+  await expectSaved(page);
+});
+
+test("canvas-arrow-select-second-arrow", async ({ page, context }) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+  await addStepFromCanvas(page, "Clinic tent");
+  await addStepFromCanvas(page, "Turned back");
+
+  await canvasNode(page, "Border post").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await addChoiceToStep(page, "Find the clinic", "Clinic tent");
+  await addChoiceToStep(page, "Walk away", "Turned back");
+  await expect(canvasEdges(page)).toHaveCount(2);
+
+  // Two arrows out of the same box, in the order the Step writes its
+  // Choices: whichever one is clicked is the one in hand, whichever end of
+  // the map's own list it happens to sit at.
+  const findTheClinic = arrowLabelled(page, "Find the clinic");
+  const walkAway = arrowLabelled(page, "Walk away");
+  const labels = page.getByLabel("Choice label");
+
+  await clickArrow(page, findTheClinic);
+  await expect(findTheClinic).toHaveAttribute("data-emphasis", "selected");
+  await expect(walkAway).not.toHaveAttribute("data-emphasis", "selected");
+  await expect(labels.nth(0)).toHaveValue("Find the clinic");
+  await expect(labels.nth(0)).toBeFocused();
+
+  // The second arrow takes the selection off the first.
+  await clickArrow(page, walkAway);
+  await expect(walkAway).toHaveAttribute("data-emphasis", "selected");
+  await expect(findTheClinic).not.toHaveAttribute("data-emphasis", "selected");
+  await expect(labels.nth(1)).toHaveValue("Walk away");
+  await expect(labels.nth(1)).toBeFocused();
+
+  // And back: this is the way round that the map used to answer with nothing
+  // selected at all, because the arrow being let go of came second.
+  await clickArrow(page, findTheClinic);
+  await expect(findTheClinic).toHaveAttribute("data-emphasis", "selected");
+  await expect(walkAway).not.toHaveAttribute("data-emphasis", "selected");
+  await expect(labels.nth(0)).toBeFocused();
+
+  await page.screenshot({
+    path: "test-results/canvas-arrow-select-second-arrow/canvas-arrow-select-second-arrow.png",
+    fullPage: true,
+  });
+
+  // Delete on the arrow in hand takes that Choice and only that Choice.
+  await findTheClinic.focus();
+  await expect(findTheClinic).toBeFocused();
+  await page.keyboard.press("Delete");
+
+  await expect(canvasEdges(page)).toHaveCount(1);
+  await expect(arrowLabelled(page, "Find the clinic")).toHaveCount(0);
+  const remaining = page
+    .getByRole("list", { name: "Choices" })
+    .getByRole("listitem");
+  await expect(remaining).toHaveCount(1);
+  await expect(remaining.getByLabel("Choice label")).toHaveValue("Walk away");
 
   await expectSaved(page);
 });

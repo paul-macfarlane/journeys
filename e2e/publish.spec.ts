@@ -1,6 +1,11 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  openStepList,
+  uniqueSuffix,
+} from "./setup/authoring";
 import {
   loopDocument,
   publishableDocument,
@@ -55,14 +60,6 @@ function readVersionRows(journeyId: string): Promise<VersionRow[]> {
     'SELECT id, version_number, description, document FROM "published_version" WHERE journey_id = $1 ORDER BY version_number',
     [journeyId],
   );
-}
-
-/** The "Steps" disclosure beneath the map, opened if it is not already. */
-async function openStepList(page: Page): Promise<void> {
-  const button = page.getByRole("button", { name: "Steps", exact: true });
-  if ((await button.getAttribute("aria-expanded")) === "true") return;
-  await button.click();
-  await expect(button).toHaveAttribute("aria-expanded", "true");
 }
 
 test("publish-invalid-draft", async ({ page, context }) => {

@@ -34,11 +34,15 @@ import {
 } from "react";
 
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
-import type { SelectStep } from "@/components/journeys/editor-shared";
+import {
+  choiceLabel,
+  type SelectStep,
+} from "@/components/journeys/editor-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { Point } from "@/lib/graph/crossings";
 import type { GraphDocument, Step } from "@/lib/graph/document";
-import { layoutGraph, problemsByAddress } from "@/lib/graph/layout";
+import { problemsByAddress, type GraphLayout } from "@/lib/graph/layout";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +54,9 @@ import "@xyflow/react/dist/style.css";
  * edge it is about.
  *
  * Layout is recomputed by `layoutGraph` from the document on every change and
- * never stored. No Author drags a node, so there is no hand-placed position to
+ * never stored — once, by the editor, which hands the same layout to the map
+ * and to the step list beneath it. No Author drags a node, so there is no
+ * hand-placed position to
  * preserve, and a stored one would go stale the moment a Choice was added:
  * what the map is for is showing the shape the Journey has now. `stepSchema`
  * keeps a `position` field for a later decision; nothing here reads or writes
@@ -85,6 +91,14 @@ type NodeMarks = HTMLAttributes<HTMLButtonElement> &
   Record<`data-${string}`, string>;
 
 /**
+ * The same for an arrow: which Choice it draws, how many problems it carries,
+ * how strongly it is drawn. React Flow's own `domAttributes` type has no
+ * index signature for `data-*` either, so one is intersected in here too.
+ */
+type EdgeMarks = NonNullable<Edge["domAttributes"]> &
+  Record<`data-${string}`, string>;
+
+/**
  * Endings are colored by their Outcome so a glance at the map groups them the
  * way analysis will. Eight hues, walked by the Outcome's position in the
  * document, so the same Outcome is always the same color; the ninth Outcome
@@ -104,11 +118,6 @@ const OUTCOME_COLORS = [
 function outcomeColor(outcomeIndex: number | null): string | null {
   if (outcomeIndex === null) return null;
   return OUTCOME_COLORS[outcomeIndex % OUTCOME_COLORS.length];
-}
-
-/** A Choice with no label yet still has to be readable on the map. */
-function choiceLabel(label: string): string {
-  return label.trim().length > 0 ? label : "Untitled choice";
 }
 
 /**
@@ -191,7 +200,7 @@ type ChoiceEdgeData = {
    * last are dagre's own box-border endpoints, which React Flow supersedes
    * with the anchor positions it hands the edge; only the interior is route.
    */
-  points: Array<{ x: number; y: number }>;
+  points: Point[];
   emphasis: Emphasis;
 };
 
@@ -199,8 +208,6 @@ type ChoiceFlowEdge = Edge<ChoiceEdgeData, "choice">;
 
 /** How much of an arrow is left when it is not the selected Step's. */
 const DIMMED_OPACITY = 0.22;
-
-type Point = { x: number; y: number };
 
 /**
  * The polyline through `points`, smoothed: a quadratic curve through the
@@ -273,7 +280,12 @@ function ChoiceEdge({
   const middle = midwayAlong(points);
 
   return (
-    <g opacity={data?.emphasis === "dimmed" ? DIMMED_OPACITY : 1}>
+    // Marked so a spec can read the opacity the arrow is actually drawn at,
+    // not only the emphasis the map says it has.
+    <g
+      data-emphasis-group=""
+      opacity={data?.emphasis === "dimmed" ? DIMMED_OPACITY : 1}
+    >
       <BaseEdge
         path={smoothPath(points)}
         style={style}
@@ -311,10 +323,13 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
           box itself: the same three the panel's foot carries, where the
           Author is already looking. `nopan`/`nodrag` keep a click on a
           button from dragging the map out from under it. */}
+      {/* `role="group"`, not `role="toolbar"`: a toolbar promises roving
+          tabindex, and these are three ordinary tab stops, the same as the
+          panel's "Leads here from". */}
       <NodeToolbar
         isVisible={data.isSelected}
         position={Position.Top}
-        role="toolbar"
+        role="group"
         aria-label={`${data.title} actions`}
         // A portal's children still bubble through the React tree, so a
         // click on a button here would reach the node's own handler and
@@ -435,7 +450,7 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
       ))}
 
       {/* The one control on the box: drag from here onto another box to make
-          a Choice. Set apart from the Choice anchors — bigger, coloured, and
+          a Choice. Set apart from the Choice anchors — bigger, colored, and
           out at the corner where none of them is ever spread to — because
           those are where arrows leave from, not something to take hold of. */}
       <Handle
@@ -511,7 +526,14 @@ const IN_VIEW_TOLERANCE = 1;
 
 export type JourneyCanvasProps = {
   document: GraphDocument;
+  /** The document laid out, computed once by the editor and shared. */
+  layout: GraphLayout;
   selectedStepId: string;
+  /**
+   * Bumped every time a Step is opened, the same Step included, so re-opening
+   * the one already in the panel brings its box back onto the map.
+   */
+  locateRequest: number;
   problems: PublishProblem[];
   /** The one arrow the Author has clicked, if any. */
   selectedArrow: CanvasArrow | null;
@@ -536,7 +558,9 @@ export type JourneyCanvasProps = {
 
 function CanvasFlow({
   document,
+  layout,
   selectedStepId,
+  locateRequest,
   problems,
   selectedArrow,
   onSelectStep,
@@ -549,7 +573,6 @@ function CanvasFlow({
   onSelectArrow,
   onRemoveChoices,
 }: JourneyCanvasProps) {
-  const layout = useMemo(() => layoutGraph(document), [document]);
   const addressed = useMemo(() => problemsByAddress(problems), [problems]);
 
   const { nodes, edges, arrows } = useMemo(() => {
@@ -666,6 +689,14 @@ function CanvasFlow({
 
       arrows.set(edge.id, { stepId: edge.stepId, choiceId: edge.choiceId });
 
+      // What a spec reads off an arrow, and what a screen reader calls it.
+      const domAttributes: EdgeMarks = {
+        "aria-roledescription": "choice",
+        "data-choice-id": edge.choiceId,
+        "data-problems": String(problemCount),
+        "data-emphasis": emphasis,
+      };
+
       return {
         id: edge.id,
         source: edge.source,
@@ -684,13 +715,7 @@ function CanvasFlow({
         ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`,
         markerEnd: { type: MarkerType.ArrowClosed },
         data: { points: edge.points, emphasis },
-        // What a spec reads off an arrow, and what a screen reader calls it.
-        domAttributes: {
-          "aria-roledescription": "choice",
-          "data-choice-id": edge.choiceId,
-          "data-problems": String(problemCount),
-          "data-emphasis": emphasis,
-        } as Edge["domAttributes"],
+        domAttributes,
         style: isSelected
           ? { ...marks, strokeWidth: SELECTED_STROKE_WIDTH }
           : marks,
@@ -736,19 +761,30 @@ function CanvasFlow({
   const lastNodeIdKey = useRef(nodeIdKey);
 
   // Opening a Step from the list, a problem, or a Choice's target can name a
-  // box that is off the map; the map goes to it. A box already on the map is
-  // left where the Author put it, and so is the rest of the view.
+  // box that is off the map; the map goes to it. Every opening counts, the
+  // Step already in the panel included — the editor bumps `locateRequest`
+  // each time it opens one — so a second click on the same list entry after
+  // the Author has panned away brings the box back rather than doing
+  // nothing. A box already on the map is left where the Author put it, and so
+  // is the rest of the view.
   //
   // Declared before the fit-to-all below so that a render which changed the
   // set of boxes — a Step added, which is also the Step now open — is still
   // that one's: this effect sees the older key and stands aside.
-  const locatedStepId = useRef<string | null>(null);
+  const located = useRef<{ stepId: string; request: number } | null>(null);
   useEffect(() => {
-    const previous = locatedStepId.current;
-    locatedStepId.current = selectedStepId;
+    const previous = located.current;
+    located.current = { stepId: selectedStepId, request: locateRequest };
 
     // The first render is the initial fit-to-all's, which shows everything.
-    if (previous === null || previous === selectedStepId) return;
+    if (previous === null) return;
+    // Nothing was asked for: this render is about something else entirely.
+    if (
+      previous.stepId === selectedStepId &&
+      previous.request === locateRequest
+    ) {
+      return;
+    }
     if (lastNodeIdKey.current !== nodeIdKey) return;
     if (paneWidth === 0 || paneHeight === 0) return;
     if (!nodes.some((node) => node.id === selectedStepId)) return;
@@ -771,6 +807,7 @@ function CanvasFlow({
     fitView,
     getNodesBounds,
     getViewport,
+    locateRequest,
     nodeIdKey,
     nodes,
     paneHeight,
@@ -800,7 +837,7 @@ function CanvasFlow({
 
   return (
     <CanvasActionsContext.Provider value={actions}>
-      <ReactFlow
+      <ReactFlow<CanvasFlowNode, ChoiceFlowEdge>
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
@@ -846,37 +883,55 @@ function CanvasFlow({
         // turned back into the Choices they draw: a click selects one (and a
         // click on bare map clears it), and Delete removes them, which is
         // exactly what "Remove choice" in the panel does.
+        //
+        // One click on a second arrow arrives as one batch — the old arrow's
+        // `select: false` and the new one's `select: true`, in the order the
+        // `edges` array holds them — so the whole batch is read before
+        // anything is said: the arrow it selects wins whichever end of the
+        // batch it came from, and the selection is only cleared when the
+        // batch selected nothing at all.
         onEdgesChange={(changes) => {
           const removed: CanvasArrow[] = [];
+          let selected: CanvasArrow | null = null;
+          let clearedCurrent = false;
 
           for (const change of changes) {
-            const arrow =
-              change.type === "select" || change.type === "remove"
-                ? arrows.get(change.id)
-                : undefined;
+            if (change.type !== "select" && change.type !== "remove") continue;
+            const arrow = arrows.get(change.id);
             if (arrow === undefined) continue;
 
-            if (change.type === "select") {
-              if (change.selected) {
-                onSelectArrow(arrow);
-              } else if (
-                selectedArrow !== null &&
-                selectedArrow.stepId === arrow.stepId &&
-                selectedArrow.choiceId === arrow.choiceId
-              ) {
-                onSelectArrow(null);
-              }
+            if (change.type === "remove") {
+              removed.push(arrow);
               continue;
             }
 
-            removed.push(arrow);
+            if (change.selected) {
+              selected = arrow;
+            } else if (
+              selectedArrow !== null &&
+              selectedArrow.stepId === arrow.stepId &&
+              selectedArrow.choiceId === arrow.choiceId
+            ) {
+              clearedCurrent = true;
+            }
+          }
+
+          if (selected !== null) {
+            onSelectArrow(selected);
+          } else if (clearedCurrent) {
+            onSelectArrow(null);
           }
 
           if (removed.length > 0) onRemoveChoices(removed);
         }}
+        // A placeholder stands for a Step that is gone, so it may have
+        // nothing to open; a box always does.
         onNodeClick={(_event, node) => {
-          const opens = (node.data as StepNodeData | MissingNodeData).opens;
-          if (opens !== null) onSelectStep(opens);
+          if (node.type === "step") {
+            onSelectStep(node.data.opens);
+            return;
+          }
+          if (node.data.opens !== null) onSelectStep(node.data.opens);
         }}
       >
         <Background />

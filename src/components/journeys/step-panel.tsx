@@ -1,6 +1,7 @@
 import { ChoiceList } from "@/components/journeys/choice-list";
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import {
+  choiceLabel,
   SELECT_CLASS,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
@@ -21,11 +22,6 @@ import { cn } from "@/lib/utils";
  * making it the Start and deleting it. The title field is the Step's name on
  * this panel; there is no heading repeating it above.
  */
-
-/** A Choice's label as an Author reads it, when it has one. */
-function choiceLabel(label: string): string {
-  return label.trim().length > 0 ? label : "Untitled choice";
-}
 
 /**
  * The Choices on other Steps that lead here, each a button back to its Step:

@@ -336,6 +336,46 @@ describe("layoutGraph routed edges", () => {
       expect(Number.isFinite(point.y)).toBe(true);
     }
   });
+
+  it("keeps a self-loop Choice's route within or beside its own box", () => {
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "a",
+      allowBack: true,
+      steps: byId([
+        step("a", [
+          choice("a-loops", "Stay put", "a"),
+          choice("a-to-b", "Move on", "b"),
+        ]),
+        step("b", []),
+      ]),
+      outcomes: {},
+    };
+
+    const { nodes, edges } = layoutGraph(document);
+    const box = nodes.find((node) => node.id === "a");
+    const points = edges.find((edge) => edge.id === "a:a-loops")?.points ?? [];
+
+    expect(box).toBeDefined();
+    expect(points.length).toBeGreaterThanOrEqual(2);
+
+    // What dagre actually lays a self-loop out as, pinned: the route stays in
+    // the box's own rank — every point's y inside the box's top and bottom —
+    // and runs out to the right of it and back, never above, below, or left
+    // of the box. On a 220×72 box at (16, 16) that is the zig-zag
+    // (377,16) → (267,52) → (157,88) → (267,52), which reads as a line
+    // through the box rather than as a loop beside it. The visual is known
+    // poor; drawing a proper loop is ticket 19's, and this case is here so
+    // that changing it is a deliberate act rather than a silent one.
+    for (const point of points) {
+      expect(point.x).toBeGreaterThanOrEqual(box!.x);
+      expect(point.y).toBeGreaterThanOrEqual(box!.y);
+      expect(point.y).toBeLessThanOrEqual(box!.y + box!.height);
+    }
+    expect(Math.max(...points.map((point) => point.x))).toBeGreaterThan(
+      box!.x + box!.width,
+    );
+  });
 });
 
 describe("CanvasNode.sourceAnchors", () => {

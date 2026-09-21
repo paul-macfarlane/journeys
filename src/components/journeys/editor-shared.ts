@@ -1,7 +1,8 @@
 /**
- * The two scraps every piece of the Draft editor needs: the count-and-noun
- * phrasing its summary lines use, and the look of the native `<select>`s it
- * reaches for where the app has no shadcn primitive.
+ * The scraps every piece of the Draft editor needs: the count-and-noun
+ * phrasing its summary lines use, how a Choice with no label yet is still
+ * named, and the look of the native `<select>`s it reaches for where the app
+ * has no shadcn primitive.
  */
 
 /**
@@ -21,6 +22,15 @@ export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
 /** "1 step", "44 steps": the count and the noun that agrees with it. */
 export function counted(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+/**
+ * A Choice's label as an Author reads it: one with nothing written on it yet
+ * still has to be readable, on the map, in the panel, and in the confirmation
+ * that names the Choices a delete would break.
+ */
+export function choiceLabel(label: string): string {
+  return label.trim().length > 0 ? label : "Untitled choice";
 }
 
 /**

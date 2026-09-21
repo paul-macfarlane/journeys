@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { choiceLabel } from "@/components/journeys/editor-shared";
 import { Button } from "@/components/ui/button";
 import type { GraphDocument, Step } from "@/lib/graph/document";
 import { choicesTargeting } from "@/lib/graph/edit";
@@ -21,11 +22,6 @@ import { choicesTargeting } from "@/lib/graph/edit";
  * One component so the question, the list, and the wording are the same move
  * wherever it is started from.
  */
-
-/** A Choice's label as an Author reads it, when it has one. */
-function choiceLabel(label: string): string {
-  return label.trim().length > 0 ? label : "Untitled choice";
-}
 
 /**
  * Deleting a Step leaves every Choice aimed at it dangling rather than

@@ -1,10 +1,9 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { counted, type SelectStep } from "@/components/journeys/editor-shared";
 import { Badge } from "@/components/ui/badge";
 import { isEnding, type GraphDocument, type Step } from "@/lib/graph/document";
 import { stepName } from "@/lib/graph/edit";
-import { layoutGraph, mapOrder } from "@/lib/graph/layout";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,6 +12,9 @@ import { cn } from "@/lib/utils";
  * it. A Step no walk from the Start reaches is not set apart here any more:
  * it is marked on the map itself, and named in the live problems list above,
  * so this list is just the map's order read as text.
+ *
+ * The order is handed down rather than computed here: the editor lays the
+ * document out once and both the map and this list read that one layout.
  */
 
 function StepItem({
@@ -67,26 +69,29 @@ function StepItem({
 
 export function StepList({
   document,
+  order,
   selectedStepId,
   onSelectStep,
 }: {
   document: GraphDocument;
+  /**
+   * Step ids in the order the map lays the boxes out, so the list reads like
+   * the map rather than like the order Steps happened to be created in.
+   */
+  order: string[];
   selectedStepId: string;
   onSelectStep: SelectStep;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const listId = useId();
-
-  // The same order the map lays the boxes out in, so the list reads like the
-  // map rather than like the order Steps happened to be created in.
-  const order = useMemo(() => mapOrder(layoutGraph(document)), [document]);
 
   return (
     <section aria-label="Step list" className="flex flex-col gap-3">
+      {/* No `aria-controls`: what it would name is not rendered while the
+          disclosure is closed, and `aria-expanded` alone is what the
+          problems disclosure above the map says too. */}
       <button
         type="button"
         aria-expanded={expanded}
-        aria-controls={listId}
         className="self-start text-sm font-medium hover:underline"
         onClick={() => setExpanded((current) => !current)}
       >
@@ -96,12 +101,7 @@ export function StepList({
       {expanded ? (
         // role="list" is explicit: the flex layout strips the list marker,
         // and some browsers drop the implicit role with it.
-        <ul
-          id={listId}
-          role="list"
-          aria-label="Steps"
-          className="flex flex-col gap-2"
-        >
+        <ul role="list" aria-label="Steps" className="flex flex-col gap-2">
           {order.map((stepId) => (
             <StepItem
               key={stepId}

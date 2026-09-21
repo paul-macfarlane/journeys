@@ -54,12 +54,12 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   break, manage the journey's outcomes and tag each ending with one, and run
   validation on demand. The draft is also drawn as a map on a canvas — laid
   out automatically from the steps and choices themselves, never from stored
-  positions — where clicking a node opens that step in the panel, a step can
+  positions — where clicking a box opens that step in the panel, a step can
   be added from the canvas, and validation problems are marked on the
   step or choice it is about. Its arrows follow the routes the layout
   computes, the arrows into and out of the step the panel has open are drawn
   at full strength while the rest dim, opening a step that is off the map
-  brings it back into view, and the legend names every outcome in the colour
+  brings it back into view, and the legend names every outcome in the color
   its endings carry. The journey is built on the map too: dragging from a
   box's connect dot onto another box makes the choice between them (and
   dragging an arrow's head onto a third box moves it there), the open box's

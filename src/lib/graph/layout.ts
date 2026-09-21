@@ -1,5 +1,6 @@
 import dagre from "@dagrejs/dagre";
 
+import type { Point } from "@/lib/graph/crossings";
 import type { GraphDocument, Step } from "@/lib/graph/document";
 import { hasStep, isEnding, stepName } from "@/lib/graph/document";
 import type { PublishProblem } from "@/lib/graph/validate";
@@ -62,10 +63,10 @@ export type CanvasNode = {
   outcomeId: string | null;
   outcomeIndex: number | null;
   /**
-   * For a `step` node, its Choice ids ordered by the x position (centre) of
+   * For a `step` node, its Choice ids ordered by the x position (center) of
    * the box each Choice targets — the Step itself, or the `missing:`
    * placeholder when the target Step no longer exists — ties broken by
-   * Choice order. A self-loop Choice sorts by the node's own centre x.
+   * Choice order. A self-loop Choice sorts by the node's own center x.
    * Always `[]` for a `missing` node.
    */
   sourceAnchors: string[];
@@ -83,7 +84,13 @@ export type CanvasEdge = {
    * dagre's routed points for this Choice, in the same coordinate space as
    * the node positions. Always at least two points.
    */
-  points: Array<{ x: number; y: number }>;
+  points: Point[];
+};
+
+/** Everything one document lays out to: the boxes and the arrows between them. */
+export type GraphLayout = {
+  nodes: CanvasNode[];
+  edges: CanvasEdge[];
 };
 
 function missingNodeId(targetStepId: string): string {
@@ -95,6 +102,14 @@ function missingNodeId(targetStepId: string): string {
  * ordered `(source, target)` pair (see the module doc comment).
  */
 const MAX_DAGRE_EDGES_PER_PAIR = 2;
+
+/**
+ * How far sideways each overflow Choice's route is nudged from the sibling's
+ * it borrows: wide enough that the two arrows read as two at fit-to-view,
+ * narrow enough that the nudged one stays beside its boxes rather than
+ * wandering across the map.
+ */
+const OVERFLOW_ARROW_OFFSET = 28;
 
 /** A stable, collision-safe key for a `(source, target)` pair. */
 function pairKey(source: string, target: string): string {
@@ -109,10 +124,7 @@ function pairKey(source: string, target: string): string {
  * interior point to nudge), a synthetic midpoint is inserted instead so the
  * path still bends away from the shared one.
  */
-function offsetInteriorPoints(
-  points: Array<{ x: number; y: number }>,
-  offset: number,
-): Array<{ x: number; y: number }> {
+function offsetInteriorPoints(points: Point[], offset: number): Point[] {
   if (points.length <= 2) {
     const [start, end] = points;
     return [
@@ -184,10 +196,7 @@ function missingNode(targetStepId: string): CanvasNode {
  * One node per Step, one placeholder per distinct dangling Choice target,
  * and one edge per Choice, positioned with dagre. Never mutates `document`.
  */
-export function layoutGraph(document: GraphDocument): {
-  nodes: CanvasNode[];
-  edges: CanvasEdge[];
-} {
+export function layoutGraph(document: GraphDocument): GraphLayout {
   const nodes: CanvasNode[] = [];
   const missingTargets: string[] = [];
   const seenMissingTargets = new Set<string>();
@@ -264,10 +273,7 @@ export function layoutGraph(document: GraphDocument): {
     positioned.map((node) => [node.id, node.x + node.width / 2]),
   );
 
-  const lastRoutedPointsByPair = new Map<
-    string,
-    Array<{ x: number; y: number }>
-  >();
+  const lastRoutedPointsByPair = new Map<string, Point[]>();
   const overflowCountByPair = new Map<string, number>();
   const routedEdges = edges.map((edge) => {
     const key = pairKey(edge.source, edge.target);
@@ -284,7 +290,9 @@ export function layoutGraph(document: GraphDocument): {
     const overflowIndex = overflowCountByPair.get(key) ?? 0;
     overflowCountByPair.set(key, overflowIndex + 1);
     const offset =
-      28 * (overflowIndex + 1) * (overflowIndex % 2 === 0 ? 1 : -1);
+      OVERFLOW_ARROW_OFFSET *
+      (overflowIndex + 1) *
+      (overflowIndex % 2 === 0 ? 1 : -1);
     return { ...edge, points: offsetInteriorPoints(siblingPoints, offset) };
   });
 

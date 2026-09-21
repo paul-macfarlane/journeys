@@ -30,7 +30,7 @@ import {
   updateChoice,
   updateStep,
 } from "@/lib/graph/edit";
-import { problemsByAddress } from "@/lib/graph/layout";
+import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -279,15 +279,25 @@ export function DraftEditor({
   } | null>(null);
 
   /**
-   * The one arrow the Author has clicked on the map. Held here rather than
-   * in React Flow so that the arrows the canvas draws are derived from the
-   * document and this, and there is never a second account of what is
-   * selected to disagree with.
+   * The arrow the Author has last clicked on the map, as asked for. Held here
+   * rather than in React Flow so that the arrows the canvas draws are derived
+   * from the document and this, and there is never a second account of what
+   * is selected to disagree with.
    */
-  const [selectedArrow, setSelectedArrow] = useState<CanvasArrow | null>(null);
+  const [arrowSelection, setArrowSelection] = useState<CanvasArrow | null>(
+    null,
+  );
+
+  /**
+   * Counts the times a Step was opened, the one already open included, so the
+   * map can bring its box back each time rather than only when the Step
+   * changed.
+   */
+  const [locateRequest, setLocateRequest] = useState(0);
 
   const selectStep: SelectStep = useCallback((stepId, options) => {
     setSelectedStepId(stepId);
+    setLocateRequest((current) => current + 1);
     setTitleFocusStepId(options?.focusTitle ? stepId : null);
 
     const focusChoiceId = options?.focusChoiceId;
@@ -302,7 +312,7 @@ export function DraftEditor({
     );
     // Opening a Step is the Author's attention leaving the arrow — except
     // when the Step was opened by clicking that very arrow.
-    if (focusChoiceId === undefined) setSelectedArrow(null);
+    if (focusChoiceId === undefined) setArrowSelection(null);
   }, []);
 
   /**
@@ -310,34 +320,37 @@ export function DraftEditor({
    * another Member's write — so what the map is handed is the selection only
    * while the document still has it, the way `selectedStep` is below.
    */
-  const liveArrow = useMemo(() => {
-    if (selectedArrow === null) return null;
+  const selectedArrow = useMemo(() => {
+    if (arrowSelection === null) return null;
 
-    const step = Object.hasOwn(document.steps, selectedArrow.stepId)
-      ? document.steps[selectedArrow.stepId]
+    const step = Object.hasOwn(document.steps, arrowSelection.stepId)
+      ? document.steps[arrowSelection.stepId]
       : null;
     const alive =
-      step?.choices.some((choice) => choice.id === selectedArrow.choiceId) ??
+      step?.choices.some((choice) => choice.id === arrowSelection.choiceId) ??
       false;
-    return alive ? selectedArrow : null;
-  }, [document, selectedArrow]);
+    return alive ? arrowSelection : null;
+  }, [document, arrowSelection]);
 
   /** The Delete key on a selected arrow, which is the panel's "Remove choice". */
-  function removeChoices(arrows: CanvasArrow[]) {
-    let next = documentRef.current;
-    for (const arrow of arrows) {
-      next = removeChoice(next, arrow.stepId, arrow.choiceId);
-    }
-    if (next === documentRef.current) return;
+  const removeChoices = useCallback(
+    (arrows: CanvasArrow[]) => {
+      let next = documentRef.current;
+      for (const arrow of arrows) {
+        next = removeChoice(next, arrow.stepId, arrow.choiceId);
+      }
+      if (next === documentRef.current) return;
 
-    applyEdit(next);
-  }
+      applyEdit(next);
+    },
+    [applyEdit],
+  );
 
-  function addNewStep() {
+  const addNewStep = useCallback(() => {
     const created = addStep(documentRef.current);
     applyEdit(created.document);
     selectStep(created.stepId, { focusTitle: true });
-  }
+  }, [applyEdit, selectStep]);
 
   /**
    * "Add next step" on a box's toolbar: the Step and the Choice that reaches
@@ -345,54 +358,67 @@ export function DraftEditor({
    * it in the same breath. The label is left empty — what the Choice is
    * called is the next thing to write, on the Step it leaves.
    */
-  function addNextStep(stepId: string) {
-    const created = addChoiceToNewStep(documentRef.current, stepId, {
-      label: "",
-    });
-    if (created.choiceId === "") return;
+  const addNextStep = useCallback(
+    (stepId: string) => {
+      const created = addChoiceToNewStep(documentRef.current, stepId, {
+        label: "",
+      });
+      if (created.choiceId === "") return;
 
-    applyEdit(created.document);
-    selectStep(created.stepId, { focusTitle: true });
-  }
+      applyEdit(created.document);
+      selectStep(created.stepId, { focusTitle: true });
+    },
+    [applyEdit, selectStep],
+  );
 
-  function makeStart(stepId: string) {
-    applyEdit(setStart(documentRef.current, stepId));
-  }
+  const makeStart = useCallback(
+    (stepId: string) => {
+      applyEdit(setStart(documentRef.current, stepId));
+    },
+    [applyEdit],
+  );
 
   /**
    * An arrow drawn from one box onto another: the Choice exists the moment
    * the Author lets go, and the panel opens on the Step it leaves with the
    * label field waiting — the drag said where it goes, not what it says.
    */
-  function connectSteps(stepId: string, targetStepId: string) {
-    const created = addChoice(documentRef.current, stepId, {
-      label: "",
-      targetStepId,
-    });
-    if (created.choiceId === "") return;
+  const connectSteps = useCallback(
+    (stepId: string, targetStepId: string) => {
+      const created = addChoice(documentRef.current, stepId, {
+        label: "",
+        targetStepId,
+      });
+      if (created.choiceId === "") return;
 
-    applyEdit(created.document);
-    selectStep(stepId, { focusChoiceId: created.choiceId });
-  }
+      applyEdit(created.document);
+      selectStep(stepId, { focusChoiceId: created.choiceId });
+    },
+    [applyEdit, selectStep],
+  );
 
   /** The head of an arrow dropped on another box. */
-  function retargetChoice(
-    stepId: string,
-    choiceId: string,
-    targetStepId: string,
-  ) {
-    applyEdit(
-      updateChoice(documentRef.current, stepId, choiceId, { targetStepId }),
-    );
-  }
+  const retargetChoice = useCallback(
+    (stepId: string, choiceId: string, targetStepId: string) => {
+      applyEdit(
+        updateChoice(documentRef.current, stepId, choiceId, { targetStepId }),
+      );
+    },
+    [applyEdit],
+  );
 
-  function removeStep(stepId: string) {
-    const result = deleteStep(documentRef.current, stepId);
-    if (!result.ok) return;
+  const removeStep = useCallback(
+    (stepId: string) => {
+      const result = deleteStep(documentRef.current, stepId);
+      if (!result.ok) return;
 
-    applyEdit(result.document);
-    setSelectedStepId(result.document.startStepId);
-  }
+      applyEdit(result.document);
+      // Opened the way every other opening is: the arrow in hand is let go
+      // of, and no Choice's label is asked for.
+      selectStep(result.document.startStepId);
+    },
+    [applyEdit, selectStep],
+  );
 
   async function validate() {
     setValidating(true);
@@ -419,6 +445,12 @@ export function DraftEditor({
   // so a mark appears and clears as the document changes. The "Validate"
   // button and its list stay a deliberate, server-side question.
   const liveProblems = useMemo(() => validateForPublish(document), [document]);
+
+  // The document laid out once: the map draws from it, and the step list
+  // beneath the map reads its order off the same boxes rather than laying the
+  // whole document out a second time on every change.
+  const layout = useMemo(() => layoutGraph(document), [document]);
+  const stepOrder = useMemo(() => mapOrder(layout), [layout]);
 
   // The same problems, addressed by Step and by Choice, so the panel can show
   // each one where it belongs rather than only in the flat list above.
@@ -609,7 +641,9 @@ export function DraftEditor({
         <div className="flex flex-col gap-6">
           <JourneyCanvas
             document={document}
+            layout={layout}
             selectedStepId={selectedStep?.id ?? ""}
+            locateRequest={locateRequest}
             problems={liveProblems}
             onSelectStep={selectStep}
             onAddStep={addNewStep}
@@ -618,8 +652,8 @@ export function DraftEditor({
             onDeleteStep={removeStep}
             onConnectChoice={connectSteps}
             onRetargetChoice={retargetChoice}
-            selectedArrow={liveArrow}
-            onSelectArrow={setSelectedArrow}
+            selectedArrow={selectedArrow}
+            onSelectArrow={setArrowSelection}
             onRemoveChoices={removeChoices}
           />
 
@@ -629,6 +663,7 @@ export function DraftEditor({
             <OutcomeList document={document} onChange={applyEdit} />
             <StepList
               document={document}
+              order={stepOrder}
               selectedStepId={selectedStep?.id ?? ""}
               onSelectStep={selectStep}
             />

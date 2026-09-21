@@ -208,6 +208,51 @@ export function loopDocument(): GraphDocument {
   };
 }
 
+/**
+ * The smallest Draft with an arrow attached to neither end of a selection:
+ * a Start with a Choice to each of two Steps, and a Choice from the first of
+ * those to the second, so whichever box is open one arrow is always someone
+ * else's. Readable Choice ids, because the canvas spec names them.
+ */
+export function dimmingDocument(): GraphDocument {
+  const steps = [
+    step(
+      START_STEP_ID,
+      START_STEP_TITLE,
+      "The queue has not moved in an hour.",
+      [
+        choice("to-clinic", "Find the clinic", "clinic"),
+        choice("to-ward", "Walk away", "ward"),
+      ],
+      null,
+    ),
+    step(
+      "clinic",
+      "Clinic tent",
+      "A nurse looks up from her notes.",
+      [choice("clinic-to-ward", "Ask for help", "ward")],
+      null,
+    ),
+    step(
+      "ward",
+      "Waved through",
+      "The officer stamps the paper and points you on.",
+      [],
+      "reached-care",
+    ),
+  ];
+
+  return {
+    schemaVersion: 1,
+    startStepId: START_STEP_ID,
+    allowBack: true,
+    steps: Object.fromEntries(steps.map((item) => [item.id, item])),
+    outcomes: {
+      "reached-care": { id: "reached-care", label: "Reached care" },
+    },
+  };
+}
+
 /** Writes a document into a Journey's Draft, replacing what is there. */
 export async function writeDraftDocument(
   journeyId: string,
