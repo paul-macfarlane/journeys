@@ -1,0 +1,86 @@
+# DoD-1 command evidence — captured at 7054132 on 2026-09-21T19:08:33Z
+# Command: DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=... pnpm test:e2e (e2e output in dod-1-e2e.txt)
+
+## $ pnpm lint
+
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> eslint
+
+## exit 0
+
+## $ pnpm format:check
+
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+## exit 0
+
+## $ pnpm typecheck
+
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> tsc --noEmit
+
+## exit 0
+
+## $ pnpm test
+
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+
+ Test Files  11 passed (11)
+      Tests  198 passed (198)
+   Start at  15:08:41
+   Duration  568ms (transform 658ms, setup 0ms, import 1.60s, tests 279ms, environment 1ms)
+
+## exit 0
+
+## $ pnpm build
+
+> journeys@0.1.0 build /Users/paulmacfarlane/Code/journeys
+> next build
+
+▲ Next.js 16.2.10 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 5.5s
+  Running TypeScript ...
+  Finished TypeScript in 5.1s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/5) ...
+  Generating static pages using 9 workers (1/5) 
+  Generating static pages using 9 workers (2/5) 
+  Generating static pages using 9 workers (3/5) 
+✓ Generating static pages using 9 workers (5/5) in 124ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth/[...all]
+├ ƒ /j/[journeyId]
+├ ƒ /j/[journeyId]/[stepId]
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+└ ƒ /sign-in
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+## exit 0
+
