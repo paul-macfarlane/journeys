@@ -147,6 +147,27 @@ export function isEnding(step: Step): boolean {
   return step.choices.length === 0;
 }
 
+/** What an Author calls the Step, falling back to its id when untitled. */
+export function stepName(step: Step): string {
+  return step.title.trim().length > 0 ? step.title : step.id;
+}
+
+/**
+ * Own properties only. The maps are plain objects parsed from JSON, so an id
+ * such as "toString" or "constructor" would otherwise find a prototype
+ * method and count as a Step or Outcome that exists.
+ */
+export function hasStep(document: GraphDocument, stepId: string): boolean {
+  return Object.hasOwn(document.steps, stepId);
+}
+
+export function hasOutcome(
+  document: GraphDocument,
+  outcomeId: string,
+): boolean {
+  return Object.hasOwn(document.outcomes, outcomeId);
+}
+
 export type ParseGraphDocumentResult =
   { ok: true; document: GraphDocument } | { ok: false; error: string };
 

@@ -7,10 +7,11 @@ import { queryE2eDatabase } from "./session";
  * Draft documents a spec needs in front of the app, and the one way to put
  * them there.
  *
- * The editor arrives with ticket 08, so a Draft bigger than the one Step a
- * new Journey is created with can only be written straight into the `draft`
- * row. Every field is written out, exactly as `createDraftDocument()` does,
- * so what is stored here is what the contract reads back.
+ * Writing the `draft` row directly keeps a spec about publishing, previewing,
+ * or restoring from also being a spec about the editor (`step-editing.spec.ts`
+ * is that one). Every field is written out, exactly as
+ * `createDraftDocument()` does, so what is stored here is what the contract
+ * reads back.
  */
 
 /** Readable ids, so a person reading a failure can follow the graph. */

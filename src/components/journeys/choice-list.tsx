@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 
 import { SELECT_CLASS } from "@/components/journeys/editor-shared";

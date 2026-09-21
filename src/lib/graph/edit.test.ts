@@ -504,6 +504,29 @@ describe("removeOutcome", () => {
     });
   });
 
+  it("removes an Outcome a Step still carries once that Step has Choices, and clears the tag", () => {
+    const document = buildDocument();
+    const tagged = Object.values(document.steps).find(
+      (candidate) => candidate.outcomeId === "outcome-good",
+    );
+    if (!tagged) throw new Error("fixture has no Ending tagged outcome-good");
+    // The Ending grows a Choice, so it is an Ending no longer; its tag is a
+    // leftover the panel cannot reach.
+    const { document: grown } = addChoiceToNewStep(document, tagged.id, {
+      label: "Go on",
+    });
+
+    const result = removeOutcome(grown, "outcome-good");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(Object.hasOwn(result.document.outcomes, "outcome-good")).toBe(
+        false,
+      );
+      expect(result.document.steps[tagged.id].outcomeId).toBeNull();
+    }
+  });
+
   it("removes an unused Outcome", () => {
     const document = buildDocument();
     const { document: withExtra, outcomeId } = addOutcome(document, "Unused");

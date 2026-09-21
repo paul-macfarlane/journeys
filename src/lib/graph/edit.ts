@@ -1,5 +1,9 @@
 import type { Choice, GraphDocument, Step } from "@/lib/graph/document";
-import { isEnding } from "@/lib/graph/document";
+import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
+
+// The panel names Steps with the same rule validation does; re-exported so
+// the editor's components have one module to import edit-time helpers from.
+export { stepName };
 
 /**
  * Pure operations an Author's edit panel calls to change a Draft. Every
@@ -12,24 +16,6 @@ import { isEnding } from "@/lib/graph/document";
  * no-op: it returns the document unchanged rather than throwing, so the
  * editor never has to guard a stale selection before calling one of these.
  */
-
-/** What an Author calls the Step, falling back to its id when untitled. */
-export function stepName(step: Step): string {
-  return step.title.trim().length > 0 ? step.title : step.id;
-}
-
-/**
- * Own properties only. The maps are plain objects that started life as JSON,
- * so an id such as "toString" would otherwise find a prototype method and
- * count as a Step or Outcome that exists.
- */
-function hasStep(document: GraphDocument, stepId: string): boolean {
-  return Object.hasOwn(document.steps, stepId);
-}
-
-function hasOutcome(document: GraphDocument, outcomeId: string): boolean {
-  return Object.hasOwn(document.outcomes, outcomeId);
-}
 
 /** A new, empty Step: one blank paragraph, no Choices, not an Ending's tag. */
 export function addStep(
@@ -348,9 +334,12 @@ export function renameOutcome(
 }
 
 /**
- * Removes an Outcome, refused while any Step — Ending or not — still carries
- * its id, since removing it out from under a tagged Step would silently turn
- * a publishable Ending into one `validateForPublish` cannot place.
+ * Removes an Outcome, refused while any Ending still carries its id, since
+ * removing it out from under a tagged Ending would silently turn a
+ * publishable one into one `validateForPublish` cannot place. A Step that
+ * was tagged while it was an Ending and has since gained Choices is not
+ * holding the Outcome — the panel offers no way to clear that tag — so it
+ * neither refuses the removal nor keeps the id afterwards.
  */
 export function removeOutcome(
   document: GraphDocument,
@@ -361,7 +350,7 @@ export function removeOutcome(
   }
 
   const inUse = Object.values(document.steps).some(
-    (step) => step.outcomeId === outcomeId,
+    (step) => isEnding(step) && step.outcomeId === outcomeId,
   );
   if (inUse) {
     return { ok: false, error: "Endings still use this outcome" };
@@ -370,7 +359,14 @@ export function removeOutcome(
   const outcomes = { ...document.outcomes };
   delete outcomes[outcomeId];
 
-  return { ok: true, document: { ...document, outcomes } };
+  const steps = { ...document.steps };
+  for (const [stepId, step] of Object.entries(steps)) {
+    if (step.outcomeId === outcomeId) {
+      steps[stepId] = { ...step, outcomeId: null };
+    }
+  }
+
+  return { ok: true, document: { ...document, steps, outcomes } };
 }
 
 /** One count per defined Outcome — zero when none — of the Endings tagged with it. */

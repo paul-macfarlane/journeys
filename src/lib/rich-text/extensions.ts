@@ -75,6 +75,6 @@ export const richTextExtensions = [
 ];
 
 export const editorExtensions = [
-  StarterKit.configure(sharedStarterKitOptions),
+  StarterKit.configure({ ...sharedStarterKitOptions }),
   CreditedImage,
 ];

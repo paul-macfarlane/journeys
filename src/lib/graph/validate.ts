@@ -1,5 +1,5 @@
-import type { GraphDocument, Step } from "@/lib/graph/document";
-import { isEnding } from "@/lib/graph/document";
+import type { GraphDocument } from "@/lib/graph/document";
+import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
 
 /**
  * Publish-time validation. Structural validation (`graphDocumentSchema`) runs
@@ -30,24 +30,6 @@ export type PublishProblem = {
   stepId?: string;
   choiceId?: string;
 };
-
-/** What an Author calls the Step, falling back to its id when untitled. */
-function nameOf(step: Step): string {
-  return step.title.trim().length > 0 ? step.title : step.id;
-}
-
-/**
- * Own properties only. The maps are plain objects parsed from JSON, so an id
- * such as "toString" or "constructor" would otherwise find a prototype
- * method and count as a Step or Outcome that exists.
- */
-function hasStep(document: GraphDocument, stepId: string): boolean {
-  return Object.hasOwn(document.steps, stepId);
-}
-
-function hasOutcome(document: GraphDocument, outcomeId: string): boolean {
-  return Object.hasOwn(document.outcomes, outcomeId);
-}
 
 /** Every Step a participant could arrive at, walking out from the Start. */
 function reachableFrom(document: GraphDocument, startStepId: string) {
@@ -93,7 +75,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
       if (!hasStep(document, choice.targetStepId)) {
         problems.push({
           code: "dangling-choice-target",
-          message: `Step "${nameOf(step)}" has a choice pointing at a step that no longer exists`,
+          message: `Step "${stepName(step)}" has a choice pointing at a step that no longer exists`,
           stepId,
           choiceId: choice.id,
         });
@@ -109,7 +91,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
       if (!reached.has(stepId)) {
         problems.push({
           code: "unreachable-step",
-          message: `Step "${nameOf(step)}" cannot be reached from the start`,
+          message: `Step "${stepName(step)}" cannot be reached from the start`,
           stepId,
         });
       }
@@ -125,7 +107,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
     if (step.outcomeId === null) {
       problems.push({
         code: "ending-without-outcome",
-        message: `Ending "${nameOf(step)}" has no outcome`,
+        message: `Ending "${stepName(step)}" has no outcome`,
         stepId,
       });
       continue;
@@ -133,7 +115,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
     if (!hasOutcome(document, step.outcomeId)) {
       problems.push({
         code: "unknown-outcome",
-        message: `Ending "${nameOf(step)}" is tagged with an outcome that no longer exists`,
+        message: `Ending "${stepName(step)}" is tagged with an outcome that no longer exists`,
         stepId,
       });
     }
@@ -150,7 +132,7 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
       if (reachableFrom(document, choice.targetStepId).has(stepId)) {
         problems.push({
           code: "cycle",
-          message: `Step "${nameOf(step)}" has a choice that can lead back to "${nameOf(step)}", so a participant could walk in circles`,
+          message: `Step "${stepName(step)}" has a choice that can lead back to "${stepName(step)}", so a participant could walk in circles`,
           stepId,
           choiceId: choice.id,
         });

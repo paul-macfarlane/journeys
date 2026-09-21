@@ -1,5 +1,3 @@
-"use client";
-
 import { counted } from "@/components/journeys/editor-shared";
 import { Badge } from "@/components/ui/badge";
 import { isEnding, type GraphDocument } from "@/lib/graph/document";

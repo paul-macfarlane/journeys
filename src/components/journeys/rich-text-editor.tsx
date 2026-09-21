@@ -1,6 +1,9 @@
-"use client";
-
-import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import {
+  EditorContent,
+  useEditor,
+  useEditorState,
+  type Editor,
+} from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -34,8 +37,41 @@ const URL_HINT = "Start the address with http:// or https://";
 const EDITOR_CLASS =
   "min-h-64 px-4 py-3 outline-none [&>*+*]:mt-4 [&_a]:underline [&_a]:underline-offset-4 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:max-w-full [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6";
 
+/** The same test the write-path sanitizer applies, so nothing the dialogs
+ * accept is later dropped on its way into the Draft. */
 function isHttpUrl(value: string): boolean {
-  return /^https?:\/\//i.test(value);
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The one refusal the sanitizer makes is an image without a credit, and the
+ * only way one reaches the surface is a paste or a drop (the dialog insists
+ * on a credit). Removing it here lets the update that follows carry
+ * everything else the Author typed, instead of every keystroke being refused
+ * until they find and delete the picture themselves.
+ */
+function removeCreditlessImages(instance: Editor): void {
+  const ranges: Array<[number, number]> = [];
+  instance.state.doc.descendants((node, pos) => {
+    if (
+      node.type.name === "image" &&
+      String(node.attrs.credit ?? "").trim().length === 0
+    ) {
+      ranges.push([pos, pos + node.nodeSize]);
+    }
+  });
+  if (ranges.length === 0) return;
+
+  const transaction = instance.state.tr;
+  for (const [from, to] of ranges.reverse()) {
+    transaction.delete(from, to);
+  }
+  instance.view.dispatch(transaction);
 }
 
 /**
@@ -70,12 +106,17 @@ function ToolbarButton({
 }
 
 export function RichTextEditor({
-  stepId,
+  resetKey,
   content,
   onChange,
   onRefused,
 }: {
-  stepId: string;
+  /**
+   * Changes whenever the surface must be replaced from `content`: another
+   * Step was selected, or the Draft under the same Step was replaced by a
+   * restore or another Member's write.
+   */
+  resetKey: string;
   content: Content;
   onChange: (content: Content) => void;
   onRefused: (error: string) => void;
@@ -105,18 +146,23 @@ export function RichTextEditor({
     onUpdate: ({ editor: instance }) => {
       const sanitized = sanitizeContent(instance.getJSON());
       if (!sanitized.ok) {
-        handlers.current.onRefused(sanitized.error);
+        handlers.current.onRefused(
+          `${sanitized.error}, so the pasted image was removed. Use Image to add one with its credit.`,
+        );
+        // Dispatches a second update, which sanitizes clean and is reported.
+        removeCreditlessImages(instance);
         return;
       }
       handlers.current.onChange(sanitized.content);
     },
   });
 
-  // Only a change of Step replaces what is in the editor, and it does so
-  // without reporting an update: this is the Draft speaking, not the Author.
+  // Only a change of `resetKey` replaces what is in the editor, and it does
+  // so without reporting an update: this is the Draft speaking, not the
+  // Author.
   useEffect(() => {
     editor?.commands.setContent(contentRef.current, { emitUpdate: false });
-  }, [editor, stepId]);
+  }, [editor, resetKey]);
 
   const active = useEditorState({
     editor,

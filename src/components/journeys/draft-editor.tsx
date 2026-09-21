@@ -59,6 +59,15 @@ export function DraftEditor({
   const [problems, setProblems] = useState<PublishProblem[] | null>(null);
   const [validateError, setValidateError] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
+  // Something the rich text surface did on the Author's behalf (removing a
+  // pasted image that had no credit), shown while that Step stays selected.
+  const [contentNotice, setContentNotice] = useState<{
+    stepId: string;
+    message: string;
+  } | null>(null);
+  // Counts the times the Draft was replaced from outside this editor, so the
+  // rich text surface can be re-fed even when the selected Step is the same.
+  const [revision, setRevision] = useState(0);
 
   // The save loop reads these rather than state: it runs from a timer and
   // from an event handler, both of which would otherwise see whatever render
@@ -118,11 +127,17 @@ export function DraftEditor({
         setSaveError(null);
         lastSavedRef.current = pending;
 
-        const queued = queuedRef.current;
-        queuedRef.current = false;
-        if (queued && !documentsEqual(documentRef.current, pending)) {
-          continue;
+        if (!documentsEqual(documentRef.current, pending)) {
+          // An edit arrived during the save. A flush asked for it to be
+          // written now; otherwise its own timer is about to ask, and the
+          // status stays "unsaved" until it does.
+          if (queuedRef.current) {
+            queuedRef.current = false;
+            continue;
+          }
+          return;
         }
+        queuedRef.current = false;
 
         setStatus("saved");
         // Only with nothing left to write: the refresh is what lets the
@@ -174,11 +189,23 @@ export function DraftEditor({
    */
   useEffect(() => {
     if (documentsEqual(draft, lastSavedRef.current)) return;
+    // A render the server started before the latest save can arrive after
+    // it. While an edit is unsaved or a save is running, what is here is
+    // newer than anything the server can show, so nothing is adopted; the
+    // save about to happen wins, as last write does.
+    if (
+      savingRef.current ||
+      timerRef.current !== null ||
+      !documentsEqual(documentRef.current, lastSavedRef.current)
+    ) {
+      return;
+    }
 
     lastSavedRef.current = draft;
     documentRef.current = draft;
     setDocument(draft);
     setStatus("saved");
+    setRevision((current) => current + 1);
     setSelectedStepId((current) =>
       Object.hasOwn(draft.steps, current) ? current : draft.startStepId,
     );
@@ -297,6 +324,16 @@ export function DraftEditor({
         </p>
       ) : null}
 
+      {/* A notice about one Step's surface has nothing to say about the next. */}
+      {contentNotice && contentNotice.stepId === selectedStep?.id ? (
+        <p
+          role="alert"
+          className="rounded-xl px-4 py-3 text-sm text-destructive ring-1 ring-destructive/40"
+        >
+          {contentNotice.message}
+        </p>
+      ) : null}
+
       {problems !== null || validateError !== null ? (
         <section
           aria-label="Validation"
@@ -315,8 +352,9 @@ export function DraftEditor({
           ) : null}
 
           {problems !== null && problems.length > 0 ? (
-            // One rule can name the same Step more than once (one entry per
-            // dangling Choice), so the Choice id is part of the key.
+            // role="list" is explicit for consistency with the app's other
+            // lists. One rule can name the same Step more than once (one
+            // entry per dangling Choice), so the Choice id is part of the key.
             <ul
               role="list"
               aria-label="Validation problems"
@@ -361,10 +399,13 @@ export function DraftEditor({
           <StepPanel
             document={document}
             step={selectedStep}
+            revision={revision}
             onChange={applyEdit}
             onSelectStep={setSelectedStepId}
             onContentChange={handleContentChange}
-            onContentRefused={setSaveError}
+            onContentRefused={(message) =>
+              setContentNotice({ stepId: selectedStep.id, message })
+            }
             onDeleteStep={removeStep}
           />
         ) : null}

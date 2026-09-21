@@ -87,8 +87,8 @@ test("journey-draft", async ({ page, context }) => {
   expect(draft.steps[draft.startStepId].title).toBe("Start");
 
   // A journey at the size a real one reaches, written straight into the row:
-  // the editor arrives with a later ticket, so this is the only way to put a
-  // document of this size in front of the page today.
+  // building 44 Steps through the panel would make this a spec about the
+  // editor, and what is under test here is the round trip through the column.
   await queryE2eDatabase(
     'UPDATE "draft" SET document = $1::jsonb WHERE journey_id = $2',
     [JSON.stringify(largeJourney), journeyId],

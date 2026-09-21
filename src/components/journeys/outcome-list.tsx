@@ -1,12 +1,10 @@
-"use client";
-
 import { useState } from "react";
 
 import { counted } from "@/components/journeys/editor-shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { GraphDocument } from "@/lib/graph/document";
+import { isEnding, type GraphDocument } from "@/lib/graph/document";
 import {
   addOutcome,
   endingCountsByOutcome,
@@ -50,10 +48,10 @@ export function OutcomeList({
           some browsers drop the implicit role with it. */}
       <ul role="list" aria-label="Outcomes" className="flex flex-col gap-2">
         {outcomes.map((outcome) => {
-          // The rule `removeOutcome` itself applies: any Step still carrying
-          // the id, not only the Endings the count is about.
+          // The rule `removeOutcome` itself applies: an Ending still tagged
+          // with it. A Step that has since gained Choices is not holding it.
           const inUse = Object.values(document.steps).some(
-            (step) => step.outcomeId === outcome.id,
+            (step) => isEnding(step) && step.outcomeId === outcome.id,
           );
 
           return (

@@ -123,9 +123,9 @@ export type ValidateDraftActionResult =
 /**
  * Publish-time validation of a Journey's Draft as it stands, as something a
  * caller can ask for: an empty problem list means the Draft could be
- * published. Nothing in the UI calls this yet — ticket 08's editor is what
- * will show the problems as an Author works, while `publishJourneyAction`
- * below is what refuses on them.
+ * published. The Draft editor's "Validate" button calls this to show the
+ * problems as an Author works, while `publishJourneyAction` below is what
+ * refuses on them.
  */
 export async function validateDraftAction(
   projectId: string,

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 
 import { ChoiceList } from "@/components/journeys/choice-list";
@@ -73,6 +71,8 @@ function DeleteStepDialog({
           </AlertDialogHeader>
 
           {affected.length > 0 ? (
+            // role="list" is explicit for consistency with the app's other
+            // lists, and so the labelled list is announced inside the dialog.
             <ul
               role="list"
               aria-label="Affected choices"
@@ -112,6 +112,7 @@ function DeleteStepDialog({
 export function StepPanel({
   document,
   step,
+  revision,
   onChange,
   onSelectStep,
   onContentChange,
@@ -120,6 +121,8 @@ export function StepPanel({
 }: {
   document: GraphDocument;
   step: Step;
+  /** Bumped each time the Draft was replaced from outside the editor. */
+  revision: number;
   onChange: (document: GraphDocument) => void;
   onSelectStep: (stepId: string) => void;
   onContentChange: (stepId: string, content: Content) => void;
@@ -162,7 +165,7 @@ export function StepPanel({
       </div>
 
       <RichTextEditor
-        stepId={step.id}
+        resetKey={`${step.id}:${revision}`}
         content={step.content}
         onChange={(content) => onContentChange(step.id, content)}
         onRefused={onContentRefused}
