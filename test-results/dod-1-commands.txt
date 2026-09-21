@@ -1,8 +1,8 @@
-# DoD-1 command output, ticket 06 (participant runner and Runs) — captured by the orchestrator at commit b3390ee
+# DoD-1 command output, ticket 06 (participant runner and Runs) — captured by the orchestrator at commit 9bd057c (staging with ticket 13 merged in)
 # Command: DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm db:migrate && DATABASE_URL=... pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
 # Sanitized: dotenv tip lines were removed; the repository's absolute path was shortened to a relative one.
-commit: b3390ee
-date: 2026-09-21T03:42:07Z
+commit: 9bd057c
+date: 2026-09-21T03:51:22Z
 === pnpm db:migrate
 
 > journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys
@@ -44,10 +44,10 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
 
 
- Test Files  8 passed (8)
-      Tests  162 passed (162)
-   Start at  23:42:13
-   Duration  410ms (transform 532ms, setup 0ms, import 1.08s, tests 104ms, environment 0ms)
+ Test Files  9 passed (9)
+      Tests  165 passed (165)
+   Start at  23:51:31
+   Duration  493ms (transform 544ms, setup 0ms, import 1.29s, tests 111ms, environment 0ms)
 
 exit: 0
 === pnpm build
@@ -59,15 +59,15 @@ exit: 0
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 4.5s
+✓ Compiled successfully in 4.6s
   Running TypeScript ...
-  Finished TypeScript in 4.1s ...
+  Finished TypeScript in 4.2s ...
   Collecting page data using 9 workers ...
   Generating static pages using 9 workers (0/5) ...
   Generating static pages using 9 workers (1/5) 
   Generating static pages using 9 workers (2/5) 
   Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 116ms
+✓ Generating static pages using 9 workers (5/5) in 119ms
   Finalizing page optimization ...
 
 Route (app)

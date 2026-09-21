@@ -1,11 +1,9 @@
-# DoD-1 e2e output, ticket 06 (participant runner and Runs) — captured by the orchestrator at commit b3390ee
+# DoD-1 e2e output, ticket 06 (participant runner and Runs) — captured by the orchestrator at commit 9bd057c (staging with ticket 13 merged in)
 # Command: DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
 # Sanitized: dotenv tip lines and the repeated Next dev console warning
 # ('Encountered a script tag while rendering React component', pre-existing and unrelated) were removed.
-# Kept: the '[browser] unhandledRejection: Error: Connection closed.' line forwarded from the dev server —
-# a Flight stream aborted by a full-page reload in the runner; recorded as O1 in the ticket's AI code review.
-commit: b3390ee
-date: 2026-09-21T03:42:24Z
+commit: 9bd057c
+date: 2026-09-21T03:51:42Z
 === pnpm test:e2e
 
 > journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
@@ -13,38 +11,40 @@ date: 2026-09-21T03:42:24Z
 
 [e2e] database: journeys_e2e on localhost:5436
 
-Running 29 tests using 5 workers
+Running 32 tests using 5 workers
 
-  ✓   1 [chromium] › e2e/landing.spec.ts:3:5 › landing page explains the product and offers a single sign-in link while signed out (739ms)
-  ✓   4 [chromium] › e2e/projects-and-journeys.spec.ts:37:5 › project-create (3.6s)
-  ✓   6 [chromium] › e2e/projects-and-journeys.spec.ts:113:5 › project-rename (3.9s)
-  ✓   5 [chromium] › e2e/draft.spec.ts:42:5 › journey-draft (6.6s)
-  ✓   7 [chromium] › e2e/projects-and-journeys.spec.ts:68:5 › project-non-member (3.8s)
-  ✓   2 [chromium] › e2e/preview.spec.ts:108:5 › preview-non-member (7.6s)
-  ✓   8 [chromium] › e2e/projects-and-journeys.spec.ts:148:5 › project-delete (3.5s)
-  ✓   3 [chromium] › e2e/preview.spec.ts:30:5 › preview (8.1s)
-  ✓  11 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (630ms)
-  ✓  12 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (835ms)
-  ✓   9 [chromium] › e2e/projects-and-journeys.spec.ts:177:5 › journey-create (3.1s)
-  ✓  13 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (2.9s)
-  ✓  10 [chromium] › e2e/projects-and-journeys.spec.ts:268:5 › project-delete-cascade (4.4s)
-  ✓  14 [chromium] › e2e/publish.spec.ts:59:5 › publish-invalid-draft (4.4s)
-  ✓  16 [chromium] › e2e/projects-and-journeys.spec.ts:215:5 › journey-edit-and-delete (6.3s)
-[WebServer] [browser] ⨯ unhandledRejection: Error: Connection closed.
-  ✓  15 [chromium] › e2e/publish.spec.ts:95:5 › publish-versions-and-restore (10.2s)
-  ✓  17 [chromium] › e2e/runner.spec.ts:85:5 › runner-case-3-on-a-phone (8.9s)
-  ✓  19 [chromium] › e2e/runner.spec.ts:202:5 › runner-back-and-choose-again (7.4s)
-  ✓  23 [chromium] › e2e/sign-in.spec.ts:13:5 › sign-in page offers Google and Discord with their logos (963ms)
-  ✓  24 [chromium] › e2e/sign-in.spec.ts:37:5 › a signed-in Author visiting /sign-in is sent to their projects (539ms)
-  ✓  18 [chromium] › e2e/projects-and-journeys.spec.ts:301:5 › author-flow (10.3s)
-  ✓  22 [chromium] › e2e/runner.spec.ts:520:5 › runner-unavailable-and-unknown (3.6s)
-  ✓  20 [chromium] › e2e/runner.spec.ts:322:5 › runner-run-cookie-and-refresh (9.5s)
-  ✓  21 [chromium] › e2e/runner.spec.ts:434:5 › runner-pinned-version (6.9s)
-  ✓  26 [chromium] › e2e/step-editing.spec.ts:223:5 › step-editing-delete-and-validate (5.0s)
-  ✓  25 [chromium] › e2e/step-editing.spec.ts:143:5 › step-editing-build-and-publish (7.3s)
-  ✓  29 [chromium] › e2e/step-editing.spec.ts:443:5 › step-editing-outcome-rename (4.5s)
-  ✓  27 [chromium] › e2e/step-editing.spec.ts:273:5 › step-editing-image-credit-and-preview (7.3s)
-  ✓  28 [chromium] › e2e/step-editing.spec.ts:363:5 › step-editing-choices-reorder-retarget (6.0s)
+  ✓   1 [chromium] › e2e/landing.spec.ts:3:5 › landing page explains the product and offers a single sign-in link while signed out (714ms)
+  ✓   2 [chromium] › e2e/members.spec.ts:132:5 › members-add-refused (4.0s)
+  ✓   5 [chromium] › e2e/draft.spec.ts:42:5 › journey-draft (6.8s)
+  ✓   3 [chromium] › e2e/members.spec.ts:182:5 › members-remove-and-last-refused (7.6s)
+  ✓   8 [chromium] › e2e/projects-and-journeys.spec.ts:37:5 › project-create (1.8s)
+  ✓   4 [chromium] › e2e/members.spec.ts:27:5 › members-add-and-edit (9.3s)
+  ✓   6 [chromium] › e2e/preview.spec.ts:30:5 › preview (8.8s)
+  ✓   7 [chromium] › e2e/preview.spec.ts:108:5 › preview-non-member (5.4s)
+  ✓   9 [chromium] › e2e/projects-and-journeys.spec.ts:113:5 › project-rename (2.6s)
+  ✓  13 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (686ms)
+  ✓  15 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (724ms)
+  ✓  10 [chromium] › e2e/projects-and-journeys.spec.ts:68:5 › project-non-member (4.4s)
+  ✓  11 [chromium] › e2e/projects-and-journeys.spec.ts:177:5 › journey-create (3.8s)
+  ✓  14 [chromium] › e2e/projects-and-journeys.spec.ts:148:5 › project-delete (3.1s)
+  ✓  16 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (2.7s)
+  ✓  12 [chromium] › e2e/projects-and-journeys.spec.ts:268:5 › project-delete-cascade (5.4s)
+  ✓  17 [chromium] › e2e/publish.spec.ts:59:5 › publish-invalid-draft (3.6s)
+  ✓  18 [chromium] › e2e/projects-and-journeys.spec.ts:215:5 › journey-edit-and-delete (7.7s)
+  ✓  20 [chromium] › e2e/runner.spec.ts:85:5 › runner-case-3-on-a-phone (8.0s)
+  ✓  22 [chromium] › e2e/runner.spec.ts:202:5 › runner-back-and-choose-again (6.2s)
+  ✓  19 [chromium] › e2e/publish.spec.ts:95:5 › publish-versions-and-restore (10.4s)
+  ✓  26 [chromium] › e2e/sign-in.spec.ts:13:5 › sign-in page offers Google and Discord with their logos (873ms)
+  ✓  21 [chromium] › e2e/projects-and-journeys.spec.ts:301:5 › author-flow (10.2s)
+  ✓  27 [chromium] › e2e/sign-in.spec.ts:37:5 › a signed-in Author visiting /sign-in is sent to their projects (768ms)
+  ✓  25 [chromium] › e2e/runner.spec.ts:520:5 › runner-unavailable-and-unknown (4.2s)
+  ✓  24 [chromium] › e2e/runner.spec.ts:434:5 › runner-pinned-version (5.4s)
+  ✓  23 [chromium] › e2e/runner.spec.ts:322:5 › runner-run-cookie-and-refresh (7.5s)
+  ✓  29 [chromium] › e2e/step-editing.spec.ts:223:5 › step-editing-delete-and-validate (4.8s)
+  ✓  28 [chromium] › e2e/step-editing.spec.ts:143:5 › step-editing-build-and-publish (6.1s)
+  ✓  32 [chromium] › e2e/step-editing.spec.ts:443:5 › step-editing-outcome-rename (3.9s)
+  ✓  30 [chromium] › e2e/step-editing.spec.ts:273:5 › step-editing-image-credit-and-preview (5.9s)
+  ✓  31 [chromium] › e2e/step-editing.spec.ts:363:5 › step-editing-choices-reorder-retarget (6.2s)
 
-  29 passed (35.8s)
+  32 passed (37.5s)
 exit: 0
