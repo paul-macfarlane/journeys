@@ -220,9 +220,10 @@ test("journey-edit-and-delete", async ({ page, context }) => {
   const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
   await page.goto(journeyPath);
 
-  // Renaming a Journey leaves its address alone.
+  // Renaming a Journey leaves its address alone. Exactly "Title": the step
+  // panel on this page has a "Step title" of its own.
   await page.getByRole("button", { name: "Edit" }).click();
-  await page.getByLabel("Title").fill(renamedTitle);
+  await page.getByLabel("Title", { exact: true }).fill(renamedTitle);
   await page.getByRole("button", { name: "Save changes" }).click();
 
   await expect(page.getByRole("dialog")).toBeHidden();
@@ -307,7 +308,8 @@ test("author-flow", async ({ page, context }) => {
   const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
   await page.goto(journeyPath);
   await page.getByRole("button", { name: "Edit" }).click();
-  await page.getByLabel("Title").fill(renamedTitle);
+  // Exactly "Title": the step panel on this page has a "Step title" too.
+  await page.getByLabel("Title", { exact: true }).fill(renamedTitle);
   await page.getByRole("button", { name: "Save changes" }).click();
 
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);

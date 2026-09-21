@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DeleteJourneyDialog } from "@/components/journeys/delete-journey-dialog";
-import { DraftSummary } from "@/components/journeys/draft-summary";
+import { DraftEditor } from "@/components/journeys/draft-editor";
 import { EditJourneyDialog } from "@/components/journeys/edit-journey-dialog";
 import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
 import { PublishControls } from "@/components/journeys/publish-controls";
@@ -58,7 +58,7 @@ export default async function JourneyPage({
     !documentsEqual(draft, live.document);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-12">
       <div>
         <Link
           href={`/projects/${projectId}`}
@@ -107,7 +107,7 @@ export default async function JourneyPage({
         hasUnpublishedChanges={hasUnpublishedChanges}
       />
 
-      <DraftSummary draft={draft} />
+      <DraftEditor projectId={projectId} journeyId={journey.id} draft={draft} />
 
       <VersionList
         projectId={projectId}
