@@ -1,6 +1,6 @@
 # 06: Participant runner and Runs
 
-Status: ready-for-human
+Status: done
 Blocked by: 04, 05
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -154,3 +154,7 @@ Schema, migration, reducer rule order, data access, cookies, action, pages, READ
 ### [PROGRESS] 2026-09-21 — staging merged in after ticket 13 landed
 
 Paul merged PR #17 (ticket 13) to `staging` at `0ac7e24`, which put PR #18 into conflict. The orchestrator merged `origin/staging` into `feat/06-participant-runner-and-runs` as `9bd057c` (a merge, never a rebase, so no force-push): every conflict was under `test-results/` — the two DoD-1 captures and twelve screenshots both tickets had refreshed — and no source file conflicted; the README keeps both tickets' route bullets. The integration invalidated the evidence, so the verified run command was rerun by the orchestrator at `9bd057c`: every command exit 0 (165 unit tests in 9 files; 32 e2e specs, the three `members-*` specs now among them, `[e2e] database: journeys_e2e on localhost:5436`). Evidence under `test-results/` recaptured from that run in the commit that carries this note; the criterion table in the closeout stands with the evidence recaptured at `9bd057c`. This run showed no `Connection closed` dev-console line (review item O1), so that line is intermittent, as expected of dev-server noise.
+
+### [CLOSEOUT] 2026-09-21 — moved to `done`
+
+PR #18 merged to `staging` on 2026-09-21 (04:03 UTC). Moved to `done` at Paul's direction of 2026-09-21 under the amended tracker rule (a merged PR is the human's acceptance). Unblocks 10 (with 09), 11 (with 07), and 12 (with 08).

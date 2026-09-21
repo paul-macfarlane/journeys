@@ -49,10 +49,10 @@ and planning-artifact publication.
 | `in-progress` | Implementation is underway in a worktree. |
 | `ai-review` | Implementation is complete and under automated review. |
 | `ready-for-human` | Awaiting human review or human implementation. |
-| `done` | Accepted and complete. |
+| `done` | Accepted and complete. Entered when the ticket's PR has merged; the merge is the human's acceptance. |
 | `wontfix` | Will not be actioned. |
 
-Human-only states: `ready-for-human`, `done`, `wontfix`.
+Human-only states: `ready-for-human`, `done`, `wontfix`. A human enters `done` by merging the PR; the agent records that transition (see below).
 
 Recommended lifecycle: `needs-triage` → `needs-info` → `planning` → `plan-review` → `in-progress` → `ai-review` → `ready-for-human` → `done` → `wontfix`.
 
@@ -62,7 +62,7 @@ Recommended lifecycle: `needs-triage` → `needs-info` → `planning` → `plan-
 - Check for available work before claiming. Available work is ready to
   implement, unclaimed, in an eligible state, has no active impediment or
   blocking decision, and every `blocked by` ticket is in
-  `done`. A dependency that is not a `blocked by` edge does
+  `done` (after the run-start sweep above, a merged PR counts). A dependency that is not a `blocked by` edge does
   not make work unavailable.
 - Claim before starting work and use one active owner. Enter
   `needs-triage` only when starting any work.
@@ -77,7 +77,7 @@ Recommended lifecycle: `needs-triage` → `needs-info` → `planning` → `plan-
   ticket solely for this comparison. When both map to the same state, record
   the phase in its configured phase record or comment without requesting a
   same-status transition.
-- Never enter `done`; a human does that after reviewing the PR.
+- Enter `done` only when the ticket's PR has merged (`gh pr view <n> --json state` reads `MERGED`); merging is how the human accepts the work, and the agent records the transition with a dated `[CLOSEOUT]` comment naming the merge. At the start of every `/atlas-implement` run, before checking availability, move every `ready-for-human` ticket whose PR has merged to `done` the same way, so a merged blocker never has to be rediscovered. Never enter `done` on an open or closed-unmerged PR. (Paul, 2026-09-21: agents record `done` on merge evidence.)
 - When blocked, preserve work, record the exact reason and resume instructions,
   and follow the configured blocked-state behavior. On resume, reread the ticket
   and avoid duplicating claims, transitions, workers, commits, or comments.
