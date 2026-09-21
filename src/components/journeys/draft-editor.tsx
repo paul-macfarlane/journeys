@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 
 import {
@@ -10,6 +10,7 @@ import {
   type SaveDraftActionResult,
 } from "@/app/projects/[projectId]/journeys/actions";
 import { counted, type SelectStep } from "@/components/journeys/editor-shared";
+import { JourneyCanvas } from "@/components/journeys/journey-canvas";
 import { OutcomeList } from "@/components/journeys/outcome-list";
 import { StepList } from "@/components/journeys/step-list";
 import { StepPanel } from "@/components/journeys/step-panel";
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import type { Content } from "@/lib/graph/content";
 import { documentsEqual, type GraphDocument } from "@/lib/graph/document";
 import { addStep, deleteStep, updateStep } from "@/lib/graph/edit";
-import type { PublishProblem } from "@/lib/graph/validate";
+import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /**
  * The Draft editor: a step list beside a panel, with the Journey's Outcomes
@@ -287,6 +288,12 @@ export function DraftEditor({
     }
   }
 
+  // What the canvas marks: the same rules the Publish button applies, run
+  // here on what the Author is holding rather than on what was last stored,
+  // so a mark appears and clears as the document changes. The "Validate"
+  // button and its list stay a deliberate, server-side question.
+  const liveProblems = useMemo(() => validateForPublish(document), [document]);
+
   const steps = Object.values(document.steps);
   const summary = [
     counted(steps.length, "step"),
@@ -311,9 +318,7 @@ export function DraftEditor({
           <p role="status" className="text-muted-foreground text-sm">
             {STATUS_TEXT[status]}
           </p>
-          <Button variant="outline" onClick={addNewStep}>
-            Add step
-          </Button>
+          {/* "Add step" lives on the canvas, beside the map it adds to. */}
           <Button
             variant="outline"
             disabled={validating}
@@ -394,14 +399,26 @@ export function DraftEditor({
         </section>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <div className="flex flex-col gap-6">
-          <OutcomeList document={document} onChange={applyEdit} />
-          <StepList
+          <JourneyCanvas
             document={document}
             selectedStepId={selectedStep?.id ?? ""}
+            problems={liveProblems}
             onSelectStep={selectStep}
+            onAddStep={addNewStep}
           />
+
+          {/* The map is the way around the Draft; the list stays as the
+              second one, for reading every Step in walk order. */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <OutcomeList document={document} onChange={applyEdit} />
+            <StepList
+              document={document}
+              selectedStepId={selectedStep?.id ?? ""}
+              onSelectStep={selectStep}
+            />
+          </div>
         </div>
 
         {selectedStep ? (
