@@ -53,7 +53,11 @@ async function readDraft(journeyId: string): Promise<GraphDocument> {
   return graphDocumentSchema.parse(rows[0].document);
 }
 
-/** Autosave is debounced, so "the Draft is stored" is a thing to wait for. */
+/**
+ * Autosave is debounced, so "the Draft is stored" is a thing to wait for
+ * rather than assume. Every reload, row read, and Publish in this file goes
+ * through here first.
+ */
 async function expectSaved(page: Page): Promise<void> {
   await expect(page.getByRole("status")).toHaveText("Saved");
 }
@@ -92,12 +96,19 @@ function canvasNode(page: Page, title: string) {
   return canvas(page).getByRole("button", { name: title, exact: true });
 }
 
+/** Every box on the map, by the mark the app puts on each one's button. */
 function canvasNodes(page: Page) {
-  return canvas(page).locator(".react-flow__node");
+  return canvas(page).locator("button[data-kind]");
 }
 
+/** Every arrow on the map, by the Choice the app says it is. */
 function canvasEdges(page: Page) {
-  return canvas(page).locator(".react-flow__edge");
+  return canvas(page).locator("[data-choice-id]");
+}
+
+/** The arrows marked with a problem. */
+function problemEdges(page: Page) {
+  return canvas(page).locator('[data-choice-id]:not([data-problems="0"])');
 }
 
 async function renameStep(page: Page, title: string): Promise<void> {
@@ -245,11 +256,11 @@ test.describe("the seeded map", () => {
     // A published case has nothing dangling, so nothing stands in for a Step
     // that is gone.
     await expect(
-      canvas(page).locator('.react-flow__node[data-kind="missing"]'),
+      canvas(page).locator('button[data-kind="missing"]'),
     ).toHaveCount(0);
-    await expect(
-      canvas(page).locator('.react-flow__node[data-kind="start"]'),
-    ).toHaveCount(1);
+    await expect(canvas(page).locator('button[data-kind="start"]')).toHaveCount(
+      1,
+    );
 
     await expect
       .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
@@ -317,11 +328,37 @@ test("canvas-validation-marks", async ({ page, context }) => {
     "data-problems",
     "0",
   );
-  await expect(canvas(page).locator(".canvas-edge-problem")).toHaveCount(0);
+  await expect(problemEdges(page)).toHaveCount(0);
+
+  // A Choice back to the Start closes a loop, and both arrows of it are the
+  // problem: each Choice can reach the Step it sits on.
+  await canvasNode(page, "Clinic tent").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+  await addChoiceToStep(page, "Go back", "Border post");
+  await expect(canvasEdges(page)).toHaveCount(2);
+  await expect(problemEdges(page)).toHaveCount(2);
+  await expect(canvasNode(page, "Border post")).toHaveAttribute(
+    "data-problems",
+    "1",
+  );
+  await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
+    "data-problems",
+    "1",
+  );
+
+  // Taking that Choice away opens the loop again, and both marks go.
+  await page
+    .getByRole("button", { name: "Remove choice", exact: true })
+    .click();
+  await expect(canvasEdges(page)).toHaveCount(1);
+  await expect(problemEdges(page)).toHaveCount(0);
+  await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
+    "data-problems",
+    "0",
+  );
 
   // Deleting the Step that Choice points at leaves it dangling, and the map
   // says so in both places: a placeholder where the Step was, and the edge.
-  await canvasNode(page, "Clinic tent").click();
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await page.getByRole("button", { name: "Delete step", exact: true }).click();
   const confirmation = page.getByRole("alertdialog");
@@ -331,7 +368,7 @@ test("canvas-validation-marks", async ({ page, context }) => {
   await expect(confirmation).toBeHidden();
 
   await expect(canvasNode(page, "Missing step")).toBeVisible();
-  await expect(canvas(page).locator(".canvas-edge-problem")).toHaveCount(1);
+  await expect(problemEdges(page)).toHaveCount(1);
   await expect(canvasNode(page, "Border post")).toHaveAttribute(
     "data-problems",
     "1",
@@ -394,9 +431,7 @@ test.describe("authoring from the map", () => {
       "aria-label",
       "Find the clinic: Border post → Clinic tent",
     );
-    await expect(canvas(page).locator(".react-flow__edge-text")).toHaveText(
-      "Find the clinic",
-    );
+    await expect(canvasEdges(page).getByText("Find the clinic")).toBeVisible();
 
     await expectSaved(page);
     await page.screenshot({
@@ -430,6 +465,11 @@ test.describe("authoring from the map", () => {
         .selectOption({ label: "Reached care" });
       await expect(canvasNode(page, ending)).toHaveAttribute(
         "data-problems",
+        "0",
+      );
+      // Colored by the Outcome it was tagged with: the first one defined.
+      await expect(canvasNode(page, ending)).toHaveAttribute(
+        "data-outcome-index",
         "0",
       );
     }

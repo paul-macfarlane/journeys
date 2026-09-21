@@ -18,17 +18,18 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  type HTMLAttributes,
+} from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { GraphDocument } from "@/lib/graph/document";
-import {
-  layoutGraph,
-  problemsByAddress,
-  NODE_HEIGHT,
-  NODE_WIDTH,
-} from "@/lib/graph/layout";
+import { layoutGraph, problemsByAddress } from "@/lib/graph/layout";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
 
@@ -52,11 +53,11 @@ import "@xyflow/react/dist/style.css";
  */
 
 /**
- * React Flow types `domAttributes` as React's `HTMLAttributes`, which has no
- * index signature for `data-*`. Intersecting one in keeps the marks the specs
- * read off a node type-checked rather than cast away.
+ * The attributes a spec reads off a node's button: which kind of box it is,
+ * which Step, how many problems, which Outcome. React's `HTMLAttributes` has
+ * no index signature for `data-*`, so one is intersected in rather than cast.
  */
-type NodeMarks = NonNullable<Node["domAttributes"]> &
+type NodeMarks = HTMLAttributes<HTMLButtonElement> &
   Record<`data-${string}`, string>;
 
 /**
@@ -96,9 +97,16 @@ type StepNodeData = {
   isSelected: boolean;
   /** The Step this node opens in the panel when it is clicked. */
   opens: string;
+  /**
+   * One source anchor per Choice, in Choice order, so two Choices to the same
+   * Step leave from different points and are drawn as two arrows.
+   */
+  choiceIds: string[];
+  marks: NodeMarks;
 };
 
 type MissingNodeData = {
+  marks: NodeMarks;
   isSelected: boolean;
   /** The Step whose Choice points at nothing — what there is to go and fix. */
   opens: string | null;
@@ -108,17 +116,19 @@ type StepFlowNode = Node<StepNodeData, "step">;
 type MissingFlowNode = Node<MissingNodeData, "missing">;
 type CanvasFlowNode = StepFlowNode | MissingFlowNode;
 
-/** The count and the messages behind a node's problem badge. */
-function ProblemBadge({ problems }: { problems: string[] }) {
-  return (
-    <span
-      aria-label={`${problems.length} problem${problems.length === 1 ? "" : "s"}`}
-      title={problems.join("\n")}
-      className="inline-flex w-fit shrink-0 items-center rounded-full border border-destructive/50 px-1.5 py-0 text-[10px] font-medium text-destructive"
-    >
-      {problems.length}
-    </span>
-  );
+/**
+ * The card of a node is a real button — React Flow's own wrapper takes focus
+ * but only ever selects on a key press, and selection here is the panel's —
+ * so Enter and Space open the Step the way a click does: the click the button
+ * fires bubbles to the wrapper, and `onNodeClick` runs. Its accessible name is
+ * the Step's title alone; the badges inside are decoration.
+ */
+const NODE_BUTTON_CLASS =
+  "relative flex h-full w-full cursor-pointer flex-col justify-center gap-1 overflow-hidden rounded-xl bg-background px-3 py-2 text-left ring-inset outline-none focus-visible:ring-4 focus-visible:ring-ring";
+
+/** Where a Choice's arrow leaves the node: spread evenly along its bottom. */
+function handleLeft(index: number, count: number): string {
+  return `${((index + 1) / (count + 1)) * 100}%`;
 }
 
 function StepNode({ data }: NodeProps<StepFlowNode>) {
@@ -130,9 +140,13 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
           these are anchors rather than controls. */}
       <Handle type="target" position={Position.Top} isConnectable={false} />
 
-      <div
+      <button
+        type="button"
+        {...data.marks}
+        aria-label={data.title}
+        title={marked ? data.problems.join("\n") : undefined}
         className={cn(
-          "relative flex h-full w-full flex-col justify-center gap-1 overflow-hidden rounded-xl bg-background px-3 py-2 ring-inset",
+          NODE_BUTTON_CLASS,
           data.isSelected ? "ring-4" : "ring-2",
           marked
             ? "ring-destructive"
@@ -155,16 +169,29 @@ function StepNode({ data }: NodeProps<StepFlowNode>) {
         <div className="flex items-center gap-1 overflow-hidden">
           {data.isStart ? <Badge>Start</Badge> : null}
           {data.isEnding ? <Badge>Ending</Badge> : null}
-          {marked ? <ProblemBadge problems={data.problems} /> : null}
+          {/* The count; the messages are the button's `title`, where a hover
+              shows them and assistive technology reads them as its description. */}
+          {marked ? (
+            <Badge tone="destructive">{data.problems.length}</Badge>
+          ) : null}
           {data.isEnding ? (
             <span className="truncate text-xs text-muted-foreground">
               {data.outcomeLabel ?? "No outcome"}
             </span>
           ) : null}
         </div>
-      </div>
+      </button>
 
-      <Handle type="source" position={Position.Bottom} isConnectable={false} />
+      {data.choiceIds.map((choiceId, index) => (
+        <Handle
+          key={choiceId}
+          id={choiceId}
+          type="source"
+          position={Position.Bottom}
+          isConnectable={false}
+          style={{ left: handleLeft(index, data.choiceIds.length) }}
+        />
+      ))}
     </>
   );
 }
@@ -174,18 +201,20 @@ function MissingNode({ data }: NodeProps<MissingFlowNode>) {
     <>
       <Handle type="target" position={Position.Top} isConnectable={false} />
 
-      <div
+      <button
+        type="button"
+        {...data.marks}
+        aria-label="Missing step"
         className={cn(
-          "flex h-full w-full items-center justify-center rounded-xl border-2 border-dashed border-destructive bg-background px-3 py-2",
+          NODE_BUTTON_CLASS,
+          "items-center border-2 border-dashed border-destructive",
           data.isSelected ? "ring-4 ring-destructive" : null,
         )}
       >
         <p className="truncate text-sm font-medium text-destructive">
           Missing step
         </p>
-      </div>
-
-      <Handle type="source" position={Position.Bottom} isConnectable={false} />
+      </button>
     </>
   );
 }
@@ -242,8 +271,9 @@ function CanvasFlow({
     );
 
     // A placeholder has no Step of its own to open, so clicking it opens the
-    // first Step whose Choice is left pointing at nothing — the one place the
-    // fix can be made. A real target opens itself.
+    // first Step whose Choice is left pointing at nothing. Every Step that
+    // dangles to the same target shares the placeholder and carries its own
+    // mark, so the others are a click on their own node away.
     const opensByMissingId = new Map<string, string>();
     for (const edge of layout.edges) {
       if (!opensByMissingId.has(edge.target)) {
@@ -259,16 +289,16 @@ function CanvasFlow({
       const common = {
         id: node.id,
         position: { x: node.x, y: node.y },
-        width: NODE_WIDTH,
-        height: NODE_HEIGHT,
+        width: node.width,
+        height: node.height,
         selected: isSelected,
-        ariaRole: "button" as const,
-        ariaLabel: node.title,
         connectable: false,
       };
 
       if (node.kind === "missing") {
+        // React Flow would call it a "node"; `CONTEXT.md` does not.
         const marks: NodeMarks = {
+          "aria-roledescription": "missing step",
           "data-kind": "missing",
           "data-step-id": node.stepId,
           "data-problems": "0",
@@ -276,8 +306,8 @@ function CanvasFlow({
         return {
           ...common,
           type: "missing",
-          domAttributes: marks,
           data: {
+            marks,
             isSelected,
             opens: opensByMissingId.get(node.id) ?? null,
           },
@@ -285,19 +315,24 @@ function CanvasFlow({
       }
 
       const marks: NodeMarks = {
+        "aria-roledescription": "step",
         "data-kind": node.isStart ? "start" : node.isEnding ? "ending" : "step",
         "data-step-id": node.stepId,
         "data-problems": String(stepProblems.length),
+        "data-outcome-index":
+          node.outcomeIndex === null ? "" : String(node.outcomeIndex),
       };
 
       return {
         ...common,
         type: "step",
-        domAttributes: marks,
         data: {
           title: node.title,
           isStart: node.isStart,
           isEnding: node.isEnding,
+          choiceIds: document.steps[node.stepId].choices.map(
+            (choice) => choice.id,
+          ),
           outcomeLabel:
             node.outcomeId !== null
               ? (document.outcomes[node.outcomeId]?.label ?? null)
@@ -306,23 +341,31 @@ function CanvasFlow({
           problems: stepProblems,
           isSelected,
           opens: node.stepId,
+          marks,
         },
       } satisfies StepFlowNode;
     });
 
     const flowEdges: Edge[] = layout.edges.map((edge) => {
       const label = choiceLabel(edge.label);
-      const marked = (addressed.choices.get(edge.id) ?? []).length > 0;
+      const problemCount = (addressed.choices.get(edge.id) ?? []).length;
+      const marked = problemCount > 0;
 
       return {
         id: edge.id,
         source: edge.source,
+        sourceHandle: edge.choiceId,
         target: edge.target,
         type: "smoothstep",
         label,
         ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`,
         markerEnd: { type: MarkerType.ArrowClosed },
-        className: marked ? "canvas-edge-problem" : undefined,
+        // What a spec reads off an arrow, and what a screen reader calls it.
+        domAttributes: {
+          "aria-roledescription": "choice",
+          "data-choice-id": edge.choiceId,
+          "data-problems": String(problemCount),
+        } as Edge["domAttributes"],
         style: marked
           ? { stroke: "var(--destructive)", strokeWidth: 2 }
           : undefined,
@@ -330,7 +373,7 @@ function CanvasFlow({
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [addressed, document.outcomes, layout, selectedStepId]);
+  }, [addressed, document.outcomes, document.steps, layout, selectedStepId]);
 
   const { fitView } = useReactFlow();
 
@@ -367,6 +410,9 @@ function CanvasFlow({
       colorMode={colorMode}
       nodesDraggable={false}
       nodesConnectable={false}
+      // The node's own button takes focus; the wrapper would otherwise be a
+      // second tab stop that opens nothing.
+      nodesFocusable={false}
       // Selection is the panel's, and it follows `selectedStepId`; letting
       // React Flow keep a second one would only ever disagree with it.
       elementsSelectable={false}
@@ -402,7 +448,10 @@ export function JourneyCanvas(props: JourneyCanvasProps) {
   return (
     <section
       aria-label="Canvas"
-      className="h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10"
+      // Most of the viewport on a tall screen, never less than a map's worth:
+      // a real-sized Journey is dozens of ranks deep, and every pixel of
+      // height is legibility at fit-to-view.
+      className="h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10"
     >
       <ReactFlowProvider>
         <CanvasFlow {...props} />

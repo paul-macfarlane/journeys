@@ -55,7 +55,7 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   validation on demand. The draft is also drawn as a map on a canvas — laid
   out automatically from the steps and choices themselves, never from stored
   positions — where clicking a node opens that step in the panel, a step can
-  be added from the canvas, and every validation problem is marked on the
+  be added from the canvas, and validation problems are marked on the
   step or choice it is about. The draft autosaves. Publish the draft as an
   immutable version (refused, with the problems listed, while the
   draft has any), unpublish to take it back from participants, preview it, and

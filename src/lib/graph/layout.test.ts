@@ -43,7 +43,7 @@ function byId<T extends { id: string }>(items: T[]): Record<string, T> {
 
 /**
  * A generated 60-Step branching document: a binary tree built breadth-first
- * from a single Start, so it has well over the 6 Endings the packet asks
+ * from a single Start, so it has well over the 6 Endings ticket 09 asks
  * for and stays a plain tree (no cycles, nothing unreachable, no dangling
  * Choices) so `assertLayoutMatchesDocument` can be reused on it as-is.
  */
@@ -114,7 +114,7 @@ function assertNoOverlaps(nodes: CanvasNode[]): void {
   }
 }
 
-/** Every assertion the packet asks for, shared across the three documents. */
+/** Every assertion ticket 09 asks for, shared across the three documents. */
 function assertLayoutMatchesDocument(document: GraphDocument): void {
   const before = structuredClone(document);
   const { nodes, edges } = layoutGraph(document);
