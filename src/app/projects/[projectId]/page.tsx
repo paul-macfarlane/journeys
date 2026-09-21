@@ -5,6 +5,7 @@ import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
 import { NewJourneyDialog } from "@/components/journeys/new-journey-dialog";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { EditProjectDialog } from "@/components/projects/edit-project-dialog";
+import { MemberList } from "@/components/projects/member-list";
 import {
   Card,
   CardContent,
@@ -13,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { listJourneysForProject } from "@/db/journeys";
+import { listMembers } from "@/db/members";
 import { getProjectForMember } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 
@@ -29,7 +31,10 @@ export default async function ProjectPage({
   const project = await getProjectForMember(projectId, session.user.id);
   if (!project) notFound();
 
-  const journeys = await listJourneysForProject(project.id);
+  const [journeys, members] = await Promise.all([
+    listJourneysForProject(project.id),
+    listMembers(project.id),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
@@ -95,6 +100,12 @@ export default async function ProjectPage({
           </ul>
         )}
       </section>
+
+      <MemberList
+        projectId={project.id}
+        currentUserId={session.user.id}
+        members={members}
+      />
     </main>
   );
 }
