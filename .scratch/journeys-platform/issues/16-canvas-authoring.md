@@ -1,6 +1,6 @@
 # 16: Canvas authoring
 
-Status: ai-review
+Status: done
 Blocked by: 09, 18
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -135,3 +135,37 @@ Two fresh reviewers (one per axis, opus) read the whole diff against the ticket,
 **Remaining risks:** (1) the three arrows between case-3's `step-14` and `step-22` share one dagre route with ±28-unit nudges, so they read as three close arrows rather than three routed ones; (2) two dagre passes were arithmetic, not measured — a 60-Step Draft has no sustained-typing timing; (3) with roughly ten Choices on one Step the last anchor lands near the connect dot; (4) no test drags a dangling arrow's head onto a real box (the natural repair of a "Missing step" placeholder), though the code path excludes placeholders on both ends; (5) a back/forward-cache restore and the other ticket-18 runner risks are unchanged.
 
 **Queued question for Paul (gates nothing here):** should an empty Choice label become a publish problem (a `validateForPublish` rule shown in the new Problems section), now that a Choice drawn on the map starts empty and the runner would render such a Choice as a nameless link?
+
+### [CLOSEOUT] 2026-09-21 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/23 (`feat/16-canvas-authoring` → `staging`). Per the tracker rule Paul set on 2026-09-21, this closeout commit carries `Status: done`; merging the PR is the acceptance that lands it on `staging`. Status log: `ready-for-agent` → `in-progress` → `ai-review` → `done`.
+
+**Repository delivery:** `journeys`, base `staging` at `45f4635`, direct checkout, nine commits: `b00615a` D0 crossings counter (orchestrator), `c58eb37` + `2168661` D1 layout module (sonnet), `497d025` D2 canvas presentation (opus), `d803e68` D3 canvas structure editing (opus), `3099a87` D4 problems readable and step list (sonnet), `a3ad20e` D5 review fixes (opus), `7054132` spelling fix (orchestrator; also carries the proof-root clear — the 47 staged evidence deletions were in the index when the orchestrator committed without a pathspec; the tree is the intended state at every commit and no history was rewritten), `f06968d` evidence and records (orchestrator); this closeout follows. The detached `f24a106` worktree used for the AC-5 baseline (B, sonnet) committed nothing and was removed. Closeout re-check of the isolation record against the real diffs: D2 and D3 each changed `journey-canvas.tsx` (15 hunks each) and `e2e/canvas.spec.ts`; D3 and D4 both changed `draft-editor.tsx`, `step-panel.tsx`, and `choice-list.tsx`; the predicted overlaps materialised and the shared e2e port and database also held, so the sequential structure stands as written.
+
+**Exact verified run command** (local; docker Postgres on 5436; evidence captured at `7054132`, committed in `f06968d`):
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+```
+
+Every command exits 0; Vitest 198 passed in 11 files; Playwright 50 passed (production build on port 3100, `retries` 0, nothing flaky, no console noise). No deployed-target check (Paul's 2026-09-20 decision); no migration and no dependency change in this ticket, so no lockfile gate.
+
+**Criterion verdicts (evidence under `test-results/`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 "Add next step" creates a reachable Step, opens it with the title focused, new box inside the viewport | PASS | `canvas-add-next-step/….png`, `dod-1-e2e.txt` ✓ (boxes 1→2, arrows 0→1, title focused on "Untitled step", `fullyInside`; "Make this the start" from the toolbar too) |
+| AC-2 drag box→box adds a Choice with its empty label focused; dragging an arrow's head retargets; the row read back holds the new target | PASS | `canvas-connect-and-retarget-by-dragging/….png` and `….webm`, `dod-1-e2e.txt` ✓ (`readDraft` shows the Start's Choice targeting "Waved through"; a drop on bare map leaves the count at 1) |
+| AC-3 clicking an arrow selects its source Step and focuses the label; Delete removes the Choice and the arrow | PASS | `canvas-arrow-select-and-delete/….png`, `canvas-arrow-select-second-arrow/….png` (selection moves A→B→A across two arrows; Delete removes exactly the selected one; Backspace in the label never deletes), `dod-1-e2e.txt` ✓ |
+| AC-4 Ending-without-Outcome message in the panel's Problems section; header "1 problem"; assigning the Outcome clears both | PASS | `canvas-problems-readable/….png`, `dod-1-e2e.txt` ✓ (plus the dangling Choice shown under its row and in the section) |
+| AC-5 case-3 crossing pairs lower than at `f24a106`, both numbers recorded; selecting a box dims every unattached arrow | PASS | `ac-5-crossings.txt` (**15 → 5**, same sampling), `canvas-case-3-map/….png`, `canvas-selection-dims-arrows/….png` (`data-emphasis` and computed opacity), `dod-1-e2e.txt` ✓, `dod-1-commands.txt` (Seam A routed points and anchor order) |
+| AC-6 selecting a Step from the collapsed list or a problem entry brings its box into the viewport | PASS | `canvas-locate-on-map/….png`, `dod-1-e2e.txt` ✓ (list entry, problem entry, and the same entry again after panning away; an on-map box leaves the viewport alone) |
+| AC-7 the legend lists every Outcome with the colour its Endings carry | PASS | `canvas-legend-outcomes/….png`, `dod-1-e2e.txt` ✓ (entries Start, Reached care, Turned away, Problem; swatch colour equals the Ending bar's computed colour) |
+| AC-8 the step list order matches the boxes' top-to-bottom, left-to-right order for case-3 | PASS | `canvas-step-list-follows-map/….png`, `dod-1-e2e.txt` ✓ (36 titles equal), `dod-1-commands.txt` (Seam A `mapOrder`) |
+| AC-9 Seam B: a three-Step branch wired entirely by dragging, labels typed in the panel, published, walked in the runner | PASS | `canvas-build-by-dragging-and-walk/….png`, `…-runner.png`, `….webm`, `dod-1-e2e.txt` ✓ (a Participant reaches the "Turned back" Ending) |
+| DoD-1 verified run command green | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` |
+| DoD-2 every PASS artifact committed; fixture journeys only, no participant data | PASS | `f06968d`; minted `Test Author` accounts, invented Border-post Journeys, the committed case-3 seed and its "Lost tent" extra Step, nothing from a participant |
+
+**Deviations (approved by the orchestrator under the plan):** two dagre edges per ordered Step pair, a third Choice reusing its sibling's route with an offset (dagre 3.1.1 throws otherwise; reproduced); a self-loop Choice drawn through its own box (cosmetic, ticket 19); `canvas-locate-on-map` asks for fit-view before its "nothing moves" half; `NodeToolbar` stops click propagation; the shared delete confirmation's "Make another step the start first" hint shows in the Start box's toolbar; three "Steps"-named elements of distinct roles kept; accepted commits not rewritten (the PR asks for a squash merge); the D5 commit carries the worker's own model in its trailer; an empty Choice label stays publishable (queued question below).
+
+**Human follow-ups:** (1) review and **squash-merge** PR #23 — it carries `Status: done`; (2) answer when convenient: should an empty Choice label become a publish problem shown in the new Problems section? (3) after the merge, 19 (canvas quality of life) and 17 (manual layout) become available, in that order per your priority.

@@ -26,3 +26,7 @@ Not included, recorded as decisions for Paul: **undo/redo** for structural edits
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's usage feedback on PR #19, 2026-09-21.
 
 ## Comments
+
+### Note from ticket 16's review (2026-09-21)
+
+A self-loop Choice (a Step whose Choice targets itself) can be drawn by dragging on the canvas since ticket 16, and its arrow is routed straight through its own box: dagre keeps the loop in the box's rank and runs it out to the right and back (`layout.test.ts` pins the shape). A hand-built side route in the `choice` edge is this ticket's territory.
