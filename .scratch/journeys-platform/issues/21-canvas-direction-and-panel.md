@@ -1,6 +1,6 @@
 # 21: Canvas direction and a slidable panel
 
-Status: ai-review
+Status: done
 Blocked by: 16, 19
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -102,3 +102,36 @@ Two fresh reviewers (one per axis, opus) read the whole diff against the ticket,
 | S9 `DIRECTIONS` branched on the title suffix to decide whether to turn the map | `canvas.spec.ts` | resolved in D4: an explicit `turns` field |
 
 **Remaining risks:** (1) an Author who hid the panel sees it appear and close on every load — `panelShown` starts `true` so the server and hydrating renders agree, and storage is read on mount; (2) during a deploy window an editor tab running the previous bundle would autosave a left-to-right Journey back to `"TB"` (its document has no field and the loose envelope defaults it) — the documented last-write-wins model and the "compatible with the previously deployed code" rule, but a silent reset; (3) case-3 laid out left to right is a strip about 25 ranks wide, fitted at roughly 0.16 zoom — every box inside the frame, none overlapping, but unreadable until the Author zooms; deep graphs are simply wide this way round; (4) the box toolbar is a portal that does not scale with the zoom and overhangs the frame on such a map (ticket 19's risk, more visible now); (5) Choice labels are horizontal text at the route midpoint and `ranksep` 96 is now the horizontal gap, so a long label can run into a box in `LR` — nothing asserts it; (6) "Show panel" is absolutely positioned at the frame's right edge and can sit over a box there; (7) the fit-after-toggle window is time-based (500 ms): a machine that delivers the first resize later than that would leave the map where it was; (8) `settledTransform` is now real, so every caller waits for genuine stillness and a map left animating will surface as a 10 s poll timeout; (9) the storage key is a literal in the spec, and `document.test.ts` carries the repository's first `eslint-disable` (justified: `no-unused-vars` without `ignoreRestSiblings`).
+
+### [CLOSEOUT] 2026-09-21 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/25 (`feat/21-canvas-direction-and-panel` → `staging`). Per the tracker rule Paul set on 2026-09-21, this closeout commit carries `Status: done`; merging the PR is the acceptance that lands it on `staging`. Status log: `ready-for-agent` → `in-progress` → `ai-review` → `done`.
+
+**Repository delivery:** `journeys`, base `staging` at `e482954`, direct checkout, no worktrees, seven commits: `efbd8f6` claim, spec `[SCOPE CHANGE]`, `CONTEXT.md`, and execution plan (orchestrator), `9adac55` D1 the field, the edit, and the layout (sonnet), `01b8f2d` D2 direction on the map (opus), `6f0026c` D3 the slidable panel and Seam B (opus), `39e6029` D4 review fixes (opus), `4794a90` evidence and records (orchestrator; also carries the proof-root clear), and this closeout. Closeout re-check of the isolation record against the real diffs: D2 and D3 both changed `journey-canvas.tsx` (22 and 4 hunks), `draft-editor.tsx` (4 and 8, overlapping in the import block and the canvas-props region at line 716), `e2e/canvas.spec.ts` (6 and 3), and the README paragraph (1 and 1); D2 built on D1's schema and layout; the shared e2e port and database held. The predicted overlaps materialized, so the sequential structure stands as written.
+
+**Exact verified run command** (local; docker Postgres on 5436; evidence captured at `39e6029`, committed in `4794a90`):
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+```
+
+Every command exits 0; Vitest 222 passed in 11 files; Playwright 60 passed (production build on port 3100, `retries` 0, nothing flaky; the dotenvx tip lines are filtered out of the committed log). No deployed-target check (Paul's 2026-09-20 decision); no migration and no dependency change, so no lockfile gate.
+
+**Criterion verdicts (evidence under `test-results/`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 Seam A: `LR` places every Choice's target strictly right of its source and `TB` strictly below on a tree document; `sourceAnchors` in `LR` ordered by target y; `mapOrder` unchanged in shape; a document without the field parses as `"TB"` | PASS | `ac-1-layout-direction.txt` (103 passed across `layout`, `document`, `edit`; the placement cases assert past the source's far edge, the anchor case guards three distinct y, the default, the `"LR"` round-trip, the refusal, and `setLayoutDirection`'s identity on no-op), `dod-1-commands.txt` |
+| AC-2 switching the direction on case-3 re-lays the map with no overlaps and every box inside the viewport after the fit; the `draft` row holds `layoutDirection: "LR"`; a reload shows left-to-right; switching back restores top-down | PASS | `canvas-layout-direction/canvas-layout-direction-left-to-right.png`, `…-top-to-bottom.png`, `dod-1-e2e.txt` ✓ (36 boxes, `mapFaults` empty both ways; each of the Start's Choice targets past its right edge, then below its bottom; the row read back `"LR"` then `"TB"`; the radio checked after the reload) |
+| AC-3 hiding the panel widens the canvas and fits the map; clicking a box shows the panel with that Step; the hidden state survives a reload; Escape hides it again | PASS | `canvas-hide-and-show-panel/….png`, `dod-1-e2e.txt` ✓ (the frame's width grows and the settled transform changes; storage reads `"hidden"`; a box click shows the panel without touching storage; the reload hides it again; "Show panel" restores the width and the map fits; Escape from a box lands on the Canvas, a second Escape hides) |
+| AC-4 the branch-building specs pass in both directions | PASS | `canvas-add-next-step/`, `canvas-add-next-step-left-to-right/`, `canvas-connect-and-retarget-by-dragging/` and `…-left-to-right/` (png + webm), `dod-1-e2e.txt` ✓ (the same moves assertion-for-assertion; the self-loop past the right edge in `TB`, past the bottom in `LR`, never through the box) |
+| AC-5 Seam B: a three-Step branch built left-to-right with the panel hidden and shown as needed, published, walked in the runner; screenshots of both directions and a recording | PASS | `canvas-build-left-to-right-and-walk/….png`, `…-runner.png`, `….webm`; both directions on case-3 in `canvas-layout-direction/`; `dod-1-e2e.txt` ✓ (the `draft` row holds `"LR"` and two Choices; a Participant reaches "Turned back") |
+| S-1 the spec's `[SCOPE CHANGE]` names the field and the schema declares it with the `"TB"` default | PASS | `s-1-scope-change.txt` |
+| DoD-1 verified run command green | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` |
+| DoD-2 every PASS artifact committed; fixture journeys only, no participant data | PASS | `4794a90`; minted `Test Author` accounts, invented Border-post Journeys, the committed case-3 seed; nothing from a Participant |
+
+**Deviations (approved by the orchestrator under the plan):** a direction switch counts as an unpublished change, because the field is part of the document (`documentsEqual`) — kept, and put to Paul below; the panel's hidden column is `minmax(0,0rem)` rather than the plan's `0fr` and the map fits on each pane resize within 500 ms of a toggle rather than on `requestAnimationFrame` and `transitionend` (the plan's mechanism could not interpolate and read the old width); the `LR` connect dot sits at `bottom: -4` rather than the plan's `bottom: 12` (which sat on the anchor track); an opening reveals the panel for the page without writing storage, so the Author's choice survives a box click; `settledTransform` reads the inline style (it had read an attribute React Flow never sets, so ticket 19's helper had been a fixed wait); `fitWholeMap` before the retarget and bare-map drags on the left-to-right map only (a new Choice re-ranks its target along the horizontal axis and ticket 16's rule leaves the view alone); the D2 packet's test count was wrong (19 canvas tests, not 24); worker trailers name the worker's own model; accepted commits not rewritten (the PR asks for a squash merge).
+
+**Question for Paul (queued during review, non-blocking):** should turning the map count as an unpublished change? It does today, which is what "autosaves like every other edit; publishing copies it" implies; excluding the field from `documentsEqual` is a small follow-up if not.
+
+**Human follow-ups:** (1) review and **squash-merge** PR #25 — it carries `Status: done`; (2) after the merge, 17 (manual layout) becomes available — its stored positions now belong to one direction, and switching direction there asks with its Auto-arrange confirmation and clears them; 20 (empty Choice label as a publish problem) is available at any time.
