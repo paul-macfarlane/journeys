@@ -44,11 +44,9 @@ export function ChoiceList({
   const [label, setLabel] = useState("");
   const [target, setTarget] = useState<string>(NEW_STEP);
 
-  // A Choice onto its own Step is a cycle `validateForPublish` reports, so it
-  // is not offered here at all.
-  const otherSteps = Object.values(document.steps).filter(
-    (other) => other.id !== step.id,
-  );
+  // Every Step is a valid Choice target, the current one included — a loop
+  // is an ordinary path since ticket 18.
+  const targetSteps = Object.values(document.steps);
 
   function retarget(choiceId: string, value: string) {
     if (value === NEW_STEP) {
@@ -124,7 +122,7 @@ export function ChoiceList({
                       Missing step
                     </option>
                   ) : null}
-                  {otherSteps.map((other) => (
+                  {targetSteps.map((other) => (
                     <option key={other.id} value={other.id}>
                       {stepName(other)}
                     </option>
@@ -205,7 +203,7 @@ export function ChoiceList({
               onChange={(event) => setTarget(event.target.value)}
             >
               <option value={NEW_STEP}>New step</option>
-              {otherSteps.map((other) => (
+              {targetSteps.map((other) => (
                 <option key={other.id} value={other.id}>
                   {stepName(other)}
                 </option>

@@ -330,23 +330,23 @@ test("canvas-validation-marks", async ({ page, context }) => {
   );
   await expect(problemEdges(page)).toHaveCount(0);
 
-  // A Choice back to the Start closes a loop, and both arrows of it are the
-  // problem: each Choice can reach the Step it sits on.
+  // A Choice back to the Start closes a loop, and a loop is allowed since
+  // ticket 18: it leaves no mark on either Step or either arrow.
   await canvasNode(page, "Clinic tent").click();
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await addChoiceToStep(page, "Go back", "Border post");
   await expect(canvasEdges(page)).toHaveCount(2);
-  await expect(problemEdges(page)).toHaveCount(2);
+  await expect(problemEdges(page)).toHaveCount(0);
   await expect(canvasNode(page, "Border post")).toHaveAttribute(
     "data-problems",
-    "1",
+    "0",
   );
   await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
     "data-problems",
-    "1",
+    "0",
   );
 
-  // Taking that Choice away opens the loop again, and both marks go.
+  // Taking that Choice away leaves the loop just as unmarked as it was.
   await page
     .getByRole("button", { name: "Remove choice", exact: true })
     .click();

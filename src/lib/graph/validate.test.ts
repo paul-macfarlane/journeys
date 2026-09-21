@@ -125,18 +125,6 @@ describe("validateForPublish", () => {
     });
   });
 
-  it("does not call a dangling Choice a cycle", () => {
-    const document = graph([
-      step("step-start", [choice("choice-1", "step-gone")]),
-    ]);
-
-    expect(
-      validateForPublish(document).filter(
-        (problem) => problem.code === "cycle",
-      ),
-    ).toEqual([]);
-  });
-
   it("reports a Step that cannot be reached from the Start", () => {
     const document = graph(
       [
@@ -197,66 +185,38 @@ describe("validateForPublish", () => {
     expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("reports both Choices that close a two-step loop", () => {
-    const document = graph([
-      step("step-start", [choice("choice-1", "step-back")]),
-      step("step-back", [choice("choice-2", "step-start")]),
-    ]);
-
-    const cycles = validateForPublish(document).filter(
-      (problem) => problem.code === "cycle",
-    );
-
-    expect(cycles.map((problem) => [problem.stepId, problem.choiceId])).toEqual(
+  it("accepts a two-step loop", () => {
+    const document = graph(
       [
-        ["step-start", "choice-1"],
-        ["step-back", "choice-2"],
+        step("step-start", [choice("choice-1", "step-back")]),
+        step("step-back", [
+          choice("choice-2", "step-start"),
+          choice("choice-3", "step-end"),
+        ]),
+        step("step-end", [], { outcomeId: reachedCare.id }),
       ],
+      { outcomes: [reachedCare] },
     );
+
+    expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("reports a Choice that points at its own Step", () => {
-    const document = graph([
-      step("step-start", [
-        choice("choice-on", "step-end"),
-        choice("choice-round", "step-start"),
-      ]),
-      step("step-end", [], { outcomeId: reachedCare.id }),
-    ]);
-
-    const cycles = validateForPublish(document).filter(
-      (problem) => problem.code === "cycle",
-    );
-
-    expect(cycles).toHaveLength(1);
-    expect(cycles[0].stepId).toBe("step-start");
-    expect(cycles[0].choiceId).toBe("choice-round");
-  });
-
-  it("reports the Choices inside a longer loop but not the one leading into it", () => {
-    const document = graph([
-      step("step-start", [choice("choice-1", "step-two")]),
-      step("step-two", [choice("choice-2", "step-three")]),
-      step("step-three", [
-        choice("choice-3", "step-end"),
-        choice("choice-back", "step-two"),
-      ]),
-      step("step-end", [], { outcomeId: reachedCare.id }),
-    ]);
-
-    const cycles = validateForPublish(document).filter(
-      (problem) => problem.code === "cycle",
-    );
-
-    expect(cycles.map((problem) => [problem.stepId, problem.choiceId])).toEqual(
+  it("accepts a Choice that points at its own Step", () => {
+    const document = graph(
       [
-        ["step-two", "choice-2"],
-        ["step-three", "choice-back"],
+        step("step-start", [
+          choice("choice-on", "step-end"),
+          choice("choice-round", "step-start"),
+        ]),
+        step("step-end", [], { outcomeId: reachedCare.id }),
       ],
+      { outcomes: [reachedCare] },
     );
+
+    expect(validateForPublish(document)).toEqual([]);
   });
 
-  it("does not call branches that merge back together a loop", () => {
+  it("does not call branches that merge back together a problem", () => {
     const document = graph(
       [
         step("step-start", [
@@ -358,8 +318,8 @@ describe("validateForPublish", () => {
  * `scripts/seed/journey-stories/`. They are the source of truth for the legacy
  * site's cases — `pnpm seed:journey-stories` writes exactly these as the
  * Drafts of the three Journey Stories Journeys — so what they must keep being
- * is a Journey that publishes: one Start, no loops, every Ending tagged with
- * an Outcome the document defines. Each is parsed through the schema inside
+ * is a Journey that publishes: one Start, every Ending tagged with an Outcome
+ * the document defines. Each is parsed through the schema inside
  * the test that needs it rather than at module load, so a hand-edit that
  * breaks one document fails that document's tests and nothing else. The
  * counts are the legacy content's own.

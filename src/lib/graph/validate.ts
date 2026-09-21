@@ -17,8 +17,7 @@ export type PublishProblemCode =
   | "dangling-choice-target"
   | "unreachable-step"
   | "ending-without-outcome"
-  | "unknown-outcome"
-  | "cycle";
+  | "unknown-outcome";
 
 /**
  * One reason a Draft cannot be published. `stepId` and `choiceId` are the
@@ -118,25 +117,6 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
         message: `Ending "${stepName(step)}" is tagged with an outcome that no longer exists`,
         stepId,
       });
-    }
-  }
-
-  // A Choice closes a cycle when its target can walk back to the Step the
-  // Choice is on — a Choice onto its own Step included. A Choice whose target
-  // does not exist is dangling, not a loop.
-  for (const [stepId, step] of entries) {
-    for (const choice of step.choices) {
-      if (!hasStep(document, choice.targetStepId)) {
-        continue;
-      }
-      if (reachableFrom(document, choice.targetStepId).has(stepId)) {
-        problems.push({
-          code: "cycle",
-          message: `Step "${stepName(step)}" has a choice that can lead back to "${stepName(step)}", so a participant could walk in circles`,
-          stepId,
-          choiceId: choice.id,
-        });
-      }
     }
   }
 
