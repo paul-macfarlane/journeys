@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   analyticsForVersion,
+  chooseVersionId,
   formatShare,
   type RunPath,
 } from "@/lib/analytics";
@@ -395,6 +396,34 @@ describe("analyticsForVersion", () => {
       traversals: 0,
       share: 0,
     });
+  });
+});
+
+describe("chooseVersionId", () => {
+  const versions = [
+    { id: "v3", isLive: false },
+    { id: "v2", isLive: true },
+    { id: "v1", isLive: false },
+  ];
+
+  it("takes the version the address names", () => {
+    expect(chooseVersionId(versions, "v1")).toBe("v1");
+    expect(chooseVersionId(versions, ["v3", "v1"])).toBe("v3");
+  });
+
+  it("falls back to the live version, then the newest", () => {
+    expect(chooseVersionId(versions, undefined)).toBe("v2");
+    expect(chooseVersionId(versions, "not-ours")).toBe("v2");
+    expect(
+      chooseVersionId(
+        versions.map((version) => ({ ...version, isLive: false })),
+        undefined,
+      ),
+    ).toBe("v3");
+  });
+
+  it("has nothing to choose for a Journey never published", () => {
+    expect(chooseVersionId([], "v1")).toBeNull();
   });
 });
 

@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // A worktree (CLAUDE.md puts them here) carries its own `.next/`, which
+    // the top-level ignore above does not reach from the main checkout.
+    ".claude/worktrees/**",
   ]),
 ]);
 
