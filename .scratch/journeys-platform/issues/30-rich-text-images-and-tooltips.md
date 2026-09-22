@@ -1,6 +1,6 @@
 # 30: Rich text editor — image caption, alt text, editing, and tooltips
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Claude Fable 5.1 (`/implement`, 2026-09-22)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -22,11 +22,11 @@ Route: contract
 
 Acceptance criteria:
 
-- [ ] Seam A: a stored document with `credit` parses to `caption`; one with `caption` and `alt` parses unchanged; the renderer emits `alt` and omits `<figcaption>` for an empty caption; unit tests cover all three.
-- [ ] The seed command runs against the converted documents and the case-3 runner shows captions where credits were.
-- [ ] Inserting an image requires alt text; a selected image shows a ring and "Edit image" / "Remove"; editing the caption and alt updates the rendered figure in the preview and the runner after publish.
-- [ ] Hovering or focusing each toolbar button shows its tooltip with the platform's shortcut where one exists.
-- [ ] `pnpm test:e2e` passes once in full at the end.
+- [x] Seam A: a stored document with `credit` parses to `caption`; one with `caption` and `alt` parses unchanged; the renderer emits `alt` and omits `<figcaption>` for an empty caption; unit tests cover all three.
+- [x] The seed command runs against the converted documents and the case-3 runner shows captions where credits were.
+- [x] Inserting an image requires alt text; a selected image shows a ring and "Edit image" / "Remove"; editing the caption and alt updates the rendered figure in the preview and the runner after publish.
+- [x] Hovering or focusing each toolbar button shows its tooltip with the platform's shortcut where one exists.
+- [x] `pnpm test:e2e` passes once in full at the end.
 
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `contract`): commit only the screenshot directories of the specs this ticket names plus `ac-1-contract.txt`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-21, items 13–17.
 
@@ -41,3 +41,31 @@ Direct checkout on `feat/30-rich-text-images-and-tooltips` from `staging` at e94
 3. **Editor.** The image dialog gains Alt text (required, with its help line) and Caption (optional), opens pre-filled from a selected image, and updates the node's attrs on save; a selected image shows a focus ring and a Tiptap `BubbleMenu` with "Edit image" and "Remove"; every toolbar button gets a shadcn `Tooltip` (`src/components/ui/tooltip.tsx`, vendored from the CLI, stray `cn` package removed) reading its name and platform shortcut; Link gains a `Mod-k` binding inside the editor so the tooltip's ⌘K is true (the window-level Find-step shortcut already yields to a prevented press).
 4. **Docs and specs.** `CONTEXT.md` (Caption, Alt text), README, ADR-0001's sanitizer sentence, ticket 15's contract-gaps note; `step-editing-image-credit-and-preview` becomes `step-editing-image-caption-alt-and-preview` (required alt, ring and toolbar, caption edit, runner reads alt and caption, Bold tooltip on hover); the tracked evidence directory moves with it.
 5. **Verification.** `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm build` (via the e2e build), `E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone pnpm test:e2e` once at the end; `ac-1-contract.txt` and `dod-1-commands.txt` captured; two reviewers (correctness and contract) via `/code-review`; PR to `staging`.
+
+### [AI CODE REVIEW] 2026-09-22 — two readers over `staging...d8a49a9` (Standards, Spec), both Fable 5.1 sub-agents
+
+**Standards.** Hard: `e2e/runner.spec.ts` still said "credit" in three comments (fixed). Judgement: the button label stays "Numbered list" where the ticket says "Ordered list" (kept; neither is a `CONTEXT.md` term). Smells: the `credit → caption` read existed three times with three trims (fixed: one exported `readStoredImageAttrs` in `content.ts` serves the schema, the sanitizer, and the runner; only the sanitizer trims); `imageMode === "edit"` branched three times (kept, small); `apple={apple}` threaded into nine buttons (fixed: `ToolbarButton` calls `useApplePlatform` itself); `handleKeyDown` re-implementing `openLink` (kept — it must not close over the first render's `editor`). **Bug:** the link shortcut fired on Ctrl+K on macOS too (fixed: the platform's `Mod` only, so Ctrl+K on a Mac stays the system's).
+
+**Spec.** Missing/partial: `ac-1-contract.txt` and `dod-1-commands.txt` absent at review time (captured at c18ce1f); the extension had no `credit` read of its own (fixed: `CaptionedImage` declares `credit` and renders it as the caption when `caption` is empty); "Delete and Backspace keep working" unasserted (fixed: the spec now removes with the toolbar, undoes, re-selects, and removes with Backspace); runner.spec wording (fixed). Not asked for: the `Mod-k` binding (kept, flagged to Paul — Tiptap's Link binds nothing, so the tooltip needed it to be true); ADR-0001 and the decisions log amended (kept); `[&_figure]:w-fit` and `[&_img]:rounded-lg` in the editor (kept: the ring hugs the picture). Questionable: none material; nit that the schema does not trim while the sanitizer does (kept: a read must not alter stored values). Verified by the reader: compatibility read and both render shapes with tests, seeds converted with escape counts unchanged (5/6/1), dialog rules, ring and `BubbleMenu`, every shortcut against its Tiptap binding, no `aria-describedby` from Base UI's tooltip.
+
+### [CLOSEOUT] 2026-09-22 — Claude Fable 5.1 (`/implement`, Route: contract)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/35 (base `staging`, comparison SHA e94c15b). Status set to `done` in this commit; merging the PR is Paul's acceptance.
+
+**Deliverables (this session, direct checkout on `feat/30-rich-text-images-and-tooltips`, no workers).** d8a49a9 — the contract (`src/lib/graph/content.ts`: `alt`/`caption`, `credit` compatibility read, no refusal; `CaptionedImage` in `src/lib/rich-text/extensions.ts`; runner renderer), `src/lib/rich-text/shortcuts.ts` (test-first), the seeds converted textually, the editor (dialog with Alt text and Caption in insert and edit modes, ring, `BubbleMenu` with Edit image / Remove, tooltips via vendored `src/components/ui/tooltip.tsx` with the CLI's stray `cn` package removed and the lockfile untouched, `Mod-k`), docs, the renamed spec and its evidence directory. d4aee7e — review fixes (one `readStoredImageAttrs`, `credit` declared on the extension, platform-gated `Mod-k`, `useApplePlatform` inside the button, runner.spec wording, Backspace in the spec). c18ce1f — the spec re-selects the image from the text before Backspace. bae3c9c — evidence.
+
+**Verified run command (final tree, head c18ce1f):** `pnpm lint; pnpm format:check; pnpm typecheck; pnpm test; E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone pnpm test:e2e` — every block `exit=0`; unit 297/297; e2e 72 passed in 1.4m, 0 flaky, retries 0. Docker Postgres :5436, production build on :3100, Chromium. `pnpm build` ran inside `pnpm test:e2e`; no migration in this ticket.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| Seam A: `credit` parses to `caption`; `caption`+`alt` parse unchanged; `alt` emitted and `<figcaption>` omitted for an empty caption; unit tests | PASS | `test-results/ac-1-contract.txt` (48/48 over `content.test.ts`, `runner/rich-text.test.tsx`, `shortcuts.test.ts`); `contentSchema` block and the three renderer cases |
+| Seed command over the converted documents; case-3 runner shows captions where credits were | PASS | `test-results/ac-2-seed.txt` (same three lines as before the conversion, email redacted); `test-results/runner-case-3-on-a-phone/runner-case-3-on-a-phone.png` (viewed: placeholder image over the Steven Lilley caption) |
+| Alt text required; selected image shows ring and Edit image / Remove; editing caption and alt updates the preview and the runner after publish | PASS | `step-editing-image-caption-alt-and-preview`: refusal "Every image needs alt text" with the row still image-free, `selected-image.png` (viewed: ring around the figure, toolbar above it), edit dialog pre-filled, `step-editing-image-caption-alt-and-preview.png` (viewed: preview with the edited caption), `runner.png` (viewed: `alt` and caption on the Published Version); Remove, undo, Backspace |
+| Every toolbar button's tooltip shows its name and the platform's shortcut | PASS | same spec: Bold's tooltip reads `Bold ⌘B` / `Bold Ctrl+B`, no `aria-describedby` on the button, tooltip gone after the pointer leaves |
+| `pnpm test:e2e` once in full at the end | PASS locally (72/72, 0 flaky); PR CI is the durable proof and is pending at this commit | `test-results/dod-1-commands.txt`, `test-results/dod-1-e2e.txt`; PR #35 checks |
+
+**Deviations.** (1) `Mod-k` is bound inside the editor, which the ticket assumed Tiptap already did; outside the editor ⌘K still focuses "Find step". (2) ADR-0001's sanitizer sentence and the decisions log were amended beyond the ticket's docs list, so no document still says an image without a credit refuses a write; `spec.md` is left as the stable contract and still says "required `credit`". (3) The first full run at d4aee7e failed the new Backspace step (71/72, recorded as FAIL): after Remove then undo, the trace showed the figure back without the `ProseMirror-selectednode` class while a second click on it changed nothing — ProseMirror skips a click whose selection equals the state's. Not reproduced on rerun; the spec now clicks into the text first so the re-selection is a real change, and the ring on a fresh click is proven earlier in the same spec.
+
+**Queued for Paul (non-blocking, also in the PR).** (1) ⌘K inside the editor opens the link dialog now. (2) "Numbered list" stays the button's label. (3) The ring-after-undo observation above, should it show up in use: the state is right (Backspace still deletes), only the ring is missing. (4) Real alt text for the forty seeded images is still to be written in the editor.
+
+**Next in Paul's order:** 31 → 23; 17 post-hackathon.
