@@ -1,6 +1,6 @@
 # 27: Runner and preview — start on the first Step
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Claude Fable 5.1 (`/implement`), session of Paul Macfarlane, claimed 2026-09-22
 Parent: `.scratch/journeys-platform/spec.md`
@@ -60,3 +60,26 @@ No schema change, so `pnpm db:migrate` is not in play; `pnpm test:e2e` builds. R
 **Spec axis.** Every named deliverable present (`CONTEXT.md`, README, spec `[SCOPE CHANGE]`, ticket 10 note, `run.test.ts` untouched, no "Begin" left, cookie names/paths, all redirect targets, unavailable screen unchanged, `PreviewFrame` gone). Findings: (1) evidence and closeout absent — the planned last step, below; (2) a Choice taken beneath the resume banner abandons the in-progress Run without "Start over" — deliberate and now warned about in the panel, but a product call the ticket does not state; queued for Paul, non-blocking; (3) the stranger in `runner-run-cookie-and-refresh` now walks to an Ending — harmless; (4) a first Choice back onto the Start recorded a Run with path `[start]`, against AC-1's `[start, target]` — fixed: `beginRun` treats it as the stay it is everywhere else and begins nothing, so every Run ever created holds two entries; unit case added on both seams.
 
 Fixes landed as f7ee3ed. Remaining risk: none blocking; the deployed surface is checked after Paul merges.
+
+### [CLOSEOUT] 2026-09-22 — Claude Fable 5.1 (`/implement`, Route: contract)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/32 (base `staging`, comparison SHA `d3a3494`). Status set to `done` in this commit; merging the PR is Paul's acceptance.
+
+**Deliverables (all this session, direct checkout as planned).** a7637f5 — reducer seam (`src/lib/graph/begin.ts` + tests), the two actions with unit tests, `RunnerFrame` with title/description/preview, `StepView` Choice form, both runner pages, both preview pages, `PreviewFrame` deleted, every "Begin" spec rewritten, docs. f7ee3ed — review fixes (self-loop first Choice begins nothing; `reason` dropped; resume-panel warning; vocabulary; assertion order; title guard). 714f615 — evidence and the review record. This commit — closeout.
+
+**Verified run command (final tree, head f7ee3ed):** `pnpm lint; pnpm format:check; pnpm typecheck; pnpm test; pnpm test:e2e` with `E2E_EVIDENCE` naming the ticket's specs — every block `exit=0`; unit 264/264; e2e 70 passed in 1.1m, 0 flaky, retries 0. Docker Postgres :5436, production build on :3100, Chromium. No schema change, so `pnpm db:migrate` was not run.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 title in header, Start Step content and Choices, no run row yet; first Choice → one Run `[start, target]`, title still in header | PASS | `test-results/ac-1-run-on-first-choice.txt`; `test-results/runner-case-3-on-a-phone/` (viewed: header title, Step, Next); `test-results/runner-run-cookie-and-refresh/`; `author-flow` in `dod-1-commands.txt` |
+| AC-2 resume offer above the Start Step; Start over abandons; fresh Choice is a new Run | PASS | `test-results/ac-2-start-over-new-run.txt`; `test-results/runner-run-cookie-and-refresh/runner-run-cookie-and-refresh.png` (viewed: panel with Continue/Start over above "Border post" and its Choices) |
+| AC-3 preview: same header, banner, Start Step, Choices; walking creates no Run | PASS | `test-results/preview/preview.png` (viewed: banner + Back to editor, header title, Ending); `preview` in `dod-1-commands.txt` (no version, no run cookie) |
+| AC-4 one-Step Journey shows "The end" with no Run; ticket 10 note | PASS | `test-results/ac-4-ending-as-start-no-run.txt`; `test-results/publish-untagged-ending/` |
+| AC-5 Seam A: `run.test.ts` unchanged and passing; begin-and-choose unit tests for in-progress-Run and unknown-Choice | PASS | `test-results/ac-5-begin-and-choose-unit.txt` (diff against `d3a3494` empty for `run.ts`/`run.test.ts`; 39/39 across the three files) |
+| AC-6 `pnpm test:e2e` once in full at the end | PASS locally (70/70, 0 flaky); PR CI is the durable proof and is pending at this commit | `test-results/dod-1-commands.txt`; PR #32 checks |
+
+**Deviations.** (1) `pnpm build` was not run on its own: `pnpm test:e2e` builds the app. (2) The `canvas-build-*-and-walk` videos were rewritten along with their screenshots, since those specs are named and record video by design. (3) The step-editing specs that walked the preview (`step-editing-image-credit-and-preview`, `step-editing-outcome-rename`) are not in the ticket's list but clicked "Begin", so they were rewritten and their evidence committed.
+
+**Queued for Paul (non-blocking, also in the PR).** (1) Choosing beneath the resume panel starts a new Run without pressing "Start over"; the panel says so. (2) A first Choice that leads back onto the Start begins nothing (a stay), so every Run holds `[start, target]`.
+
+**Next in Paul's order:** 10 (analytics) → 28 → 29 → 30 → 31 → 23.
