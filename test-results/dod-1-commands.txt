@@ -1,5 +1,5 @@
 # DoD-1 command chain — ticket 29 (App shell navbar)
-# head 13d3b1b, captured 2026-09-22T16:01:50Z, Route: polish
+# head 7c0aab5, captured 2026-09-22T16:29:44Z, Route: polish
 # E2E_EVIDENCE=navbar-switch-project-and-theme,sign-out
 # pnpm test:e2e builds the app (next build) before the suite; its full list output is in dod-1-e2e.txt, only the tail is repeated here.
 
@@ -47,16 +47,16 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  Test Files  18 passed (18)
       Tests  287 passed (287)
-   Start at  12:01:58
-   Duration  683ms (transform 966ms, setup 0ms, import 2.20s, tests 520ms, environment 1ms)
+   Start at  12:29:53
+   Duration  853ms (transform 1.01s, setup 0ms, import 2.59s, tests 651ms, environment 3ms)
 
 
 exit=0
 
 === E2E_EVIDENCE=navbar-switch-project-and-theme,sign-out pnpm test:e2e (tail; full output in dod-1-e2e.txt)
 
-  ✓  70 [chromium] › e2e/step-editing.spec.ts:563:5 › panel-choice-target-search (4.6s)
-  ✓  71 [chromium] › e2e/step-editing.spec.ts:414:5 › step-editing-choices-reorder-retarget (4.3s)
+  ✓  72 [chromium] › e2e/step-editing.spec.ts:414:5 › step-editing-choices-reorder-retarget (4.9s)
+  ✓  70 [chromium] › e2e/step-editing.spec.ts:563:5 › panel-choice-target-search (5.1s)
 
   72 passed (1.3m)
 
