@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { evidencePath } from "./setup/evidence";
+
 test("landing page explains the product and offers a single sign-in link while signed out", async ({
   page,
 }) => {
@@ -22,7 +24,7 @@ test("landing page explains the product and offers a single sign-in link while s
   await expect(page.locator('a[href="/projects"]')).toHaveCount(0);
 
   await page.screenshot({
-    path: "test-results/landing/landing.png",
+    path: evidencePath("landing", "landing.png"),
     fullPage: true,
   });
 });

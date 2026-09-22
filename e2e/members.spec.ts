@@ -7,6 +7,7 @@ import {
   uniqueSuffix,
 } from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -76,7 +77,7 @@ test("members-add-and-edit", async ({ page, context, browser }) => {
     ).toBeVisible();
 
     await page.screenshot({
-      path: "test-results/members-add-and-edit/members-add-and-edit.png",
+      path: evidencePath("members-add-and-edit", "members-add-and-edit.png"),
       fullPage: true,
     });
 
@@ -154,7 +155,7 @@ test("members-add-refused", async ({ page, context }) => {
   ).toBeVisible();
 
   await page.screenshot({
-    path: "test-results/members-add-refused/members-add-refused.png",
+    path: evidencePath("members-add-refused", "members-add-refused.png"),
     fullPage: true,
   });
 
@@ -239,7 +240,10 @@ test("members-remove-and-last-refused", async ({ page, context, browser }) => {
       ).toBeVisible();
 
       await page.screenshot({
-        path: "test-results/members-remove-and-last-refused/members-remove-and-last-refused.png",
+        path: evidencePath(
+          "members-remove-and-last-refused",
+          "members-remove-and-last-refused.png",
+        ),
         fullPage: true,
       });
 

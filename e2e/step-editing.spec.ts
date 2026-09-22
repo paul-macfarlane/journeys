@@ -17,6 +17,7 @@ import {
   tagWithOutcome,
   uniqueSuffix,
 } from "./setup/authoring";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -245,7 +246,10 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
   expect(endings.every((step) => step.outcomeId !== null)).toBe(true);
 
   await page.screenshot({
-    path: "test-results/step-editing-build-and-publish/step-editing-build-and-publish.png",
+    path: evidencePath(
+      "step-editing-build-and-publish",
+      "step-editing-build-and-publish.png",
+    ),
     fullPage: true,
   });
 });
@@ -307,7 +311,10 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
   expect(Object.keys(stored.steps)).toHaveLength(1);
 
   await page.screenshot({
-    path: "test-results/step-editing-delete-and-validate/step-editing-delete-and-validate.png",
+    path: evidencePath(
+      "step-editing-delete-and-validate",
+      "step-editing-delete-and-validate.png",
+    ),
     fullPage: true,
   });
 });
@@ -397,7 +404,10 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
   await expect(page.locator("li", { hasText: "Shade" })).toHaveCount(1);
 
   await page.screenshot({
-    path: "test-results/step-editing-image-credit-and-preview/step-editing-image-credit-and-preview.png",
+    path: evidencePath(
+      "step-editing-image-credit-and-preview",
+      "step-editing-image-credit-and-preview.png",
+    ),
     fullPage: true,
   });
 });
@@ -498,7 +508,10 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toHaveValue("Turned back");
 
   await page.screenshot({
-    path: "test-results/step-editing-choices-reorder-retarget/step-editing-choices-reorder-retarget.png",
+    path: evidencePath(
+      "step-editing-choices-reorder-retarget",
+      "step-editing-choices-reorder-retarget.png",
+    ),
     fullPage: true,
   });
 });
@@ -541,7 +554,10 @@ test("step-editing-outcome-rename", async ({ page, context }) => {
   await expect(page.getByText("Outcome: Reached the clinic")).toBeVisible();
 
   await page.screenshot({
-    path: "test-results/step-editing-outcome-rename/step-editing-outcome-rename.png",
+    path: evidencePath(
+      "step-editing-outcome-rename",
+      "step-editing-outcome-rename.png",
+    ),
     fullPage: true,
   });
 });
@@ -660,7 +676,10 @@ test("panel-choice-target-search", async ({ page, context }) => {
   expect(offerBox!.y + offerBox!.height).toBeLessThanOrEqual(viewport!.height);
 
   await page.screenshot({
-    path: "test-results/panel-choice-target-search/panel-choice-target-search.png",
+    path: evidencePath(
+      "panel-choice-target-search",
+      "panel-choice-target-search.png",
+    ),
     fullPage: true,
   });
 });
@@ -760,7 +779,10 @@ test("panel-outcomes-from-the-ending", async ({ page, context }) => {
   expect(cleared.outcomes).toEqual({});
 
   await page.screenshot({
-    path: "test-results/panel-outcomes-from-the-ending/panel-outcomes-from-the-ending.png",
+    path: evidencePath(
+      "panel-outcomes-from-the-ending",
+      "panel-outcomes-from-the-ending.png",
+    ),
     fullPage: true,
   });
 });

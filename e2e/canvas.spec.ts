@@ -29,6 +29,7 @@ import {
 } from "./setup/authoring";
 import { dimmingDocument, writeDraftDocument } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -936,7 +937,7 @@ async function tagEndingsPublishAndWalk(
   await expect(page.getByText("Published", { exact: true })).toBeVisible();
 
   await page.screenshot({
-    path: `test-results/${testInfo.title}/${testInfo.title}.png`,
+    path: evidencePath(testInfo.title, `${testInfo.title}.png`),
     fullPage: true,
   });
 
@@ -962,7 +963,7 @@ async function tagEndingsPublishAndWalk(
     await expect(participant.getByText("The end")).toBeVisible();
 
     await participant.screenshot({
-      path: `test-results/${testInfo.title}/${testInfo.title}-runner.png`,
+      path: evidencePath(testInfo.title, `${testInfo.title}-runner.png`),
       fullPage: true,
     });
   } finally {
@@ -1072,7 +1073,7 @@ for (const direction of DIRECTIONS) {
 
     await expectSaved(page);
     await page.screenshot({
-      path: `test-results/${testInfo.title}/${testInfo.title}.png`,
+      path: evidencePath(testInfo.title, `${testInfo.title}.png`),
       fullPage: true,
     });
   });
@@ -1145,7 +1146,7 @@ test("canvas-duplicate-step", async ({ page, context }) => {
 
   await expectSaved(page);
   await page.screenshot({
-    path: "test-results/canvas-duplicate-step/canvas-duplicate-step.png",
+    path: evidencePath("canvas-duplicate-step", "canvas-duplicate-step.png"),
     fullPage: true,
   });
 });
@@ -1184,7 +1185,7 @@ test("canvas-content-peek", async ({ page, context }) => {
   expect(await peek.textContent()).toHaveLength(PREVIEW_LIMIT + 1);
 
   await page.screenshot({
-    path: "test-results/canvas-content-peek/canvas-content-peek.png",
+    path: evidencePath("canvas-content-peek", "canvas-content-peek.png"),
     fullPage: true,
   });
 
@@ -1279,7 +1280,10 @@ test("canvas-keyboard-navigation", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toHaveValue(opened);
 
   await page.screenshot({
-    path: "test-results/canvas-keyboard-navigation/canvas-keyboard-navigation.png",
+    path: evidencePath(
+      "canvas-keyboard-navigation",
+      "canvas-keyboard-navigation.png",
+    ),
     fullPage: true,
   });
 
@@ -1383,7 +1387,10 @@ test("canvas-hide-and-show-panel", async ({ page, context }) => {
 
   await settledTransform(page);
   await page.screenshot({
-    path: "test-results/canvas-hide-and-show-panel/canvas-hide-and-show-panel.png",
+    path: evidencePath(
+      "canvas-hide-and-show-panel",
+      "canvas-hide-and-show-panel.png",
+    ),
     fullPage: true,
   });
 });
@@ -1439,7 +1446,7 @@ test("canvas-step-actions", async ({ page, context }) => {
   }
 
   await page.screenshot({
-    path: "test-results/canvas-step-actions/canvas-step-actions.png",
+    path: evidencePath("canvas-step-actions", "canvas-step-actions.png"),
     fullPage: true,
   });
 
@@ -1596,7 +1603,7 @@ test.describe("the seeded map", () => {
     expect(crossings).toBeLessThan(F24A106_CROSSING_BASELINE);
 
     await page.screenshot({
-      path: "test-results/canvas-case-3-map/canvas-case-3-map.png",
+      path: evidencePath("canvas-case-3-map", "canvas-case-3-map.png"),
       fullPage: true,
     });
   });
@@ -1676,7 +1683,10 @@ test.describe("the seeded map", () => {
     expect((await readDraft(journeyId)).layoutDirection).toBe("LR");
 
     await page.screenshot({
-      path: "test-results/canvas-layout-direction/canvas-layout-direction-left-to-right.png",
+      path: evidencePath(
+        "canvas-layout-direction",
+        "canvas-layout-direction-left-to-right.png",
+      ),
       fullPage: true,
     });
 
@@ -1704,7 +1714,10 @@ test.describe("the seeded map", () => {
     expect((await readDraft(journeyId)).layoutDirection).toBe("TB");
 
     await page.screenshot({
-      path: "test-results/canvas-layout-direction/canvas-layout-direction-top-to-bottom.png",
+      path: evidencePath(
+        "canvas-layout-direction",
+        "canvas-layout-direction-top-to-bottom.png",
+      ),
       fullPage: true,
     });
   });
@@ -1762,7 +1775,7 @@ test.describe("the seeded map", () => {
     await expectBoxOnMap(page, target);
 
     await page.screenshot({
-      path: "test-results/canvas-locate-on-map/canvas-locate-on-map.png",
+      path: evidencePath("canvas-locate-on-map", "canvas-locate-on-map.png"),
       fullPage: true,
     });
 
@@ -1981,7 +1994,7 @@ test.describe("the seeded map", () => {
     await expect(find).toHaveValue("");
 
     await page.screenshot({
-      path: "test-results/canvas-find-step/canvas-find-step.png",
+      path: evidencePath("canvas-find-step", "canvas-find-step.png"),
       fullPage: true,
     });
 
@@ -2071,7 +2084,10 @@ test.describe("the seeded map", () => {
     expect(listedTitles).toEqual(mapOrderedTitles);
 
     await page.screenshot({
-      path: "test-results/canvas-find-step-lists-map-order/canvas-find-step-lists-map-order.png",
+      path: evidencePath(
+        "canvas-find-step-lists-map-order",
+        "canvas-find-step-lists-map-order.png",
+      ),
       fullPage: true,
     });
   });
@@ -2185,7 +2201,7 @@ test.describe("the seeded map", () => {
     expect(await zoomOf(page)).toBeGreaterThanOrEqual(before);
 
     await page.screenshot({
-      path: "test-results/canvas-view-stays-put/canvas-view-stays-put.png",
+      path: evidencePath("canvas-view-stays-put", "canvas-view-stays-put.png"),
       fullPage: true,
     });
 
@@ -2247,7 +2263,10 @@ test.describe("the seeded map", () => {
     await expect(canvasNodeBox(page, ending?.title ?? "")).toContainText(label);
 
     await page.screenshot({
-      path: "test-results/canvas-endings-uncolored/canvas-endings-uncolored.png",
+      path: evidencePath(
+        "canvas-endings-uncolored",
+        "canvas-endings-uncolored.png",
+      ),
       fullPage: true,
     });
   });
@@ -2344,7 +2363,10 @@ test("canvas-validation-marks", async ({ page, context }) => {
   );
 
   await page.screenshot({
-    path: "test-results/canvas-validation-marks/canvas-validation-marks.png",
+    path: evidencePath(
+      "canvas-validation-marks",
+      "canvas-validation-marks.png",
+    ),
     fullPage: true,
   });
 
@@ -2407,7 +2429,10 @@ test("canvas-problems-readable", async ({ page, context }) => {
   await expect(allProblems).toHaveText(stepProblemsMessage);
 
   await page.screenshot({
-    path: "test-results/canvas-problems-readable/canvas-problems-readable.png",
+    path: evidencePath(
+      "canvas-problems-readable",
+      "canvas-problems-readable.png",
+    ),
     fullPage: true,
   });
 
@@ -2552,7 +2577,10 @@ test("canvas-selection-dims-arrows", async ({ page, context }) => {
   expect(await arrowOpacity("to-clinic")).toBe(1);
 
   await page.screenshot({
-    path: "test-results/canvas-selection-dims-arrows/canvas-selection-dims-arrows.png",
+    path: evidencePath(
+      "canvas-selection-dims-arrows",
+      "canvas-selection-dims-arrows.png",
+    ),
     fullPage: true,
   });
 
@@ -2609,7 +2637,10 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
   await expect(arrow).toHaveAttribute("data-emphasis", "selected");
 
   await page.screenshot({
-    path: "test-results/canvas-arrow-select-and-delete/canvas-arrow-select-and-delete.png",
+    path: evidencePath(
+      "canvas-arrow-select-and-delete",
+      "canvas-arrow-select-and-delete.png",
+    ),
     fullPage: true,
   });
 
@@ -2683,7 +2714,10 @@ test("canvas-arrow-select-second-arrow", async ({ page, context }) => {
   await expect(markedLabel).toHaveValue("Find the clinic");
 
   await page.screenshot({
-    path: "test-results/canvas-arrow-select-second-arrow/canvas-arrow-select-second-arrow.png",
+    path: evidencePath(
+      "canvas-arrow-select-second-arrow",
+      "canvas-arrow-select-second-arrow.png",
+    ),
     fullPage: true,
   });
 
@@ -2769,7 +2803,10 @@ test.describe("a map read down the page", () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
 
     await page.screenshot({
-      path: "test-results/canvas-arrow-click-stays-on-canvas/canvas-arrow-click-stays-on-canvas.png",
+      path: evidencePath(
+        "canvas-arrow-click-stays-on-canvas",
+        "canvas-arrow-click-stays-on-canvas.png",
+      ),
       fullPage: true,
     });
   });
@@ -2781,9 +2818,7 @@ test.describe("authoring from the map", () => {
   test.afterEach(async ({ page }, testInfo) => {
     const video = page.video();
     await page.close();
-    await video?.saveAs(
-      `test-results/${testInfo.title}/${testInfo.title}.webm`,
-    );
+    await video?.saveAs(evidencePath(testInfo.title, `${testInfo.title}.webm`));
   });
 
   test("canvas-node-opens-panel-and-edge-appears", async ({
@@ -2820,7 +2855,10 @@ test.describe("authoring from the map", () => {
 
     await expectSaved(page);
     await page.screenshot({
-      path: "test-results/canvas-node-opens-panel-and-edge-appears/canvas-node-opens-panel-and-edge-appears.png",
+      path: evidencePath(
+        "canvas-node-opens-panel-and-edge-appears",
+        "canvas-node-opens-panel-and-edge-appears.png",
+      ),
       fullPage: true,
     });
   });
@@ -2988,7 +3026,7 @@ test.describe("authoring from the map", () => {
       }
 
       await page.screenshot({
-        path: `test-results/${testInfo.title}/${testInfo.title}.png`,
+        path: evidencePath(testInfo.title, `${testInfo.title}.png`),
         fullPage: true,
       });
     });
@@ -3082,7 +3120,10 @@ test.describe("authoring from the map", () => {
     expect(border!.choices[0].targetStepId).toBe(ward!.id);
 
     await page.screenshot({
-      path: "test-results/canvas-retarget-selected-arrow/canvas-retarget-selected-arrow.png",
+      path: evidencePath(
+        "canvas-retarget-selected-arrow",
+        "canvas-retarget-selected-arrow.png",
+      ),
       fullPage: true,
     });
   });
@@ -3120,7 +3161,10 @@ test.describe("authoring from the map", () => {
     );
 
     await page.screenshot({
-      path: "test-results/canvas-drop-choice-on-empty-map/canvas-drop-choice-on-empty-map.png",
+      path: evidencePath(
+        "canvas-drop-choice-on-empty-map",
+        "canvas-drop-choice-on-empty-map.png",
+      ),
       fullPage: true,
     });
   });
@@ -3330,7 +3374,10 @@ test.describe("authoring from the map", () => {
     expect(stored.steps[stored.startStepId].choices).toHaveLength(2);
 
     await page.screenshot({
-      path: "test-results/canvas-build-branch-and-publish/canvas-build-branch-and-publish.png",
+      path: evidencePath(
+        "canvas-build-branch-and-publish",
+        "canvas-build-branch-and-publish.png",
+      ),
       fullPage: true,
     });
   });
@@ -3418,7 +3465,10 @@ test.describe("authoring from the map", () => {
       expect(added!.targetStepId).toBe(copy!.id);
 
       await page.screenshot({
-        path: "test-results/canvas-find-duplicate-and-edit/canvas-find-duplicate-and-edit.png",
+        path: evidencePath(
+          "canvas-find-duplicate-and-edit",
+          "canvas-find-duplicate-and-edit.png",
+        ),
         fullPage: true,
       });
     });

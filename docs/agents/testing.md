@@ -61,6 +61,12 @@ than a flaky one"):
   the PR is the proof that the rest of the suite still passes.
 - For UI screenshots and videos, use one directory per test name beneath the
   proof-artifact root. Rerunning a test replaces that test directory.
+- Specs build every screenshot and video path with `evidencePath` from
+  `e2e/setup/evidence.ts`, never a literal `test-results/…` string. Only the
+  tests named in `E2E_EVIDENCE` (comma separated) write into the tracked
+  root; the rest write under the git-ignored `test-results/playwright/`. A
+  ticket's evidence run is `E2E_EVIDENCE=<spec>,<spec> pnpm test:e2e`, so a
+  plain full run never rewrites evidence the ticket does not name.
 - Visual/browser behavior: Screenshot is the default: each e2e spec writes a full-page screenshot to `test-results/<test-name>/<test-name>.png`, one subdirectory per test name. Video only for the canvas editor or other multi-step interactions a still image cannot prove. `test-results/playwright/` is Playwright's git-ignored scratch output and is never PASS evidence..
 - Integration and non-UI behavior: Captured command output committed as `test-results/ac-<n>-<slug>.txt`, one file per acceptance criterion, plus the Vitest result line..
 - External integration: Post-merge smoke result against the Vercel staging deployment (there are no PR preview deployments); production is checked after a human promotes `staging` to `main`..

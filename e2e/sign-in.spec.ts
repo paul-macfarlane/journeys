@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
 const mintedAuthorIds: string[] = [];
@@ -29,7 +30,7 @@ test("sign-in page offers Google and Discord with their logos", async ({
   await expect(discord.getByRole("img", { name: "Discord" })).toBeVisible();
 
   await page.screenshot({
-    path: "test-results/sign-in/sign-in.png",
+    path: evidencePath("sign-in", "sign-in.png"),
     fullPage: true,
   });
 });
