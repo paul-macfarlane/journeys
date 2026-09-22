@@ -1,9 +1,9 @@
 # 20: An empty Choice label is a publish problem
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 16
 Route: contract
-Owner:
+Owner: Claude Fable 5.1 (/implement, 2026-09-22)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: small; fits alongside 19 (Paul, 2026-09-21: "Yes, that should be a publish problem").
 
@@ -24,3 +24,16 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's answer to ticket 16's review question, 2026-09-21.
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-22 — /implement (Claude Fable 5.1)
+
+**Contract:** this ticket as written; no scope change. Criteria AC-A (Seam A), AC-B (Seam B), AC-C (spec and README) in checklist order. Derived DoD from the footer, `docs/agents/testing.md`, and `CLAUDE.md`: DoD-1 the `contract` command chain green (`pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build`, then one `E2E_EVIDENCE=canvas-empty-choice-label pnpm test:e2e`); DoD-2 every PASS artifact committed under `test-results/`, fixture journeys only. No schema, dependency, or lockfile change, so no `db:migrate` and no lockfile gate.
+
+**Availability:** `Blocked by` 16 is `done` on `staging` (PR #19 merged); no other claim. Branch `feat/20-empty-choice-label` from `staging` at `eb0c258`, direct checkout, no worktrees.
+
+**Structure:** one session, three seams in order. (1) Seam A by TDD in `src/lib/graph/validate.test.ts` then `validate.ts`: rule `empty-choice-label`, grouped after `dangling-choice-target` and before `unreachable-step`, addressed by `stepId` and `choiceId`; `problemsByAddress`, the panel, the header count, and the arrow mark need no change. (2) Spec: the "Graph document" publish rule sentence, story 37's rule list, and story 33's examples amended, with a `[SCOPE CHANGE]` naming this ticket; README's publish sentence does not list the rules, so it stays. (3) Seam B: one new Playwright test `canvas-empty-choice-label` in `e2e/canvas.spec.ts` that draws a Choice by dragging, reads the problem on the arrow, under the Choice row, and in the header count, types a label to clear all three, blanks it to whitespace, and is refused publication with the message in the "Publishing problems" list.
+
+**Review:** `/code-review` (two fresh readers, standards and spec). **Red team:** not run — the policy names plans that materially change publishing's architecture; this adds one rule Paul already approved on 2026-09-21.
+
+**Risk noted up front:** every existing canvas spec that draws a Choice types its label before asserting "No problems", so the new rule breaks none of them; confirmed by reading each `connectByDragging` and "Add next step" call site.
+
