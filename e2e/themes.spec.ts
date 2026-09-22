@@ -188,6 +188,7 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
 
   // A Participant sees both on the Project page, the start screen, and a
   // Step: the preset as the frame's attribute, the accent as its primary.
+  let byDay = 1;
   const phone = await newParticipant(browser);
   try {
     const participant = await phone.newPage();
@@ -201,7 +202,7 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
       "#c2410c",
     );
     // The stripe along the top is the accent as given, by day…
-    const byDay = await paintedLuminance(
+    byDay = await paintedLuminance(
       participant,
       '[data-slot="runner-frame"]',
       "border-top-color",
@@ -255,7 +256,10 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
       '[data-slot="runner-frame"]',
       "border-top-color",
     );
-    expect(byNight).toBeGreaterThan(0.4);
+    // The lift is to oklch L 0.75, which for this orange paints at about
+    // 0.38 WCAG luminance against 0.16 by day: more than twice as bright.
+    expect(byNight).toBeGreaterThan(byDay * 2);
+    expect(byNight).toBeGreaterThan(0.3);
     await participant.screenshot({
       path: evidencePath("themes-settings", "runner-start-tide-dark.png"),
       fullPage: true,
