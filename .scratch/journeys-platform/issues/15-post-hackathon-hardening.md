@@ -14,6 +14,8 @@ Parent: `.scratch/journeys-platform/spec.md`
 - [ ] **Deploy window.** Between the Vercel build going live and the Migrate action finishing, pages that depend on a new table fail. Either sequence the deploy after migration or make new code tolerate the previous schema for one release.
 - [ ] **Corrupt-row handling.** `getDraftForMember` throws on a row that fails the schema (a 500). Decide whether a recovery path (restore from a Published Version, or a repair tool) is wanted.
 - [ ] **Rate limiting and abuse protection on Runs** (spec Out of Scope for the hackathon).
+- [ ] **Accessibility pass.** Go through every existing surface (sign-in, Projects, Project tabs, Journey page, canvas, Step panel, rich text editor, runner, preview) with a screen reader and keyboard only; fix names, roles, focus order, contrast, and reduced-motion. Ticket 30 adds image alt text and ticket 31 checks contrast, but neither is the full pass (Paul, 2026-09-21, item 18).
+- [ ] **Manual layout (ticket 17).** Deferred past the hackathon on 2026-09-21; Paul is not convinced it earns its complexity. Reconsider only if Authors ask for it.
 - [ ] **Anything later tickets defer** — append here with a pointer to the ticket and finding.
 
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`.

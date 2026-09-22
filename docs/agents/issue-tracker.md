@@ -120,3 +120,13 @@ Record every repository delivery, deliverable and worker/model, each DoD
 outcome and evidence, deviations, verified run command, deployed smoke when
 applicable, every PR URL, and the AI Code Review output.
 <!-- atlas-v3:tracker:end -->
+
+## Proportional records (team policy, Paul, 2026-09-21)
+
+Every ticket carries a `Route:` line, `polish` or `contract`, defined in
+`docs/agents/testing.md` ("Proportional verification"). The record ladder
+above is the `contract` ladder. A `polish` ticket writes only the
+`[CLOSEOUT]` record (PR URL, commands run, reviewer verdict, evidence paths)
+and skips `[EXECUTION PLAN]` and `[PROGRESS]`; `[SCOPE CHANGE]` and
+`[BLOCKED]` are still written whenever they happen. Both routes still set
+`Status: done` in the closeout commit on the PR.

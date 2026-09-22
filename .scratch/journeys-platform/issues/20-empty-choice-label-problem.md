@@ -2,6 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: 16
+Route: contract
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: small; fits alongside 19 (Paul, 2026-09-21: "Yes, that should be a publish problem").

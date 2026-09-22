@@ -4,7 +4,8 @@ Status: ready-for-agent
 Blocked by: 16, 21, 22
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: last of the graph tidy-up series (18 → 16 → 19 → 21 → 17).
+Priority: **post-hackathon** (Paul, 2026-09-21: "I'm not entirely convinced being able to drag things to custom locations is what this app needs. It could introduce more complexity than worth it. That story, manual layout, can wait for now with this note."). Not available during the hackathon; also listed on ticket 15.
+Route: contract
 
 **Scope change:** the spec lists "manual canvas layout" as out of scope and ADR-0001 says the canvas lays itself out. Paul decided on 2026-09-21 to support dragging boxes. Record a `[SCOPE CHANGE]` on the spec and an amendment to ADR-0001 as part of this ticket; the graph document's reserved nullable `position` field is what this ticket fills.
 

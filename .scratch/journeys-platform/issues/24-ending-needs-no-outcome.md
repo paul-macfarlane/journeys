@@ -4,7 +4,8 @@ Status: ready-for-agent
 Blocked by: 22
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: small; slot anywhere after 22 merges (Paul, 2026-09-21).
+Priority: **next** after the harness simplification (Paul, 2026-09-21: "fix the current bug with the journeys where it is requiring an outcome that can't be set" before any canvas polish). Then 25 → 26 → 27 → 10 → 28 → 29 → 30 → 31 → 23; 17 is post-hackathon.
+Route: contract
 
 **Why:** After ticket 22 Paul asked how a Step becomes a final Step with an Outcome. The answer is that an Ending is implicit — any Step with no Choices (`isEnding`) — and Paul is fine with that. What he is not fine with is the publish problem `Ending "…" has no outcome`: an Ending is an outcome in itself, and an Author who does not group their Endings should not be blocked from publishing. This ticket removes that rule and everything that leans on it.
 

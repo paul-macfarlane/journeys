@@ -64,6 +64,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 Use the lightest route that fits:
 
 - Small, clear change: `/implement <description-or-spec>` then verify.
+- Ticket marked `Route: polish` (see `docs/agents/testing.md`, "Proportional verification"): `/implement <ticket-path>`, one full `pnpm test:e2e` at the end, one AI reviewer, evidence only for the specs the ticket names, a `[CLOSEOUT]` record, then a PR to `staging`. No red team, no execution plan.
 - Normal feature: `/grill-with-docs` → optional prototype → `/to-spec` → optional `/to-tickets` → `/atlas-red-team` when required → optional `/atlas-plan <ticket-epic-or-spec>` → `/atlas-implement`.
 - Huge or unclear effort: `/wayfinder`, then rejoin at the spec route.
 - Existing ticket, epic, or stable spec: optional `/atlas-plan <work-package>` → `/atlas-implement <work-package>`.
