@@ -22,6 +22,12 @@ import StarterKit from "@tiptap/starter-kit";
  * so the caption sits under the picture wherever the content shows. `alt` is
  * for assistive technology and is never displayed; the `<figcaption>` is
  * emitted only when there is a caption to show.
+ *
+ * `credit` is the caption's name in documents written before ticket 30. The
+ * schema in `@/lib/graph/content` reads it as `caption` before anything
+ * reaches these extensions, and the sanitizer never writes it back; it is
+ * declared here only so a document that skipped the schema still shows its
+ * caption instead of silently losing the attr.
  */
 export const CaptionedImage = Image.extend({
   addAttributes() {
@@ -36,11 +42,15 @@ export const CaptionedImage = Image.extend({
         // The caption is the figcaption, not an attribute of the <img>.
         renderHTML: () => ({}),
       },
+      credit: {
+        default: "",
+        renderHTML: () => ({}),
+      },
     };
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const caption = String(node.attrs.caption ?? "");
+    const caption = String(node.attrs.caption || node.attrs.credit || "");
     const img = [
       "img",
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {

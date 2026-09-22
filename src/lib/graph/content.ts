@@ -115,26 +115,35 @@ const orderedListSchema: z.ZodType<OrderedList> = z.object({
 });
 
 /**
- * The compatibility read: an attr named `credit` is the caption when no
- * `caption` is present. Published Versions are immutable and keep the old
- * name forever; a Draft writes `caption` on its next save.
+ * The one compatibility read every reader of a stored image shares: an attr
+ * named `credit` is the caption when no `caption` is present, and an alt
+ * that is not a string (the `null` documents before ticket 30 stored) is
+ * `""`. Published Versions are immutable and keep the old name forever; a
+ * Draft writes `caption` on its next save. Values are passed through as they
+ * are — trimming is the sanitizer's job, on the way in.
  */
-function readImageAttrs(attrs: unknown): unknown {
-  if (!isRecord(attrs)) {
-    return attrs;
-  }
-  const { credit, alt, caption, ...rest } = attrs;
+export function readStoredImageAttrs(attrs: unknown): {
+  src: unknown;
+  alt: string;
+  caption: string;
+} {
+  const record = isRecord(attrs) ? attrs : {};
   return {
-    ...rest,
-    alt: typeof alt === "string" ? alt : "",
-    caption: caption ?? credit ?? "",
+    src: record.src,
+    alt: typeof record.alt === "string" ? record.alt : "",
+    caption:
+      typeof record.caption === "string"
+        ? record.caption
+        : typeof record.credit === "string"
+          ? record.credit
+          : "",
   };
 }
 
 const imageSchema: z.ZodType<ImageBlock> = z.object({
   type: z.literal("image"),
   attrs: z.preprocess(
-    readImageAttrs,
+    readStoredImageAttrs,
     z.object({
       src: z.string().min(1),
       alt: z.string(),
@@ -258,16 +267,11 @@ function sanitizeImage(input: Record<string, unknown>): ImageBlock | null {
     return null;
   }
 
-  // The same compatibility read the schema makes: a stored `credit` is the
-  // caption until the next save writes it under its new name.
-  const rawCaption =
-    typeof attrs.caption === "string"
-      ? attrs.caption
-      : typeof attrs.credit === "string"
-        ? attrs.credit
-        : "";
-  const alt = typeof attrs.alt === "string" ? attrs.alt.trim() : "";
-  return { type: "image", attrs: { src, alt, caption: rawCaption.trim() } };
+  const stored = readStoredImageAttrs(attrs);
+  return {
+    type: "image",
+    attrs: { src, alt: stored.alt.trim(), caption: stored.caption.trim() },
+  };
 }
 
 function sanitizeListItems(input: unknown): ListItem[] {

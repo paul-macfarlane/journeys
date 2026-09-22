@@ -1,10 +1,11 @@
 import { generateHTML } from "@tiptap/html";
 
-import type {
-  Block,
-  Content,
-  ListItem,
-  TextElement,
+import {
+  readStoredImageAttrs,
+  type Block,
+  type Content,
+  type ListItem,
+  type TextElement,
 } from "@/lib/graph/content";
 import { richTextExtensions } from "@/lib/rich-text/extensions";
 
@@ -51,9 +52,9 @@ function hardenListItem(item: ListItem): ListItem {
 
 /**
  * An image the rule refuses is dropped whole, caption included. One that
- * passes is read with the same compatibility rule as the schema: a
- * Published Version written before ticket 30 still names its caption
- * `credit`, and a null alt from that era is an empty one.
+ * passes is read with the schema's own compatibility rule, in case a
+ * Published Version written before ticket 30 (caption named `credit`, alt
+ * `null`) reaches here without passing through the schema.
  */
 function hardenBlock(block: Block): Block | null {
   switch (block.type) {
@@ -67,20 +68,8 @@ function hardenBlock(block: Block): Block | null {
       if (!isHttpUrl(block.attrs.src)) {
         return null;
       }
-      const legacy = block.attrs as { credit?: unknown };
-      return {
-        type: "image",
-        attrs: {
-          src: block.attrs.src,
-          alt: typeof block.attrs.alt === "string" ? block.attrs.alt : "",
-          caption:
-            typeof block.attrs.caption === "string"
-              ? block.attrs.caption
-              : typeof legacy.credit === "string"
-                ? legacy.credit
-                : "",
-        },
-      };
+      const { alt, caption } = readStoredImageAttrs(block.attrs);
+      return { type: "image", attrs: { src: block.attrs.src, alt, caption } };
     }
   }
 }

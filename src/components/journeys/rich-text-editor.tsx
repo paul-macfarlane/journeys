@@ -93,7 +93,6 @@ function ToolbarButton({
   text,
   pressed,
   onClick,
-  apple,
 }: {
   label: string;
   /** The Tiptap key name the editor binds, e.g. `Mod-b`; none for Image. */
@@ -101,8 +100,8 @@ function ToolbarButton({
   text: string;
   pressed: boolean;
   onClick: () => void;
-  apple: boolean;
 }) {
+  const apple = useApplePlatform();
   return (
     <Tooltip>
       <TooltipTrigger
@@ -173,13 +172,16 @@ export function RichTextEditor({
     immediatelyRender: false,
     editorProps: {
       attributes: { "aria-label": "Step content", class: EDITOR_CLASS },
-      // ⌘K / Ctrl+K opens the link dialog while the editor has focus, the
-      // shortcut its tooltip promises. Returning true prevents the default,
-      // which is also how the page-level "Find step" shortcut knows to leave
-      // this press alone. The dialog state setters are stable, so this
-      // closure from the first render stays right.
+      // ⌘K on Apple platforms and Ctrl+K elsewhere — the platform's `Mod`,
+      // exactly as Tiptap's own bindings and the tooltip read it; Ctrl+K on
+      // a Mac is left to the system — opens the link dialog while the
+      // editor has focus. Returning true prevents the default, which is
+      // also how the page-level "Find step" shortcut knows to leave this
+      // press alone. The dialog state setters are stable, so this closure
+      // from the first render stays right.
       handleKeyDown: (view, event) => {
-        if (!event.metaKey && !event.ctrlKey) return false;
+        const mod = isApplePlatform() ? event.metaKey : event.ctrlKey;
+        if (!mod) return false;
         if (event.shiftKey || event.altKey) return false;
         if (event.key.toLowerCase() !== "k") return false;
         setLinkUrl(String(getMarkAttributes(view.state, "link").href ?? ""));
@@ -219,8 +221,6 @@ export function RichTextEditor({
       image: instance?.isActive("image") ?? false,
     }),
   });
-
-  const apple = useApplePlatform();
 
   // One dialog for both jobs: `imageMode` says whether Save inserts a new
   // image at the cursor or rewrites the attrs of the selected one.
@@ -318,7 +318,6 @@ export function RichTextEditor({
           <ToolbarButton
             label="Heading 1"
             shortcut="Mod-Alt-1"
-            apple={apple}
             text="H1"
             pressed={active?.heading1 ?? false}
             onClick={() =>
@@ -328,7 +327,6 @@ export function RichTextEditor({
           <ToolbarButton
             label="Heading 2"
             shortcut="Mod-Alt-2"
-            apple={apple}
             text="H2"
             pressed={active?.heading2 ?? false}
             onClick={() =>
@@ -338,7 +336,6 @@ export function RichTextEditor({
           <ToolbarButton
             label="Heading 3"
             shortcut="Mod-Alt-3"
-            apple={apple}
             text="H3"
             pressed={active?.heading3 ?? false}
             onClick={() =>
@@ -348,7 +345,6 @@ export function RichTextEditor({
           <ToolbarButton
             label="Bold"
             shortcut="Mod-b"
-            apple={apple}
             text="B"
             pressed={active?.bold ?? false}
             onClick={() => editor?.chain().focus().toggleBold().run()}
@@ -356,7 +352,6 @@ export function RichTextEditor({
           <ToolbarButton
             label="Italic"
             shortcut="Mod-i"
-            apple={apple}
             text="I"
             pressed={active?.italic ?? false}
             onClick={() => editor?.chain().focus().toggleItalic().run()}
@@ -364,7 +359,6 @@ export function RichTextEditor({
           <ToolbarButton
             label="Bullet list"
             shortcut="Mod-Shift-8"
-            apple={apple}
             text="•"
             pressed={active?.bulletList ?? false}
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
@@ -372,7 +366,6 @@ export function RichTextEditor({
           <ToolbarButton
             label="Numbered list"
             shortcut="Mod-Shift-7"
-            apple={apple}
             text="1."
             pressed={active?.orderedList ?? false}
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
@@ -380,14 +373,12 @@ export function RichTextEditor({
           <ToolbarButton
             label="Link"
             shortcut="Mod-k"
-            apple={apple}
             text="Link"
             pressed={active?.link ?? false}
             onClick={openLink}
           />
           <ToolbarButton
             label="Image"
-            apple={apple}
             text="Image"
             pressed={active?.image ?? false}
             onClick={openImage}

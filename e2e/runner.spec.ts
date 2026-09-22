@@ -51,10 +51,10 @@ test.afterAll(async () => {
 
 /**
  * A grey placeholder served in place of every off-origin image. The seeded
- * case-3 document credits real photographs on third-party hosts; fetching
+ * case-3 document captions real photographs on third-party hosts; fetching
  * them would make this suite depend on the internet and on somebody else's
  * uptime, while fulfilling the request keeps the page honest — an image box
- * of a known size still sits above its credit line.
+ * of a known size still sits above its caption.
  */
 const PLACEHOLDER_IMAGE = [
   '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240">',
@@ -180,7 +180,7 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
       participant.getByRole("heading", { name: "The Horses" }),
     ).toBeVisible();
 
-    // The image and the credit that must travel with it.
+    // The image and the caption that must travel with it.
     const figure = participant.locator("figure").first();
     await expect(figure.locator("img")).toHaveAttribute("src", /^https:\/\//);
     await expect(figure.locator("figcaption")).toContainText("Steven Lilley");

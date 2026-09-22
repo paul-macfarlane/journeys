@@ -526,16 +526,22 @@ test("step-editing-image-caption-alt-and-preview", async ({
   });
   await participant.close();
 
-  // Remove takes the image out of the Draft.
+  // Remove takes the image out; undo brings it back; Backspace on the
+  // selected image still takes it out the keyboard's way.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
-  await page.getByLabel("Step content").locator("figure img").click();
+  const editorFigure = page.getByLabel("Step content").locator("figure");
+  await editorFigure.locator("img").click();
   await page
     .getByRole("toolbar", { name: "Image tools" })
     .getByRole("button", { name: "Remove" })
     .click();
-  await expect(page.getByLabel("Step content").locator("figure")).toHaveCount(
-    0,
-  );
+  await expect(editorFigure).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(editorFigure).toHaveCount(1);
+  await editorFigure.locator("img").click();
+  await expect(editorFigure).toHaveClass(/ProseMirror-selectednode/);
+  await page.keyboard.press("Backspace");
+  await expect(editorFigure).toHaveCount(0);
   await expectSaved(page);
   const removed = await readDraft(journeyId);
   expect(
