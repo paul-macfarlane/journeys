@@ -22,6 +22,7 @@ import {
   type NodeProps,
   type NodeTypes,
 } from "@xyflow/react";
+import { Ellipsis } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
   createContext,
@@ -97,15 +98,24 @@ import "@xyflow/react/dist/style.css";
  * the document the editor is holding, not from the "Validate" button's server
  * round trip, so a mark clears the moment the fix is typed.
  *
- * The map is also where the Journey is built: the open box carries a toolbar
- * for the moves that shape it — adding the next step, duplicating it, making
+ * The view is the Author's, and it moves only when they ask: the first
+ * render, a change of direction, the panel put away or brought back, and the
+ * zoom to a Step they opened or just made. Nothing else — a Step added, a
+ * Step deleted, a Choice drawn, a mark appearing — takes the map off where
+ * they left it.
+ *
+ * The map is also where the Journey is built: the box the Author clicks
+ * carries a toolbar, one small button that opens onto the moves that shape
+ * the Journey around that Step — adding the next step, duplicating it, making
  * it the start, and deleting it — and one that only moves the view, zooming
- * to it. A Choice is made by dragging from a box onto another, an arrow's
- * head is dragged to move where its Choice leads, and a clicked arrow is the
- * Choice in hand — opened in the panel, and removed by the Delete key.
- * Nothing here edits the document: each of those is handed back to the
- * editor in the document's own words (a Step, a Choice), and the map redraws
- * from whatever the editor makes of it.
+ * to it. A Choice is made by dragging from a box onto another — or onto bare
+ * map, which makes the Step it leads to in the same motion — the head of the
+ * arrow in hand is dragged to move where its Choice leads, and a clicked
+ * arrow is the Choice in hand: its Step opened in the panel with that Choice's
+ * row marked, nothing scrolled, the keyboard left on the map, and the Delete
+ * key removing it. Nothing here edits the document: each of those is handed
+ * back to the editor in the document's own words (a Step, a Choice), and the
+ * map redraws from whatever the editor makes of it.
  *
  * And it is a map to be read: hovering or focusing a box peeks at what the
  * Step says without opening it, and the arrow keys walk from box to nearest
@@ -115,8 +125,8 @@ import "@xyflow/react/dist/style.css";
 
 /**
  * The attributes a spec reads off a node's button: which kind of box it is,
- * which Step, how many problems, which Outcome. React's `HTMLAttributes` has
- * no index signature for `data-*`, so one is intersected in rather than cast.
+ * which Step, how many problems. React's `HTMLAttributes` has no index
+ * signature for `data-*`, so one is intersected in rather than cast.
  */
 type NodeMarks = HTMLAttributes<HTMLButtonElement> &
   Record<`data-${string}`, string>;
@@ -130,28 +140,6 @@ type EdgeMarks = NonNullable<Edge["domAttributes"]> &
   Record<`data-${string}`, string>;
 
 /**
- * Endings are colored by their Outcome so a glance at the map groups them the
- * way analysis will. Eight hues, walked by the Outcome's position in the
- * document, so the same Outcome is always the same color; the ninth Outcome
- * starts over rather than inventing a color nobody chose.
- */
-const OUTCOME_COLORS = [
-  "oklch(0.68 0.15 250)",
-  "oklch(0.68 0.15 150)",
-  "oklch(0.72 0.15 70)",
-  "oklch(0.63 0.19 25)",
-  "oklch(0.66 0.16 325)",
-  "oklch(0.7 0.13 195)",
-  "oklch(0.62 0.17 290)",
-  "oklch(0.72 0.15 115)",
-];
-
-function outcomeColor(outcomeIndex: number | null): string | null {
-  if (outcomeIndex === null) return null;
-  return OUTCOME_COLORS[outcomeIndex % OUTCOME_COLORS.length];
-}
-
-/**
  * What the box toolbar does, handed to the nodes through context rather than
  * through each node's `data`: these are the editor's own functions, and a
  * node whose data changed identity on every render of the editor would be a
@@ -162,6 +150,12 @@ type CanvasActions = {
   onDuplicateStep: (stepId: string) => void;
   onSetStart: (stepId: string) => void;
   onDeleteStep: (stepId: string) => void;
+  /**
+   * "Step actions" on a box, which opens onto the moves above and closes
+   * again — and Escape inside the group, which only ever closes it.
+   */
+  onToggleToolbar: (stepId: string) => void;
+  onCollapseToolbar: () => void;
   /**
    * The map's own keyboard, kept here rather than in each box: the nearest
    * box in a direction is a question about every box, which is something the
@@ -226,7 +220,6 @@ type StepNodeData = {
   document: GraphDocument;
   step: Step;
   outcomeLabel: string | null;
-  outcomeColor: string | null;
   problems: string[];
   /**
    * The opening of the Step's content as plain text, read once where the
@@ -234,6 +227,12 @@ type StepNodeData = {
    */
   preview: string;
   isSelected: boolean;
+  /**
+   * What this box is showing of the moves it carries: nothing at all until
+   * the Author clicks the box, then the one "Step actions" button, and then
+   * the moves themselves once that button is pressed.
+   */
+  toolbar: "hidden" | "compact" | "expanded";
   /** The Step this node opens in the panel when it is clicked. */
   opens: string;
   /**
@@ -494,7 +493,7 @@ function targetSide(direction: LayoutDirection): Position {
 /** What a peek reads when the Step has nothing written on it yet. */
 const NOTHING_WRITTEN = "No content yet";
 
-/** The peek, styled like the legend: the map's other piece of quiet reading. */
+/** The peek: the map's one piece of quiet reading, styled to stay quiet. */
 const PEEK_CLASS =
   "nopan nodrag pointer-events-none max-w-72 rounded-lg bg-background px-2.5 py-1.5 text-xs whitespace-pre-line ring-1 ring-foreground/10";
 
@@ -511,6 +510,8 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const peekId = useId();
+  /** What "Step actions" expands, named so the button can say so. */
+  const movesId = useId();
   const peek = [
     ...data.problems,
     data.preview.length > 0 ? data.preview : NOTHING_WRITTEN,
@@ -536,13 +537,16 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
 
       {/* The moves that change the Journey's shape around this Step, and one
           that only moves the view, on the box itself: the same the panel's
-          foot carries, where the Author is already looking. `nopan`/`nodrag`
-          keep a click on a button from dragging the map out from under it. */}
+          foot carries, where the Author is already looking. Shown only on the
+          box the Author has clicked, and as one small button until they ask
+          for more — a map of thirty-six boxes is read before it is edited, and
+          five buttons over a box is five buttons over whatever is behind it.
+          `nopan`/`nodrag` keep a click on a button from dragging the map out
+          from under it. */}
       {/* `role="group"`, not `role="toolbar"`: a toolbar promises roving
-          tabindex, and these are ordinary tab stops, the same as the panel's
-          "Leads here from". */}
+          tabindex, and these are ordinary tab stops. */}
       <NodeToolbar
-        isVisible={data.isSelected}
+        isVisible={data.toolbar !== "hidden"}
         position={Position.Top}
         role="group"
         aria-label={`${data.title} actions`}
@@ -550,49 +554,80 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
         // click on a button here would reach the node's own handler and
         // re-open this Step over whichever one the button just opened.
         onClick={(event) => event.stopPropagation()}
+        // Escape anywhere in the group folds it back to the one button, and
+        // hands the keyboard to that button: whoever pressed it is left where
+        // they opened it from rather than on a button that has gone.
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+
+          const opener = event.currentTarget.querySelector<HTMLButtonElement>(
+            '[aria-label="Step actions"]',
+          );
+          actions.onCollapseToolbar();
+          opener?.focus();
+        }}
         className="nopan nodrag flex flex-wrap items-center gap-1 rounded-lg bg-background px-1.5 py-1 ring-1 ring-foreground/10"
       >
         <Button
           variant="outline"
-          size="sm"
-          onClick={() => actions.onAddNextStep(data.opens)}
+          size="icon-sm"
+          aria-label="Step actions"
+          aria-expanded={data.toolbar === "expanded"}
+          // The moves are rendered only while they are folded out, so the id
+          // is only named while there is something for it to name.
+          aria-controls={data.toolbar === "expanded" ? movesId : undefined}
+          onClick={() => actions.onToggleToolbar(data.opens)}
         >
-          Add next step
+          <Ellipsis aria-hidden="true" />
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => actions.onDuplicateStep(data.opens)}
-        >
-          Duplicate
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            void fitView({
-              nodes: [{ id: data.opens }],
-              maxZoom: 1.5,
-              duration: 200,
-            })
-          }
-        >
-          Zoom to step
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={data.isStart}
-          onClick={() => actions.onSetStart(data.opens)}
-        >
-          Make this the start
-        </Button>
-        <DeleteStepDialog
-          document={data.document}
-          step={data.step}
-          isStart={data.isStart}
-          onDeleteStep={actions.onDeleteStep}
-        />
+
+        {data.toolbar === "expanded" ? (
+          <div id={movesId} className="flex flex-wrap items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => actions.onAddNextStep(data.opens)}
+            >
+              Add next step
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => actions.onDuplicateStep(data.opens)}
+            >
+              Duplicate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                void fitView({
+                  nodes: [{ id: data.opens }],
+                  maxZoom: 1.5,
+                  duration: 200,
+                })
+              }
+            >
+              Zoom to step
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={data.isStart}
+              onClick={() => actions.onSetStart(data.opens)}
+            >
+              Make this the start
+            </Button>
+            <DeleteStepDialog
+              document={data.document}
+              step={data.step}
+              isStart={data.isStart}
+              onDeleteStep={actions.onDeleteStep}
+            />
+          </div>
+        ) : null}
       </NodeToolbar>
 
       {/* Where every arrow into this Step lands: one point on the side the
@@ -655,17 +690,6 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
               : "ring-foreground/15",
         )}
       >
-        {/* The Outcome's color, dynamic by nature, so it is an inline style.
-            The legend shows the same color against the Outcome's name. */}
-        {data.isEnding && data.outcomeColor !== null ? (
-          <span
-            aria-hidden="true"
-            data-outcome-bar=""
-            className="absolute inset-x-0 top-0 h-1.5"
-            style={{ backgroundColor: data.outcomeColor }}
-          />
-        ) : null}
-
         <p className="truncate text-sm font-medium">{data.title}</p>
 
         <div className="flex items-center gap-1 overflow-hidden">
@@ -779,9 +803,6 @@ const subscribeToNothing = () => () => {};
 const isClient = () => true;
 const isServer = () => false;
 
-const LEGEND_ENTRY_CLASS = "flex items-center gap-1.5";
-const LEGEND_SWATCH_CLASS = "size-2.5 shrink-0 rounded-full";
-
 /** Sub-pixel rounding, so a box flush against the edge counts as on the map. */
 const IN_VIEW_TOLERANCE = 1;
 
@@ -800,6 +821,25 @@ const ACROSS_WEIGHT = 2;
  * Author has set up is left exactly where they set it.
  */
 const FIT_AFTER_TOGGLE_MS = 500;
+
+/**
+ * How long after a Choice was let go of a click on a box still counts as that
+ * drag's own rather than the Author's. A Choice drawn back to its own Step is
+ * one press and one release inside the same box, so the browser follows the
+ * drag with a click on that box — which would re-open the Step and let go of
+ * the very Choice the drag just drew. A press and a release the Author means
+ * as a click are never a quarter of a second apart from a drag that has just
+ * ended.
+ */
+const CLICK_AFTER_CONNECT_MS = 250;
+
+/**
+ * How many frames the Zoom-to-step move waits for a box React Flow has not
+ * measured yet: a Step made a moment ago is rendered before it is measured,
+ * and a `fitView` on a box with no dimensions does nothing. A handful of
+ * frames covers the measuring pass with room to spare.
+ */
+const MEASURE_FRAMES = 30;
 
 /** The two ways the map can be drawn, in the order the control offers them. */
 const LAYOUT_DIRECTIONS: { direction: LayoutDirection; label: string }[] = [
@@ -882,11 +922,12 @@ export type JourneyCanvasProps = {
   /**
    * What the last opening of a Step asked the map for. `request` is bumped
    * every time one is opened, the same Step included, so re-opening the one
-   * already in the panel brings its box back onto the map. `center` is set
-   * for a Step found by name, which is shown in the middle of the map rather
-   * than left where it stands.
+   * already in the panel is answered too. `view` is what was asked for:
+   * `keep` moves nothing, `reveal` brings the box onto the map only when it
+   * is off it, and `zoom` makes the Zoom-to-step move whatever the box was
+   * doing — a Step found by name, or one just made.
    */
-  locate: { request: number; center: boolean };
+  locate: { request: number; view: "keep" | "reveal" | "zoom" };
   problems: PublishProblem[];
   /** The one arrow the Author has clicked, if any. */
   selectedArrow: CanvasArrow | null;
@@ -900,17 +941,19 @@ export type JourneyCanvasProps = {
    */
   panelShown: boolean;
   /**
-   * Bumped by the editor each time the map's width changes — the panel put
-   * away or brought back — so the whole map is shown in whatever width it
-   * ends up with.
+   * Bumped by the editor each time the Author puts the panel away or brings
+   * it back, which is the one change of the map's width they asked for, so
+   * the whole map is shown in whatever width it ends up with. A panel that
+   * comes back for an opened Step does not bump it: the frame narrows, and
+   * the opening's own move to the Step is what the map does.
    */
   fitRequest: number;
   onShowPanel: () => void;
   /** Escape, with the map itself holding the keyboard. */
   onHidePanel: () => void;
   /**
-   * The box toolbar's moves, on whichever Step the panel has open. "Zoom to
-   * step" carries no prop here — it calls `fitView` through `useReactFlow`
+   * The box toolbar's moves, on whichever box the Author has clicked. "Zoom
+   * to step" carries no prop here — it calls `fitView` through `useReactFlow`
    * from inside the node itself.
    */
   onAddNextStep: (stepId: string) => void;
@@ -919,6 +962,11 @@ export type JourneyCanvasProps = {
   onDeleteStep: (stepId: string) => void;
   /** A Choice drawn between two boxes, and one whose head was moved. */
   onConnectChoice: (stepId: string, targetStepId: string) => void;
+  /**
+   * A Choice drawn from a box onto bare map, where there is no Step for it
+   * to lead to: the Step and the Choice are made together.
+   */
+  onConnectToNewStep: (stepId: string) => void;
   onRetargetChoice: (
     stepId: string,
     choiceId: string,
@@ -947,6 +995,7 @@ function CanvasFlow({
   onSetStart,
   onDeleteStep,
   onConnectChoice,
+  onConnectToNewStep,
   onRetargetChoice,
   onSelectArrow,
   onRemoveChoices,
@@ -955,6 +1004,32 @@ function CanvasFlow({
   canvasRef: RefObject<HTMLElement | null>;
 }) {
   const addressed = useMemo(() => problemsByAddress(problems), [problems]);
+
+  /**
+   * The box showing the moves it carries, and whether it is showing them or
+   * only the button that opens them. Nothing until the Author clicks a box:
+   * a Step opened from "Find step", a problem, an arrow, or a save the server
+   * refused is a Step to read and edit in the panel, not a box to reshape the
+   * Journey around.
+   *
+   * `opening` is which opening of a Step put the moves there — the one the
+   * click itself is about to make, which is the next the editor counts. The
+   * moves belong to that click, so any opening after it leaves them behind
+   * rather than carrying them onto whatever was opened next; which is why
+   * this is read back below rather than used as it stands.
+   */
+  const [toolbar, setToolbar] = useState<{
+    stepId: string;
+    opening: number;
+    expanded: boolean;
+  } | null>(null);
+
+  const shownToolbar =
+    toolbar !== null &&
+    toolbar.opening === locate.request &&
+    toolbar.stepId === selectedStepId
+      ? toolbar
+      : null;
 
   const { nodes, edges, arrows } = useMemo(() => {
     const titleById = new Map(
@@ -1017,8 +1092,6 @@ function CanvasFlow({
         "data-kind": node.isStart ? "start" : node.isEnding ? "ending" : "step",
         "data-step-id": node.stepId,
         "data-problems": String(stepProblems.length),
-        "data-outcome-index":
-          node.outcomeIndex === null ? "" : String(node.outcomeIndex),
       };
 
       const step = document.steps[node.stepId];
@@ -1039,9 +1112,14 @@ function CanvasFlow({
             node.outcomeId !== null
               ? (document.outcomes[node.outcomeId]?.label ?? null)
               : null,
-          outcomeColor: outcomeColor(node.outcomeIndex),
           problems: stepProblems,
           isSelected,
+          toolbar:
+            shownToolbar?.stepId !== node.stepId
+              ? "hidden"
+              : shownToolbar.expanded
+                ? "expanded"
+                : "compact",
           opens: node.stepId,
           marks,
         },
@@ -1091,10 +1169,14 @@ function CanvasFlow({
         // Named rather than left to React Flow's first target handle: the
         // box has a second, invisible one covering it for drops to land on.
         targetHandle: "in",
-        // The head of the arrow can be picked up and dropped on another box;
-        // where a Choice leaves from is the Step it is written on, which is
-        // not something to drag.
-        reconnectable: "target" as const,
+        // The head of the arrow the Author has in hand can be picked up and
+        // dropped on another box; where a Choice leaves from is the Step it
+        // is written on, which is not something to drag. Only the selected
+        // arrow grows a head, and it is drawn over the rest: every arrow
+        // into a box ends on the same handle, so the heads stack, and a head
+        // dragged out of a stack has to be the Choice the Author chose.
+        reconnectable: isSelected ? ("target" as const) : false,
+        zIndex: isSelected ? 1 : 0,
         type: "choice",
         selected: isSelected,
         label,
@@ -1109,7 +1191,14 @@ function CanvasFlow({
     });
 
     return { nodes: flowNodes, edges: flowEdges, arrows };
-  }, [addressed, document, layout, selectedArrow, selectedStepId]);
+  }, [
+    addressed,
+    document,
+    layout,
+    selectedArrow,
+    selectedStepId,
+    shownToolbar,
+  ]);
 
   // Every Step is a valid target, its own Step included: a loop is an
   // ordinary path since ticket 18. A placeholder is not a Step.
@@ -1118,7 +1207,16 @@ function CanvasFlow({
     [document.steps],
   );
 
-  const { fitView, getNodesBounds, getViewport } = useReactFlow();
+  /**
+   * When a Choice was last let go of, for `CLICK_AFTER_CONNECT_MS`. Never,
+   * to begin with — and never is not zero: `performance.now()` counts from
+   * the moment the page was opened, so zero is "the page had just loaded",
+   * which would swallow the first click an Author made on a box.
+   */
+  const connectedAt = useRef(Number.NEGATIVE_INFINITY);
+
+  const { fitView, getInternalNode, getNodesBounds, getViewport } =
+    useReactFlow();
   // The size of the map itself, which is what "off the map" is measured
   // against; React Flow keeps it up to date as the pane resizes.
   const paneWidth = useStore((state) => state.width);
@@ -1147,6 +1245,62 @@ function CanvasFlow({
       void fitView({ nodes: [{ id: nodeId }], maxZoom: 1, duration: 200 });
     },
     [fitView, isOnMap, paneHeight, paneWidth],
+  );
+
+  /**
+   * The Zoom-to-step move: the box shown on its own, never further out than
+   * the map already was — from the whole of case-3 at 0.16 it goes in to 1,
+   * and from 1.5 it stays at 1.5 and centres on the box, because a Step the
+   * Author asked to be taken to is not a reason to give away the reading they
+   * had set up.
+   *
+   * How far in the map was is handed in rather than read here, because the
+   * move is made again on every width the sliding columns pass through: a
+   * ceiling read each time would be read off a fit that had just lowered the
+   * zoom, and each replay would hold the next one further out than the last.
+   *
+   * A box made a moment ago has not been measured yet, and `fitView` on a box
+   * with no dimensions does nothing at all, so the move waits a frame at a
+   * time for React Flow to report the box's size and is made once it has.
+   */
+  const zoomFrame = useRef<number | null>(null);
+  const zoomToStep = useCallback(
+    (nodeId: string, maxZoom: number) => {
+      if (paneWidth === 0 || paneHeight === 0) return;
+      if (zoomFrame.current !== null) {
+        cancelAnimationFrame(zoomFrame.current);
+        zoomFrame.current = null;
+      }
+
+      let framesLeft = MEASURE_FRAMES;
+      function attempt(): void {
+        zoomFrame.current = null;
+
+        const measured = getInternalNode(nodeId)?.measured;
+        if ((measured?.width ?? 0) === 0 || (measured?.height ?? 0) === 0) {
+          framesLeft -= 1;
+          // A box that never arrives — one removed again while this waited —
+          // stops being asked after; nothing moves, which is the right answer
+          // for a box that is not there.
+          if (framesLeft <= 0) return;
+          zoomFrame.current = requestAnimationFrame(attempt);
+          return;
+        }
+
+        void fitView({ nodes: [{ id: nodeId }], maxZoom, duration: 200 });
+      }
+
+      attempt();
+    },
+    [fitView, getInternalNode, paneHeight, paneWidth],
+  );
+
+  // Nothing is left waiting on a frame that would land after the map is gone.
+  useEffect(
+    () => () => {
+      if (zoomFrame.current !== null) cancelAnimationFrame(zoomFrame.current);
+    },
+    [],
   );
 
   // The boxes as they stand, for the arrow keys: a lookup that ran off the
@@ -1226,12 +1380,28 @@ function CanvasFlow({
     canvasRef.current?.focus();
   }, [canvasRef, onSelectArrow]);
 
+  const toggleToolbar = useCallback((stepId: string) => {
+    setToolbar((current) =>
+      current !== null && current.stepId === stepId
+        ? { ...current, expanded: !current.expanded }
+        : current,
+    );
+  }, []);
+
+  const collapseToolbar = useCallback(() => {
+    setToolbar((current) =>
+      current === null ? null : { ...current, expanded: false },
+    );
+  }, []);
+
   const actions = useMemo<CanvasActions>(
     () => ({
       onAddNextStep,
       onDuplicateStep,
       onSetStart,
       onDeleteStep,
+      onToggleToolbar: toggleToolbar,
+      onCollapseToolbar: collapseToolbar,
       onMoveFocus: moveFocus,
       onEscape: escape,
     }),
@@ -1240,40 +1410,39 @@ function CanvasFlow({
       onDuplicateStep,
       onSetStart,
       onDeleteStep,
+      toggleToolbar,
+      collapseToolbar,
       moveFocus,
       escape,
     ],
   );
 
-  const outcomeLegend = useMemo(
-    () =>
-      Object.values(document.outcomes).map((outcome, index) => ({
-        id: outcome.id,
-        index,
-        label: outcome.label,
-        color: OUTCOME_COLORS[index % OUTCOME_COLORS.length],
-      })),
-    [document.outcomes],
-  );
+  /**
+   * What the map was last asked to move for, and when: the whole map, after
+   * the panel slid, or the one box a Step was opened or made on. Which frame
+   * the move has to land in cannot be known when the request arrives — the
+   * columns take 200ms to slide, and React Flow learns each width it passes
+   * through from a ResizeObserver that runs after the layout producing it —
+   * so what is noted here is the moment, and the move is made again on each
+   * resize that follows it.
+   *
+   * A request for one box carries the zoom the Author was reading at when
+   * they asked, so every replay of it is held to the same ceiling.
+   */
+  const viewRequest = useRef<
+    | { at: number; box: null }
+    | { at: number; box: string; maxZoom: number }
+    | null
+  >(null);
 
-  const nodeIdKey = nodes
-    .map((node) => node.id)
-    .sort()
-    .join(" ");
-  const lastNodeIdKey = useRef(nodeIdKey);
-
-  // Opening a Step from "Find step", a problem, or a Choice's target can name
-  // a box that is off the map; the map goes to it. Every opening counts, the
-  // Step already in the panel included — the editor bumps `locate.request`
-  // each time it opens one — so a second choice of the same Step after the
-  // Author has panned away brings the box back rather than doing nothing. A
-  // box already on the map is left where the Author put it, and so is the
-  // rest of the view — except for a Step found by name, which the Author has
-  // gone looking for and is shown in the middle of the map wherever it was.
-  //
-  // Declared before the fit-to-all below so that a render which changed the
-  // set of boxes — a Step added, which is also the Step now open — is still
-  // that one's: this effect sees the older key and stands aside.
+  // Every opening of a Step is answered, the Step already in the panel
+  // included — the editor bumps `locate.request` each time it opens one — so
+  // a second choice of the same Step after the Author has panned away is
+  // answered rather than passed over because the panel never changed. What is
+  // answered is what the opening asked for: nothing at all for a Step opened
+  // in the aftermath of a delete, the box brought onto the map when it is off
+  // it, or the Zoom-to-step move for a Step found by name, one just made, or
+  // one opened onto a map that is about to lose the whole width again.
   const located = useRef<{ stepId: string; request: number } | null>(null);
   useEffect(() => {
     const previous = located.current;
@@ -1288,37 +1457,41 @@ function CanvasFlow({
     ) {
       return;
     }
-    if (lastNodeIdKey.current !== nodeIdKey) return;
+    if (locate.view === "keep") {
+      // An opening that asks for nothing — the Step opened after a delete —
+      // must not be answered by a move asked for before it: a request still
+      // waiting on a resize is let go of rather than left to be replayed.
+      viewRequest.current = null;
+      return;
+    }
     if (paneWidth === 0 || paneHeight === 0) return;
     if (!nodes.some((node) => node.id === selectedStepId)) return;
 
-    if (!locate.center && isOnMap(selectedStepId)) return;
+    if (locate.view === "reveal") {
+      bringOntoMap(selectedStepId);
+      return;
+    }
 
-    void fitView({
-      nodes: [{ id: selectedStepId }],
-      maxZoom: 1,
-      duration: 200,
-    });
+    // The ceiling is the reading the Author had when they asked, taken once
+    // here and held to by every replay of this request.
+    const maxZoom = Math.max(1, getViewport().zoom);
+    viewRequest.current = {
+      at: performance.now(),
+      box: selectedStepId,
+      maxZoom,
+    };
+    zoomToStep(selectedStepId, maxZoom);
   }, [
-    fitView,
-    isOnMap,
-    locate.center,
+    bringOntoMap,
+    getViewport,
     locate.request,
-    nodeIdKey,
+    locate.view,
     nodes,
     paneHeight,
     paneWidth,
     selectedStepId,
+    zoomToStep,
   ]);
-
-  // A Step added or removed changes which boxes there are to see, and a new
-  // one can land off-screen; anything else (a rename, a mark appearing) leaves
-  // the view exactly where the Author put it.
-  useEffect(() => {
-    if (lastNodeIdKey.current === nodeIdKey) return;
-    lastNodeIdKey.current = nodeIdKey;
-    void fitView({ duration: 200 });
-  }, [fitView, nodeIdKey]);
 
   // Turning the map a quarter puts every box somewhere else, so wherever the
   // Author had panned and zoomed to is about a map that no longer exists:
@@ -1331,33 +1504,43 @@ function CanvasFlow({
     void fitView({ duration: 200 });
   }, [fitView, layout.direction]);
 
-  // A map that has just been given the whole width, or had it taken back: the
-  // boxes are where they were, but the frame around them is not, so the whole
-  // map is shown in the frame it now has. Which frame that is cannot be known
-  // when the request arrives — the columns take 200ms to slide, and React Flow
-  // learns each width it passes through from a ResizeObserver that runs after
-  // the layout producing it — so all that happens here is that the moment of
-  // the request is noted.
+  // A map that has just been given the whole width by the Author, or had it
+  // taken back: the boxes are where they were, but the frame around them is
+  // not, so the whole map is shown in the frame it now has. Noted, rather
+  // than done, for the reason `viewRequest` gives.
   const lastFitRequest = useRef(fitRequest);
-  const fitRequestedAt = useRef<number | null>(null);
   useEffect(() => {
     if (lastFitRequest.current === fitRequest) return;
     lastFitRequest.current = fitRequest;
-    fitRequestedAt.current = performance.now();
+    viewRequest.current = { at: performance.now(), box: null };
   }, [fitRequest]);
 
-  // And the fit happens on each resize that follows it: the map is re-fitted
-  // every time the sliding columns hand it a new width, and the last of those
-  // is the width it keeps. With reduced motion the columns jump, so there is
-  // one resize and one fit; on a screen too narrow for the panel to sit beside
-  // the map, putting it away resizes nothing and fits nothing.
+  // And the move happens on each resize that follows the request: the map is
+  // moved every time the sliding columns hand it a new width, and the last of
+  // those is the width it keeps — so a whole-map fit lands on the frame the
+  // map ends up with, and a zoom to one box ends with that box on the map
+  // however far the columns travelled after it was asked for. With reduced
+  // motion the columns jump, so there is one resize and one move; on a screen
+  // too narrow for the panel to sit beside the map, putting it away resizes
+  // nothing and moves nothing. A resize arriving later than the window is
+  // something else — a window dragged wider, a zoom — and the view the Author
+  // has set up is left exactly where they set it.
   useEffect(() => {
-    const requestedAt = fitRequestedAt.current;
-    if (requestedAt === null) return;
-    if (performance.now() - requestedAt > FIT_AFTER_TOGGLE_MS) return;
+    const request = viewRequest.current;
+    if (request === null) return;
+    if (performance.now() - request.at > FIT_AFTER_TOGGLE_MS) {
+      // Whatever this resize is, it is not the columns answering that
+      // request: it is let go of rather than left to answer the next one.
+      viewRequest.current = null;
+      return;
+    }
 
-    void fitView({ duration: 200 });
-  }, [fitView, paneHeight, paneWidth]);
+    if (request.box === null) {
+      void fitView({ duration: 200 });
+      return;
+    }
+    zoomToStep(request.box, request.maxZoom);
+  }, [fitView, paneHeight, paneWidth, zoomToStep]);
 
   // next-themes reads the browser's stored choice, which the server render
   // cannot know: asking before hydration is done would put a different color
@@ -1400,6 +1583,36 @@ function CanvasFlow({
           if (!stepIds.has(source) || !stepIds.has(target)) return;
           onConnectChoice(source, target);
         }}
+        // And a Choice let go of over bare map: there is no Step there to
+        // lead to, so the Step is made where the Author said the Journey
+        // goes next and the Choice with it.
+        //
+        // Only a drag that began on a box's connect dot. React Flow calls
+        // this for a reconnect as well — an arrow's head dragged off starts
+        // its own connection, from the Choice's own anchor — and a head let
+        // go of on nothing leaves its Choice exactly as it was.
+        //
+        // And only a release over the pane: let go over the Controls, the
+        // minimap, or clean outside the map, the Author broke the drag off
+        // rather than pointing it at empty map, and nothing is made.
+        onConnectEnd={(event, connectionState) => {
+          // Noted whatever the drag turned out to mean: the click the browser
+          // sends after it is the drag's, not a box being opened.
+          connectedAt.current = performance.now();
+
+          const { fromHandle, fromNode, toNode } = connectionState;
+          if (fromHandle?.id !== "connect") return;
+          if (fromNode === null || !stepIds.has(fromNode.id)) return;
+          if (toNode !== null) return;
+          if (
+            (event.target as Element | null)?.closest(".react-flow__pane") ==
+            null
+          ) {
+            return;
+          }
+
+          onConnectToNewStep(fromNode.id);
+        }}
         // The head of an arrow dropped on another box. A drop on nothing
         // never gets here, which is what leaves the Choice as it was.
         onReconnect={(oldEdge, connection) => {
@@ -1407,12 +1620,25 @@ function CanvasFlow({
           if (arrow === undefined || !stepIds.has(connection.target)) return;
           onRetargetChoice(arrow.stepId, arrow.choiceId, connection.target);
         }}
-        // Clicking an arrow opens the Choice it draws: the Step it is
-        // written on, with its label in hand.
+        // Clicking an arrow is taking the Choice in hand — opened in the
+        // panel with its row marked; nothing takes the keyboard, and the
+        // page the Author is reading the map on does not move.
         onEdgeClick={(_event, edge) => {
           const arrow = arrows.get(edge.id);
           if (arrow === undefined) return;
-          onSelectStep(arrow.stepId, { focusChoiceId: arrow.choiceId });
+
+          // The keyboard is left on the map the Author is working on, always
+          // — not only when it is about to be lost, because where it is by
+          // the time this runs says nothing about where it is a frame later.
+          // React Flow's arrows are focusable, so the click has already taken
+          // the keyboard off whatever held it and given it to the arrow's own
+          // group, and the group gives it up again as the arrow is redrawn as
+          // the selected one, dropping it on the page behind the map. So the
+          // map takes it, where Escape, the Delete key, and the arrow keys
+          // all are. Nothing is scrolled to do it: the arrow was clicked, so
+          // it is already in front of them.
+          canvasRef.current?.focus({ preventScroll: true });
+          onSelectStep(arrow.stepId, { markChoiceId: arrow.choiceId });
         }}
         // React Flow's own account of what the Author did to the arrows,
         // turned back into the Choices they draw: a click selects one (and a
@@ -1460,14 +1686,33 @@ function CanvasFlow({
           if (removed.length > 0) onRemoveChoices(removed);
         }}
         // A placeholder stands for a Step that is gone, so it may have
-        // nothing to open; a box always does.
+        // nothing to open; a box always does. Clicking a box is also what
+        // puts the moves on it — folded up, and folded up again on the box
+        // whose moves were open when it is clicked a second time. A click
+        // that is only the tail of a Choice just drawn is none of that.
         onNodeClick={(_event, node) => {
+          if (
+            performance.now() - connectedAt.current <
+            CLICK_AFTER_CONNECT_MS
+          ) {
+            return;
+          }
+
           if (node.type === "step") {
+            setToolbar({
+              stepId: node.data.opens,
+              opening: locate.request + 1,
+              expanded: false,
+            });
             onSelectStep(node.data.opens);
             return;
           }
           if (node.data.opens !== null) onSelectStep(node.data.opens);
         }}
+        // A click on bare map is done with the moves, not with the box: they
+        // fold back to the one button, where the next click on that box
+        // starts from.
+        onPaneClick={collapseToolbar}
       >
         <Background />
         <Controls showInteractive={false} />
@@ -1484,44 +1729,6 @@ function CanvasFlow({
               onSetLayoutDirection={onSetLayoutDirection}
             />
           </div>
-        </Panel>
-
-        <Panel position="top-right">
-          {/* role="list" is explicit: the flex layout strips the list marker,
-            and some browsers drop the implicit role with it. Every Outcome
-            gets an entry, in document order, so the colors on the Endings
-            can be read back to what they group. */}
-          <ul
-            role="list"
-            aria-label="Legend"
-            className="flex max-w-80 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-background/90 px-2.5 py-1.5 text-xs text-muted-foreground ring-1 ring-foreground/10"
-          >
-            <li className={LEGEND_ENTRY_CLASS}>
-              <span className={cn(LEGEND_SWATCH_CLASS, "bg-primary")} />
-              Start
-            </li>
-
-            {outcomeLegend.map((outcome) => (
-              <li
-                key={outcome.id}
-                data-outcome-index={outcome.index}
-                data-outcome-id={outcome.id}
-                className={LEGEND_ENTRY_CLASS}
-              >
-                <span
-                  data-outcome-swatch=""
-                  className={LEGEND_SWATCH_CLASS}
-                  style={{ backgroundColor: outcome.color }}
-                />
-                <span className="max-w-32 truncate">{outcome.label}</span>
-              </li>
-            ))}
-
-            <li className={LEGEND_ENTRY_CLASS}>
-              <span className={cn(LEGEND_SWATCH_CLASS, "bg-destructive")} />
-              Problem
-            </li>
-          </ul>
         </Panel>
       </ReactFlow>
     </CanvasActionsContext.Provider>

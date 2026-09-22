@@ -446,6 +446,74 @@ export function removeOutcome(
   return { ok: true, document: { ...document, steps, outcomes } };
 }
 
+/**
+ * The Outcome an Ending carries, set from the Ending itself: the one place an
+ * Author tags one, since ticket 22 took the Outcomes section away.
+ *
+ * Refused — the document handed back untouched — for a Step that is not there,
+ * for a Step that is not an Ending, for an Outcome the Journey does not
+ * define, and for a tag that is already what is being asked for. Otherwise the
+ * Ending takes the tag, and the Outcome it let go of is removed when no Ending
+ * carries it any longer: an Outcome exists for as long as an Ending is grouped
+ * by it, and there is no separate way to remove one.
+ */
+export function setEndingOutcome(
+  document: GraphDocument,
+  stepId: string,
+  outcomeId: string | null,
+): GraphDocument {
+  if (!hasStep(document, stepId)) {
+    return document;
+  }
+
+  const step = document.steps[stepId];
+  if (!isEnding(step)) {
+    return document;
+  }
+  if (outcomeId !== null && !hasOutcome(document, outcomeId)) {
+    return document;
+  }
+  if (step.outcomeId === outcomeId) {
+    return document;
+  }
+
+  const dropped = step.outcomeId;
+  const tagged = updateStep(document, stepId, { outcomeId });
+  if (dropped === null) {
+    return tagged;
+  }
+
+  // Refused while another Ending is still grouped by it, which is exactly the
+  // case where the Outcome has to stay.
+  const pruned = removeOutcome(tagged, dropped);
+  return pruned.ok ? pruned.document : tagged;
+}
+
+/**
+ * The same-motion case for an Outcome the Journey has not defined yet: it is
+ * added and the Ending is tagged with it in one edit, so an Author names an
+ * Outcome from the Ending that needs it rather than defining it somewhere
+ * else first. The Outcome the Ending let go of is dropped and pruned exactly
+ * as `setEndingOutcome` drops one. An unknown Step, or one that is not an
+ * Ending, creates nothing and returns `outcomeId: ""`, the
+ * `addChoiceToNewStep` convention.
+ */
+export function createOutcomeForEnding(
+  document: GraphDocument,
+  stepId: string,
+  label: string,
+): { document: GraphDocument; outcomeId: string } {
+  if (!hasStep(document, stepId) || !isEnding(document.steps[stepId])) {
+    return { document, outcomeId: "" };
+  }
+
+  const created = addOutcome(document, label);
+  return {
+    document: setEndingOutcome(created.document, stepId, created.outcomeId),
+    outcomeId: created.outcomeId,
+  };
+}
+
 /** One count per defined Outcome — zero when none — of the Endings tagged with it. */
 export function endingCountsByOutcome(
   document: GraphDocument,

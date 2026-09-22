@@ -8,16 +8,24 @@
 /**
  * How a Step is opened in the panel. `focusTitle` is for a Step that was just
  * created from a Choice: it opens with its title field focused so the Author
- * names it in the same breath. `focusChoiceId` is the same move one level
- * down — a Choice drawn on the map, or one whose arrow was clicked, opens its
- * Step with that Choice's label field focused. `center` is for a Step opened
- * from "Find step": the map goes to its box and centers on it, rather than
- * leaving a box that is already on the map where it stands.
+ * names it in the same breath. `markChoiceId` names the Choice whose row is
+ * marked as the one in hand — an arrow clicked, or a Choice just drawn — and
+ * moves no focus at all: the Author is working on the map, and the panel says
+ * which Choice that is rather than reaching for the keyboard.
+ *
+ * The other two are about the map rather than the panel, and the view is the
+ * Author's: `zoom` makes the Zoom-to-step move on the opened Step — for a
+ * Step found by name, and for one just made, which is where the Author is now
+ * working — and `keepView` moves nothing at all, for an opening that is the
+ * aftermath of something else, like the Start opened when a Step is deleted.
+ * Neither given, a box already on the map is left where it stands and one off
+ * it is brought on.
  */
 export type SelectStepOptions = {
   focusTitle?: boolean;
-  focusChoiceId?: string;
-  center?: boolean;
+  markChoiceId?: string;
+  zoom?: boolean;
+  keepView?: boolean;
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;

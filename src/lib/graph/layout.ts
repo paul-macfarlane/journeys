@@ -66,7 +66,6 @@ export type CanvasNode = {
   isStart: boolean;
   isEnding: boolean;
   outcomeId: string | null;
-  outcomeIndex: number | null;
   /**
    * For a `step` node, its Choice ids ordered by the centre of the box each
    * Choice targets along the cross axis — x in `"TB"`, y in `"LR"` — the Step
@@ -154,22 +153,6 @@ function offsetInteriorPoints(points: Point[], offset: number): Point[] {
   );
 }
 
-/**
- * Where an Outcome sits among the document's Outcomes, so Endings can be
- * colored by Outcome deterministically. `null` when the Step carries no
- * Outcome, or one that no longer exists.
- */
-function outcomeIndexOf(
-  document: GraphDocument,
-  outcomeId: string | null,
-): number | null {
-  if (outcomeId === null) {
-    return null;
-  }
-  const index = Object.keys(document.outcomes).indexOf(outcomeId);
-  return index === -1 ? null : index;
-}
-
 function stepNode(document: GraphDocument, step: Step): CanvasNode {
   return {
     id: step.id,
@@ -183,7 +166,6 @@ function stepNode(document: GraphDocument, step: Step): CanvasNode {
     isStart: step.id === document.startStepId,
     isEnding: isEnding(step),
     outcomeId: step.outcomeId,
-    outcomeIndex: outcomeIndexOf(document, step.outcomeId),
     sourceAnchors: [],
   };
 }
@@ -201,7 +183,6 @@ function missingNode(targetStepId: string): CanvasNode {
     isStart: false,
     isEnding: false,
     outcomeId: null,
-    outcomeIndex: null,
     sourceAnchors: [],
   };
 }

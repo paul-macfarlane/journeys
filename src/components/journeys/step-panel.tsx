@@ -1,26 +1,31 @@
+import { useCallback, useId, useMemo, useRef, useState } from "react";
+
 import { ChoiceList } from "@/components/journeys/choice-list";
+import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
-import {
-  choiceLabel,
-  SELECT_CLASS,
-  type SelectStep,
-} from "@/components/journeys/editor-shared";
+import { counted, type SelectStep } from "@/components/journeys/editor-shared";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Content } from "@/lib/graph/content";
 import { isEnding, type GraphDocument, type Step } from "@/lib/graph/document";
-import { choicesTargeting, setStart, updateStep } from "@/lib/graph/edit";
+import {
+  createOutcomeForEnding,
+  endingCountsByOutcome,
+  renameOutcome,
+  setEndingOutcome,
+  setStart,
+  updateStep,
+} from "@/lib/graph/edit";
 import type { PublishProblem } from "@/lib/graph/validate";
-import { cn } from "@/lib/utils";
 
 /**
- * One Step, opened for editing: its title, where a participant comes to it
- * from, its rich text, its Choices, the Outcome it carries once it is an
- * Ending, and the two moves that change the shape of the Journey around it —
- * making it the Start and deleting it. The title field is the Step's name on
- * this panel; there is no heading repeating it above.
+ * One Step, opened for editing: its title, its rich text, its Choices, the
+ * Outcome it carries once it is an Ending, and the two moves that change the
+ * shape of the Journey around it — making it the Start and deleting it. The
+ * title field is the Step's name on this panel; there is no heading repeating
+ * it above.
  *
  * The panel can be put away, from the button above the title field, to give
  * the map the whole width; the map itself brings it back. Whether it is away
@@ -28,51 +33,177 @@ import { cn } from "@/lib/utils";
  * and the browser's to remember, never the Journey's.
  */
 
+/** The sentinels the Outcome field uses for "none" and for "make me one". */
+const NO_OUTCOME = "__none__";
+const CREATE_OUTCOME = "__create__";
+
 /**
- * The Choices on other Steps that lead here, each a button back to its Step:
- * the reverse of "Open" on a Choice row, so an Author can walk the Journey
- * in either direction from the panel.
+ * The Outcome an Ending is grouped by, made, chosen, and renamed from the
+ * Ending itself: every Outcome the Journey defines with the Endings it holds,
+ * "No outcome" to let go of one, and — for a label no Outcome answers to yet
+ * — "Create outcome “…”", which defines it and tags this Ending in one edit.
+ * An Outcome the last Ending drops goes with it; there is nothing to remove
+ * by hand.
+ *
+ * "Rename" turns the field into the label itself, which renames the Outcome
+ * for every Ending sharing it: the id never moves, so every Ending keeps its
+ * tag and so does every Run recorded against a Published Version that used it.
  */
-function LeadsHereFrom({
+function OutcomeField({
   document,
   step,
-  isStart,
-  onSelectStep,
+  onChange,
 }: {
   document: GraphDocument;
   step: Step;
-  isStart: boolean;
-  onSelectStep: SelectStep;
+  onChange: (document: GraphDocument) => void;
 }) {
-  const incoming = choicesTargeting(document, step.id);
+  const labelFieldId = useId();
+
+  /** The label being rewritten, or `null` while the field is the combobox. */
+  const [renaming, setRenaming] = useState<string | null>(null);
+  // Escape takes the field away, and a field taken away may or may not report
+  // the focus it lost; this is how the blur that follows knows it was a
+  // cancel rather than the Author clicking away from a rename they meant.
+  const cancelledRef = useRef(false);
+
+  const outcome =
+    step.outcomeId !== null && Object.hasOwn(document.outcomes, step.outcomeId)
+      ? document.outcomes[step.outcomeId]
+      : null;
+
+  // Held still across renders, both of them: the field re-reads its options
+  // whenever this array or this function is a new one, and the Draft changes
+  // under the panel on every keystroke elsewhere in it.
+  const options = useMemo<ComboboxOption[]>(() => {
+    const counts = endingCountsByOutcome(document);
+    return [
+      { id: NO_OUTCOME, name: "No outcome" },
+      ...Object.values(document.outcomes).map((entry) => ({
+        id: entry.id,
+        name: entry.label,
+        render: (
+          <>
+            <span className="text-sm font-medium">{entry.label}</span>
+            <span className="text-muted-foreground text-sm">
+              {counted(counts[entry.id] ?? 0, "ending")}
+            </span>
+          </>
+        ),
+      })),
+    ];
+  }, [document]);
+
+  /**
+   * Offered for a label the Journey has no Outcome for, and only then: two
+   * labels differing in their spacing or their case are the same label to an
+   * Author, so neither is a reason to offer them a second Outcome.
+   */
+  const createOption = useCallback(
+    (query: string): ComboboxOption | null => {
+      const label = query.trim();
+      if (label.length === 0) return null;
+      if (
+        Object.values(document.outcomes).some(
+          (entry) => entry.label.trim().toLowerCase() === label.toLowerCase(),
+        )
+      ) {
+        return null;
+      }
+
+      return { id: CREATE_OUTCOME, name: `Create outcome “${label}”` };
+    },
+    [document],
+  );
+
+  function choose(outcomeId: string, query: string) {
+    if (outcomeId === CREATE_OUTCOME) {
+      onChange(createOutcomeForEnding(document, step.id, query).document);
+      return;
+    }
+
+    onChange(
+      setEndingOutcome(
+        document,
+        step.id,
+        outcomeId === NO_OUTCOME ? null : outcomeId,
+      ),
+    );
+  }
+
+  function commitRename() {
+    if (outcome === null || renaming === null) return;
+
+    // An Outcome with nothing for a label is no Outcome an Author can read
+    // off an Ending, so a field cleared and committed is a rename let go of
+    // rather than a label taken away: the Outcome keeps the one it had.
+    const label = renaming.trim();
+    setRenaming(null);
+    if (label.length === 0) return;
+
+    onChange(renameOutcome(document, outcome.id, label));
+  }
+
+  if (renaming !== null && outcome !== null) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={labelFieldId}>Outcome label</Label>
+        <Input
+          id={labelFieldId}
+          autoComplete="off"
+          autoFocus
+          className="w-64"
+          value={renaming}
+          onChange={(event) => setRenaming(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commitRename();
+              return;
+            }
+            if (event.key === "Escape") {
+              cancelledRef.current = true;
+              setRenaming(null);
+            }
+          }}
+          onBlur={() => {
+            if (cancelledRef.current) {
+              cancelledRef.current = false;
+              return;
+            }
+            commitRename();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div
-      aria-label="Leads here from"
-      role="group"
-      className="flex flex-wrap items-center gap-2 text-sm"
-    >
-      <span className="text-muted-foreground">Leads here from</span>
-      {isStart ? (
-        <span className="text-muted-foreground">
-          the beginning — participants start here
-        </span>
-      ) : null}
-      {!isStart && incoming.length === 0 ? (
-        <span className="text-muted-foreground">
-          nothing yet — no choice points at this step
-        </span>
-      ) : null}
-      {incoming.map((entry) => (
+    <div className="flex flex-wrap items-end gap-2">
+      <Combobox
+        label="Outcome"
+        listLabel="Outcomes"
+        emptyMessage="No outcomes match"
+        className="w-64"
+        options={options}
+        action={createOption}
+        value={outcome?.label ?? "No outcome"}
+        onChoose={choose}
+      />
+
+      {/* Only while there is a label to rewrite. */}
+      {outcome !== null ? (
         <Button
-          key={entry.choice.id}
           variant="outline"
           size="sm"
-          onClick={() => onSelectStep(entry.stepId)}
+          onClick={() => {
+            cancelledRef.current = false;
+            setRenaming(outcome.label);
+          }}
         >
-          {`${choiceLabel(entry.choice.label)} on ${entry.stepTitle}`}
+          Rename
         </Button>
-      ))}
+      ) : null}
     </div>
   );
 }
@@ -80,12 +211,12 @@ function LeadsHereFrom({
 export function StepPanel({
   document,
   step,
+  order,
   problems,
   choiceProblems,
   revision,
   focusTitle,
-  focusChoiceId,
-  focusChoiceRequest,
+  markedChoiceId,
   onChange,
   onSelectStep,
   onContentChange,
@@ -96,6 +227,8 @@ export function StepPanel({
 }: {
   document: GraphDocument;
   step: Step;
+  /** Step ids in the order the map lays the boxes out, for the Choice rows. */
+  order: string[];
   /** The live publish problems addressed to this Step. */
   problems: PublishProblem[];
   /** This Step's own Choices' live publish problems, keyed by Choice id. */
@@ -104,10 +237,8 @@ export function StepPanel({
   revision: number;
   /** True when this Step was just created from a Choice and wants a name. */
   focusTitle: boolean;
-  /** A Choice on this Step whose label field is being asked for. */
-  focusChoiceId: string | null;
-  /** Bumped each time that was asked for, so asking twice focuses twice. */
-  focusChoiceRequest: number;
+  /** A Choice on this Step that is the one in hand on the map, if any. */
+  markedChoiceId: string | null;
   onChange: (document: GraphDocument) => void;
   onSelectStep: SelectStep;
   onContentChange: (stepId: string, content: Content) => void;
@@ -151,13 +282,6 @@ export function StepPanel({
         />
       </div>
 
-      <LeadsHereFrom
-        document={document}
-        step={step}
-        isStart={isStart}
-        onSelectStep={onSelectStep}
-      />
-
       {problems.length > 0 ? (
         <section
           aria-label="Step problems"
@@ -192,40 +316,24 @@ export function StepPanel({
         key={`choices-${step.id}`}
         document={document}
         step={step}
+        order={order}
         choiceProblems={choiceProblems}
-        focusChoiceId={focusChoiceId}
-        focusChoiceRequest={focusChoiceRequest}
+        markedChoiceId={markedChoiceId}
         onChange={onChange}
         onSelectStep={onSelectStep}
       />
 
       {/* Only an Ending carries an Outcome; a Step a participant can walk on
-          from has nothing to be grouped by yet. */}
+          from has nothing to be grouped by yet. Keyed by Step for the same
+          reason the Choices are: a rename begun on one Ending is that
+          Ending's, not the next one's. */}
       {isEnding(step) ? (
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="step-outcome">Outcome</Label>
-          <select
-            id="step-outcome"
-            aria-label="Outcome"
-            className={cn(SELECT_CLASS, "w-64")}
-            value={step.outcomeId ?? ""}
-            onChange={(event) =>
-              onChange(
-                updateStep(document, step.id, {
-                  outcomeId:
-                    event.target.value === "" ? null : event.target.value,
-                }),
-              )
-            }
-          >
-            <option value="">No outcome</option>
-            {Object.values(document.outcomes).map((outcome) => (
-              <option key={outcome.id} value={outcome.id}>
-                {outcome.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <OutcomeField
+          key={`outcome-${step.id}`}
+          document={document}
+          step={step}
+          onChange={onChange}
+        />
       ) : null}
 
       {/* The moves that change the Journey's shape around this Step —
