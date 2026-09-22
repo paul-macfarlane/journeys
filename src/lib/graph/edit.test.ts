@@ -18,6 +18,7 @@ import {
   setEndingOutcome,
   setLayoutDirection,
   setStart,
+  setStepPrompt,
   stepName,
   updateChoice,
   updateStep,
@@ -929,5 +930,53 @@ describe("createOutcomeForEnding", () => {
 
     expect(result.document).toBe(document);
     expect(result.outcomeId).toBe("");
+  });
+});
+
+describe("setStepPrompt", () => {
+  const base = buildDocument();
+
+  it("attaches a free-text Prompt to a Step", () => {
+    const before = structuredClone(base);
+    const next = setStepPrompt(base, "start", {
+      label: "How do you feel?",
+      required: true,
+    });
+
+    expect(next.steps.start.prompt).toEqual({
+      type: "free_text",
+      label: "How do you feel?",
+      required: true,
+    });
+    expect(base).toEqual(before);
+  });
+
+  it("keeps the label as typed, spaces and all, while it is not blank", () => {
+    const next = setStepPrompt(base, "start", {
+      label: " How do you feel? ",
+      required: false,
+    });
+    expect(next.steps.start.prompt?.label).toBe(" How do you feel? ");
+  });
+
+  it("removes the Prompt when the label is blank", () => {
+    const prompted = setStepPrompt(base, "start", {
+      label: "How do you feel?",
+      required: true,
+    });
+    expect(
+      setStepPrompt(prompted, "start", { label: "", required: true }).steps
+        .start.prompt,
+    ).toBeNull();
+    expect(
+      setStepPrompt(prompted, "start", { label: "  \n", required: true }).steps
+        .start.prompt,
+    ).toBeNull();
+  });
+
+  it("returns the document unchanged for an unknown Step", () => {
+    expect(
+      setStepPrompt(base, "missing", { label: "x", required: false }),
+    ).toBe(base);
   });
 });

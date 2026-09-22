@@ -104,11 +104,11 @@ export function duplicateStep(
   };
 }
 
-/** Patches a Step's title, content, or outcome tag. */
+/** Patches a Step's title, content, Prompt, or outcome tag. */
 export function updateStep(
   document: GraphDocument,
   stepId: string,
-  patch: Partial<Pick<Step, "title" | "content" | "outcomeId">>,
+  patch: Partial<Pick<Step, "title" | "content" | "prompt" | "outcomeId">>,
 ): GraphDocument {
   if (!hasStep(document, stepId)) {
     return document;
@@ -119,6 +119,29 @@ export function updateStep(
     ...document,
     steps: { ...document.steps, [stepId]: { ...step, ...patch } },
   };
+}
+
+/**
+ * Attaches a free-text Prompt to a Step, or takes it away. A Prompt with
+ * nothing to ask is no Prompt: a blank label removes it, which is how the
+ * panel's one field means both "ask this" and "ask nothing". The label is
+ * otherwise kept as typed — trimming it under an Author's cursor would move
+ * the cursor — and the runner shows it as it is.
+ */
+export function setStepPrompt(
+  document: GraphDocument,
+  stepId: string,
+  prompt: { label: string; required: boolean },
+): GraphDocument {
+  if (!hasStep(document, stepId)) {
+    return document;
+  }
+
+  const next =
+    prompt.label.trim().length === 0
+      ? null
+      : { type: "free_text" as const, ...prompt };
+  return updateStep(document, stepId, { prompt: next });
 }
 
 /** Sets the Journey's layout direction, the same object back when it is already set. */
