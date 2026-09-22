@@ -8,6 +8,7 @@ import { cache } from "react";
 
 import { db } from "@/db";
 import { member, project } from "@/db/schema";
+import { contentSchema, type Content } from "@/lib/graph/content";
 
 /**
  * Data access for Projects. Their Members live in `@/db/members`; only the
@@ -23,25 +24,46 @@ import { member, project } from "@/db/schema";
 export type ProjectSummary = {
   id: string;
   title: string;
-  description: string;
+  /** Rich text, the same closed shape a Step's content has (ticket 07). */
+  description: Content;
 };
 
 const projectColumns = {
   id: project.id,
   title: project.title,
-  description: project.description,
+  descriptionContent: project.descriptionContent,
 };
+
+/**
+ * The description is parsed with `contentSchema` on the way out, as
+ * `@/db/versions` parses a document: what reached storage went through
+ * `sanitizeContent` (or migration 0007's backfill), so a row that does not
+ * parse is a bug worth failing loudly on rather than rendering.
+ */
+function toSummary(row: {
+  id: string;
+  title: string;
+  descriptionContent: unknown;
+}): ProjectSummary {
+  return {
+    id: row.id,
+    title: row.title,
+    description: contentSchema.parse(row.descriptionContent),
+  };
+}
 
 /** Every Project the Author is a Member of, newest first. */
 export async function listProjectsForAuthor(
   userId: string,
 ): Promise<ProjectSummary[]> {
-  return db
+  const rows = await db
     .select(projectColumns)
     .from(project)
     .innerJoin(member, eq(member.projectId, project.id))
     .where(eq(member.userId, userId))
     .orderBy(desc(project.createdAt));
+
+  return rows.map(toSummary);
 }
 
 /**
@@ -55,13 +77,15 @@ export async function listRecentProjectsForAuthor(
   userId: string,
   limit: number,
 ): Promise<ProjectSummary[]> {
-  return db
+  const rows = await db
     .select(projectColumns)
     .from(project)
     .innerJoin(member, eq(member.projectId, project.id))
     .where(eq(member.userId, userId))
     .orderBy(desc(project.updatedAt), desc(project.createdAt), desc(project.id))
     .limit(limit);
+
+  return rows.map(toSummary);
 }
 
 /**
@@ -81,7 +105,7 @@ export async function createProject(
 
     await tx.insert(member).values({ projectId: created.id, userId });
 
-    return created;
+    return toSummary(created);
   });
 }
 
@@ -104,33 +128,77 @@ export const getProjectForMember = cache(
       .where(and(eq(project.id, projectId), eq(member.userId, userId)))
       .limit(1);
 
-    return row ?? null;
+    return row ? toSummary(row) : null;
   },
 );
 
 /**
- * Edits a Project's title and description. Its id — and so its URL — is
- * untouched. Returns null when the Author is not a Member of `projectId`.
+ * What an anonymous Participant may see of a Project by id: its title and
+ * its description, for the public Project page at `/p/<id>` (ticket 07).
+ * The one read here that checks no membership — every Project has a public
+ * page, and a Participant only ever needs the link. Null for an unknown id,
+ * which the page answers with a 404. Its Journeys are
+ * `listPublicJourneysForProject` in `@/db/journeys`.
+ *
+ * Request-scoped `cache()` because the page and its `generateMetadata` ask
+ * for the same Project in the same render.
  */
-export async function editProject(
+export const getPublicProject = cache(
+  async (projectId: string): Promise<ProjectSummary | null> => {
+    const [row] = await db
+      .select(projectColumns)
+      .from(project)
+      .where(eq(project.id, projectId))
+      .limit(1);
+
+    return row ? toSummary(row) : null;
+  },
+);
+
+/**
+ * The one write shape every Settings-tab edit has: the Member check, the
+ * update stamped with `updatedAt` (which is what moves the Project up the
+ * navbar's switcher), and the row read back. Null when the Author is not a
+ * Member of `projectId`.
+ */
+async function updateProjectForMember(
   projectId: string,
-  input: { title: string; description: string },
   userId: string,
+  changes: Partial<{ title: string; descriptionContent: Content }>,
 ): Promise<ProjectSummary | null> {
   const existing = await getProjectForMember(projectId, userId);
   if (!existing) return null;
 
   const [updated] = await db
     .update(project)
-    .set({
-      title: input.title,
-      description: input.description,
-      updatedAt: new Date(),
-    })
+    .set({ ...changes, updatedAt: new Date() })
     .where(eq(project.id, existing.id))
     .returning(projectColumns);
 
-  return updated ?? null;
+  return updated ? toSummary(updated) : null;
+}
+
+/** Renames a Project. Its id — and so its URL — is untouched. */
+export function renameProject(
+  projectId: string,
+  input: { title: string },
+  userId: string,
+): Promise<ProjectSummary | null> {
+  return updateProjectForMember(projectId, userId, { title: input.title });
+}
+
+/**
+ * Replaces a Project's rich-text description. The caller has already put
+ * `description` through `sanitizeContent`; this stores what it was given.
+ */
+export function editProjectDescription(
+  projectId: string,
+  description: Content,
+  userId: string,
+): Promise<ProjectSummary | null> {
+  return updateProjectForMember(projectId, userId, {
+    descriptionContent: description,
+  });
 }
 
 /**

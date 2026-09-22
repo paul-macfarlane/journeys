@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 const noSubscription = () => () => {};
 
 /**
- * The address a Participant walks a Journey at, copied in one click. Shown
- * only while a Published Version is live, because before then the address
- * leads nowhere. The whole URL is in the button's tooltip too, for anyone
- * who would rather select it by hand.
+ * A public address copied in one click: the one a Participant walks a
+ * Journey at (`/j/<id>`, shown only while a Published Version is live,
+ * because before then the address leads nowhere) or opens a Project at
+ * (`/p/<id>`, ticket 07, which every Project has). The whole URL is in the
+ * button's tooltip too, for anyone who would rather select it by hand.
  */
-export function CopyLinkButton({ journeyId }: { journeyId: string }) {
+export function CopyLinkButton({ path }: { path: string }) {
   // The origin is the browser's to know, so the address is built there:
   // null on the server and through hydration, the real one after.
   const origin = useSyncExternalStore(
@@ -22,7 +23,7 @@ export function CopyLinkButton({ journeyId }: { journeyId: string }) {
     () => window.location.origin,
     () => null,
   );
-  const href = origin === null ? null : `${origin}/j/${journeyId}`;
+  const href = origin === null ? null : `${origin}${path}`;
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {

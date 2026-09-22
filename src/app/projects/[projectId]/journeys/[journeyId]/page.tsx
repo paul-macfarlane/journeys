@@ -102,7 +102,7 @@ export default async function JourneyPage({
                     Unpublished changes
                   </span>
                 ) : null}
-                <CopyLinkButton journeyId={journey.id} />
+                <CopyLinkButton path={`/j/${journey.id}`} />
                 <UnpublishButton projectId={projectId} journeyId={journey.id} />
               </>
             ) : null}

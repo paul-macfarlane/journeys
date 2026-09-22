@@ -152,10 +152,26 @@ test("project-rename", async ({ page, context }) => {
   await titleField.press("Enter");
   await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
 
+  // The description is rich text since ticket 07, written in the same
+  // editor a Step's content is; its opening shows under the title.
   const descriptionField = page.getByLabel("Description", { exact: true });
-  await descriptionField.fill(description);
+  await descriptionField.click();
+  await page.keyboard.type(description);
   await descriptionField.blur();
-  await expect(page.getByText(description)).toBeVisible();
+  // Leaving the editor is the save; the row says when it has landed, and
+  // the heading above the tabs then shows the description's opening.
+  await expect
+    .poll(async () => {
+      const [row] = await queryE2eDatabase<{ text: string | null }>(
+        `SELECT description_content #>> '{content,0,content,0,text}' AS text FROM "project" WHERE id = $1`,
+        [projectId],
+      );
+      return row?.text;
+    })
+    .toBe(description);
+  await expect(
+    page.locator("main header").getByText(description, { exact: true }),
+  ).toBeVisible();
 
   // Stored, not only shown: a reload reads both back, and lands on the
   // Settings tab the address names.
@@ -170,7 +186,7 @@ test("project-rename", async ({ page, context }) => {
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
     renamedTitle,
   );
-  await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Description", { exact: true })).toHaveText(
     description,
   );
 

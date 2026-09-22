@@ -4,9 +4,10 @@ import { JourneysMark, LegalLinks } from "@/components/brand";
 
 /**
  * The shell every participant screen sits in — the Start Step, each later
- * Step, the unavailable screen — and, since ticket 27, every Preview screen
- * too, so the two surfaces cannot drift: what differs between walking a
- * Draft and walking a live Journey is a banner, never the frame.
+ * Step, the unavailable screen, and since ticket 07 the public Project page
+ * — and, since ticket 27, every Preview screen too, so the surfaces cannot
+ * drift: what differs between walking a Draft and walking a live Journey is
+ * a banner, never the frame.
  *
  * The Journey's title is the frame's header, on every screen that has a
  * Journey to name; a Participant is never inside a Journey without seeing

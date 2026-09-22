@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   contentPreview,
   contentSchema,
+  isBlankContent,
   PREVIEW_LIMIT,
   sanitizeContent,
   type Content,
@@ -671,5 +672,73 @@ describe("contentPreview", () => {
     expect(contentPreview(sentence("The lamp room is dark"), 10)).toBe(
       "The lamp r…",
     );
+  });
+});
+
+describe("isBlankContent", () => {
+  it("is blank with no blocks at all, which is what a new Project holds", () => {
+    expect(isBlankContent({ type: "doc", content: [] })).toBe(true);
+  });
+
+  it("is blank when every block is empty or whitespace", () => {
+    expect(
+      isBlankContent(
+        contentOf(
+          { type: "paragraph" },
+          { type: "heading", attrs: { level: 2 } },
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "   " }],
+          },
+          {
+            type: "bulletList",
+            content: [{ type: "listItem" }, { type: "listItem", content: [] }],
+          },
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("is not blank once there is a word anywhere, even inside a list", () => {
+    expect(isBlankContent(sentence("Oil"))).toBe(false);
+    expect(
+      isBlankContent(
+        contentOf({
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "orderedList",
+                  content: [
+                    {
+                      type: "listItem",
+                      content: [
+                        {
+                          type: "paragraph",
+                          content: [{ type: "text", text: "Wick" }],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("is not blank with an image, which has no words to preview", () => {
+    expect(
+      isBlankContent(
+        contentOf({
+          type: "image",
+          attrs: { src: "https://example.com/a.png", alt: "", caption: "" },
+        }),
+      ),
+    ).toBe(false);
   });
 });
