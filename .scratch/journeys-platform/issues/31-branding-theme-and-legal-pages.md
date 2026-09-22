@@ -54,3 +54,7 @@ PR: https://github.com/paul-macfarlane/journeys/pull/36 (base `staging`, compari
 **Queued for Paul (non-blocking, also on the PR).** (1) Contact email on both legal pages is his Gmail (`CONTACT_EMAIL`, one edit). (2) No governing jurisdiction and no named operator in the terms; add if wanted. (3) Consent-screen update after merge, then a confirmation comment.
 
 **Next in Paul's order:** 23 undo/redo; 17 post-hackathon.
+
+### [CLOSEOUT] amendment 2026-09-22 — Claude Fable 5.1
+
+Paul approved the `/privacy` and `/terms` text in conversation on 2026-09-22 ("the legal stuff is approved"), keeping the contact address and the wording as delivered; the legal-text criterion is therefore PASS (approval recorded here rather than as a PR comment). The consent-screen criterion remains the one open human gate, actionable after PR #36 merges. Paul also asked that any further tweaks be opened as a separate ticket.
