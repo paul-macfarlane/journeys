@@ -6,9 +6,7 @@ import {
   Controls,
   Handle,
   MarkerType,
-  MiniMap,
   NodeToolbar,
-  Panel,
   Position,
   ReactFlow,
   ReactFlowProvider,
@@ -36,6 +34,7 @@ import {
   useSyncExternalStore,
   type HTMLAttributes,
   type KeyboardEvent,
+  type ReactNode,
   type RefObject,
 } from "react";
 
@@ -54,6 +53,7 @@ import type {
   Step,
 } from "@/lib/graph/document";
 import {
+  EDGE_LABEL_MAX_WIDTH,
   NODE_HEIGHT,
   NODE_WIDTH,
   problemsByAddress,
@@ -407,12 +407,24 @@ function selfLoopRoute(
   ];
 }
 
+/** How tall the label on an arrow is drawn, in flow units. */
+const EDGE_LABEL_HEIGHT = 24;
+
 /**
  * One Choice's arrow, drawn along dagre's route: out of the anchor React Flow
  * put the Choice on, through the interior of the route dagre laid, into the
  * side of the box it leads to that faces back the way it came. A loop is the
  * one arrow dagre does not route usefully, so it is routed here instead. The
  * opacity is on a group so the arrowhead and the label dim with the line.
+ *
+ * The label sits halfway along the arrow, cut short with an ellipsis past
+ * `EDGE_LABEL_MAX_WIDTH` so a long Choice fits the gap between its boxes
+ * rather than running over them; the whole text is in the DOM under the
+ * ellipsis, is the arrow's `<title>`, and is in its accessible name (React
+ * Flow's `aria-label` on the wrapper) — and the panel's row has it in full.
+ * A `<foreignObject>` rather than React Flow's own `<text>` label because
+ * SVG text has no ellipsis, and it stays inside the group so it dims and
+ * scales with the arrow.
  */
 function ChoiceEdge({
   source,
@@ -449,14 +461,29 @@ function ChoiceEdge({
       data-emphasis-group=""
       opacity={data?.emphasis === "dimmed" ? DIMMED_OPACITY : 1}
     >
-      <BaseEdge
-        path={smoothPath(points)}
-        style={style}
-        markerEnd={markerEnd}
-        label={label}
-        labelX={middle.x}
-        labelY={middle.y}
-      />
+      {typeof label === "string" ? <title>{label}</title> : null}
+      <BaseEdge path={smoothPath(points)} style={style} markerEnd={markerEnd} />
+      {typeof label === "string" ? (
+        <foreignObject
+          x={middle.x - EDGE_LABEL_MAX_WIDTH / 2}
+          y={middle.y - EDGE_LABEL_HEIGHT / 2}
+          width={EDGE_LABEL_MAX_WIDTH}
+          height={EDGE_LABEL_HEIGHT}
+          // Only the chip takes the pointer, as React Flow's own label does:
+          // a click on it bubbles to the arrow and selects it, and the rest
+          // of the box is nothing, so it never covers a box or another arrow.
+          className="pointer-events-none overflow-visible"
+        >
+          <div className="flex h-full w-full items-center justify-center">
+            <span
+              data-edge-label=""
+              className="pointer-events-auto max-w-full cursor-pointer truncate rounded bg-background px-1 text-xs"
+            >
+              {label}
+            </span>
+          </div>
+        </foreignObject>
+      ) : null}
     </g>
   );
 }
@@ -620,12 +647,15 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
             >
               Make this the start
             </Button>
-            <DeleteStepDialog
-              document={data.document}
-              step={data.step}
-              isStart={data.isStart}
-              onDeleteStep={actions.onDeleteStep}
-            />
+            {/* The Start cannot be deleted while it is the Start, so it is
+                not offered a delete that would only refuse. */}
+            {data.isStart ? null : (
+              <DeleteStepDialog
+                document={data.document}
+                step={data.step}
+                onDeleteStep={actions.onDeleteStep}
+              />
+            )}
           </div>
         ) : null}
       </NodeToolbar>
@@ -931,6 +961,12 @@ export type JourneyCanvasProps = {
   problems: PublishProblem[];
   /** The one arrow the Author has clicked, if any. */
   selectedArrow: CanvasArrow | null;
+  /**
+   * "Find step", the editor's, rendered first in the row of controls above
+   * the map: the way around the Draft by name belongs beside the way around
+   * it by shape.
+   */
+  findStep: ReactNode;
   onSelectStep: SelectStep;
   onAddStep: () => void;
   /** Which way the map is asked to run, from the control beside "Add step". */
@@ -988,8 +1024,6 @@ function CanvasFlow({
   fitRequest,
   canvasRef,
   onSelectStep,
-  onAddStep,
-  onSetLayoutDirection,
   onAddNextStep,
   onDuplicateStep,
   onSetStart,
@@ -1575,7 +1609,11 @@ function CanvasFlow({
         elementsSelectable
         deleteKeyCode={DELETE_KEYS}
         fitView
-        minZoom={0.1}
+        // Low enough that the whole of a real-sized Journey fits the map:
+        // case-3 running left to right, with its ranks spread for labels,
+        // needs just under a tenth, and a fit held above what the map needs
+        // leaves boxes off the edge of it.
+        minZoom={0.05}
         isValidConnection={(connection) => stepIds.has(connection.target)}
         // A Choice made where the Author drew it: from the Step the drag
         // left, to the Step it landed on, with its label still to write.
@@ -1592,9 +1630,9 @@ function CanvasFlow({
         // its own connection, from the Choice's own anchor — and a head let
         // go of on nothing leaves its Choice exactly as it was.
         //
-        // And only a release over the pane: let go over the Controls, the
-        // minimap, or clean outside the map, the Author broke the drag off
-        // rather than pointing it at empty map, and nothing is made.
+        // And only a release over the pane: let go over the Controls or
+        // clean outside the map, the Author broke the drag off rather than
+        // pointing it at empty map, and nothing is made.
         onConnectEnd={(event, connectionState) => {
           // Noted whatever the drag turned out to mean: the click the browser
           // sends after it is the drag's, not a box being opened.
@@ -1716,20 +1754,6 @@ function CanvasFlow({
       >
         <Background />
         <Controls showInteractive={false} />
-        <MiniMap pannable zoomable />
-
-        <Panel position="top-left">
-          <div className="flex flex-wrap items-center gap-1">
-            <Button variant="outline" size="sm" onClick={onAddStep}>
-              Add step
-            </Button>
-
-            <DirectionControl
-              direction={layout.direction}
-              onSetLayoutDirection={onSetLayoutDirection}
-            />
-          </div>
-        </Panel>
       </ReactFlow>
     </CanvasActionsContext.Provider>
   );
@@ -1760,24 +1784,49 @@ export function JourneyCanvas(props: JourneyCanvasProps) {
       // height is legibility at fit-to-view. Escape on a box lands the
       // keyboard here, and the focus ring is what shows the Author where it
       // went — the quiet ring at rest, the heavier one while it holds focus.
-      className="relative h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10 focus-visible:ring-4 focus-visible:ring-ring"
+      // Not `overflow-hidden`: "Find step" opens its list over the map from
+      // the row above it, and the map below clips itself.
+      className="flex h-[70vh] min-h-[36rem] flex-col rounded-xl ring-1 ring-foreground/10 outline-none focus-visible:ring-4 focus-visible:ring-ring"
     >
-      <ReactFlowProvider>
-        <CanvasFlow {...props} canvasRef={canvasRef} />
-      </ReactFlowProvider>
+      {/* The controls that are always there — the way around the Draft by
+          name, "Add step", which way the map runs, and the way back to a
+          panel that is away — in a row of their own above the map, in normal
+          flow, so nothing on the map (a box's moves, an arrow, a peek) is
+          ever drawn over them or under them, and they stay put however the
+          map is panned or zoomed. The map's height is what is left. */}
+      {/* `role="group"`, not `role="toolbar"`, for the reason the box's
+          moves give: a toolbar promises roving tabindex, and these are
+          ordinary tab stops. */}
+      <div
+        role="group"
+        aria-label="Map controls"
+        className="flex flex-wrap items-center gap-2 border-b border-foreground/10 px-3 py-2"
+      >
+        <div className="min-w-0 flex-1 basis-56">{props.findStep}</div>
 
-      {/* The way back to a panel that is away, on the edge of the map the
-          panel sits against — and nothing at all while it is there. */}
-      {props.panelShown ? null : (
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute right-2 top-1/2 z-10 -translate-y-1/2"
-          onClick={props.onShowPanel}
-        >
-          Show panel
+        <Button variant="outline" size="sm" onClick={props.onAddStep}>
+          Add step
         </Button>
-      )}
+
+        <DirectionControl
+          direction={props.layout.direction}
+          onSetLayoutDirection={props.onSetLayoutDirection}
+        />
+
+        {/* The way back to a panel that is away, at the end of the row that
+            the panel sits against — and nothing at all while it is there. */}
+        {props.panelShown ? null : (
+          <Button variant="outline" size="sm" onClick={props.onShowPanel}>
+            Show panel
+          </Button>
+        )}
+      </div>
+
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl">
+        <ReactFlowProvider>
+          <CanvasFlow {...props} canvasRef={canvasRef} />
+        </ReactFlowProvider>
+      </div>
     </section>
   );
 }

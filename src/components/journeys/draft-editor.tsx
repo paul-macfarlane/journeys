@@ -876,40 +876,40 @@ export function DraftEditor({
             : "lg:grid-cols-[minmax(0,1fr)_minmax(0,0rem)] lg:gap-0",
         )}
       >
-        <div className="flex flex-col gap-6">
-          {/* Above the map, because what it finds is on the map. */}
-          <FindStep
-            document={document}
-            order={stepOrder}
-            focusRequest={findFocusRequest}
-            onSelectStep={selectStep}
-          />
-
-          <JourneyCanvas
-            document={document}
-            layout={layout}
-            selectedStepId={selectedStep?.id ?? ""}
-            locate={locate}
-            problems={liveProblems}
-            onSelectStep={selectStep}
-            onAddStep={addNewStep}
-            onSetLayoutDirection={setDirection}
-            panelShown={panelShown}
-            fitRequest={fitRequest}
-            onShowPanel={showPanel}
-            onHidePanel={hidePanel}
-            onAddNextStep={addNextStep}
-            onDuplicateStep={duplicate}
-            onSetStart={makeStart}
-            onDeleteStep={removeStep}
-            onConnectChoice={connectSteps}
-            onConnectToNewStep={connectToNewStep}
-            onRetargetChoice={retargetChoice}
-            selectedArrow={selectedArrow}
-            onSelectArrow={setArrowSelection}
-            onRemoveChoices={removeChoices}
-          />
-        </div>
+        <JourneyCanvas
+          document={document}
+          layout={layout}
+          selectedStepId={selectedStep?.id ?? ""}
+          locate={locate}
+          problems={liveProblems}
+          // In the row of controls above the map, because what it finds is
+          // on the map.
+          findStep={
+            <FindStep
+              document={document}
+              order={stepOrder}
+              focusRequest={findFocusRequest}
+              onSelectStep={selectStep}
+            />
+          }
+          onSelectStep={selectStep}
+          onAddStep={addNewStep}
+          onSetLayoutDirection={setDirection}
+          panelShown={panelShown}
+          fitRequest={fitRequest}
+          onShowPanel={showPanel}
+          onHidePanel={hidePanel}
+          onAddNextStep={addNextStep}
+          onDuplicateStep={duplicate}
+          onSetStart={makeStart}
+          onDeleteStep={removeStep}
+          onConnectChoice={connectSteps}
+          onConnectToNewStep={connectToNewStep}
+          onRetargetChoice={retargetChoice}
+          selectedArrow={selectedArrow}
+          onSelectArrow={setArrowSelection}
+          onRemoveChoices={removeChoices}
+        />
 
         {/* Nothing of a panel that is away is left behind to be tabbed into
             or read out: the column closes over it and it is not rendered. */}

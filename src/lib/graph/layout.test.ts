@@ -9,7 +9,13 @@ import type {
 import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import type { CanvasNode } from "@/lib/graph/layout";
-import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
+import {
+  EDGE_LABEL_MAX_WIDTH,
+  LR_RANK_SEPARATION,
+  layoutGraph,
+  mapOrder,
+  problemsByAddress,
+} from "@/lib/graph/layout";
 import { validateForPublish } from "@/lib/graph/validate";
 
 import case3 from "../../../scripts/seed/journey-stories/case-3.json";
@@ -434,6 +440,226 @@ describe("layoutGraph direction", () => {
   it("carries the document's layoutDirection through as the layout's own direction", () => {
     expect(layoutGraph(buildGeneratedDocument("LR")).direction).toBe("LR");
     expect(layoutGraph(buildGeneratedDocument("TB")).direction).toBe("TB");
+  });
+});
+
+describe("layoutGraph Choice order", () => {
+  /**
+   * Ticket 25: the boxes a Step's Choices lead to sit in Choice order across
+   * the map — leftmost first top to bottom, topmost first left to right —
+   * so the map reads the same way round as the panel's Choice list. The `z`
+   * Step below skews dagre's own ordering phase so that, left to dagre, the
+   * three targets land in a different order than the Choices list them.
+   */
+  function threeWayBranch(layoutDirection: LayoutDirection): GraphDocument {
+    return {
+      schemaVersion: 1,
+      startStepId: "s",
+      allowBack: true,
+      steps: byId([
+        step("s", [
+          choice("s-to-t1", "Go to T1", "t1"),
+          choice("s-to-t2", "Go to T2", "t2"),
+          choice("s-to-t3", "Go to T3", "t3"),
+        ]),
+        step("t1", []),
+        step("t2", []),
+        step("t3", []),
+        step("z", [
+          choice("z-to-t3", "Go to T3", "t3"),
+          choice("z-to-t1", "Go to T1", "t1"),
+        ]),
+      ]),
+      outcomes: {},
+      layoutDirection,
+    };
+  }
+
+  /**
+   * The rule itself, checked over a whole document: walking the Steps in
+   * reading order — rank by rank, the Start first in its rank, then across
+   * each rank — the distinct boxes down the map from each Step that share a
+   * rank and have not been placed by an earlier Step sit in Choice order
+   * along the cross axis.
+   */
+  function assertTargetsInChoiceOrder(document: GraphDocument): void {
+    const layout = layoutGraph(document);
+    const nodeById = new Map(layout.nodes.map((node) => [node.id, node]));
+    const rankOf = (node: CanvasNode) =>
+      document.layoutDirection === "LR" ? node.x : node.y;
+    const crossOf = (node: CanvasNode) =>
+      document.layoutDirection === "LR" ? node.y : node.x;
+
+    const readingOrder = layout.nodes
+      .filter((node) => node.kind === "step")
+      .toSorted(
+        (a, b) =>
+          rankOf(a) - rankOf(b) ||
+          Number(b.isStart) - Number(a.isStart) ||
+          crossOf(a) - crossOf(b),
+      )
+      .map((node) => node.id);
+
+    const placed = new Set<string>();
+    let groupsChecked = 0;
+    for (const stepId of readingOrder) {
+      const reader = nodeById.get(stepId);
+      expect(reader).toBeDefined();
+      if (!reader) continue;
+
+      const targets: CanvasNode[] = [];
+      for (const choiceEntry of document.steps[stepId].choices) {
+        const targetId = Object.hasOwn(document.steps, choiceEntry.targetStepId)
+          ? choiceEntry.targetStepId
+          : `missing:${choiceEntry.targetStepId}`;
+        const target = nodeById.get(targetId);
+        expect(target).toBeDefined();
+        if (
+          !target ||
+          rankOf(target) <= rankOf(reader) ||
+          placed.has(targetId) ||
+          targets.includes(target)
+        ) {
+          continue;
+        }
+        targets.push(target);
+      }
+
+      const byRank = new Map<number, CanvasNode[]>();
+      for (const target of targets) {
+        placed.add(target.id);
+        const group = byRank.get(rankOf(target)) ?? [];
+        group.push(target);
+        byRank.set(rankOf(target), group);
+      }
+      for (const group of byRank.values()) {
+        if (group.length < 2) continue;
+        groupsChecked += 1;
+        for (let index = 1; index < group.length; index += 1) {
+          expect(
+            crossOf(group[index]),
+            `${stepId}: "${group[index].id}" is not past "${group[index - 1].id}" across the map`,
+          ).toBeGreaterThan(crossOf(group[index - 1]));
+        }
+      }
+    }
+    // Not vacuous: the document has branches to check.
+    expect(groupsChecked).toBeGreaterThan(0);
+  }
+
+  it("puts a three-way branch's targets left to right in Choice order, top to bottom", () => {
+    const document = threeWayBranch("TB");
+    const { nodes } = layoutGraph(document);
+    const nodeById = (id: string) =>
+      nodes.find((candidate) => candidate.id === id);
+
+    const t1 = nodeById("t1");
+    const t2 = nodeById("t2");
+    const t3 = nodeById("t3");
+    expect(t1 && t2 && t3).toBeTruthy();
+    if (!t1 || !t2 || !t3) return;
+
+    // All three share the rank below the Start.
+    expect(new Set([t1.y, t2.y, t3.y]).size).toBe(1);
+    expect(t1.x).toBeLessThan(t2.x);
+    expect(t2.x).toBeLessThan(t3.x);
+    // And the anchors follow, so the arrows leave the Start in Choice order.
+    expect(nodeById("s")?.sourceAnchors).toEqual([
+      "s-to-t1",
+      "s-to-t2",
+      "s-to-t3",
+    ]);
+    assertNoOverlaps(nodes);
+    assertTargetsInChoiceOrder(document);
+  });
+
+  it("puts a three-way branch's targets top to bottom in Choice order, left to right", () => {
+    const document = threeWayBranch("LR");
+    const { nodes } = layoutGraph(document);
+    const nodeById = (id: string) =>
+      nodes.find((candidate) => candidate.id === id);
+
+    const t1 = nodeById("t1");
+    const t2 = nodeById("t2");
+    const t3 = nodeById("t3");
+    expect(t1 && t2 && t3).toBeTruthy();
+    if (!t1 || !t2 || !t3) return;
+
+    expect(new Set([t1.x, t2.x, t3.x]).size).toBe(1);
+    expect(t1.y).toBeLessThan(t2.y);
+    expect(t2.y).toBeLessThan(t3.y);
+    expect(nodeById("s")?.sourceAnchors).toEqual([
+      "s-to-t1",
+      "s-to-t2",
+      "s-to-t3",
+    ]);
+    assertNoOverlaps(nodes);
+    assertTargetsInChoiceOrder(document);
+  });
+
+  it("puts targets that share their one parent in Choice order, not the order the Steps were made in", () => {
+    // With no other Step leading to any of the three, every target hangs off
+    // the Start alone, and the Steps were made in the reverse of the order
+    // the Start's Choices list them.
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const document: GraphDocument = {
+        schemaVersion: 1,
+        startStepId: "s",
+        allowBack: true,
+        steps: byId([
+          step("t3", []),
+          step("t2", []),
+          step("t1", []),
+          step("s", [
+            choice("s-to-t1", "Go to T1", "t1"),
+            choice("s-to-t2", "Go to T2", "t2"),
+            choice("s-to-t3", "Go to T3", "t3"),
+          ]),
+        ]),
+        outcomes: {},
+        layoutDirection,
+      };
+
+      const { nodes } = layoutGraph(document);
+      const crossOf = (id: string) => {
+        const node = nodes.find((candidate) => candidate.id === id);
+        return layoutDirection === "LR" ? (node?.y ?? 0) : (node?.x ?? 0);
+      };
+      expect(crossOf("t1")).toBeLessThan(crossOf("t2"));
+      expect(crossOf("t2")).toBeLessThan(crossOf("t3"));
+      expect(nodes.find((node) => node.id === "s")?.sourceAnchors).toEqual([
+        "s-to-t1",
+        "s-to-t2",
+        "s-to-t3",
+      ]);
+      assertTargetsInChoiceOrder(document);
+    }
+  });
+
+  it("keeps the seeded case-3 targets in Choice order in both directions, without a dagre throw", () => {
+    const seeded = graphDocumentSchema.parse(case3);
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const document = { ...seeded, layoutDirection };
+      expect(() => layoutGraph(document)).not.toThrow();
+      assertTargetsInChoiceOrder(document);
+      assertNoOverlaps(layoutGraph(document).nodes);
+    }
+  });
+
+  it("widens the gap between ranks left to right so a label can sit between boxes", () => {
+    const document = threeWayBranch("LR");
+    const { nodes } = layoutGraph(document);
+    const nodeById = (id: string) =>
+      nodes.find((candidate) => candidate.id === id);
+    const start = nodeById("s");
+    const t1 = nodeById("t1");
+    expect(start && t1).toBeTruthy();
+    if (!start || !t1) return;
+
+    expect(t1.x - (start.x + start.width)).toBeGreaterThanOrEqual(
+      LR_RANK_SEPARATION,
+    );
+    expect(LR_RANK_SEPARATION).toBeGreaterThan(EDGE_LABEL_MAX_WIDTH);
   });
 });
 
