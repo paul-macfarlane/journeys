@@ -1,31 +1,26 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, type KeyboardEvent } from "react";
+import { useForm } from "react-hook-form";
 
 import { updateJourneyAction } from "@/app/projects/[projectId]/journeys/actions";
-import { firstIssue } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 import {
-  journeyDescriptionSchema,
-  journeyTitleSchema,
+  updateJourneySchema,
+  type UpdateJourneyInput,
 } from "@/lib/validation/journey";
 
-type Field = "title" | "description";
-type Values = Record<Field, string>;
-type Errors = Record<Field, string | null>;
-
-const schemas = {
-  title: journeyTitleSchema,
-  description: journeyDescriptionSchema,
-} as const;
+type Field = keyof UpdateJourneyInput;
 
 /**
  * A Journey's title and description are the whole of its metadata, so they
  * are the page's heading rather than a form behind an Edit button: two
- * borderless fields that read as headings until focused. Each one saves
- * itself on blur (the title on Enter too); a save that fails says so under
- * the field and keeps what was typed.
+ * borderless fields that read as headings until focused. The same
+ * react-hook-form and zod pairing as the dialogs, submitted from each
+ * field's blur (the title's Enter too) instead of a button, so a save that
+ * fails says so under the field that asked for it and keeps what was typed.
  *
  * The Journey is addressed by its id, so a rename never moves the page.
  */
@@ -41,84 +36,54 @@ export function JourneyTitleFields({
   description: string;
 }) {
   const router = useRouter();
-  const [values, setValues] = useState<Values>({ title, description });
-  const [errors, setErrors] = useState<Errors>({
-    title: null,
-    description: null,
+  const form = useForm<UpdateJourneyInput>({
+    resolver: zodResolver(updateJourneySchema),
+    defaultValues: { title, description },
   });
+  const { errors } = form.formState;
 
-  // What the server has: what was last saved here or last rendered by it.
-  const savedRef = useRef<Values>({ title, description });
-  // What is in the fields, readable from a save started before a render.
-  const valuesRef = useRef<Values>(values);
-  // Saves run one after another: a title save and a description save that
-  // crossed would each carry the other's stale value and one would win.
-  const queueRef = useRef<Promise<void>>(Promise.resolve());
-
-  // A refresh carrying a value this component did not save is another
-  // Member's edit: adopted into a field the Author has not touched, and left
-  // for the Author's own blur to overwrite in one they are mid-edit in, as
-  // last write wins.
+  // A refresh carrying a value this form did not save is another Member's
+  // edit: adopted into a field the Author has not touched, and left for the
+  // Author's own blur to overwrite in one they are mid-edit in, as last
+  // write wins.
   useEffect(() => {
-    const incoming: Values = { title, description };
-    for (const field of ["title", "description"] as const) {
-      if (incoming[field] === savedRef.current[field]) continue;
-      if (valuesRef.current[field] === savedRef.current[field]) {
-        valuesRef.current = { ...valuesRef.current, [field]: incoming[field] };
-        setValues((current) => ({ ...current, [field]: incoming[field] }));
-      }
-      savedRef.current = { ...savedRef.current, [field]: incoming[field] };
-    }
-  }, [title, description]);
+    form.reset({ title, description }, { keepDirtyValues: true });
+  }, [form, title, description]);
 
-  function change(field: Field, value: string) {
-    valuesRef.current = { ...valuesRef.current, [field]: value };
-    setValues((current) => ({ ...current, [field]: value }));
-  }
-
+  /** The whole record, as the update action takes it, from one field's blur. */
   function save(field: Field) {
-    const parsed = schemas[field].safeParse(valuesRef.current[field]);
-    if (!parsed.success) {
-      setErrors((current) => ({
-        ...current,
-        [field]: firstIssue(parsed.error.issues),
-      }));
-      return;
-    }
+    return form.handleSubmit(async (values) => {
+      const saved = form.formState.defaultValues;
+      if (
+        values.title === saved?.title &&
+        values.description === saved?.description
+      ) {
+        return;
+      }
 
-    const next = parsed.data;
-    // The schema trims, so what stays on screen is what was stored.
-    change(field, next);
-    if (next === savedRef.current[field]) {
-      setErrors((current) => ({ ...current, [field]: null }));
-      return;
-    }
-
-    queueRef.current = queueRef.current.then(async () => {
-      const input: Values = { ...savedRef.current, [field]: next };
       const result = await updateJourneyAction(
         projectId,
         journeyId,
-        input,
+        values,
       ).catch(() => ({
         ok: false as const,
         error: "the server could not be reached",
       }));
 
       if (!result.ok) {
-        setErrors((current) => ({
-          ...current,
-          [field]: `Couldn't save: ${result.error}`,
-        }));
+        form.setError(field, {
+          type: "server",
+          message: `Couldn't save: ${result.error}`,
+        });
         return;
       }
 
-      savedRef.current = input;
-      setErrors((current) => ({ ...current, [field]: null }));
+      // The schema trims, so what stays on screen is what was stored.
+      form.reset(values);
       // The refresh is what lets Publish notice participants have not seen
       // this yet, and what puts the new title on the Delete confirmation.
       router.refresh();
-    });
+    })();
   }
 
   function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -135,39 +100,37 @@ export function JourneyTitleFields({
     <div className="flex min-w-0 flex-col gap-1">
       <input
         aria-label="Title"
-        aria-invalid={errors.title !== null || undefined}
+        aria-invalid={errors.title ? true : undefined}
         autoComplete="off"
-        value={values.title}
-        onChange={(event) => change("title", event.target.value)}
-        onBlur={() => save("title")}
+        {...form.register("title", { onBlur: () => void save("title") })}
         onKeyDown={handleTitleKeyDown}
         className={cn(
           fieldClassName,
           "py-0.5 text-2xl font-semibold tracking-tight",
         )}
       />
-      {errors.title !== null ? (
+      {errors.title ? (
         <p role="alert" className="text-sm text-destructive">
-          {errors.title}
+          {errors.title.message}
         </p>
       ) : null}
 
       <textarea
         aria-label="Description"
-        aria-invalid={errors.description !== null || undefined}
+        aria-invalid={errors.description ? true : undefined}
         placeholder="Add a description"
         rows={1}
-        value={values.description}
-        onChange={(event) => change("description", event.target.value)}
-        onBlur={() => save("description")}
+        {...form.register("description", {
+          onBlur: () => void save("description"),
+        })}
         className={cn(
           fieldClassName,
           "field-sizing-content resize-none py-0.5 text-muted-foreground placeholder:text-muted-foreground/70 focus-visible:text-foreground",
         )}
       />
-      {errors.description !== null ? (
+      {errors.description ? (
         <p role="alert" className="text-sm text-destructive">
-          {errors.description}
+          {errors.description.message}
         </p>
       ) : null}
 
