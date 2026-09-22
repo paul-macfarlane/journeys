@@ -120,13 +120,13 @@ export async function tagWithOutcome(page: Page, label: string): Promise<void> {
 }
 
 /**
- * One of the Journey page's tabs opened. The open tab is named in the
- * address (`?tab=versions`, nothing for the default), so a spec that reloads
- * lands where it was.
+ * One of the Journey page's or the Project page's tabs opened. The open tab
+ * is named in the address (`?tab=versions`, nothing for the default), so a
+ * spec that reloads lands where it was.
  */
 export async function openTab(
   page: Page,
-  name: "Editor" | "Versions",
+  name: "Editor" | "Versions" | "Journeys" | "Members" | "Settings",
 ): Promise<void> {
   const tab = page.getByRole("tab", { name, exact: true });
   await tab.click();

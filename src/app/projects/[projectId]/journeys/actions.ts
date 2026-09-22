@@ -4,10 +4,16 @@ import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
 import { saveDraft } from "@/db/drafts";
-import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
+import {
+  createJourney,
+  deleteJourney,
+  moveJourney,
+  updateJourney,
+} from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
 import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
 import type { PublishProblem } from "@/lib/graph/validate";
+import type { MoveDirection } from "@/lib/journey-order";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,
@@ -77,6 +83,36 @@ export async function updateJourneyAction(
 
   revalidateJourneyPaths();
   return { ok: true, id: updated.id };
+}
+
+/** Which way "Move up" and "Move down" send a Journey. */
+const MOVE_DIRECTIONS: readonly MoveDirection[] = ["up", "down"];
+
+/**
+ * Moves a Journey one place up or down in its Project's list. Nothing
+ * happens off either end, so a stale control is harmless.
+ */
+export async function moveJourneyAction(
+  projectId: string,
+  journeyId: string,
+  direction: unknown,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  if (!MOVE_DIRECTIONS.some((known) => known === direction)) {
+    return { ok: false, error: "That doesn't look right" };
+  }
+
+  const moved = await moveJourney(
+    projectId,
+    journeyId,
+    direction as MoveDirection,
+    session.user.id,
+  );
+  if (!moved) return { ok: false, error: "That journey no longer exists" };
+
+  revalidateJourneyPaths();
+  return { ok: true, id: journeyId };
 }
 
 export async function deleteJourneyAction(

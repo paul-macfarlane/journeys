@@ -43,6 +43,13 @@
       "when": 1789959593232,
       "tag": "0005_stormy_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790089084712,
+      "tag": "0006_late_jasper_sitwell",
+      "breakpoints": true
     }
   ]
 }

@@ -22,11 +22,13 @@ import { member, project } from "@/db/schema";
 export type ProjectSummary = {
   id: string;
   title: string;
+  description: string;
 };
 
 const projectColumns = {
   id: project.id,
   title: project.title,
+  description: project.description,
 };
 
 /** Every Project the Author is a Member of, newest first. */
@@ -82,12 +84,12 @@ export async function getProjectForMember(
 }
 
 /**
- * Renames a Project. Its id — and so its URL — is untouched. Returns null
- * when the Author is not a Member of `projectId`.
+ * Edits a Project's title and description. Its id — and so its URL — is
+ * untouched. Returns null when the Author is not a Member of `projectId`.
  */
 export async function editProject(
   projectId: string,
-  input: { title: string },
+  input: { title: string; description: string },
   userId: string,
 ): Promise<ProjectSummary | null> {
   const existing = await getProjectForMember(projectId, userId);
@@ -95,7 +97,11 @@ export async function editProject(
 
   const [updated] = await db
     .update(project)
-    .set({ title: input.title, updatedAt: new Date() })
+    .set({
+      title: input.title,
+      description: input.description,
+      updatedAt: new Date(),
+    })
     .where(eq(project.id, existing.id))
     .returning(projectColumns);
 

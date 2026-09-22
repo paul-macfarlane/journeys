@@ -1,30 +1,30 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
 import { NewJourneyDialog } from "@/components/journeys/new-journey-dialog";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
-import { EditProjectDialog } from "@/components/projects/edit-project-dialog";
+import { JourneyList } from "@/components/projects/journey-list";
 import { MemberList } from "@/components/projects/member-list";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { ProjectSettingsFields } from "@/components/projects/project-settings-fields";
+import { UrlTabs } from "@/components/url-tabs";
 import { listJourneysForProject } from "@/db/journeys";
 import { listMembers } from "@/db/members";
 import { getProjectForMember } from "@/db/projects";
 import { requireSession } from "@/lib/session";
+import { readTab } from "@/lib/tabs";
+
+/** The page's sections, the first being what the plain address opens on. */
+const PROJECT_TABS = ["journeys", "members", "settings"] as const;
 
 export default async function ProjectPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
 }) {
   const session = await requireSession();
-  const { projectId } = await params;
+  const [{ projectId }, { tab }] = await Promise.all([params, searchParams]);
 
   // Null for a non-Member and for an id that never existed alike, so both
   // get the same 404 and neither leaks the other's existence.
@@ -47,64 +47,77 @@ export default async function ProjectPage({
         </Link>
       </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {project.title}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <EditProjectDialog projectId={project.id} title={project.title} />
-          <DeleteProjectDialog projectId={project.id} title={project.title} />
-        </div>
+      {/* The title and description are edited on the Settings tab; here
+          they are the page's heading. */}
+      <header className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {project.title}
+        </h1>
+        {project.description ? (
+          <p className="text-muted-foreground">{project.description}</p>
+        ) : null}
       </header>
 
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-lg font-medium tracking-tight">Journeys</h2>
-          <NewJourneyDialog projectId={project.id} />
-        </div>
+      <UrlTabs
+        label="Project"
+        initialTab={readTab(PROJECT_TABS, tab)}
+        tabs={[
+          {
+            value: "journeys",
+            label: "Journeys",
+            content: (
+              <section aria-label="Journeys" className="flex flex-col gap-4">
+                <div className="flex justify-end">
+                  <NewJourneyDialog projectId={project.id} />
+                </div>
+                <JourneyList projectId={project.id} journeys={journeys} />
+              </section>
+            ),
+          },
+          {
+            value: "members",
+            label: "Members",
+            content: (
+              <MemberList
+                projectId={project.id}
+                currentUserId={session.user.id}
+                members={members}
+              />
+            ),
+          },
+          {
+            value: "settings",
+            label: "Settings",
+            content: (
+              <section aria-label="Settings" className="flex flex-col gap-8">
+                <ProjectSettingsFields
+                  projectId={project.id}
+                  title={project.title}
+                  description={project.description}
+                />
 
-        {journeys.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>No journeys yet</CardTitle>
-              <CardDescription>
-                Journeys you author in this project will appear here.
-              </CardDescription>
-            </CardHeader>
-            <CardContent />
-          </Card>
-        ) : (
-          // role="list" is explicit: the flex layout below strips the list
-          // marker, and some browsers drop the implicit role with it.
-          <ul role="list" className="flex flex-col gap-3">
-            {journeys.map((journey) => (
-              <li key={journey.id}>
-                <Link
-                  href={`/projects/${project.id}/journeys/${journey.id}`}
-                  className="flex flex-col gap-1 rounded-xl px-4 py-3 ring-1 ring-foreground/10 transition-colors hover:bg-muted"
+                <section
+                  aria-labelledby="danger-zone"
+                  className="flex flex-col gap-3 rounded-xl p-4 ring-1 ring-destructive/30"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">{journey.title}</span>
-                    <JourneyStatusBadge publishState={journey.publishState} />
+                  <h2 id="danger-zone" className="font-medium">
+                    Danger zone
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    Deleting the project deletes every journey in it, for every
+                    member.
+                  </p>
+                  <div>
+                    <DeleteProjectDialog
+                      projectId={project.id}
+                      title={project.title}
+                    />
                   </div>
-                  {journey.description ? (
-                    <p className="text-muted-foreground text-sm">
-                      {journey.description}
-                    </p>
-                  ) : null}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <MemberList
-        projectId={project.id}
-        currentUserId={session.user.id}
-        members={members}
+                </section>
+              </section>
+            ),
+          },
+        ]}
       />
     </main>
   );

@@ -5,6 +5,7 @@ import {
   createProject,
   editJourneyField,
   ID_PATTERN,
+  openTab,
   uniqueSuffix,
 } from "./setup/authoring";
 import {
@@ -120,20 +121,58 @@ test("project-rename", async ({ page, context }) => {
   const suffix = uniqueSuffix();
   const title = `Refugee Health ${suffix}`;
   const renamedTitle = `Refugee Care ${suffix}`;
+  const description = "Clinics and shelters along the northern route.";
 
   await page.goto("/projects");
   const projectId = await createProject(page, title);
 
   await page.goto(`/projects/${projectId}`);
 
-  await page.getByRole("button", { name: "Edit" }).click();
-  await page.getByLabel("Title").fill(renamedTitle);
-  await page.getByRole("button", { name: "Save changes" }).click();
+  // Three tabs, in this order, Journeys open by default.
+  const tabs = page.getByRole("tablist", { name: "Project" });
+  await expect(tabs.getByRole("tab")).toHaveText([
+    "Journeys",
+    "Members",
+    "Settings",
+  ]);
+  await expect(
+    tabs.getByRole("tab", { name: "Journeys", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
 
-  // The id is the address, so a rename never moves the Project's URL.
-  await expect(page.getByRole("dialog")).toBeHidden();
+  // The title and description are edited on the Settings tab, saved when
+  // the field is left. The id is the address, so a rename never moves the
+  // Project's URL — only the tab is named in it.
+  await openTab(page, "Settings");
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}/projects/${projectId}?tab=settings`,
+  );
+
+  const titleField = page.getByLabel("Title", { exact: true });
+  await titleField.fill(renamedTitle);
+  await titleField.press("Enter");
   await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
-  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
+
+  const descriptionField = page.getByLabel("Description", { exact: true });
+  await descriptionField.fill(description);
+  await descriptionField.blur();
+  await expect(page.getByText(description)).toBeVisible();
+
+  // Stored, not only shown: a reload reads both back, and lands on the
+  // Settings tab the address names.
+  await page.reload();
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}/projects/${projectId}?tab=settings`,
+  );
+  await expect(
+    page.getByRole("tab", { name: "Settings", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
+    renamedTitle,
+  );
+  await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+    description,
+  );
 
   await page.screenshot({
     path: evidencePath("project-rename", "project-rename.png"),
@@ -159,6 +198,8 @@ test("project-delete", async ({ page, context }) => {
   const projectId = await createProject(page, title);
 
   await page.goto(`/projects/${projectId}`);
+  // Deleting lives in the Settings tab's danger zone.
+  await openTab(page, "Settings");
   await page.getByRole("button", { name: "Delete project" }).click();
 
   // Nothing is gone until the Author confirms it.
@@ -289,6 +330,7 @@ test("project-delete-cascade", async ({ page, context }) => {
   await page.goto(`/projects/${projectId}`);
   const journeyId = await createJourney(page, projectId, journeyTitle);
 
+  await openTab(page, "Settings");
   await page.getByRole("button", { name: "Delete project" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "Delete permanently" }).click();
@@ -307,6 +349,84 @@ test("project-delete-cascade", async ({ page, context }) => {
     path: evidencePath("project-delete-cascade", "project-delete-cascade.png"),
     fullPage: true,
   });
+});
+
+test("journeys-reorder", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const titles = [
+    `Border Crossing ${suffix}`,
+    `Night Clinic ${suffix}`,
+    `Long Wait ${suffix}`,
+  ];
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+
+  // A new Journey goes last, so three made in turn read in that order.
+  for (const title of titles) {
+    await createJourney(page, projectId, title);
+  }
+  const list = page.getByRole("list", { name: "Journeys" });
+  // `toContainText` with an array matches a subset in order, so the count
+  // is pinned separately.
+  const rowTitles = () => list.getByRole("link");
+  await expect(rowTitles()).toHaveCount(3);
+  await expect(rowTitles()).toContainText(titles);
+
+  // The ends have nowhere to go.
+  const row = (title: string) =>
+    list.getByRole("listitem").filter({ hasText: title });
+  await expect(
+    row(titles[0]).getByRole("button", { name: "Move up" }),
+  ).toBeDisabled();
+  await expect(
+    row(titles[2]).getByRole("button", { name: "Move down" }),
+  ).toBeDisabled();
+
+  // The third Journey moved up twice is the first.
+  await row(titles[2]).getByRole("button", { name: "Move up" }).click();
+  await expect(rowTitles()).toContainText([titles[0], titles[2], titles[1]]);
+  await row(titles[2]).getByRole("button", { name: "Move up" }).click();
+  await expect(rowTitles()).toContainText([titles[2], titles[0], titles[1]]);
+  await expect(
+    row(titles[2]).getByRole("button", { name: "Move up" }),
+  ).toBeDisabled();
+
+  // Stored, not only shown.
+  await page.reload();
+  await expect(rowTitles()).toContainText([titles[2], titles[0], titles[1]]);
+
+  await page.screenshot({
+    path: evidencePath("journeys-reorder", "journeys-reorder.png"),
+    fullPage: true,
+  });
+
+  // And a Journey made now still goes last.
+  const fourth = `Second Opinion ${suffix}`;
+  await createJourney(page, projectId, fourth);
+  await expect(rowTitles()).toHaveCount(4);
+  await expect(rowTitles()).toContainText([
+    titles[2],
+    titles[0],
+    titles[1],
+    fourth,
+  ]);
+
+  const positions = await queryE2eDatabase<{ title: string; position: number }>(
+    'SELECT title, position FROM "journey" WHERE project_id = $1 ORDER BY position, created_at',
+    [projectId],
+  );
+  expect(positions).toEqual([
+    { title: titles[2], position: 0 },
+    { title: titles[0], position: 1 },
+    { title: titles[1], position: 2 },
+    { title: fourth, position: 3 },
+  ]);
 });
 
 test("author-flow", async ({ page, context, browser }) => {
@@ -377,6 +497,7 @@ test("author-flow", async ({ page, context, browser }) => {
   // the Run the Participant left behind.
   expect(await readRuns(version.id)).toHaveLength(0);
 
+  await openTab(page, "Settings");
   await page.getByRole("button", { name: "Delete project" }).click();
   await page.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);

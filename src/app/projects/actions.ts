@@ -72,8 +72,7 @@ export async function deleteProjectAction(
 
 const addMemberErrors = {
   "no-project": "That project no longer exists",
-  "unknown-email":
-    "No account has that email — they need to sign in once first",
+  "unknown-email": "No account has that email — they need to sign up first",
   "already-member": "Already a member of this project",
 } as const;
 
