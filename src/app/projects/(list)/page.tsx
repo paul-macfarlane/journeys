@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
-import { SignOutButton } from "@/components/sign-out-button";
 import {
   Card,
   CardContent,
@@ -32,10 +31,7 @@ export default async function ProjectsPage() {
             Signed in as {session.user.name}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <NewProjectDialog />
-          <SignOutButton />
-        </div>
+        <NewProjectDialog />
       </header>
 
       {projects.length === 0 ? (

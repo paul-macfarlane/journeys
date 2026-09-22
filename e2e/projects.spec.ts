@@ -51,17 +51,19 @@ test("signed-in visit to /projects shows the empty projects state", async ({
   });
 });
 
-test("signing out returns to the landing page, and /projects redirects again", async ({
+test("signing out from the user menu lands on sign-in, and /projects redirects again", async ({
   page,
   context,
 }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
 
+  // Sign out lives in the navbar's user menu (ticket 29), not on the page.
   await page.goto("/projects");
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Account: Test Author" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
 
-  await expect(page).toHaveURL(`${E2E_BASE_URL}/`);
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/sign-in`);
 
   await page.goto("/projects");
   await expect(page).toHaveURL(`${E2E_BASE_URL}/`);

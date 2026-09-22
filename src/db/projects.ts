@@ -44,6 +44,26 @@ export async function listProjectsForAuthor(
 }
 
 /**
+ * The Projects the Author is a Member of that changed most recently, at most
+ * `limit` of them — the navbar's switcher (ticket 29). "Changed" is the
+ * Project row itself: a title or description edit, or its creation; work
+ * inside its Journeys does not move it up. Ties fall back to newest first,
+ * then id, so the list is stable between renders.
+ */
+export async function listRecentProjectsForAuthor(
+  userId: string,
+  limit: number,
+): Promise<ProjectSummary[]> {
+  return db
+    .select(projectColumns)
+    .from(project)
+    .innerJoin(member, eq(member.projectId, project.id))
+    .where(eq(member.userId, userId))
+    .orderBy(desc(project.updatedAt), desc(project.createdAt), desc(project.id))
+    .limit(limit);
+}
+
+/**
  * Creates a Project with the creating Author as its first Member. Both rows in one
  * transaction: a Project with no Members could never be opened again, and
  * the database refuses to let one lose its last Member anyway.
