@@ -344,7 +344,7 @@ test("author-flow", async ({ page, context, browser }) => {
   );
 
   // An anonymous Participant, in a browser context with no session at all,
-  // walks the published Journey from its start screen to an Ending.
+  // walks the published Journey from its Start Step to an Ending.
   const participantContext = await browser.newContext({
     baseURL: E2E_BASE_URL,
   });

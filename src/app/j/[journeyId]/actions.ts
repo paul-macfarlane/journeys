@@ -48,8 +48,8 @@ export async function chooseFromStartAction(
       ? beginRun(journey.document, to, new Date())
       : ({ kind: "refused" } as const);
   // Not a Choice the Start Step offers (a typed request, a stale form from a
-  // version since replaced): nothing is recorded, and the Start is shown
-  // again with the Choices it does offer.
+  // version since replaced), or a Choice back onto the Start, which is a
+  // stay: nothing is recorded, and the Start is shown again.
   if (begun.kind === "refused") redirect(`/j/${journeyId}`);
 
   const cookieStore = await cookies();

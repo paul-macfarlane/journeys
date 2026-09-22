@@ -77,7 +77,10 @@ export default async function JourneyStartPage({
         // matches the Choices below. Starting over is a POST an action owns,
         // since it changes what the next request will see.
         <div className="flex flex-col gap-3 rounded-xl border p-4">
-          <p className="text-sm">You&apos;re partway through this journey.</p>
+          <p className="text-sm">
+            You&apos;re partway through this journey. Choosing below starts it
+            again from the beginning.
+          </p>
           <a
             href={`/j/${journeyId}/${currentStepId(inProgress)}`}
             className={choiceLinkClassName}

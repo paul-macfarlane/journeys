@@ -229,9 +229,33 @@ describe("chooseFromStartAction", () => {
   it("refuses a Choice the Start Step does not offer and records nothing", async () => {
     cookiesPresent({ [PARTICIPANT_COOKIE]: "participant-1" });
 
-    // A real Step, reachable only through the queue.
+    // An id the Start Step offers no Choice to.
     const to = await redirectOf(
       chooseFromStartAction(JOURNEY_ID, formChoosing("done-by-another-route")),
+    );
+
+    expect(to).toBe(`/j/${JOURNEY_ID}`);
+    expect(doubles.runs.createRun).not.toHaveBeenCalled();
+    expect(doubles.cookieStore.set).not.toHaveBeenCalled();
+  });
+
+  it("begins nothing for a Choice back onto the Start, which is a stay", async () => {
+    cookiesPresent({ [PARTICIPANT_COOKIE]: "participant-1" });
+    const document = liveDocument();
+    document.steps.start.choices.push({
+      id: "stay",
+      label: "Stay put",
+      targetStepId: "start",
+      condition: null,
+      effect: null,
+    });
+    doubles.runs.getPublicJourney.mockResolvedValue({
+      ...liveJourney(),
+      document,
+    });
+
+    const to = await redirectOf(
+      chooseFromStartAction(JOURNEY_ID, formChoosing("start")),
     );
 
     expect(to).toBe(`/j/${JOURNEY_ID}`);
@@ -249,7 +273,7 @@ describe("chooseFromStartAction", () => {
     expect(doubles.cookieStore.set).not.toHaveBeenCalled();
   });
 
-  it("sends a Journey that is not live back to its start screen", async () => {
+  it("sends a Journey that is not live back to its Start, which says why", async () => {
     doubles.runs.getPublicJourney.mockResolvedValue({ kind: "unavailable" });
 
     const to = await redirectOf(

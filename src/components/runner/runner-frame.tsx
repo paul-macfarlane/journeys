@@ -50,7 +50,7 @@ export function RunnerFrame({
         </div>
       ) : null}
 
-      {title !== undefined ? (
+      {title ? (
         <header className="border-b">
           <div className="mx-auto w-full max-w-prose px-4 py-3 sm:px-6">
             <p className="text-sm font-medium">{title}</p>

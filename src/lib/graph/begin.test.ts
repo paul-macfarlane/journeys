@@ -107,17 +107,9 @@ describe("beginRun", () => {
     });
   });
 
-  it("stays on the Start when the Choice leads back to it", () => {
-    const result = beginRun(branchingDocument(), "start", NOW);
-
-    expect(result).toEqual({
-      kind: "begun",
-      state: {
-        path: ["start"],
-        backtrackCount: 0,
-        endedAt: null,
-        outcomeId: null,
-      },
+  it("begins nothing when the Choice leads back onto the Start: a stay", () => {
+    expect(beginRun(branchingDocument(), "start", NOW)).toEqual({
+      kind: "refused",
     });
   });
 
@@ -125,26 +117,22 @@ describe("beginRun", () => {
     // a2 exists and is reachable, but only through A.
     expect(beginRun(branchingDocument(), "a2", NOW)).toEqual({
       kind: "refused",
-      reason: "unknown-choice",
     });
   });
 
   it("refuses an id that names no Step at all", () => {
     expect(beginRun(branchingDocument(), "nowhere", NOW)).toEqual({
       kind: "refused",
-      reason: "unknown-choice",
     });
     // A prototype method is not a Step either.
     expect(beginRun(branchingDocument(), "toString", NOW)).toEqual({
       kind: "refused",
-      reason: "unknown-choice",
     });
   });
 
   it("refuses every Choice when the Start is itself an Ending", () => {
     expect(beginRun(endingOnlyDocument(), "only", NOW)).toEqual({
       kind: "refused",
-      reason: "unknown-choice",
     });
   });
 

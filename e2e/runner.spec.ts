@@ -723,7 +723,7 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
     expect(afterReload[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
 
     // A second Participant holds no Run cookie for this Journey, so a step
-    // URL sends them to the start screen rather than into somebody's Run.
+    // URL sends them to the Start Step rather than into somebody's Run.
     const strangerContext = await browser.newContext({
       baseURL: E2E_BASE_URL,
     });
@@ -802,8 +802,10 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
     // touched — and the next Choice is a new Run.
     await participant.goto(`/j/${firstJourneyId}`);
     await participant.getByRole("button", { name: "Start over" }).click();
-    await expect(participant).toHaveURL(`${E2E_BASE_URL}/j/${firstJourneyId}`);
+    // The offer is what goes; the address stays the same, so it is checked
+    // second, once the fresh page is on screen.
     await expect(resume).toHaveCount(0);
+    await expect(participant).toHaveURL(`${E2E_BASE_URL}/j/${firstJourneyId}`);
     expect(await readRuns(firstVersionId)).toHaveLength(2);
 
     await participant.getByRole("button", { name: "Walk away" }).click();
