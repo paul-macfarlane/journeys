@@ -1,6 +1,6 @@
 # 23: Undo and redo in the Draft editor
 
-Status: ai-review
+Status: done
 Blocked by: 22
 Route: contract
 Owner: Atlas orchestrator (Claude Fable 5.1), 2026-09-22
@@ -98,3 +98,36 @@ Two fresh reviewers (one per axis, opus) read the whole diff against the ticket,
 | 6 | `travel` reads as a Participant's walk | trivial | **resolved (D3)**: renamed `applyMove` |
 
 **Remaining risks:** the capture-phase listener claims Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z and Ctrl+Y for the whole Journey page before any other handler; a future in-page surface with its own undo would have to opt out through the dialog guard or a new one. The e2e typing runs are timing-bound (axis 1 #4).
+
+### [CLOSEOUT] 2026-09-22 — Atlas orchestrator (Claude Fable 5.1)
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/38 (`feat/23-undo-and-redo` → `staging`). Per the tracker rule Paul set on 2026-09-21, this closeout commit carries `Status: done`; merging the PR is the acceptance that lands it on `staging`. Status log: `ready-for-agent` → `in-progress` → `ai-review` → `done`.
+
+**Repository delivery:** `journeys`, base `staging` at `1b9d328`, direct checkout, no worktrees, six commits: `22ae38d` claim and execution plan (orchestrator), `937d125` D1 the history, the editor, the keys, the buttons, README (`atlas-worker` on opus), `36b51f7` D2 the five e2e specs and the capture-phase fix (`atlas-worker` on opus), `8a383bb` D3 review fixes (orchestrator), `4449cc9` evidence and the review record (orchestrator), and this closeout. Closeout re-check of the isolation record against the real diffs: D1 and D2 both changed `draft-editor.tsx` (21 hunks and 2, D2's inside D1's listener block), so that predicted overlap materialized; D2 never touched `journey-canvas.tsx`, so that one did not. The sequential structure was required by the D1 → D2 dependency (the specs need the editor) whatever the files did, so it stands as written.
+
+**Exact verified run command** (local; docker Postgres on 5436; captured over the `8a383bb` tree, committed in `4449cc9`):
+
+```
+pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && E2E_EVIDENCE=canvas-undo-drawn-choice,canvas-undo-title-typing,canvas-undo-rich-text,canvas-undo-delete-direction-retarget,canvas-undo-build-branch-and-walk pnpm test:e2e
+```
+
+Every command exits 0; Vitest 323 passed in 21 files; Playwright 80 passed (production build on port 3100, `retries` 0, nothing flaky). No `db:migrate` (no schema change), no dependency or lockfile change, no deployed-target check (Paul's 2026-09-20 decision).
+
+**Criterion verdicts (evidence under `test-results/`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 Seam A: pushes, coalesces same-field typing within the window (inclusive edge), caps at 100, clears redo on a new edit, round-trips undo/redo, never coalesces across an undo | PASS | `ac-1-history-unit.txt` (17 cases), `dod-1-commands.txt` ✓ |
+| AC-2 a Choice drawn by dragging then Cmd/Ctrl+Z is gone from the map and the `draft` row with the panel on the source Step; Cmd/Ctrl+Shift+Z restores it | PASS | `canvas-undo-drawn-choice/….png` + `.webm`, `dod-1-e2e.txt` ✓ |
+| AC-3 "Clinic tent" typed key by key then one undo restores "Untitled step" in one step; the second undo takes back "Add next step"; typing after an undo disables Redo | PASS | `canvas-undo-title-typing/….png`, `dod-1-e2e.txt` ✓ |
+| AC-4 a reading typed into the rich text then Cmd/Ctrl+Z inside it leaves the surface and the row empty; Cmd/Ctrl+Z in the title field undoes the last edit, moving the panel only when that edit was another Step's | PASS | `canvas-undo-rich-text/….png`, `dod-1-e2e.txt` ✓ |
+| AC-5 a retarget, a direction switch, and a delete each come back with one press of the buttons or the keys; both disabled on a fresh Draft, Redo disabled after an edit, Undo disabled once everything is undone; a hidden-panel undo leaves the settled transform unchanged | PASS | `canvas-undo-delete-direction-retarget/….png`, `dod-1-e2e.txt` ✓ |
+| AC-6 Seam B: a branch built by dragging, three moves undone, two redone, published and walked by a Participant | PASS | `canvas-undo-build-branch-and-walk/….png`, `…-runner.png`, `….webm`, `dod-1-e2e.txt` ✓ |
+| DoD-1 verified run command green; every existing spec passes | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` |
+| DoD-2 every PASS artifact committed; fixture journeys only, no participant data | PASS | `4449cc9`; minted `Test Author` accounts, invented Border-post Journeys; nothing from a Participant |
+
+**Deviations (approved by the orchestrator):** `undo`/`redo` take `(history, current, { at })` and return `HistoryMove | null`; the key listener runs in the capture phase (ProseMirror's `captureKeyDown` prevents Mod-Z on its surface whatever extensions are loaded — the bubble-phase listener the plan described never heard a press made inside the rich text); `SelectStepOptions.reveal` was added so an undo from a map the panel was away from brings the box on rather than zooming, as the ticket's sentence asks (the plan's parenthetical had not noticed `selectStep`'s hidden-panel rule); `revision` is bumped only when the opened Step's content changed (amends reading (g) so an undo of a map move keeps the caret); `canvas-undo-delete-direction-retarget` deletes the Step nothing points at; `canvas-undo-build-branch-and-walk` leaves the third Choice undone and redoes the direction and the reading; the e2e typing runs are timing-bound to the 1 s window (Seam A is the deterministic proof); worker trailers name the worker's own model; accepted commits not rewritten (the PR asks for a squash merge).
+
+**Questions for Paul (queued, non-blocking):** none new. Ticket 22's two (pruning orphaned Outcomes; Escape after an arrow click hiding the panel) still stand.
+
+**Human follow-ups:** (1) review and **squash-merge** PR #38 — it carries `Status: done`; (2) after the merge, 17 (manual layout) is available (blocked only on 16, 21, 22, all done) and 20 (empty Choice label as a publish problem) at any time.
