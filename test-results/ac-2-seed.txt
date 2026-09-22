@@ -1,4 +1,4 @@
-# AC-2 — pnpm seed:journey-stories <author-email> over the converted documents (credit → caption, alt ""), local docker Postgres (2026-09-22T17:09:04Z, head c18ce1f). Output unchanged from before the conversion; the author email is redacted.
+# AC-2 — pnpm seed:journey-stories <author-email> over the converted documents (credit → caption, alt ""), local docker Postgres (2026-09-22T17:09:04Z, head ea0ff4b). Output unchanged from before the conversion; the author email is redacted.
 
 > journeys@0.1.0 seed:journey-stories /Users/paulmacfarlane/Code/journeys
 > tsx scripts/seed/journey-stories.ts <author-email>

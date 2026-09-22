@@ -1,5 +1,5 @@
 # DoD-1 command chain — ticket 30 (Rich text: image caption, alt text, editing, tooltips)
-# head c18ce1f, captured 2026-09-22T17:07:05Z, Route: contract
+# head ea0ff4b, captured 2026-09-22T17:45:19Z, Route: contract
 # E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone
 # pnpm test:e2e builds the app (next build) before the suite; its full list output is in dod-1-e2e.txt, only the tail is repeated here.
 
@@ -40,15 +40,15 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  Test Files  19 passed (19)
       Tests  297 passed (297)
-   Start at  13:07:13
-   Duration  742ms (transform 1.09s, setup 0ms, import 2.38s, tests 554ms, environment 1ms)
+   Start at  13:45:27
+   Duration  712ms (transform 900ms, setup 0ms, import 2.24s, tests 534ms, environment 1ms)
 
 exit=0
 
 === E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone pnpm test:e2e
-  ✓  66 [chromium] › e2e/step-editing.spec.ts:323:5 › step-editing-image-caption-alt-and-preview (10.0s)
-  ✓  71 [chromium] › e2e/step-editing.spec.ts:709:5 › panel-choice-target-search (4.5s)
-  ✓  72 [chromium] › e2e/step-editing.spec.ts:560:5 › step-editing-choices-reorder-retarget (4.2s)
+  ✓  69 [chromium] › e2e/step-editing.spec.ts:801:5 › panel-outcomes-from-the-ending (5.3s)
+  ✓  71 [chromium] › e2e/step-editing.spec.ts:679:5 › panel-choice-target-search (4.5s)
+  ✓  72 [chromium] › e2e/step-editing.spec.ts:530:5 › step-editing-choices-reorder-retarget (4.3s)
 
-  72 passed (1.4m)
+  72 passed (1.3m)
 exit=0

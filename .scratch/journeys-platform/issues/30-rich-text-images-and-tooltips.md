@@ -69,3 +69,15 @@ PR: https://github.com/paul-macfarlane/journeys/pull/35 (base `staging`, compari
 **Queued for Paul (non-blocking, also in the PR).** (1) ⌘K inside the editor opens the link dialog now. (2) "Numbered list" stays the button's label. (3) The ring-after-undo observation above, should it show up in use: the state is right (Backspace still deletes), only the ring is missing. (4) Real alt text for the forty seeded images is still to be written in the editor.
 
 **Next in Paul's order:** 31 → 23; 17 post-hackathon.
+
+### [CLOSEOUT] amendment 2026-09-22 — Claude Fable 5.1 (after CI failed three times)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/35, head now the evidence commit after ea0ff4b. Status stays `done`.
+
+**What CI found.** The first three CI runs (9dd9607, d706321, 12aca98) each failed `step-editing-image-caption-alt-and-preview` at the same place — the Remove click straight after a page load timed out at 180 s ("element was detached from the DOM") — while the suite passed locally every time (recorded here as three `FAIL`s; the committed captures are from the local run at the final tree). CI had no Playwright artifacts, so d706321 adds a failure-only `upload-artifact` of `test-results/playwright/` to the workflow. Its trace's screencast showed the image selected with its ring and toolbar, then both gone ~50 ms later with no further input.
+
+**Fixes kept (app).** d706321 — `BubbleMenu`'s `shouldShow` and `options` are module constants; inline values dispatched an options update into the editor on every render. 12aca98 — the `resetKey` effect no longer calls `setContent` on the run its editor's creation triggers: `useEditor` already holds that content, and the redundant replace dropped any selection an Author made in the first moments after the page loaded, which is exactly the window a slow runner's click lands in. The restore path (a real `resetKey` change) still passes (`publish-versions-and-restore`).
+
+**Cut (test).** 12aca98 still failed the same click on CI. Paul (in conversation): cut it rather than dig further; tests must not time out. ea0ff4b drops the spec's post-publish tail (toolbar Remove, undo, Backspace). Everything the ticket names for the spec — insert with alt and caption, ring and toolbar on selection, caption edit, publish, `alt` and caption on the runner, Bold's tooltip — is asserted before that point, and "Remove" is still asserted visible in the toolbar. "Delete and Backspace keep working" is therefore unasserted e2e; ProseMirror's own key handling was not changed.
+
+**Verified run command (final tree, head ea0ff4b):** `pnpm lint; pnpm format:check; pnpm typecheck; pnpm test; E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone pnpm test:e2e` — every block `exit=0`; unit 297/297; e2e 72 passed in 1.3m, 0 flaky, retries 0. Evidence replaced in place. CI result on ea0ff4b is recorded in the PR.

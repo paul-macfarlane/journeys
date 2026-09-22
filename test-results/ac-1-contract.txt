@@ -1,4 +1,4 @@
-# AC-1 Seam A — the stored-image contract: credit read as caption, caption+alt unchanged, alt emitted and figcaption omitted for an empty caption (2026-09-22T17:09:04Z, head c18ce1f)
+# AC-1 Seam A — the stored-image contract: credit read as caption, caption+alt unchanged, alt emitted and figcaption omitted for an empty caption (2026-09-22T17:45:19Z, head ea0ff4b)
 # pnpm test src/lib/graph/content.test.ts src/components/runner/rich-text.test.tsx src/lib/rich-text/shortcuts.test.ts
 > journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
 > vitest run src/lib/graph/content.test.ts src/components/runner/rich-text.test.tsx src/lib/rich-text/shortcuts.test.ts
@@ -7,6 +7,6 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
  Test Files  3 passed (3)
       Tests  48 passed (48)
-   Start at  13:09:05
-   Duration  466ms (transform 103ms, setup 0ms, import 461ms, tests 37ms, environment 0ms)
+   Start at  13:46:58
+   Duration  470ms (transform 99ms, setup 0ms, import 461ms, tests 37ms, environment 0ms)
 exit=0
