@@ -2,6 +2,7 @@ import dagre from "@dagrejs/dagre";
 
 import type { Point } from "@/lib/graph/crossings";
 import type {
+  Choice,
   GraphDocument,
   LayoutDirection,
   Step,
@@ -127,6 +128,13 @@ export type GraphLayout = {
 
 function missingNodeId(targetStepId: string): string {
   return `missing:${targetStepId}`;
+}
+
+/** The node a Choice's arrow ends at: its Step, or the placeholder for one that is gone. */
+function targetNodeId(document: GraphDocument, choice: Choice): string {
+  return hasStep(document, choice.targetStepId)
+    ? choice.targetStepId
+    : missingNodeId(choice.targetStepId);
 }
 
 /**
@@ -266,9 +274,7 @@ function orderTargetsByChoice(
   const parentsOf = new Map<string, string[]>();
   for (const stepId of Object.keys(document.steps)) {
     for (const choiceEntry of document.steps[stepId].choices) {
-      const targetId = hasStep(document, choiceEntry.targetStepId)
-        ? choiceEntry.targetStepId
-        : missingNodeId(choiceEntry.targetStepId);
+      const targetId = targetNodeId(document, choiceEntry);
       const list = parentsOf.get(targetId) ?? [];
       list.push(stepId);
       parentsOf.set(targetId, list);
@@ -277,6 +283,9 @@ function orderTargetsByChoice(
 
   /** Which Step placed each box, and which of its Choices the box is. */
   const placement = new Map<string, { placer: string; choiceIndex: number }>();
+  /** Which of its placer's Choices a box is; a box nothing placed sorts first. */
+  const choiceIndexOf = (node: CanvasNode) =>
+    placement.get(node.id)?.choiceIndex ?? -1;
   /** How far across each box moved from where dagre put it. */
   const shiftById = new Map<string, number>();
 
@@ -314,16 +323,22 @@ function orderTargetsByChoice(
       const wanted = group
         .map((node) => keys.get(node.id) ?? 0)
         .sort((a, b) => a - b);
-      const choiceIndexOf = (node: CanvasNode) =>
-        placement.get(node.id)?.choiceIndex ?? 0;
       group
         .toSorted((a, b) => choiceIndexOf(a) - choiceIndexOf(b))
         .forEach((node, index) => keys.set(node.id, wanted[index]));
     }
 
+    // Sorted by where each wants to be; boxes wanting the same place — the
+    // siblings one Step placed, when that Step is the only one leading to
+    // them — fall back to Choice order, and only then to dagre's own order.
     boxes
       .map((node, index) => ({ node, index, key: keys.get(node.id) ?? 0 }))
-      .sort((a, b) => a.key - b.key || a.index - b.index)
+      .sort(
+        (a, b) =>
+          a.key - b.key ||
+          choiceIndexOf(a.node) - choiceIndexOf(b.node) ||
+          a.index - b.index,
+      )
       .forEach((entry, index) => {
         const before = crossOf(entry.node);
         place(entry.node, slots[index]);
@@ -341,9 +356,7 @@ function orderTargetsByChoice(
       );
     for (const reader of readers) {
       document.steps[reader.stepId].choices.forEach((choiceEntry, index) => {
-        const targetId = hasStep(document, choiceEntry.targetStepId)
-          ? choiceEntry.targetStepId
-          : missingNodeId(choiceEntry.targetStepId);
+        const targetId = targetNodeId(document, choiceEntry);
         const target = byId.get(targetId);
         if (
           target === undefined ||
@@ -528,9 +541,7 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
     const choices = document.steps[node.stepId].choices;
     const sourceAnchors = choices
       .map((choiceEntry, index) => {
-        const targetId = hasStep(document, choiceEntry.targetStepId)
-          ? choiceEntry.targetStepId
-          : missingNodeId(choiceEntry.targetStepId);
+        const targetId = targetNodeId(document, choiceEntry);
         return {
           choiceId: choiceEntry.id,
           index,

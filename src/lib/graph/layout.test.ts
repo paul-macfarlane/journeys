@@ -597,6 +597,45 @@ describe("layoutGraph Choice order", () => {
     assertTargetsInChoiceOrder(document);
   });
 
+  it("puts targets that share their one parent in Choice order, not the order the Steps were made in", () => {
+    // With no other Step leading to any of the three, every target hangs off
+    // the Start alone, and the Steps were made in the reverse of the order
+    // the Start's Choices list them.
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const document: GraphDocument = {
+        schemaVersion: 1,
+        startStepId: "s",
+        allowBack: true,
+        steps: byId([
+          step("t3", []),
+          step("t2", []),
+          step("t1", []),
+          step("s", [
+            choice("s-to-t1", "Go to T1", "t1"),
+            choice("s-to-t2", "Go to T2", "t2"),
+            choice("s-to-t3", "Go to T3", "t3"),
+          ]),
+        ]),
+        outcomes: {},
+        layoutDirection,
+      };
+
+      const { nodes } = layoutGraph(document);
+      const crossOf = (id: string) => {
+        const node = nodes.find((candidate) => candidate.id === id);
+        return layoutDirection === "LR" ? (node?.y ?? 0) : (node?.x ?? 0);
+      };
+      expect(crossOf("t1")).toBeLessThan(crossOf("t2"));
+      expect(crossOf("t2")).toBeLessThan(crossOf("t3"));
+      expect(nodes.find((node) => node.id === "s")?.sourceAnchors).toEqual([
+        "s-to-t1",
+        "s-to-t2",
+        "s-to-t3",
+      ]);
+      assertTargetsInChoiceOrder(document);
+    }
+  });
+
   it("keeps the seeded case-3 targets in Choice order in both directions, without a dagre throw", () => {
     const seeded = graphDocumentSchema.parse(case3);
     for (const layoutDirection of ["TB", "LR"] as const) {
