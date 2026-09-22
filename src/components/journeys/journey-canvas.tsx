@@ -95,8 +95,8 @@ import "@xyflow/react/dist/style.css";
  * brought onto the map when it is off it.
  *
  * The problems this draws come from `validateForPublish` run in the browser on
- * the document the editor is holding, not from the "Validate" button's server
- * round trip, so a mark clears the moment the fix is typed.
+ * the document the editor is holding, not from the stored Draft that Publish
+ * checks, so a mark clears the moment the fix is typed.
  *
  * The view is the Author's, and it moves only when they ask: the first
  * render, a change of direction, the panel put away or brought back, and the

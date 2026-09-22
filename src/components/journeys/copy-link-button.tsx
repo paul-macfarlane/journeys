@@ -5,14 +5,15 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
+/** The origin never changes while the page is open, so nothing to subscribe to. */
+const noSubscription = () => () => {};
+
 /**
  * The address a Participant walks a Journey at, copied in one click. Shown
  * only while a Published Version is live, because before then the address
  * leads nowhere. The whole URL is in the button's tooltip too, for anyone
  * who would rather select it by hand.
  */
-const noSubscription = () => () => {};
-
 export function CopyLinkButton({ journeyId }: { journeyId: string }) {
   // The origin is the browser's to know, so the address is built there:
   // null on the server and through hydration, the real one after.

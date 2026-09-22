@@ -272,22 +272,16 @@ export function DraftEditor({
   }, [draft]);
 
   // Unmounting with an edit still unsaved — the Author opened the Versions
-  // tab inside the debounce window — the write is attempted the way leaving
-  // the page attempts it. A save already running is asked to go round once
-  // more instead, since nothing here can pick up what it leaves behind.
+  // tab inside the debounce window — is the timer's save made now, through
+  // the same path: a save already running is asked to go round once more,
+  // and the refresh at the end is what hands the next mount of this editor
+  // the document as saved rather than the one the page was opened with.
   useEffect(
     () => () => {
       clearTimer();
-      if (savingRef.current) {
-        queuedRef.current = true;
-        return;
-      }
-      if (documentsEqual(documentRef.current, lastSavedRef.current)) return;
-      void saveDraftAction(projectId, journeyId, documentRef.current).catch(
-        () => {},
-      );
+      void save();
     },
-    [clearTimer, journeyId, projectId],
+    [clearTimer, save],
   );
 
   // Leaving the page with an edit still in the debounce window: the write is

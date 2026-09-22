@@ -8,7 +8,8 @@ import { queryE2eDatabase } from "./session";
  * The authoring moves every spec needs before it can test anything else:
  * making a Project and making a Journey inside it, both driven through the
  * browser exactly as an Author would. Shared so a spec about Drafts spends no
- * lines re-describing how a Journey comes into being.
+ * lines re-describing how a Journey comes into being. The one read of the
+ * database here waits for a write the page shows nothing for.
  */
 
 /**
@@ -151,10 +152,11 @@ export async function editJourneyField(
   if (field === "title") await input.press("Enter");
   else await input.blur();
 
+  const column = { title: "title", description: "description" }[field];
   await expect
     .poll(async () => {
       const [row] = await queryE2eDatabase<{ value: string }>(
-        `SELECT ${field} AS value FROM "journey" WHERE id = $1`,
+        `SELECT ${column} AS value FROM "journey" WHERE id = $1`,
         [journeyId],
       );
       return row?.value;
