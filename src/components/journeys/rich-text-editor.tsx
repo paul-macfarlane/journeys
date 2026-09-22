@@ -26,18 +26,33 @@ import { editorExtensions } from "@/lib/rich-text/extensions";
 import { formatShortcut, isApplePlatform } from "@/lib/rich-text/shortcuts";
 
 /**
- * The Step's rich text, and the small toolbar that shapes it: headings, bold,
- * italic, the two lists, links, and an image with alt text and an optional
- * caption. A selected image shows a ring and a small floating toolbar to
- * edit or remove it; every toolbar button carries a tooltip with its name
- * and, where the editor binds one, its shortcut.
+ * The Step's rich text — and, since ticket 07, the Project's description,
+ * which is the same closed content shape — and the small toolbar that
+ * shapes it: headings, bold, italic, the two lists, links, and an image with
+ * alt text and an optional caption. A selected image shows a ring and a
+ * small floating toolbar to edit or remove it; every toolbar button carries
+ * a tooltip with its name and, where the editor binds one, its shortcut.
  *
  * What the Author types goes through `sanitizeContent` before it leaves this
  * component, so the Draft in client state already holds the stored shape and
  * the server's own sanitize on write is a no-op rather than a second opinion.
  * The sanitized content is never fed back into the editor while the Author is
- * typing — only a change of Step replaces what is on screen.
+ * typing — only a change of `resetKey` replaces what is on screen.
  */
+
+/**
+ * What the editor is given to show. A document with no blocks at all — the
+ * empty description a new Project holds — is a document ProseMirror can
+ * render but not edit into: with no text block under the cursor, a heading
+ * toggle has nothing to change and the first keystroke makes a paragraph on
+ * its own. One empty paragraph, the shape a new Step's content already has,
+ * is what "nothing" looks like on the surface.
+ */
+function editable(content: Content): Content {
+  return content.content.length > 0
+    ? content
+    : { type: "doc", content: [{ type: "paragraph" }] };
+}
 
 /** Both URL fields take the same absolute addresses the sanitizer keeps. */
 const URL_HINT = "Start the address with http:// or https://";
@@ -145,9 +160,11 @@ function ToolbarButton({
 
 export function RichTextEditor({
   resetKey,
+  label = "Step content",
   content,
   onChange,
   onRefused,
+  onBlur,
 }: {
   /**
    * Changes whenever the surface must be replaced from `content`: another
@@ -155,17 +172,27 @@ export function RichTextEditor({
    * restore or another Member's write.
    */
   resetKey: string;
+  /**
+   * The surface's accessible name. A Step's content by default; the Project
+   * description (ticket 07) names itself.
+   */
+  label?: string;
   content: Content;
   onChange: (content: Content) => void;
   onRefused: (error: string) => void;
+  /**
+   * Fired when the surface loses focus — for a caller that saves on blur the
+   * way the Settings tab's fields do, rather than on every keystroke.
+   */
+  onBlur?: () => void;
 }) {
   // The editor is created once and lives as long as the panel does, so its
   // callbacks read the current ones out of a ref rather than closing over the
   // first render's.
-  const handlers = useRef({ onChange, onRefused });
+  const handlers = useRef({ onChange, onRefused, onBlur });
   useEffect(() => {
-    handlers.current = { onChange, onRefused };
-  }, [onChange, onRefused]);
+    handlers.current = { onChange, onRefused, onBlur };
+  }, [onChange, onRefused, onBlur]);
 
   const contentRef = useRef(content);
   useEffect(() => {
@@ -178,12 +205,12 @@ export function RichTextEditor({
 
   const editor = useEditor({
     extensions: editorExtensions,
-    content,
+    content: editable(content),
     // The panel is server-rendered by Next; rendering the editor immediately
     // would produce markup the client then disagrees with.
     immediatelyRender: false,
     editorProps: {
-      attributes: { "aria-label": "Step content", class: EDITOR_CLASS },
+      attributes: { "aria-label": label, class: EDITOR_CLASS },
       // ⌘K on Apple platforms and Ctrl+K elsewhere — the platform's `Mod`,
       // exactly as Tiptap's own bindings and the tooltip read it; Ctrl+K on
       // a Mac is left to the system — opens the link dialog while the
@@ -210,6 +237,9 @@ export function RichTextEditor({
       }
       handlers.current.onChange(sanitized.content);
     },
+    onBlur: () => {
+      handlers.current.onBlur?.();
+    },
   });
 
   // Only a change of `resetKey` replaces what is in the editor, and it does
@@ -227,7 +257,9 @@ export function RichTextEditor({
     }
     if (appliedResetKey.current === resetKey) return;
     appliedResetKey.current = resetKey;
-    editor.commands.setContent(contentRef.current, { emitUpdate: false });
+    editor.commands.setContent(editable(contentRef.current), {
+      emitUpdate: false,
+    });
   }, [editor, resetKey]);
 
   const active = useEditorState({

@@ -404,6 +404,36 @@ function collectText(blocks: Array<Block | ListItem>, into: string[]): void {
   }
 }
 
+/** Whether any of these blocks shows a Participant something. */
+function hasSomething(blocks: Array<Block | ListItem>): boolean {
+  return blocks.some((block) => {
+    switch (block.type) {
+      case "paragraph":
+      case "heading":
+        return (block.content ?? []).some((run) => run.text.trim() !== "");
+      case "bulletList":
+      case "orderedList":
+        return hasSomething(block.content);
+      case "listItem":
+        return hasSomething(block.content ?? []);
+      case "image":
+        // A picture is something to see whether or not it is captioned.
+        return true;
+    }
+  });
+}
+
+/**
+ * Whether rich text shows nothing at all: no blocks, or only paragraphs,
+ * headings, and lists with no words in them. A Project's description starts
+ * this way and returns to it when an Author clears the editor — which
+ * leaves one empty paragraph behind, so counting blocks would not do — and
+ * the public Project page renders nothing rather than an empty block.
+ */
+export function isBlankContent(content: Content): boolean {
+  return !hasSomething(content.content);
+}
+
 /**
  * The opening of a Step's content as plain text: what a box on the map shows
  * when an Author hovers or focuses it, so the map can be skimmed without

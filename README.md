@@ -107,6 +107,12 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   exactly as a participant would, under a banner saying nothing is recorded.
   Members of the project only; anyone else gets a 404, and a signed-out
   request is redirected to `/`.
+- `/p/<project-id>` — the public project page: the project's title, its
+  rich-text description, and the journeys in it that are currently published,
+  each a link into the runner, in the order the authors set. A journey that
+  was never published or was unpublished is simply absent, the moment it is.
+  Anonymous, like the runner. There is no index or search anywhere: a project
+  or journey is reached only by its link. An unknown id gets a 404.
 - `/j/<journey-id>` — the public participant runner, opening on the live
   published version's start step: the journey's title in a header (on every
   screen from here on), its description beneath the header, and the step's

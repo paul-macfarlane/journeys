@@ -4,12 +4,18 @@ import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
 import { addMemberByEmail, removeMember } from "@/db/members";
-import { createProject, deleteProject, editProject } from "@/db/projects";
+import {
+  createProject,
+  deleteProject,
+  editProjectDescription,
+  renameProject,
+} from "@/db/projects";
+import { sanitizeContent } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
 import { addMemberSchema } from "@/lib/validation/member";
 import {
   createProjectSchema,
-  editProjectSchema,
+  renameProjectSchema,
 } from "@/lib/validation/project";
 
 /**
@@ -37,24 +43,53 @@ export async function createProjectAction(
   return { ok: true, id: created.id };
 }
 
-export async function editProjectAction(
+export async function renameProjectAction(
   projectId: string,
   input: unknown,
 ): Promise<ProjectActionResult> {
   const session = await requireSession();
 
-  const parsed = editProjectSchema.safeParse(input);
+  const parsed = renameProjectSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
-  const renamed = await editProject(projectId, parsed.data, session.user.id);
+  const renamed = await renameProject(projectId, parsed.data, session.user.id);
   // Not a Member (or no such Project): same answer as the page's 404.
   if (!renamed) return { ok: false, error: "That project no longer exists" };
 
   revalidatePath("/projects");
   revalidatePath("/projects/[projectId]", "page");
   return { ok: true, id: renamed.id };
+}
+
+/**
+ * Replaces the Project's rich-text description. The editor already cleaned
+ * what it sends, but the action is a public endpoint, so the content goes
+ * through `sanitizeContent` again here — the same closed set a Step's text
+ * is held to — before anything reaches storage. The public Project page is
+ * rendered on every request, so it needs no revalidation.
+ */
+export async function editProjectDescriptionAction(
+  projectId: string,
+  input: unknown,
+): Promise<ProjectActionResult> {
+  const session = await requireSession();
+
+  const sanitized = sanitizeContent(input);
+  if (!sanitized.ok) {
+    return { ok: false, error: sanitized.error };
+  }
+
+  const edited = await editProjectDescription(
+    projectId,
+    sanitized.content,
+    session.user.id,
+  );
+  if (!edited) return { ok: false, error: "That project no longer exists" };
+
+  revalidatePath("/projects/[projectId]", "page");
+  return { ok: true, id: edited.id };
 }
 
 export async function deleteProjectAction(

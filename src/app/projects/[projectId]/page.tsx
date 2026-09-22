@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import { NewJourneyDialog } from "@/components/journeys/new-journey-dialog";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { JourneyList } from "@/components/projects/journey-list";
@@ -10,6 +11,7 @@ import { UrlTabs } from "@/components/url-tabs";
 import { listJourneysForProject } from "@/db/journeys";
 import { listMembers } from "@/db/members";
 import { getProjectForMember } from "@/db/projects";
+import { contentPreview } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
 import { readTab } from "@/lib/tabs";
 
@@ -35,6 +37,7 @@ export default async function ProjectPage({
     listJourneysForProject(project.id),
     listMembers(project.id),
   ]);
+  const descriptionPreview = contentPreview(project.description);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
@@ -48,13 +51,26 @@ export default async function ProjectPage({
       </div>
 
       {/* The title and description are edited on the Settings tab; here
-          they are the page's heading. */}
+          they are the page's heading. The description is rich text, so the
+          heading shows its opening as plain text; the public page (linked
+          beside the title) renders the whole of it as Participants see it. */}
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {project.title}
-        </h1>
-        {project.description ? (
-          <p className="text-muted-foreground">{project.description}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {project.title}
+          </h1>
+          <div className="flex items-center gap-1">
+            <Link
+              href={`/p/${project.id}`}
+              className="text-muted-foreground text-sm underline underline-offset-4 hover:text-foreground"
+            >
+              Public page
+            </Link>
+            <CopyLinkButton path={`/p/${project.id}`} />
+          </div>
+        </div>
+        {descriptionPreview ? (
+          <p className="text-muted-foreground">{descriptionPreview}</p>
         ) : null}
       </header>
 

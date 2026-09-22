@@ -124,6 +124,44 @@ export async function listJourneysForProject(
   return rows.map((row) => toSummary(row, versionCounts.get(row.id) ?? 0));
 }
 
+export type PublicJourneySummary = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+/**
+ * The Journeys of a Project an anonymous Participant may see: the ones with
+ * a live Published Version, in the Author's order, for the public Project
+ * page at `/p/<id>` (ticket 07). No membership check — the page is public —
+ * and no publish state, because every Journey here is published; one that
+ * was never published or was unpublished is simply absent. Title and
+ * description are the live version's, never the Journey row's, exactly as
+ * the runner shows them (`getPublicJourney` in `@/db/runs`), so a rename
+ * after publishing changes nothing a Participant sees until the next
+ * publish. The Project itself is `getPublicProject` in `@/db/projects`.
+ */
+export async function listPublicJourneysForProject(
+  projectId: string,
+): Promise<PublicJourneySummary[]> {
+  return (
+    db
+      .select({
+        id: journey.id,
+        title: publishedVersion.title,
+        description: publishedVersion.description,
+      })
+      .from(journey)
+      // Inner, not left: a Journey with no live pointer has no row to show.
+      .innerJoin(
+        publishedVersion,
+        eq(publishedVersion.id, journey.liveVersionId),
+      )
+      .where(eq(journey.projectId, projectId))
+      .orderBy(...listOrder)
+  );
+}
+
 /**
  * Creates a Journey inside a Project, with the Draft every Journey has: one
  * Start Step and nothing else. Both rows in one transaction, because a

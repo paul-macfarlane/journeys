@@ -17,6 +17,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
+import type { Content } from "@/lib/graph/content";
 import type { GraphDocument } from "@/lib/graph/document";
 
 export const user = pgTable("user", {
@@ -99,10 +100,22 @@ export const project = pgTable("project", {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   title: text("title").notNull(),
-  // A short summary, shown under the title and on the public Project page
-  // (ticket 07). Defaulted so a build older than migration 0006 still
-  // inserts.
+  // The plain-text description ticket 28 added. Superseded by
+  // `descriptionContent` below (ticket 07): nothing reads or writes it any
+  // more, and migration 0007 copied what it held into the rich text. It is
+  // still here because the Migrate action and the Vercel build have no
+  // ordering, so the build before ticket 07 kept selecting and inserting it
+  // while 0007 ran; dropping it is a later migration.
   description: text("description").notNull().default(""),
+  // The Project's description as rich text — the same closed `Content` shape
+  // a Step's text has, edited with the same editor and sanitized on write by
+  // `sanitizeContent` (see `src/lib/graph/content.ts`). Shown under the title
+  // on the public Project page (`/p/<id>`). Defaulted to the empty document
+  // so a build older than migration 0007 still inserts.
+  descriptionContent: jsonb("description_content")
+    .$type<Content>()
+    .notNull()
+    .default({ type: "doc", content: [] }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
