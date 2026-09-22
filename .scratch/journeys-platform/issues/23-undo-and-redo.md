@@ -2,6 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: 22
+Route: contract
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: after 22, before 17 (Paul, 2026-09-21).

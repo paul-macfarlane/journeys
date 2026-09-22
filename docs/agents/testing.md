@@ -53,8 +53,12 @@ than a flaky one"):
 ## Evidence policy
 
 - Repository-local proof-artifact root: `test-results`.
-- Clear the entire proof-artifact root before capturing evidence for each work
-  package. It intentionally contains only the latest work package's evidence.
+- Evidence is scoped to the work package (Paul, 2026-09-21). Commit only the
+  screenshot directories and captured outputs for the specs and criteria the
+  ticket names; leave every other directory under the proof root exactly as
+  the last work package left it. Never clear the whole proof root, and never
+  re-capture evidence for behaviour the ticket does not touch. The CI run on
+  the PR is the proof that the rest of the suite still passes.
 - For UI screenshots and videos, use one directory per test name beneath the
   proof-artifact root. Rerunning a test replaces that test directory.
 - Visual/browser behavior: Screenshot is the default: each e2e spec writes a full-page screenshot to `test-results/<test-name>/<test-name>.png`, one subdirectory per test name. Video only for the canvas editor or other multi-step interactions a still image cannot prove. `test-results/playwright/` is Playwright's git-ignored scratch output and is never PASS evidence..
@@ -85,3 +89,20 @@ incorrect, `BLOCKED` when it cannot be observed or exercised, and `SKIPPED` only
 for an approved exception with the attempted command and reason. Sanitize every
 retained artifact before storage or sharing.
 <!-- atlas-v3:testing:end -->
+
+## Proportional verification (team policy, Paul, 2026-09-21)
+
+Verification effort follows the ticket's `Route:` line, not a fixed ladder.
+Every ticket carries `Route: polish` or `Route: contract`.
+
+| | `polish` | `contract` |
+|---|---|---|
+| Meaning | UI layout, copy, controls, and behaviour that does not change a stored document, a route contract, auth, or a migration. | Anything that changes the graph document, the rich-text contract, Published Versions, Runs, auth, the schema, or a public route. |
+| Command chain | `pnpm lint`, `pnpm typecheck`, `pnpm test`, then one full `pnpm test:e2e` at the end of the ticket. Never per criterion. | The full chain in the Commands table, with `pnpm build` and `pnpm db:migrate` when the ticket touches them, and one full `pnpm test:e2e` at the end. |
+| Evidence | One `dod-1-commands.txt` capture plus the screenshot directories of the specs the ticket names. | The same, plus `ac-<n>-<slug>.txt` captures only for criteria a screenshot cannot prove. |
+| AI review | One reviewer reading the whole diff. | Two reviewers (correctness and contract) as `/atlas-implement` runs them. |
+| Red team | Never. | Only where `docs/agents/planning.md` already requires it. |
+| Tracker records | `[CLOSEOUT]` only. | `[EXECUTION PLAN]` and `[CLOSEOUT]`; `[PROGRESS]` only when work spans sessions. |
+
+The CI run on the PR is the proof that the whole suite passes. A red CI run
+is a `FAIL` regardless of local evidence.
