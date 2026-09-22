@@ -15,7 +15,6 @@ import {
   JourneyCanvas,
   type CanvasArrow,
 } from "@/components/journeys/journey-canvas";
-import { OutcomeList } from "@/components/journeys/outcome-list";
 import { StepPanel } from "@/components/journeys/step-panel";
 import { Button } from "@/components/ui/button";
 import type { Content } from "@/lib/graph/content";
@@ -42,9 +41,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * The Draft editor: the map of the Journey beside a panel on the Step the
- * Author has open, with "Find step" above the map and the Journey's Outcomes
- * beneath it. Everything an Author changes happens in the document this
- * component holds; the server hears about it through one autosave.
+ * Author has open, with "Find step" above the map. Everything an Author
+ * changes happens in the document this component holds; the server hears
+ * about it through one autosave.
  *
  * Why the whole document rather than per-field actions: a Draft is one jsonb
  * row (see `docs/adr/0001-graph-as-one-json-document.md`), so the only write
@@ -439,7 +438,7 @@ export function DraftEditor({
   const selectStep: SelectStep = useCallback(
     (stepId, options) => {
       // Opening a Step is asking to edit it, from wherever the Author asked:
-      // a box, an arrow, a problem, "Leads here from", "Open", "Find step",
+      // a box, an arrow, a problem, "Open" on a Choice, "Find step",
       // any of the moves that make a Step, or a save the server refused over
       // that Step. The panel comes back for all of them, so the editing
       // gesture never changes for the panel being away — for this page only,
@@ -873,10 +872,6 @@ export function DraftEditor({
             onSelectArrow={setArrowSelection}
             onRemoveChoices={removeChoices}
           />
-
-          {/* The Journey's Outcomes, beneath the map the Endings they group
-              are drawn on. */}
-          <OutcomeList document={document} onChange={applyEdit} />
         </div>
 
         {/* Nothing of a panel that is away is left behind to be tabbed into
@@ -886,6 +881,7 @@ export function DraftEditor({
             <StepPanel
               document={document}
               step={selectedStep}
+              order={stepOrder}
               problems={selectedStepProblems}
               choiceProblems={selectedStepChoiceProblems}
               revision={revision}

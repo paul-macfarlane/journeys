@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
 import {
   SELECT_CLASS,
   type SelectStep,
@@ -25,14 +26,20 @@ import { cn } from "@/lib/utils";
  * order a participant reads them in, and the one motion that creates the Step
  * a Choice needs — choosing "New step" makes it and opens it, so an Author
  * writing forwards never has to go back and wire anything up.
+ *
+ * Where a Choice leads is found the way a Step is found above the map: the
+ * field names the Step the Choice points at, and typing part of another
+ * Step's title picks it out of the whole Draft, which on a forty-step Journey
+ * is the difference between reading a list and scrolling one.
  */
 
-/** The sentinel a target `<select>` uses for "make me one". */
+/** The sentinel a target field uses for "make me one". */
 const NEW_STEP = "__new__";
 
 export function ChoiceList({
   document,
   step,
+  order,
   choiceProblems,
   focusChoiceId,
   focusChoiceRequest,
@@ -41,6 +48,12 @@ export function ChoiceList({
 }: {
   document: GraphDocument;
   step: Step;
+  /**
+   * Step ids in the order the map lays the boxes out, so the Steps a Choice
+   * can be pointed at read like the map rather than like the order they were
+   * created in.
+   */
+  order: string[];
   /** This Step's own Choices' live publish problems, keyed by Choice id. */
   choiceProblems: Map<string, PublishProblem[]>;
   /** A Choice here whose label field is being asked for — one drawn on the
@@ -74,6 +87,16 @@ export function ChoiceList({
   // Every Step is a valid Choice target, the current one included — a loop
   // is an ordinary path since ticket 18.
   const targetSteps = Object.values(document.steps);
+
+  /** The same Steps, offered to a Choice row in the order the map draws them. */
+  const targetOptions = useMemo<ComboboxOption[]>(
+    () =>
+      order.map((stepId) => ({
+        id: stepId,
+        name: stepName(document.steps[stepId]),
+      })),
+    [document, order],
+  );
 
   function retarget(choiceId: string, value: string) {
     if (value === NEW_STEP) {
@@ -143,28 +166,25 @@ export function ChoiceList({
                   }
                 />
 
-                <select
-                  aria-label="Choice target"
-                  className={cn(SELECT_CLASS, "w-48")}
-                  value={dangling ? "" : choice.targetStepId}
-                  onChange={(event) => retarget(choice.id, event.target.value)}
-                >
-                  {/* The deleted Step's place in the list, kept visible until
-                      the Author points the Choice somewhere real. */}
-                  {dangling ? (
-                    <option value="" disabled>
-                      Missing step
-                    </option>
-                  ) : null}
-                  {targetSteps.map((other) => (
-                    <option key={other.id} value={other.id}>
-                      {stepName(other)}
-                    </option>
-                  ))}
-                  <option value={NEW_STEP}>New step…</option>
-                </select>
-                {/* Where this Choice goes, one click away; "Leads here from"
-                    on that Step is the way back. */}
+                {/* The deleted Step's place, said in the field itself and
+                    kept there until the Author points the Choice somewhere
+                    real. */}
+                <Combobox
+                  label="Choice target"
+                  labelHidden
+                  listLabel="Steps"
+                  emptyMessage="No steps match"
+                  className="w-48"
+                  options={targetOptions}
+                  value={
+                    dangling
+                      ? "Missing step"
+                      : stepName(document.steps[choice.targetStepId])
+                  }
+                  action={() => ({ id: NEW_STEP, name: "New step…" })}
+                  onChoose={(targetStepId) => retarget(choice.id, targetStepId)}
+                />
+                {/* Where this Choice goes, one click away. */}
                 <Button
                   variant="ghost"
                   size="sm"

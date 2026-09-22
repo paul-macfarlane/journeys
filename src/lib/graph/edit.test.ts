@@ -6,6 +6,7 @@ import {
   addOutcome,
   addStep,
   choicesTargeting,
+  createOutcomeForEnding,
   deleteStep,
   duplicateStep,
   endingCountsByOutcome,
@@ -14,6 +15,7 @@ import {
   removeOutcome,
   renameOutcome,
   retargetChoiceToNewStep,
+  setEndingOutcome,
   setLayoutDirection,
   setStart,
   stepName,
@@ -692,5 +694,240 @@ describe("endingCountsByOutcome", () => {
       "outcome-bad": 1,
       [outcomeId]: 0,
     });
+  });
+});
+
+/** Start -> two Choices -> two untagged Endings, with one Outcome defined. */
+function untaggedEndingsDocument(): GraphDocument {
+  return {
+    schemaVersion: 1,
+    startStepId: "start",
+    allowBack: true,
+    steps: byId([
+      step("start", [
+        choice("choice-a", "Go to A", "ending-a"),
+        choice("choice-b", "Go to B", "ending-b"),
+      ]),
+      step("ending-a", [], { title: "Ending A" }),
+      step("ending-b", [], { title: "Ending B" }),
+    ]),
+    outcomes: byId([outcome("outcome-care", "Reached care")]),
+    layoutDirection: "TB",
+  };
+}
+
+/** The same shape with both Endings sharing one of the two Outcomes. */
+function sharedOutcomeDocument(): GraphDocument {
+  return {
+    schemaVersion: 1,
+    startStepId: "start",
+    allowBack: true,
+    steps: byId([
+      step("start", [
+        choice("choice-a", "Go to A", "ending-a"),
+        choice("choice-b", "Go to B", "ending-b"),
+      ]),
+      step("ending-a", [], { title: "Ending A", outcomeId: "outcome-care" }),
+      step("ending-b", [], { title: "Ending B", outcomeId: "outcome-care" }),
+    ]),
+    outcomes: byId([
+      outcome("outcome-care", "Reached care"),
+      outcome("outcome-away", "Turned away"),
+    ]),
+    layoutDirection: "TB",
+  };
+}
+
+describe("setEndingOutcome", () => {
+  it("tags an Ending with an Outcome the Journey defines", () => {
+    const document = untaggedEndingsDocument();
+    const before = snapshot(document);
+
+    const next = setEndingOutcome(document, "ending-a", "outcome-care");
+
+    expect(document).toEqual(before);
+    expect(next.steps["ending-a"].outcomeId).toBe("outcome-care");
+    expect(next.outcomes).toEqual({
+      "outcome-care": { id: "outcome-care", label: "Reached care" },
+    });
+    // Everything the tag is not about, left exactly as it was.
+    expect(next.steps["start"]).toEqual(before.steps["start"]);
+    expect(next.steps["ending-b"]).toEqual(before.steps["ending-b"]);
+    expect(next.startStepId).toBe("start");
+    expect(next.allowBack).toBe(true);
+    expect(next.layoutDirection).toBe("TB");
+    expect(next.schemaVersion).toBe(1);
+  });
+
+  it("removes the Outcome it dropped once no Ending carries it", () => {
+    const document = buildDocument();
+    const before = snapshot(document);
+
+    const next = setEndingOutcome(document, "ending-a", "outcome-bad");
+
+    expect(document).toEqual(before);
+    expect(next.steps["ending-a"].outcomeId).toBe("outcome-bad");
+    expect(next.outcomes).toEqual({
+      "outcome-bad": { id: "outcome-bad", label: "Bad" },
+    });
+  });
+
+  it("keeps the Outcome it dropped while another Ending still carries it", () => {
+    const document = sharedOutcomeDocument();
+    const before = snapshot(document);
+
+    const next = setEndingOutcome(document, "ending-a", "outcome-away");
+
+    expect(document).toEqual(before);
+    expect(next.steps["ending-a"].outcomeId).toBe("outcome-away");
+    expect(next.steps["ending-b"].outcomeId).toBe("outcome-care");
+    expect(next.outcomes).toEqual({
+      "outcome-care": { id: "outcome-care", label: "Reached care" },
+      "outcome-away": { id: "outcome-away", label: "Turned away" },
+    });
+  });
+
+  it("clears the tag and removes the Outcome the last Ending dropped", () => {
+    const document = buildDocument();
+    const before = snapshot(document);
+
+    const next = setEndingOutcome(document, "ending-a", null);
+
+    expect(document).toEqual(before);
+    expect(next.steps["ending-a"].outcomeId).toBeNull();
+    expect(next.outcomes).toEqual({
+      "outcome-bad": { id: "outcome-bad", label: "Bad" },
+    });
+    expect(next.steps["start"]).toEqual(before.steps["start"]);
+  });
+
+  it("clears the tag and keeps an Outcome another Ending shares", () => {
+    const document = sharedOutcomeDocument();
+
+    const next = setEndingOutcome(document, "ending-a", null);
+
+    expect(next.steps["ending-a"].outcomeId).toBeNull();
+    expect(next.steps["ending-b"].outcomeId).toBe("outcome-care");
+    expect(next.outcomes).toEqual({
+      "outcome-care": { id: "outcome-care", label: "Reached care" },
+      "outcome-away": { id: "outcome-away", label: "Turned away" },
+    });
+  });
+
+  it("leaves the document unchanged for an unknown Step", () => {
+    const document = untaggedEndingsDocument();
+
+    expect(setEndingOutcome(document, "missing", "outcome-care")).toBe(
+      document,
+    );
+  });
+
+  it("leaves the document unchanged for a Step that is not an Ending", () => {
+    const document = untaggedEndingsDocument();
+
+    expect(setEndingOutcome(document, "start", "outcome-care")).toBe(document);
+  });
+
+  it("leaves the document unchanged for an Outcome it does not define", () => {
+    const document = untaggedEndingsDocument();
+
+    expect(setEndingOutcome(document, "ending-a", "outcome-missing")).toBe(
+      document,
+    );
+  });
+
+  it("returns the same document when the Ending already carries it", () => {
+    const document = buildDocument();
+
+    expect(setEndingOutcome(document, "ending-a", "outcome-good")).toBe(
+      document,
+    );
+  });
+
+  it("returns the same document when an untagged Ending is cleared", () => {
+    const document = untaggedEndingsDocument();
+
+    expect(setEndingOutcome(document, "ending-a", null)).toBe(document);
+  });
+});
+
+describe("createOutcomeForEnding", () => {
+  it("defines the Outcome and tags the Ending in one edit", () => {
+    const document = untaggedEndingsDocument();
+    const before = snapshot(document);
+
+    const { document: next, outcomeId } = createOutcomeForEnding(
+      document,
+      "ending-a",
+      "Turned away",
+    );
+
+    expect(document).toEqual(before);
+    expect(next.outcomes[outcomeId]).toEqual({
+      id: outcomeId,
+      label: "Turned away",
+    });
+    expect(next.steps["ending-a"].outcomeId).toBe(outcomeId);
+    // The Outcome the Journey already had, untouched.
+    expect(next.outcomes["outcome-care"]).toEqual({
+      id: "outcome-care",
+      label: "Reached care",
+    });
+    expect(next.steps["start"]).toEqual(before.steps["start"]);
+    expect(next.steps["ending-b"]).toEqual(before.steps["ending-b"]);
+  });
+
+  it("removes the Outcome the Ending dropped once no Ending carries it", () => {
+    const document = buildDocument();
+    const before = snapshot(document);
+
+    const { document: next, outcomeId } = createOutcomeForEnding(
+      document,
+      "ending-a",
+      "Reached care",
+    );
+
+    expect(document).toEqual(before);
+    expect(next.steps["ending-a"].outcomeId).toBe(outcomeId);
+    expect(next.outcomes).toEqual({
+      "outcome-bad": { id: "outcome-bad", label: "Bad" },
+      [outcomeId]: { id: outcomeId, label: "Reached care" },
+    });
+  });
+
+  it("keeps the Outcome the Ending dropped while another Ending carries it", () => {
+    const document = sharedOutcomeDocument();
+
+    const { document: next, outcomeId } = createOutcomeForEnding(
+      document,
+      "ending-a",
+      "Sent home",
+    );
+
+    expect(next.steps["ending-a"].outcomeId).toBe(outcomeId);
+    expect(next.steps["ending-b"].outcomeId).toBe("outcome-care");
+    expect(next.outcomes).toEqual({
+      "outcome-care": { id: "outcome-care", label: "Reached care" },
+      "outcome-away": { id: "outcome-away", label: "Turned away" },
+      [outcomeId]: { id: outcomeId, label: "Sent home" },
+    });
+  });
+
+  it("creates nothing for an unknown Step", () => {
+    const document = untaggedEndingsDocument();
+
+    expect(createOutcomeForEnding(document, "missing", "Turned away")).toEqual({
+      document,
+      outcomeId: "",
+    });
+  });
+
+  it("creates nothing for a Step that is not an Ending", () => {
+    const document = untaggedEndingsDocument();
+
+    const result = createOutcomeForEnding(document, "start", "Turned away");
+
+    expect(result.document).toBe(document);
+    expect(result.outcomeId).toBe("");
   });
 });

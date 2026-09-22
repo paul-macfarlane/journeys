@@ -233,12 +233,34 @@ async function addChoiceToStep(
   ).toHaveCount(0);
 }
 
-async function addOutcome(page: Page, label: string): Promise<void> {
-  await page.getByLabel("New outcome", { exact: true }).fill(label);
-  await page.getByRole("button", { name: "Add outcome", exact: true }).click();
-  // Outcomes are listed in document order and a new one is appended, so the
-  // last field is the one just added — with one Outcome it is the only one.
-  await expect(page.getByLabel("Outcome label").last()).toHaveValue(label);
+/**
+ * The Outcome an Ending is grouped by, set from the Ending itself: the Ending
+ * opened by name, the label typed into its Outcome field, and the Outcome
+ * taken either from the ones the Journey already has or from the
+ * "Create outcome" the field offers for a label it has none for. Which of the
+ * two is offered is the field's own rule, so this takes whichever is there.
+ */
+async function tagEndingWithOutcome(
+  page: Page,
+  endingTitle: string,
+  label: string,
+): Promise<void> {
+  await chooseStep(page, endingTitle);
+
+  const field = page.getByRole("combobox", { name: "Outcome", exact: true });
+  await field.fill(label);
+
+  const list = page.getByRole("listbox", { name: "Outcomes" });
+  const option = list.getByRole("option", { name: label, exact: true }).or(
+    list.getByRole("option", {
+      name: `Create outcome “${label}”`,
+      exact: true,
+    }),
+  );
+  await expect(option).toHaveCount(1);
+  await option.click();
+
+  await expect(field).toHaveValue(label);
 }
 
 /** Every arrow's rendered path, sampled every 4 units into a polyline in flow coordinates. */
@@ -686,13 +708,8 @@ async function tagEndingsPublishAndWalk(
   journeyId: string,
   testInfo: TestInfo,
 ): Promise<void> {
-  await addOutcome(page, "Reached care");
   for (const ending of ["Waved through", "Turned back"]) {
-    await canvasNode(page, ending).click();
-    await expect(page.getByLabel("Step title")).toHaveValue(ending);
-    await page
-      .getByLabel("Outcome", { exact: true })
-      .selectOption({ label: "Reached care" });
+    await tagEndingWithOutcome(page, ending, "Reached care");
     await expect(canvasNode(page, ending)).toHaveAttribute(
       "data-problems",
       "0",
@@ -864,10 +881,7 @@ test("canvas-duplicate-step", async ({ page, context }) => {
   await expect(page.getByLabel("Step content")).toContainText(sentence);
 
   // The Start has no Choices, so it is an Ending and carries an Outcome.
-  await addOutcome(page, "Reached care");
-  const outcomeSelect = page.getByLabel("Outcome", { exact: true });
-  await outcomeSelect.selectOption({ label: "Reached care" });
-  const originalOutcomeValue = await outcomeSelect.inputValue();
+  await tagEndingWithOutcome(page, "Border post", "Reached care");
   await expectSaved(page);
 
   // "Duplicate" on the box's own toolbar — the Start is already the Step
@@ -882,7 +896,7 @@ test("canvas-duplicate-step", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toBeFocused();
   await expect(page.getByLabel("Step content")).toContainText(sentence);
   await expect(page.getByLabel("Outcome", { exact: true })).toHaveValue(
-    originalOutcomeValue,
+    "Reached care",
   );
   await expect(canvasNodes(page)).toHaveCount(2);
 
@@ -948,10 +962,7 @@ test("canvas-content-peek", async ({ page, context }) => {
 
   // The Start is an Ending until it leads somewhere, and a box reads out its
   // problems above its content: tagged, so this peek is the content alone.
-  await addOutcome(page, "Reached care");
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Reached care" });
+  await tagEndingWithOutcome(page, "Border post", "Reached care");
   await expect(canvasNode(page, "Border post")).toHaveAttribute(
     "data-problems",
     "0",
@@ -1694,10 +1705,7 @@ test("canvas-validation-marks", async ({ page, context }) => {
     "1",
   );
 
-  await addOutcome(page, "Reached care");
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Reached care" });
+  await tagEndingWithOutcome(page, "Border post", "Reached care");
   await expect(canvasNode(page, "Border post")).toHaveAttribute(
     "data-problems",
     "0",
@@ -1709,9 +1717,7 @@ test("canvas-validation-marks", async ({ page, context }) => {
     "data-problems",
     "2",
   );
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Reached care" });
+  await tagEndingWithOutcome(page, "Clinic tent", "Reached care");
   await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
     "data-problems",
     "1",
@@ -1832,10 +1838,7 @@ test("canvas-problems-readable", async ({ page, context }) => {
   });
 
   // Giving it an Outcome clears the problem everywhere it was shown.
-  await addOutcome(page, "Reached care");
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Reached care" });
+  await tagEndingWithOutcome(page, "Border post", "Reached care");
 
   await expect(page.getByRole("region", { name: "Step problems" })).toHaveCount(
     0,
@@ -2010,19 +2013,12 @@ test("canvas-legend-outcomes", async ({ page, context }) => {
   await addChoiceToStep(page, "Wait your turn", "Waved through");
   await addChoiceToStep(page, "Walk away", "Turned back");
 
-  await addOutcome(page, "Reached care");
-  await addOutcome(page, "Turned away");
-
   const assigned: Array<[string, string]> = [
     ["Waved through", "Reached care"],
     ["Turned back", "Turned away"],
   ];
   for (const [ending, outcome] of assigned) {
-    await canvasNode(page, ending).click();
-    await expect(page.getByLabel("Step title")).toHaveValue(ending);
-    await page
-      .getByLabel("Outcome", { exact: true })
-      .selectOption({ label: outcome });
+    await tagEndingWithOutcome(page, ending, outcome);
     await expect(canvasNode(page, ending)).toHaveAttribute(
       "data-problems",
       "0",
@@ -2074,12 +2070,7 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
 
   // Tagged while it is still reachable, so that when the Choice goes the one
   // thing left wrong with it is that nothing leads there any more.
-  await addOutcome(page, "Reached care");
-  await canvasNode(page, "Clinic tent").click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Reached care" });
+  await tagEndingWithOutcome(page, "Clinic tent", "Reached care");
   await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
     "data-problems",
     "0",
@@ -2502,13 +2493,8 @@ test.describe("authoring from the map", () => {
     await addChoiceToStep(page, "Walk away", "Turned back");
     await expect(canvasEdges(page)).toHaveCount(2);
 
-    await addOutcome(page, "Reached care");
     for (const ending of ["Waved through", "Turned back"]) {
-      await canvasNode(page, ending).click();
-      await expect(page.getByLabel("Step title")).toHaveValue(ending);
-      await page
-        .getByLabel("Outcome", { exact: true })
-        .selectOption({ label: "Reached care" });
+      await tagEndingWithOutcome(page, ending, "Reached care");
       await expect(canvasNode(page, ending)).toHaveAttribute(
         "data-problems",
         "0",

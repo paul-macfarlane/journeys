@@ -1,4 +1,10 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
@@ -101,6 +107,73 @@ async function renameStep(page: Page, title: string): Promise<void> {
   await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
+/** The Ending's own Outcome field, which is where an Outcome is made now. */
+function outcomeField(page: Page) {
+  return page.getByRole("combobox", { name: "Outcome", exact: true });
+}
+
+/**
+ * The Outcome an Ending is grouped by, set from the Ending itself: the label
+ * typed into the field, and taken either from the Outcomes the Journey
+ * already has or from the "Create outcome" offered for a label it has none
+ * for. Which of the two is offered is the field's own rule, so this takes
+ * whichever is there rather than saying which it expects.
+ */
+async function tagWithOutcome(page: Page, label: string): Promise<void> {
+  const field = outcomeField(page);
+  await field.fill(label);
+
+  const list = page.getByRole("listbox", { name: "Outcomes" });
+  const option = list.getByRole("option", { name: label, exact: true }).or(
+    list.getByRole("option", {
+      name: `Create outcome “${label}”`,
+      exact: true,
+    }),
+  );
+  await expect(option).toHaveCount(1);
+  await option.click();
+
+  await expect(field).toHaveValue(label);
+}
+
+/** One Outcome taken from the list the field offers, by name. */
+async function chooseOutcome(page: Page, name: string): Promise<void> {
+  await outcomeField(page).click();
+  await page
+    .getByRole("listbox", { name: "Outcomes" })
+    .getByRole("option", { name, exact: true })
+    .click();
+
+  await expect(outcomeField(page)).toHaveValue(name);
+}
+
+/**
+ * A Choice pointed at another Step the way an Author points it: part of the
+ * Step's title typed into the row's target field, and the Step of that name
+ * taken from what the field offers.
+ */
+async function retargetChoice(
+  row: Locator,
+  query: string,
+  title: string,
+): Promise<void> {
+  const field = row.getByLabel("Choice target");
+  await field.fill(query);
+
+  const option = row.getByRole("option", { name: title, exact: true });
+  await expect(option).toBeVisible();
+  await option.click();
+
+  await expect(field).toHaveValue(title);
+}
+
+/** One arrow on the map, whose accessible name is `"<label>: <from> → <to>"`. */
+function arrowLabelled(page: Page, label: string) {
+  return page
+    .getByRole("region", { name: "Canvas" })
+    .locator(`[data-choice-id][aria-label^="${label}:"]`);
+}
+
 /** "Add choice" pointed at a Step that does not exist yet — the same motion. */
 async function addChoiceToNewStep(
   page: Page,
@@ -177,20 +250,13 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
     problems.getByText('Ending "Sent away" has no outcome'),
   ).toBeVisible();
 
-  await page.getByLabel("New outcome", { exact: true }).fill("Reached care");
-  await page.getByRole("button", { name: "Add outcome", exact: true }).click();
-  await page.getByLabel("New outcome", { exact: true }).fill("Turned away");
-  await page.getByRole("button", { name: "Add outcome", exact: true }).click();
-  await expect(page.getByText("6 steps · 2 outcomes")).toBeVisible();
-
+  // Each Outcome made from the Ending that needs it, which is the only place
+  // one is made now.
   await chooseStep(page, "Reached the ward");
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Reached care" });
+  await tagWithOutcome(page, "Reached care");
   await chooseStep(page, "Sent away");
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Turned away" });
+  await tagWithOutcome(page, "Turned away");
+  await expect(page.getByText("6 steps · 2 outcomes")).toBeVisible();
 
   await page.getByRole("button", { name: "Validate", exact: true }).click();
   await expect(page.getByText("No problems found.")).toBeVisible();
@@ -253,10 +319,11 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
       'Step "Border post" has a choice pointing at a step that no longer exists',
     ),
   ).toBeVisible();
-  await expect(choiceRow.getByLabel("Choice target")).toHaveValue("");
-  await expect(
-    choiceRow.getByRole("option", { name: "Missing step" }),
-  ).toBeAttached();
+  // The deleted Step's place, said in the field itself and kept there until
+  // the Author points the Choice somewhere real.
+  await expect(choiceRow.getByLabel("Choice target")).toHaveValue(
+    "Missing step",
+  );
 
   // Validation says the same thing in the words publishing would use.
   await page.getByRole("button", { name: "Validate", exact: true }).click();
@@ -395,24 +462,30 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
     "Wait your turn",
   );
 
-  // Retargeting an existing Choice at an existing Step.
+  // Retargeting an existing Choice at an existing Step, found by name in the
+  // row's own field.
   const stored = await readDraft(journeyId);
+  const borderPostId = stepIdByTitle(stored, "Border post");
   const wavedThroughId = stepIdByTitle(stored, "Waved through");
-  await rows
-    .nth(0)
-    .getByLabel("Choice target")
-    .selectOption({ label: "Waved through" });
+  await retargetChoice(rows.nth(0), "waved", "Waved through");
   await expectSaved(page);
+
+  // The field reads the Step's title; the Draft holds the Step's id.
+  const retargeted = await readDraft(journeyId);
+  expect(retargeted.steps[borderPostId].choices[0].targetStepId).toBe(
+    wavedThroughId,
+  );
   await page.reload();
   await expect(rows.nth(0).getByLabel("Choice target")).toHaveValue(
-    wavedThroughId,
+    "Waved through",
   );
 
   // Retargeting at a Step that does not exist yet makes it and opens it.
+  await rows.nth(1).getByLabel("Choice target").click();
   await rows
     .nth(1)
-    .getByLabel("Choice target")
-    .selectOption({ label: "New step…" });
+    .getByRole("option", { name: "New step…", exact: true })
+    .click();
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
   await expect(page.getByLabel("Step title")).toBeFocused();
   // And it is a Step of the Draft like any other: "Find step" offers it.
@@ -424,16 +497,12 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   const after = await readDraft(journeyId);
   expect(Object.keys(after.steps)).toHaveLength(4);
 
-  // Walking from the panel: "Leads here from" goes back up the Choice that
-  // made this Step, "Open" on that Choice comes back down, and the Step no
-  // Choice points at any more ("Turned back") now shows up as a live
-  // problem, found through the header's count rather than a separate
+  // Walking from the panel: "Find step" goes back up to the Step the Choice
+  // that made this one is written on, "Open" on that Choice comes back down,
+  // and the Step no Choice points at any more ("Turned back") now shows up as
+  // a live problem, found through the header's count rather than a separate
   // "not yet reached" list.
-  await page
-    .getByRole("group", { name: "Leads here from" })
-    .getByRole("button", { name: "Wait your turn on Border post" })
-    .click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await chooseStep(page, "Border post");
   await rows.nth(1).getByRole("button", { name: "Open", exact: true }).click();
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
 
@@ -472,12 +541,8 @@ test("step-editing-outcome-rename", async ({ page, context }) => {
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
 
   // "Waved through" has no Choices of its own, so it is an Ending and carries
-  // an Outcome.
-  await page.getByLabel("New outcome", { exact: true }).fill("Reached care");
-  await page.getByRole("button", { name: "Add outcome", exact: true }).click();
-  await page
-    .getByLabel("Outcome", { exact: true })
-    .selectOption({ label: "Reached care" });
+  // an Outcome, made from the Ending itself.
+  await tagWithOutcome(page, "Reached care");
   await expectSaved(page);
 
   const before = await readDraft(journeyId);
@@ -487,7 +552,12 @@ test("step-editing-outcome-rename", async ({ page, context }) => {
 
   // The rename is a label edit: the id it is filed under does not move, so
   // the Ending is still tagged with the same Outcome afterwards.
-  await page.getByLabel("Outcome label").fill("Reached the clinic");
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  const labelField = page.getByLabel("Outcome label", { exact: true });
+  await expect(labelField).toBeFocused();
+  await labelField.fill("Reached the clinic");
+  await labelField.press("Enter");
+  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
   await expectSaved(page);
 
   const after = await readDraft(journeyId);
@@ -503,6 +573,146 @@ test("step-editing-outcome-rename", async ({ page, context }) => {
 
   await page.screenshot({
     path: "test-results/step-editing-outcome-rename/step-editing-outcome-rename.png",
+    fullPage: true,
+  });
+});
+
+test("panel-choice-target-search", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+
+  // A Start with two Choices, each on a Step of its own.
+  await renameStep(page, "Border post");
+  await addChoiceToNewStep(page, "Wait your turn", "Waved through");
+  await chooseStep(page, "Border post");
+  await addChoiceToNewStep(page, "Find the clinic", "Clinic tent");
+  await chooseStep(page, "Border post");
+
+  const rows = page
+    .getByRole("list", { name: "Choices" })
+    .getByRole("listitem");
+  const target = rows.nth(0).getByLabel("Choice target");
+  await expect(target).toHaveValue("Waved through");
+
+  // Part of another Step's title, and that Step is what the field offers:
+  // the Steps whose titles hold what was typed, and the standing offer to
+  // make a Step that does not exist yet.
+  await target.fill("clin");
+  await expect(rows.nth(0).getByRole("option")).toHaveText([
+    "Clinic tent",
+    "New step…",
+  ]);
+  await rows
+    .nth(0)
+    .getByRole("option", { name: "Clinic tent", exact: true })
+    .click();
+  await expect(target).toHaveValue("Clinic tent");
+  await expectSaved(page);
+
+  // What the row says is what the Draft holds.
+  const stored = await readDraft(journeyId);
+  const borderPostId = stepIdByTitle(stored, "Border post");
+  const clinicTentId = stepIdByTitle(stored, "Clinic tent");
+  const retargeted = stored.steps[borderPostId].choices.find(
+    (choice) => choice.label === "Wait your turn",
+  );
+  expect(retargeted?.targetStepId).toBe(clinicTentId);
+
+  // And what the map draws: the arrow names the Step it now ends on.
+  await expect(arrowLabelled(page, "Wait your turn")).toHaveAttribute(
+    "aria-label",
+    "Wait your turn: Border post → Clinic tent",
+  );
+
+  // Nothing reads the Choices leading to a Step back out of the panel any
+  // more: not on the Start, not on a Step two Choices lead to, and not on
+  // one nothing leads to.
+  const leadsHereFrom = page.getByRole("group", { name: "Leads here from" });
+  await expect(leadsHereFrom).toHaveCount(0);
+  await chooseStep(page, "Clinic tent");
+  await expect(leadsHereFrom).toHaveCount(0);
+  await chooseStep(page, "Waved through");
+  await expect(leadsHereFrom).toHaveCount(0);
+
+  await page.screenshot({
+    path: "test-results/panel-choice-target-search/panel-choice-target-search.png",
+    fullPage: true,
+  });
+});
+
+test("panel-outcomes-from-the-ending", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+
+  // A Start with two Choices, so the Journey has two Endings to group.
+  await renameStep(page, "Border post");
+  await addChoiceToNewStep(page, "Wait your turn", "Waved through");
+  await chooseStep(page, "Border post");
+  await addChoiceToNewStep(page, "Walk away", "Turned back");
+
+  // Nothing beneath the map lists the Journey's Outcomes any more.
+  await expect(page.getByRole("region", { name: "Outcomes" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Outcomes" })).toHaveCount(0);
+
+  // An Outcome made from the Ending that needs it, in one motion.
+  await chooseStep(page, "Waved through");
+  await outcomeField(page).fill("Reached care");
+  await page
+    .getByRole("listbox", { name: "Outcomes" })
+    .getByRole("option", { name: "Create outcome “Reached care”", exact: true })
+    .click();
+  await expect(outcomeField(page)).toHaveValue("Reached care");
+  await expect(page.getByText("3 steps · 1 outcome")).toBeVisible();
+
+  // The second Ending takes it from the list, and the list says how many
+  // Endings each Outcome holds.
+  await chooseStep(page, "Turned back");
+  await chooseOutcome(page, "Reached care");
+  await outcomeField(page).click();
+  await expect(
+    page
+      .getByRole("listbox", { name: "Outcomes" })
+      .getByRole("option", { name: "Reached care", exact: true }),
+  ).toContainText("2 endings");
+  await page.keyboard.press("Escape");
+  await expectSaved(page);
+
+  const tagged = await readDraft(journeyId);
+  const [outcomeId] = Object.keys(tagged.outcomes);
+
+  // Renaming it renames it for every Ending that shares it, and the id it is
+  // filed under never moves.
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  const labelField = page.getByLabel("Outcome label", { exact: true });
+  await expect(labelField).toBeFocused();
+  await labelField.fill("Reached the clinic");
+  await labelField.press("Enter");
+  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+  await chooseStep(page, "Waved through");
+  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+  await expectSaved(page);
+
+  const renamed = await readDraft(journeyId);
+  expect(Object.keys(renamed.outcomes)).toEqual([outcomeId]);
+  expect(renamed.outcomes[outcomeId].label).toBe("Reached the clinic");
+  expect(renamed.steps[stepIdByTitle(renamed, "Waved through")].outcomeId).toBe(
+    outcomeId,
+  );
+  expect(renamed.steps[stepIdByTitle(renamed, "Turned back")].outcomeId).toBe(
+    outcomeId,
+  );
+
+  // An Outcome the last Ending drops goes with it: there is nothing to
+  // remove by hand.
+  await chooseOutcome(page, "No outcome");
+  await chooseStep(page, "Turned back");
+  await chooseOutcome(page, "No outcome");
+  await expect(page.getByText("3 steps · 0 outcomes")).toBeVisible();
+  await expectSaved(page);
+
+  const cleared = await readDraft(journeyId);
+  expect(cleared.outcomes).toEqual({});
+
+  await page.screenshot({
+    path: "test-results/panel-outcomes-from-the-ending/panel-outcomes-from-the-ending.png",
     fullPage: true,
   });
 });
