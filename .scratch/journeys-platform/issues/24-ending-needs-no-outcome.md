@@ -1,8 +1,8 @@
 # 24: An Ending needs no Outcome
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 22
-Owner:
+Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-22
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: **next** after the harness simplification (Paul, 2026-09-21: "fix the current bug with the journeys where it is requiring an outcome that can't be set" before any canvas polish). Then 25 → 26 → 27 → 10 → 28 → 29 → 30 → 31 → 23; 17 is post-hackathon.
 Route: contract
@@ -31,3 +31,25 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's feedback on PR #26, 2026-09-21.
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-22 — Atlas orchestrator (Claude Fable 5.1)
+
+Route: contract. Run surface: local + deployed (deployed = post-merge smoke on staging, a human gate outside this PR's acceptance). Repository delivery: `journeys` on `feat/24-ending-needs-no-outcome`, comparison SHA `4d4f2fc` (staging). Direct checkout, no worktrees: the two deliverables run sequentially, and a parallel worktree would need `node_modules` for the husky/lint-staged commit hook for a gain of a few minutes against D2's full e2e run. Predicted file sets do not overlap (D1: `CONTEXT.md`, `README.md`, `.scratch/**`; D2: `src/**`, `e2e/**`, `test-results/**`); re-checked at closeout.
+
+**Deliverables (sequential, D1 → D2):**
+
+- **D1 — Docs and spec amendments** (worker: claude-sonnet-5). `CONTEXT.md` Ending entry; `spec.md` `[SCOPE CHANGE]` (story 26 withdrawn; 33 and 37 amended; publish-time validation paragraph and unit-test list amended); `10-analytics.md` untagged-Ending note; README editor and runner paragraphs. No code; no seam to test-drive.
+- **D2 — Rule removal, runner ending screen, and every spec that leaned on the rule** (worker: claude-opus-5). `validate.ts` + `validate.test.ts` + `layout.test.ts`; `step-view.tsx`; `e2e/publish.spec.ts` (refusal leg rewritten to a dangling Choice target via `writeDraftDocument`; new `publish-untagged-ending` spec that publishes a brand-new Journey and walks it to "The end" with no "Outcome:" line); `e2e/step-editing.spec.ts`; `e2e/canvas.spec.ts` (`canvas-content-peek`, `canvas-validation-marks`, `canvas-problems-readable`, and any initial-count assertion). Evidence captured and committed by the same worker.
+
+**Verification map (resolved against `docs/agents/testing.md`, contract route):**
+
+| Criterion | Command / action | Surface | Real deps | Expected | Evidence | Earliest checkpoint | Invalidated by |
+|---|---|---|---|---|---|---|---|
+| AC-1 Seam A | `pnpm test` (whole unit suite; `validate.test.ts` carries the new "accepts an Ending with no Outcome" case and the unchanged rule cases) | local, Vitest | none | all green; no `ending-without-outcome` anywhere in `src/` | `test-results/ac-1-validate-unit.txt` | D2 integrated | any change under `src/lib/graph/` |
+| AC-2 brand-new Journey | `pnpm test:e2e` → `canvas-problems-readable` (reads "No problems" on load, `data-problems="0"`, no Step problems region) and `publish-untagged-ending` (Publish succeeds; Participant walks to "The end"; no "Outcome:" text) | local, Playwright vs production build on :3100 | `journeys_e2e` Postgres (docker :5436) | both specs pass | `test-results/canvas-problems-readable/*.png`, `test-results/publish-untagged-ending/*.png`, run summary in `test-results/dod-1-commands.txt` | D2 integrated | any change under `src/`, `e2e/` |
+| AC-3 tagged Ending still shows its Outcome | `pnpm test:e2e` → existing `runner.spec.ts` and `preview.spec.ts` assertions on "Outcome: …" | as AC-2 | as AC-2 | pass | run summary in `test-results/dod-1-commands.txt` (existing `test-results/preview/` left as the last work package left it) | D2 integrated | change to `step-view.tsx` or runner routes |
+| AC-4 docs | `grep -n` over `CONTEXT.md` (no "exactly one outcome"), `spec.md` (new `[SCOPE CHANGE]`), `10-analytics.md` (untagged-Ending note), README | local, static | none | expected strings present / absent | `test-results/ac-4-docs.txt` | D1 integrated | any edit to those files |
+| AC-5 every existing canvas, draft, step-editing, publish, preview, runner spec passes | one full `pnpm test:e2e` at the end (0 retries; a flaky run is a FAIL) + CI on the PR | as AC-2 | as AC-2 | all specs pass, no flaky | `test-results/dod-1-commands.txt`; PR CI | D2 integrated | any change under `src/`, `e2e/` |
+| DoD-1 command chain | `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` (which builds; no schema change so `db:migrate` is not in play) | local | as above | all exit 0 | `test-results/dod-1-commands.txt` | D2 integrated | any change |
+
+Human gates: none before the PR. Announced for later: post-merge staging smoke (walk a one-Step Journey on staging and read "The end" with no "Outcome:" line) — Paul, after merging.
