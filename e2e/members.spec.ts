@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  editJourneyField,
+  uniqueSuffix,
+} from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   cleanup,
@@ -98,12 +103,7 @@ test("members-add-and-edit", async ({ page, context, browser }) => {
     // B renames the Journey.
     const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
     await bPage.goto(journeyPath);
-    await bPage.getByRole("button", { name: "Edit" }).click();
-    await bPage.getByLabel("Title", { exact: true }).fill(renamedTitle);
-    await bPage.getByRole("button", { name: "Save changes" }).click();
-    await expect(
-      bPage.getByRole("heading", { name: renamedTitle }),
-    ).toBeVisible();
+    await editJourneyField(bPage, journeyId, "title", renamedTitle);
 
     // A sees the rename.
     await page.goto(`/projects/${projectId}`);

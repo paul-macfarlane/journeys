@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   createJourney,
   createProject,
+  editJourneyField,
   ID_PATTERN,
   uniqueSuffix,
 } from "./setup/authoring";
@@ -230,23 +231,28 @@ test("journey-edit-and-delete", async ({ page, context }) => {
   const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
   await page.goto(journeyPath);
 
-  // Renaming a Journey leaves its address alone. Exactly "Title": the step
-  // panel on this page has a "Step title" of its own.
-  await page.getByRole("button", { name: "Edit" }).click();
-  await page.getByLabel("Title", { exact: true }).fill(renamedTitle);
-  await page.getByRole("button", { name: "Save changes" }).click();
-
-  await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
+  // The title is the field at the top of the page: typed into and left, and
+  // that is the rename. It leaves the Journey's address alone.
+  await editJourneyField(page, journeyId, "title", renamedTitle);
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);
 
-  // Editing the description shows it back on the journey page.
-  await page.getByRole("button", { name: "Edit" }).click();
-  await page.getByLabel("Description").fill(renamedDescription);
-  await page.getByRole("button", { name: "Save changes" }).click();
+  // The description is the field beneath it.
+  await editJourneyField(page, journeyId, "description", renamedDescription);
 
-  await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.getByText(renamedDescription)).toBeVisible();
+  // Stored: a reload reads both back, and so does the Project's list.
+  await page.reload();
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
+    renamedTitle,
+  );
+  await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+    renamedDescription,
+  );
+
+  await page.goto(`/projects/${projectId}`);
+  const listed = page.getByRole("listitem").filter({ hasText: renamedTitle });
+  await expect(listed).toHaveCount(1);
+  await expect(listed.getByText(renamedDescription)).toBeVisible();
+  await page.goto(journeyPath);
 
   await page.screenshot({
     path: "test-results/journey-edit-and-delete/journey-edit-and-delete.png",
@@ -318,13 +324,8 @@ test("author-flow", async ({ page, context, browser }) => {
 
   const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
   await page.goto(journeyPath);
-  await page.getByRole("button", { name: "Edit" }).click();
-  // Exactly "Title": the step panel on this page has a "Step title" too.
-  await page.getByLabel("Title", { exact: true }).fill(renamedTitle);
-  await page.getByRole("button", { name: "Save changes" }).click();
-
+  await editJourneyField(page, journeyId, "title", renamedTitle);
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);
-  await expect(page.getByRole("heading", { name: renamedTitle })).toBeVisible();
 
   // Publish it the way an Author does, from the Journey page's own button.
   await writeDraftDocument(journeyId, publishableDocument());

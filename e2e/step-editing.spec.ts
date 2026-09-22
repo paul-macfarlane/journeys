@@ -211,10 +211,10 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
 
   await expect(page.getByText("6 steps · 0 outcomes")).toBeVisible();
 
-  // Validation on demand, while the two Endings have nothing to be grouped
-  // by: an Ending needs no Outcome, so what was built is already publishable.
-  await page.getByRole("button", { name: "Validate", exact: true }).click();
-  await expect(page.getByText("No problems found.")).toBeVisible();
+  // The header's live count, while the two Endings have nothing to be
+  // grouped by: an Ending needs no Outcome, so what was built is already
+  // publishable.
+  await expect(page.getByText("No problems", { exact: true })).toBeVisible();
 
   // Each Outcome made from the Ending it groups, which is the only place one
   // is made now — grouping the Endings, never unblocking them.
@@ -223,9 +223,7 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
   await chooseStep(page, "Sent away");
   await tagWithOutcome(page, "Turned away");
   await expect(page.getByText("6 steps · 2 outcomes")).toBeVisible();
-
-  await page.getByRole("button", { name: "Validate", exact: true }).click();
-  await expect(page.getByText("No problems found.")).toBeVisible();
+  await expect(page.getByText("No problems", { exact: true })).toBeVisible();
 
   // Nothing about publishing is this ticket's, except that what was built
   // here is publishable.
@@ -291,16 +289,20 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
     "Missing step",
   );
 
-  // Validation says the same thing in the words publishing would use.
-  await page.getByRole("button", { name: "Validate", exact: true }).click();
+  // The header's count says the same thing in the words publishing would
+  // use, and opens the list of everything wrong.
+  await page.getByRole("button", { name: "1 problem", exact: true }).click();
   await expect(
     page
-      .getByRole("list", { name: "Validation problems" })
+      .getByRole("list", { name: "All problems" })
       .getByText(
         'Step "Border post" has a choice pointing at a step that no longer exists',
       ),
   ).toBeVisible();
 
+  // The delete is written on the editor's own schedule; the row is read
+  // once it says so.
+  await expectSaved(page);
   const stored = await readDraft(journeyId);
   expect(Object.keys(stored.steps)).toHaveLength(1);
 

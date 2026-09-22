@@ -3,7 +3,9 @@ import { expect, test } from "@playwright/test";
 import {
   createJourney,
   createProject,
+  editJourneyField,
   openFindStep,
+  openTab,
   uniqueSuffix,
 } from "./setup/authoring";
 import {
@@ -100,27 +102,30 @@ test("publish-invalid-draft", async ({ page, context }) => {
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
   await page.getByRole("button", { name: "Publish", exact: true }).click();
 
-  // Scoped to the page's own content: Next's route announcer is a
-  // page-level `role="alert"` of its own, and it is not what refused.
-  const refusal = page.locator("main").getByRole("alert");
+  // The refusal is a dialog with everything wrong in it.
+  const refusal = page.getByRole("alertdialog");
   await expect(refusal).toContainText("This journey can't be published yet");
-  await expect(refusal).toContainText(
+  const problems = refusal.getByRole("list", { name: "Publishing problems" });
+  await expect(problems).toContainText(
     `Step "${START_STEP_TITLE}" has a choice pointing at a step that no longer exists`,
   );
-  await expect(refusal).toContainText(
+  await expect(problems).toContainText(
     'Step "Waved through" cannot be reached from the start',
   );
+
+  await page.screenshot({
+    path: "test-results/publish-invalid-draft/publish-invalid-draft.png",
+    fullPage: true,
+  });
+
+  await refusal.getByRole("button", { name: "Close" }).click();
+  await expect(refusal).toBeHidden();
 
   // Refused means nothing was written, and the Journey is where it was.
   expect(await readVersionRows(journeyId)).toHaveLength(0);
   await expect(
     page.getByText("Never published", { exact: true }),
   ).toBeVisible();
-
-  await page.screenshot({
-    path: "test-results/publish-invalid-draft/publish-invalid-draft.png",
-    fullPage: true,
-  });
 });
 
 test("publish-untagged-ending", async ({ page, context, browser }) => {
@@ -143,7 +148,9 @@ test("publish-untagged-ending", async ({ page, context, browser }) => {
   await expect(page.getByText("No problems", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
 
+  await openTab(page, "Versions");
   const versions = page
     .getByRole("list", { name: "Versions" })
     .getByRole("listitem");
@@ -233,6 +240,16 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   // Version 1.
   await page.goto(journeyPath);
   await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  // The versions are on their own tab, and the tab is in the address, so a
+  // reload comes back to it.
+  await openTab(page, "Versions");
+  await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}?tab=versions`);
+  await page.reload();
+  await expect(
+    page.getByRole("tab", { name: "Versions", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
 
   const versions = page
     .getByRole("list", { name: "Versions" })
@@ -251,14 +268,12 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   ).toBeDisabled();
 
   // A description edit is something participants have not seen, so it is
-  // enough on its own to make Publish available again.
-  await page.getByRole("button", { name: "Edit" }).click();
-  await page.getByLabel("Description").fill(editedDescription);
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  // enough on its own to make Publish available again, and to say so.
+  await editJourneyField(page, journeyId, "description", editedDescription);
   await expect(
     page.getByRole("button", { name: "Publish", exact: true }),
   ).toBeEnabled();
+  await expect(page.getByText("Unpublished changes")).toBeVisible();
 
   // The badge is the derived state, on the Journey page and in the Project's
   // list alike.
@@ -314,7 +329,11 @@ test("publish-versions-and-restore", async ({ page, context }) => {
     page.getByRole("button", { name: "Publish", exact: true }),
   ).toBeEnabled();
   await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Publish", exact: true }),
+  ).toBeDisabled();
 
+  await openTab(page, "Versions");
   await expect(versions).toHaveCount(2);
   const versionTwo = versions.filter({ hasText: "Version 2" });
   await expect(versionTwo.getByText("Live", { exact: true })).toBeVisible();
@@ -339,8 +358,9 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await expect(page.getByRole("alertdialog")).toBeHidden();
 
   // The Draft is version 1's document again, on the page and in the row —
-  // including the rich text of the Start, which was on screen throughout and
-  // must show version 1's words, not the edit it showed a moment ago.
+  // including the rich text of the Start, which the editor opens on and
+  // must show version 1's words, not the edit it showed before.
+  await openTab(page, "Editor");
   await openFindStep(page);
   await expect(
     page
@@ -387,4 +407,56 @@ test("publish-versions-and-restore", async ({ page, context }) => {
     path: "test-results/publish-versions-and-restore/publish-versions-and-restore.png",
     fullPage: true,
   });
+});
+
+test("journey-share-link", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  // Copying writes the clipboard, and proving it means reading it back.
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // Before anything is live there is no address to hand a Participant.
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  const copyLink = page.getByRole("button", { name: "Copy participant link" });
+  await expect(copyLink).toHaveCount(0);
+
+  // A brand-new Draft is one Step, an Ending, and publishable as it is.
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  // The address is the Participant's, on this origin, shown in full for
+  // anyone who would rather select it by hand.
+  const participantUrl = `${E2E_BASE_URL}/j/${journeyId}`;
+  await expect(copyLink).toBeVisible();
+  await expect(copyLink).toHaveAttribute("title", participantUrl);
+
+  await copyLink.click();
+  await expect(copyLink).toHaveText("Copied");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    participantUrl,
+  );
+
+  await page.screenshot({
+    path: "test-results/journey-share-link/journey-share-link.png",
+    fullPage: true,
+  });
+
+  // Two seconds later it offers to copy again.
+  await expect(copyLink).toHaveText("Copy link");
+
+  // Taking the Journey back from participants takes the address with it.
+  await page.getByRole("button", { name: "Unpublish", exact: true }).click();
+  await page.getByRole("button", { name: "Unpublish journey" }).click();
+  await expect(page.getByRole("alertdialog")).toBeHidden();
+  await expect(page.getByText("Unpublished", { exact: true })).toBeVisible();
+  await expect(copyLink).toHaveCount(0);
 });

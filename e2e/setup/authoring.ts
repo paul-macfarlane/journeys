@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { queryE2eDatabase } from "./session";
+
 /**
  * The authoring moves every spec needs before it can test anything else:
  * making a Project and making a Journey inside it, both driven through the
@@ -114,6 +116,50 @@ export async function tagWithOutcome(page: Page, label: string): Promise<void> {
   await option.click();
 
   await expect(field).toHaveValue(label);
+}
+
+/**
+ * One of the Journey page's tabs opened. The open tab is named in the
+ * address (`?tab=versions`, nothing for the default), so a spec that reloads
+ * lands where it was.
+ */
+export async function openTab(
+  page: Page,
+  name: "Editor" | "Versions",
+): Promise<void> {
+  const tab = page.getByRole("tab", { name, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+}
+
+/**
+ * The Journey's title or description, edited where it sits at the top of
+ * the page: typed into the field and left, which is the save. Waits for the
+ * row, since the save is a write the page shows nothing for on its own.
+ */
+export async function editJourneyField(
+  page: Page,
+  journeyId: string,
+  field: "title" | "description",
+  value: string,
+): Promise<void> {
+  // Exactly "Title": the step panel on this page has a "Step title" too.
+  const input = page.getByLabel(field === "title" ? "Title" : "Description", {
+    exact: true,
+  });
+  await input.fill(value);
+  if (field === "title") await input.press("Enter");
+  else await input.blur();
+
+  await expect
+    .poll(async () => {
+      const [row] = await queryE2eDatabase<{ value: string }>(
+        `SELECT ${field} AS value FROM "journey" WHERE id = $1`,
+        [journeyId],
+      );
+      return row?.value;
+    })
+    .toBe(value);
 }
 
 export async function createProject(

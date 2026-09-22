@@ -1,27 +1,41 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import { DeleteJourneyDialog } from "@/components/journeys/delete-journey-dialog";
 import { DraftEditor } from "@/components/journeys/draft-editor";
-import { EditJourneyDialog } from "@/components/journeys/edit-journey-dialog";
 import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
-import { PublishControls } from "@/components/journeys/publish-controls";
+import { JourneyTitleFields } from "@/components/journeys/journey-title-fields";
+import {
+  PublishButton,
+  UnpublishButton,
+} from "@/components/journeys/publish-controls";
 import { VersionList } from "@/components/journeys/version-list";
 import { buttonVariants } from "@/components/ui/button";
+import { UrlTabs } from "@/components/url-tabs";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { getLiveVersion, listVersionsForMember } from "@/db/versions";
 import { documentsEqual } from "@/lib/graph/document";
 import { requireSession } from "@/lib/session";
+import { readTab } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
+
+/** The page's sections, the first being what the plain address opens on. */
+const JOURNEY_TABS = ["editor", "versions"] as const;
 
 export default async function JourneyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projectId: string; journeyId: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
 }) {
   const session = await requireSession();
-  const { projectId, journeyId } = await params;
+  const [{ projectId, journeyId }, { tab }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   // Null for a non-Member, an unknown Project, and an unknown Journey
   // alike, so all three get the same 404.
@@ -69,12 +83,32 @@ export default async function JourneyPage({
       </div>
 
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {journey.title}
-          </h1>
-          <JourneyStatusBadge publishState={journey.publishState} />
+        <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
+          <JourneyTitleFields
+            projectId={projectId}
+            journeyId={journey.id}
+            title={journey.title}
+            description={journey.description}
+          />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <JourneyStatusBadge publishState={journey.publishState} />
+            {/* Only a live Journey has an address to hand out, or changes
+                participants are not yet seeing, or anything to take back. */}
+            {live !== null ? (
+              <>
+                {hasUnpublishedChanges ? (
+                  <span className="text-muted-foreground text-xs">
+                    Unpublished changes
+                  </span>
+                ) : null}
+                <CopyLinkButton journeyId={journey.id} />
+                <UnpublishButton projectId={projectId} journeyId={journey.id} />
+              </>
+            ) : null}
+          </div>
         </div>
+
         <div className="flex items-center gap-2">
           <Link
             href={`/projects/${projectId}/journeys/${journey.id}/preview`}
@@ -82,11 +116,10 @@ export default async function JourneyPage({
           >
             Preview
           </Link>
-          <EditJourneyDialog
+          <PublishButton
             projectId={projectId}
             journeyId={journey.id}
-            title={journey.title}
-            description={journey.description}
+            hasUnpublishedChanges={hasUnpublishedChanges}
           />
           <DeleteJourneyDialog
             projectId={projectId}
@@ -96,23 +129,33 @@ export default async function JourneyPage({
         </div>
       </header>
 
-      {journey.description ? (
-        <p className="text-muted-foreground">{journey.description}</p>
-      ) : null}
-
-      <PublishControls
-        projectId={projectId}
-        journeyId={journey.id}
-        publishState={journey.publishState}
-        hasUnpublishedChanges={hasUnpublishedChanges}
-      />
-
-      <DraftEditor projectId={projectId} journeyId={journey.id} draft={draft} />
-
-      <VersionList
-        projectId={projectId}
-        journeyId={journey.id}
-        versions={versions}
+      <UrlTabs
+        label="Journey"
+        initialTab={readTab(JOURNEY_TABS, tab)}
+        tabs={[
+          {
+            value: "editor",
+            label: "Editor",
+            content: (
+              <DraftEditor
+                projectId={projectId}
+                journeyId={journey.id}
+                draft={draft}
+              />
+            ),
+          },
+          {
+            value: "versions",
+            label: "Versions",
+            content: (
+              <VersionList
+                projectId={projectId}
+                journeyId={journey.id}
+                versions={versions}
+              />
+            ),
+          },
+        ]}
       />
     </main>
   );
