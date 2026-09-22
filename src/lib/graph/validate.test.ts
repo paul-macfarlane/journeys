@@ -126,6 +126,73 @@ describe("validateForPublish", () => {
     });
   });
 
+  it("reports a Choice whose label is only whitespace", () => {
+    const document = graph(
+      [
+        step(
+          "step-start",
+          [{ ...choice("choice-1", "step-end"), label: " \t\n" }],
+          { title: "Lighthouse" },
+        ),
+        step("step-end", [], { outcomeId: reachedCare.id }),
+      ],
+      { outcomes: [reachedCare] },
+    );
+
+    expect(validateForPublish(document)).toEqual([
+      {
+        code: "empty-choice-label",
+        message: 'Step "Lighthouse" has a choice with no label',
+        stepId: "step-start",
+        choiceId: "choice-1",
+      },
+    ]);
+  });
+
+  it("reports a Choice whose label is empty", () => {
+    const document = graph(
+      [
+        step("step-start", [
+          choice("choice-1", "step-end"),
+          { ...choice("choice-2", "step-end"), label: "" },
+        ]),
+        step("step-end", [], { outcomeId: reachedCare.id }),
+      ],
+      { outcomes: [reachedCare] },
+    );
+
+    const problems = validateForPublish(document);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatchObject({
+      code: "empty-choice-label",
+      stepId: "step-start",
+      choiceId: "choice-2",
+    });
+  });
+
+  it("files an unlabelled Choice after dangling targets and before unreachable Steps", () => {
+    const document = graph([
+      step("step-start", [
+        { ...choice("choice-blank", "step-two"), label: "" },
+        choice("choice-gone", "step-gone"),
+      ]),
+      step("step-two", []),
+      step("step-orphan", []),
+    ]);
+
+    expect(
+      validateForPublish(document).map((problem) => [
+        problem.code,
+        problem.choiceId ?? problem.stepId,
+      ]),
+    ).toEqual([
+      ["dangling-choice-target", "choice-gone"],
+      ["empty-choice-label", "choice-blank"],
+      ["unreachable-step", "step-orphan"],
+    ]);
+  });
+
   it("reports a Step that cannot be reached from the Start", () => {
     const document = graph(
       [

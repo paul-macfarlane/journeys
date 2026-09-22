@@ -69,14 +69,14 @@ A platform where signed-in Authors build Journeys as a visible graph of Steps an
 30. As an Author, I want the graph laid out automatically, so that I never arrange boxes by hand.
 31. As an Author, I want to click a Step on the canvas and edit it in a side panel, so that navigating and editing are the same gesture.
 32. As an Author, I want the Start visually distinct and Endings visually distinct, colored by Outcome, so that structure is readable without reading text.
-33. As an Author, I want validation problems highlighted on the canvas (unreachable Steps, broken Choices), so that I fix problems where they are.
+33. As an Author, I want validation problems highlighted on the canvas (unreachable Steps, broken Choices, Choices with no label), so that I fix problems where they are.
 34. As an Author, I want to pan and zoom a 60-step graph and still find things, so that real-sized journeys stay usable.
 35. As an Author, I want to add a Step from the canvas, so that I do not have to leave the map to grow it.
 
 ### Validation, preview, and publishing
 
 36. As an Author, I want to run validation on demand and see a list of problems, so that I know what blocks publishing.
-37. As an Author, I want validation to check: exactly one Start; every Choice targets an existing Step; every Step is reachable from Start; so that a published journey can never dead-end unexpectedly.
+37. As an Author, I want validation to check: exactly one Start; every Choice targets an existing Step; every Choice has a label (amended 2026-09-22 by ticket 20; see the `[SCOPE CHANGE]` below); every Step is reachable from Start; so that a published journey can never dead-end unexpectedly.
 38. As an Author, I want to Preview the Draft exactly as a Participant would see it, so that I can test before publishing.
 39. As an Author, I want Preview to record no Run, so that my testing does not pollute analytics.
 40. As an Author, I want to Publish, and have publishing refuse if validation fails, so that the live journey is always coherent.
@@ -171,7 +171,7 @@ Next.js 16 App Router, React 19, TypeScript, pnpm. Drizzle ORM on Neon Postgres 
 
 The graph document is the contract everything else depends on (priority 2). It contains: a schema version; the Start step id; a map of Steps by stable id, each with title, Tiptap-JSON content, ordered Choices, and an optional Prompt; a map of Outcomes by stable id; and for Endings (steps with no Choices) an outcome id. Each Choice has a stable id, label, and target step id, plus reserved nullable `condition` and `effect` fields that nothing reads. Each Prompt has a `type` discriminator that accepts only `free_text` in MVP, a label, and a required flag. Step positions on the canvas are not stored; nullable position fields are reserved for a future manual-layout mode.
 
-The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Choice target exists; every Step is reachable from Start; an Ending that carries an Outcome names one the document defines (amended 2026-09-22 by ticket 24; see the `[SCOPE CHANGE]` below). Cycles are allowed (amended 2026-09-21; see the `[SCOPE CHANGE]` below and ADR-0002). Validation returns a structured list of problems with step or choice ids so the canvas can highlight them.
+The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Choice target exists; every Choice has a label (amended 2026-09-22 by ticket 20; see the `[SCOPE CHANGE]` below); every Step is reachable from Start; an Ending that carries an Outcome names one the document defines (amended 2026-09-22 by ticket 24; see the `[SCOPE CHANGE]` below). Cycles are allowed (amended 2026-09-21; see the `[SCOPE CHANGE]` below and ADR-0002). Validation returns a structured list of problems with step or choice ids so the canvas can highlight them.
 
 Content is stored as Tiptap JSON and rendered to sanitized HTML on the server with Tiptap's renderer. The allowed node and mark set is fixed: paragraph, headings, bold, italic, bullet and ordered lists, links, and an image node whose attributes are a URL and a required `credit`. Link `href` and image `src` values must be absolute `http:` or `https:` URLs; anything else (including `javascript:` and `data:`) is stripped, and rendered links carry `rel="noopener noreferrer"`. Sanitization runs on the server at every write, not only in the editor, so a document submitted straight to the API is held to the same rules. Nothing is round-tripped through Markdown.
 
@@ -227,7 +227,7 @@ A good test exercises behavior a user or author would observe and never asserts 
 
 **Seam A — the graph domain module (Vitest, pure).** Everything that can silently corrupt content is a pure function over the graph document and Run paths, and is tested without a database:
 
-- Validation: each rule independently (multiple Starts, missing Start, dangling Choice target, unreachable Step, Ending without Outcome accepted, Outcome id not defined) and a document with a loop is accepted, and the success case on a hand-authored 40+ step fixture; once the seeded case-3 document exists it is added as a second success case.
+- Validation: each rule independently (multiple Starts, missing Start, dangling Choice target, empty or whitespace-only Choice label, unreachable Step, Ending without Outcome accepted, Outcome id not defined) and a document with a loop is accepted, and the success case on a hand-authored 40+ step fixture; once the seeded case-3 document exists it is added as a second success case.
 - Runner transition: given a version document, a current step, and a Choice id, the next step is the Choice's target; an invalid Choice id is rejected; reaching an Ending yields its Outcome.
 - Analytics aggregation: given a set of Run paths, choice take-rates, ending counts, outcome distribution, abandonment per step, starts, and completions match hand-computed expectations, including edge cases (zero runs, all abandoned, runs pinned to a different version excluded).
 - Content sanitization: disallowed nodes and marks are stripped; image nodes without a credit are rejected; `javascript:` and other non-http(s) link and image URLs are stripped.
@@ -290,3 +290,8 @@ Story 26 ("every Ending to require exactly one Outcome") is withdrawn; story 33'
 ### [SCOPE CHANGE] 2026-09-22 — the runner opens on the Start Step (ticket 27)
 
 Amends "Public URL and runner": the title page ("start screen" with title, description, and "Begin") is withdrawn. `/j/{journey-id}` renders the live Published Version's Start Step directly, with the Journey's title in a header on every screen of the runner and the description beneath the header on the Start Step only. A Run is created when the Participant takes their first Choice — its path already `[start, target]` — never on page load, so prefetches and crawlers never count as starts; reopening the link mid-Run offers "Continue where you left off" and "Start over" (which leaves the old Run abandoned where it stood and shows the Start Step fresh). A Journey whose Start is an Ending shows "The end" and records no Run (noted on ticket 10). Preview renders the Draft's Start Step in the same frame, distinguished only by a banner and a link back to the editor, so the two surfaces cannot drift. Reason: Paul's staging regression notes of 2026-09-21, items 19–21 ("It feels a bit weird to have the first part of a journey be the title and description instead of just step 1"). Recorded in ticket 27.
+
+### [SCOPE CHANGE] 2026-09-22 — an empty Choice label is a publish problem (ticket 20)
+
+Amends "Graph document" and stories 33 and 37: publish-time validation also enforces "every Choice has a label" — a label that is empty or whitespace-only yields an `empty-choice-label` problem addressed by the Step and the Choice, filed after `dangling-choice-target` and before `unreachable-step`. Reason: since ticket 16 a Choice drawn on the map or made with "Add next step" starts with an empty label; the editor reads it as "Untitled choice" while the Author works, but a Published Version carrying one would give a Participant a link with no text and no accessible name (Paul, 2026-09-21: "Yes, that should be a publish problem"). The runner keeps rendering `choice.label` as is. Recorded in ticket 20.
+
