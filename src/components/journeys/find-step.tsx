@@ -11,8 +11,8 @@ import { stepName } from "@/lib/graph/edit";
 /**
  * "Find step": the way around a Draft by name, above the map, which is the
  * way around it by shape. Typing filters the Steps by their titles; choosing
- * one opens it in the panel and centers the map on its box, however far down
- * a forty-step Journey it sits.
+ * one opens it in the panel and zooms the map to its box, however far down a
+ * forty-step Journey it sits.
  *
  * With nothing typed it offers every Step in the order the map lays the boxes
  * out — top to bottom, then left to right — so it reads the whole Draft the
@@ -84,7 +84,7 @@ export function FindStep({
       className="max-w-sm"
       options={options}
       focusRequest={focusRequest}
-      onChoose={(stepId) => onSelectStep(stepId, { center: true })}
+      onChoose={(stepId) => onSelectStep(stepId, { zoom: true })}
     />
   );
 }

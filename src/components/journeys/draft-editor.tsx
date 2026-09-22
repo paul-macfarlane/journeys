@@ -115,10 +115,13 @@ export function DraftEditor({
   const [panelShown, setPanelShown] = useState(true);
   const panelShownRef = useRef(true);
   /**
-   * Counts the times the panel was put away or brought back, which is every
-   * time the width the map has to draw in changes. The map fits itself to
-   * each width the sliding columns hand it, so the last fit lands on the
-   * width it keeps; what is counted here is only that a change has begun.
+   * Counts the times the Author put the panel away or brought it back, which
+   * is the one change of the map's width they asked for. The map fits itself
+   * to each width the sliding columns hand it, so the last fit lands on the
+   * width it keeps; what is counted here is only that a change has begun. A
+   * panel that comes back because a Step was opened is not counted: that
+   * opening makes its own move to the Step, and the whole map is not what it
+   * asked for.
    */
   const [fitRequest, setFitRequest] = useState(0);
 
@@ -367,30 +370,32 @@ export function DraftEditor({
 
   /**
    * What the map is asked for each time a Step is opened: `request` counts
-   * the openings, the one already open included, so the map can bring its box
-   * back each time rather than only when the Step changed, and `center` says
-   * the Step was found by name, which is shown in the middle of the map
-   * rather than left where it stands.
+   * the openings, the one already open included, so the map answers each one
+   * rather than only the ones that changed which Step is open, and `view` is
+   * what it is asked for — `keep` to move nothing, `reveal` to bring the box
+   * onto the map only when it is off it, and `zoom` to make the Zoom-to-step
+   * move on it whatever it was doing.
    */
-  const [locate, setLocate] = useState({ request: 0, center: false });
+  const [locate, setLocate] = useState<{
+    request: number;
+    view: "keep" | "reveal" | "zoom";
+  }>({ request: 0, view: "reveal" });
 
   /**
-   * The panel put away or brought back. `remember` says whether this is the
-   * Author choosing how to read the map — "Hide panel", "Show panel", Escape
-   * — which is what the browser keeps; the panel coming back because a Step
-   * was opened is the editing gesture doing its job, and leaves the choice
-   * the Author made standing for the next page. Nothing is said when the
-   * panel is already where it is asked to be: opening a Step asks for it
-   * every time, and a map re-fitted on every box click would be a map that
-   * never stays where the Author left it.
+   * The panel put away or brought back, and whether that moved it: `remember`
+   * says whether this is the Author choosing how to read the map — "Hide
+   * panel", "Show panel", Escape — which is what the browser keeps; the panel
+   * coming back because a Step was opened is the editing gesture doing its
+   * job, and leaves the choice the Author made standing for the next page.
+   * Nothing is said when the panel is already where it is asked to be:
+   * opening a Step asks for it every time.
    */
   const applyPanelShown = useCallback(
-    (shown: boolean, { remember }: { remember: boolean }) => {
-      if (panelShownRef.current === shown) return;
+    (shown: boolean, { remember }: { remember: boolean }): boolean => {
+      if (panelShownRef.current === shown) return false;
       panelShownRef.current = shown;
       setPanelShown(shown);
-      setFitRequest((current) => current + 1);
-      if (!remember) return;
+      if (!remember) return true;
 
       try {
         window.localStorage.setItem(
@@ -402,18 +407,32 @@ export function DraftEditor({
         // — is one where the choice lasts as long as the page. That is no
         // reason to refuse the click.
       }
+      return true;
     },
     [],
   );
 
-  /** The Author putting the panel away, and asking for it back. */
-  const hidePanel = useCallback(
-    () => applyPanelShown(false, { remember: true }),
+  /**
+   * The Author putting the panel away, and asking for it back: the one move
+   * of the panel the map fits itself again for, because the width they gave
+   * it or took back is the frame they mean to read the whole map in. A panel
+   * that comes back for an opened Step is not this: the frame narrows,
+   * nothing re-fits, and the opening makes its own move to the Step.
+   */
+  const setPanelByAuthor = useCallback(
+    (shown: boolean) => {
+      if (!applyPanelShown(shown, { remember: true })) return;
+      setFitRequest((current) => current + 1);
+    },
     [applyPanelShown],
   );
+  const hidePanel = useCallback(
+    () => setPanelByAuthor(false),
+    [setPanelByAuthor],
+  );
   const showPanel = useCallback(
-    () => applyPanelShown(true, { remember: true }),
-    [applyPanelShown],
+    () => setPanelByAuthor(true),
+    [setPanelByAuthor],
   );
   /** The panel brought back by an opening rather than asked for. */
   const revealPanel = useCallback(
@@ -443,11 +462,21 @@ export function DraftEditor({
       // that Step. The panel comes back for all of them, so the editing
       // gesture never changes for the panel being away — for this page only,
       // because it is the opening asking and not the Author.
+      //
+      // Whether the panel was away is read before it is brought back: an
+      // opening from a map that had the whole width is one whose frame is
+      // about to narrow, so the map goes to the Step rather than leaving it
+      // wherever the narrower frame puts it.
+      const panelWasHidden = !panelShownRef.current;
       revealPanel();
       setSelectedStepId(stepId);
       setLocate((current) => ({
         request: current.request + 1,
-        center: options?.center === true,
+        view: options?.keepView
+          ? "keep"
+          : options?.zoom === true || panelWasHidden
+            ? "zoom"
+            : "reveal",
       }));
       setTitleFocusStepId(options?.focusTitle ? stepId : null);
 
@@ -505,17 +534,19 @@ export function DraftEditor({
     [applyEdit],
   );
 
+  /** "Add step": the new Step opened, with the map zoomed to where it landed. */
   const addNewStep = useCallback(() => {
     const created = addStep(documentRef.current);
     applyEdit(created.document);
-    selectStep(created.stepId, { focusTitle: true });
+    selectStep(created.stepId, { focusTitle: true, zoom: true });
   }, [applyEdit, selectStep]);
 
   /**
    * "Add next step" on a box's toolbar: the Step and the Choice that reaches
    * it in one motion, opened with its title field focused so the Author names
-   * it in the same breath. The label is left empty — what the Choice is
-   * called is the next thing to write, on the Step it leaves.
+   * it in the same breath, and the map zoomed to the box it landed on. The
+   * label is left empty — what the Choice is called is the next thing to
+   * write, on the Step it leaves.
    */
   const addNextStep = useCallback(
     (stepId: string) => {
@@ -525,7 +556,7 @@ export function DraftEditor({
       if (created.choiceId === "") return;
 
       applyEdit(created.document);
-      selectStep(created.stepId, { focusTitle: true });
+      selectStep(created.stepId, { focusTitle: true, zoom: true });
     },
     [applyEdit, selectStep],
   );
@@ -541,7 +572,7 @@ export function DraftEditor({
       if (created.stepId === "") return;
 
       applyEdit(created.document);
-      selectStep(created.stepId, { focusTitle: true });
+      selectStep(created.stepId, { focusTitle: true, zoom: true });
     },
     [applyEdit, selectStep],
   );
@@ -601,9 +632,10 @@ export function DraftEditor({
       if (!result.ok) return;
 
       applyEdit(result.document);
-      // Opened the way every other opening is: the arrow in hand is let go
-      // of, and no Choice's label is asked for.
-      selectStep(result.document.startStepId);
+      // The arrow in hand is let go of and no Choice's label is asked for,
+      // and the view is left exactly as it was: a Step going is not somewhere
+      // the Author asked to be taken.
+      selectStep(result.document.startStepId, { keepView: true });
     },
     [applyEdit, selectStep],
   );

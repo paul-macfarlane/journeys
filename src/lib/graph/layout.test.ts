@@ -182,17 +182,15 @@ function assertLayoutMatchesDocument(document: GraphDocument): void {
     document.startStepId,
   ]);
 
-  const outcomeIds = Object.keys(document.outcomes);
   for (const [stepId, docStep] of Object.entries(document.steps)) {
     const node = nodes.find((candidate) => candidate.id === stepId);
     expect(node?.isEnding).toBe(isEnding(docStep));
     if (isEnding(docStep)) {
+      // Which Outcome an Ending carries, and nothing about where that Outcome
+      // sits among the document's: nothing on the map is drawn by Outcome, so
+      // the layout has no position to carry.
       expect(node?.outcomeId).toBe(docStep.outcomeId);
-      const expectedIndex =
-        docStep.outcomeId !== null && outcomeIds.includes(docStep.outcomeId)
-          ? outcomeIds.indexOf(docStep.outcomeId)
-          : null;
-      expect(node?.outcomeIndex).toBe(expectedIndex);
+      expect(node).not.toHaveProperty("outcomeIndex");
     }
   }
 
@@ -240,8 +238,8 @@ describe("layoutGraph", () => {
       isStart: false,
       isEnding: false,
       outcomeId: null,
-      outcomeIndex: null,
     });
+    expect(missingNodes[0]).not.toHaveProperty("outcomeIndex");
 
     const edge = edges.find(
       (candidate) => candidate.id === "start:choice-to-ghost",
