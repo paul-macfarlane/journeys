@@ -2538,7 +2538,10 @@ test("canvas-empty-choice-label", async ({ page, context }) => {
   const message = 'Step "Border post" has a choice with no label';
 
   await expect(problemEdges(page)).toHaveCount(1);
-  await expect(canvasEdges(page)).toHaveAttribute("data-problems", "1");
+  const choiceId = await canvasEdges(page).getAttribute("data-choice-id");
+  expect(choiceId).not.toBeNull();
+  const arrow = canvasEdge(page, choiceId!);
+  await expect(arrow).toHaveAttribute("data-problems", "1");
   await expect(markedChoiceRow(page).getByText(message)).toBeVisible();
   await expect(
     page.getByRole("button", { name: "1 problem", exact: true }),
@@ -2559,6 +2562,7 @@ test("canvas-empty-choice-label", async ({ page, context }) => {
   // Typing the label clears all three.
   await label.fill("Find the clinic");
   await expect(label).toHaveValue("Find the clinic");
+  await expect(arrow).toHaveAttribute("data-problems", "0");
   await expect(problemEdges(page)).toHaveCount(0);
   await expect(markedChoiceRow(page).getByText(message)).toHaveCount(0);
   await expect(page.getByText("No problems", { exact: true })).toBeVisible();
