@@ -223,6 +223,43 @@ async function renameStep(page: Page, title: string): Promise<void> {
   await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
+/**
+ * A field typed into key by key, over whatever it already says. Every other
+ * write in this file arrives whole, through `fill`, which is one edit however
+ * long the text is; only a run of real keystrokes can show that a run of them
+ * comes back in a single press. The clearing and the typing are the same field
+ * within the same moment, so they are one thing to undo.
+ */
+async function retypeField(field: Locator, text: string): Promise<void> {
+  await field.click();
+  await field.press("ControlOrMeta+a");
+  await field.pressSequentially(text);
+  await expect(field).toHaveValue(text);
+}
+
+/** One Step of a stored Draft, by the title the Author gave it. */
+function storedStep(document: GraphDocument, title: string) {
+  const step = Object.values(document.steps).find(
+    (candidate) => candidate.title === title,
+  );
+  expect(step, `the Draft holds no Step titled "${title}"`).toBeDefined();
+  return step!;
+}
+
+/** The two buttons the map carries for the Draft's one undo and redo. */
+function undoButton(page: Page) {
+  return canvas(page).getByRole("button", { name: "Undo", exact: true });
+}
+
+function redoButton(page: Page) {
+  return canvas(page).getByRole("button", { name: "Redo", exact: true });
+}
+
+/** Which way the map is asked to run, as the control says it. */
+function directionRadio(page: Page, name: "Top to bottom" | "Left to right") {
+  return canvas(page).getByRole("radio", { name, exact: true });
+}
+
 /** "Add step" is the canvas's, beside the map the new Step lands on. */
 async function addStepFromCanvas(page: Page, title: string): Promise<void> {
   const before = await canvasNodes(page).count();
@@ -3381,6 +3418,143 @@ test.describe("authoring from the map", () => {
     });
   });
 
+  test("canvas-undo-drawn-choice", async ({ page, context }, testInfo) => {
+    const { journeyId } = await startJourney(page, context);
+
+    await renameStep(page, "Border post");
+    await addStepFromCanvas(page, "Clinic tent");
+    // The drag below wants both boxes, and adding a Step took the map to the
+    // one it made, so the whole map is taken back first.
+    await expectBoxOnMap(page, "Clinic tent");
+    await fitWholeMap(page, 2);
+
+    await connectByDragging(page, "Border post", "Clinic tent", 1);
+
+    // One press takes the whole drawn Choice back — the arrow and the Choice
+    // under it — and leaves the Author on the Step they drew it from, which
+    // is where the drag had left them.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvasEdges(page)).toHaveCount(0);
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+
+    // An undo is written like the edit it takes back, so what stands after it
+    // is what the row holds.
+    await expectSaved(page);
+    const undone = await readDraft(journeyId);
+    expect(storedStep(undone, "Border post").choices).toEqual([]);
+
+    // And the press that puts it back is the same press with Shift on it.
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect(canvasEdges(page)).toHaveCount(1);
+
+    await expectSaved(page);
+    const redone = await readDraft(journeyId);
+    const border = storedStep(redone, "Border post");
+    expect(border.choices).toHaveLength(1);
+    expect(border.choices[0].targetStepId).toBe(
+      storedStep(redone, "Clinic tent").id,
+    );
+
+    await page.screenshot({
+      path: evidencePath(testInfo.title, `${testInfo.title}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("canvas-undo-build-branch-and-walk", async ({
+    page,
+    context,
+  }, testInfo) => {
+    const { journeyId } = await startJourney(page, context);
+
+    // The branch `canvas-build-by-dragging-and-walk` builds, drawn the same
+    // way: both Endings added from the map, both Choices dragged onto them.
+    await renameStep(page, "Border post");
+    await addStepFromCanvas(page, "Waved through");
+    await addStepFromCanvas(page, "Turned back");
+    await expectBoxOnMap(page, "Turned back");
+    await fitWholeMap(page, 3);
+
+    const waved = await connectByDragging(
+      page,
+      "Border post",
+      "Waved through",
+      1,
+    );
+    await waved.fill("Wait your turn");
+    await expect(waved).toHaveValue("Wait your turn");
+
+    const turned = await connectByDragging(
+      page,
+      "Border post",
+      "Turned back",
+      2,
+    );
+    await turned.fill("Walk away");
+    await expect(turned).toHaveValue("Walk away");
+    await expect(canvasEdges(page)).toHaveCount(2);
+
+    // Then three more moves, of three different kinds: the map turned, the
+    // Start given something to read, and a third Choice drawn from one Ending
+    // to the other.
+    await setDirection(page, "Left to right");
+
+    const opening = "The queue has not moved since dawn.";
+    await page.getByLabel("Step content").click();
+    await page.keyboard.type(opening);
+    await expect(page.getByLabel("Step content")).toContainText(opening);
+
+    await fitWholeMap(page, 3);
+    await connectByDragging(page, "Waved through", "Turned back", 3);
+
+    // Three presses, three moves back, the newest first. The third Choice
+    // goes, and the Author is left on the Step it was drawn from.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvasEdges(page)).toHaveCount(2);
+    await expect(page.getByLabel("Step title")).toHaveValue("Waved through");
+
+    // The typing was on another Step, so the panel goes to the Step it was on.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+    await expect(page.getByLabel("Step content")).toHaveText("");
+
+    // And the way the map runs is an edit like any other.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(directionRadio(page, "Top to bottom")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    // Two of the three put back, oldest first: the map turned again, and the
+    // reading given back to the Start. The third Choice stays taken back.
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect(directionRadio(page, "Left to right")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect(canvasEdges(page)).toHaveCount(2);
+    // A redo puts the Author back where they were standing when they undid
+    // the edit, so the Step the reading is on is opened by name to read it.
+    await chooseStep(page, "Border post");
+    await expect(page.getByLabel("Step content")).toContainText(opening);
+
+    // What stands is two Choices on a map that runs left to right, with the
+    // third Choice nowhere in the row.
+    await expectSaved(page);
+    const stored = await readDraft(journeyId);
+    expect(stored.layoutDirection).toBe("LR");
+    expect(storedStep(stored, "Border post").choices).toHaveLength(2);
+    expect(storedStep(stored, "Waved through").choices).toEqual([]);
+    expect(
+      contentPreview(storedStep(stored, "Border post").content, 10_000),
+    ).toContain(opening);
+
+    // And what stands is a Journey like any other: published, and walked.
+    await tagEndingsPublishAndWalk(page, context, journeyId, testInfo);
+  });
+
   test.describe("the seeded map, recorded", () => {
     // The wide viewport, for the reason the outer "the seeded map" gives.
     test.use({ viewport: { width: 1600, height: 1200 } });
@@ -3470,6 +3644,260 @@ test.describe("authoring from the map", () => {
         ),
         fullPage: true,
       });
+    });
+  });
+});
+
+/**
+ * Ticket 23: the Draft's one undo and redo, over the whole document. What an
+ * Author does to a Journey — a title typed, a Step's reading written, a Step
+ * deleted, the map turned, a Choice pointed somewhere else — comes back with
+ * one press of Cmd/Ctrl+Z or one press of the button beside "Add step",
+ * whether their hands are on the map or in a field. The two tests that show a
+ * Choice drawn on the map coming back and a whole branch being taken apart and
+ * put together again are recorded, and live in "authoring from the map" above
+ * with the rest of the map's own moves.
+ */
+test.describe("undo and redo", () => {
+  test("canvas-undo-title-typing", async ({ page, context }, testInfo) => {
+    const { journeyId } = await startJourney(page, context);
+
+    // The edit before the typing: the Start renamed, arriving whole.
+    await renameStep(page, "Border post");
+
+    // Then a Step made from the box's own moves, and named key by key in the
+    // panel that opened on it.
+    const toolbar = await expandStepActions(page, "Border post");
+    await toolbar
+      .getByRole("button", { name: "Add next step", exact: true })
+      .click();
+
+    const title = page.getByLabel("Step title");
+    await expect(title).toHaveValue("Untitled step");
+    await expect(title).toBeFocused();
+
+    await retypeField(title, "Clinic tent");
+    await expect(canvasNode(page, "Clinic tent")).toBeVisible();
+
+    // One press gives the field back as it stood before the typing, rather
+    // than a letter at a time, and leaves the Author on the same Step.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(title).toHaveValue("Untitled step");
+
+    await expectSaved(page);
+    const undone = await readDraft(journeyId);
+    expect(Object.values(undone.steps).map((step) => step.title)).not.toContain(
+      "Clinic tent",
+    );
+
+    // The press after that takes back the edit before the typing: the Step
+    // and the Choice that reached it go together, and the Author is back on
+    // the Step they were made from.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvasNodes(page)).toHaveCount(1);
+    await expect(canvasEdges(page)).toHaveCount(0);
+    await expect(title).toHaveValue("Border post");
+    await expect(redoButton(page)).toBeEnabled();
+
+    // Typing after an undo is a new edit, and there is no longer anything to
+    // put back on top of it.
+    await retypeField(title, "Checkpoint");
+    await expect(redoButton(page)).toBeDisabled();
+    await expect(undoButton(page)).toBeEnabled();
+
+    await expectSaved(page);
+    await page.screenshot({
+      path: evidencePath(testInfo.title, `${testInfo.title}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("canvas-undo-rich-text", async ({ page, context }, testInfo) => {
+    const { journeyId } = await startJourney(page, context);
+
+    await renameStep(page, "Border post");
+
+    const content = page.getByLabel("Step content");
+    const reading = "Bring water";
+    await content.click();
+    await page.keyboard.type(reading);
+    await expect(content).toContainText(reading);
+
+    // The surface keeps no history of its own: the press inside it belongs to
+    // the Draft, and gives back the reading as it stood before the typing.
+    await page.keyboard.press("ControlOrMeta+z");
+    // Empty, as it stood — not one letter shorter, which is what a surface
+    // keeping a history of its own would have given back.
+    await expect(content).toHaveText("");
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+
+    await expectSaved(page);
+    const undone = await readDraft(journeyId);
+    expect(
+      contentPreview(storedStep(undone, "Border post").content, 10_000).trim(),
+    ).toBe("");
+
+    // A second Step, named last of all — and then the Author moves away from
+    // it before pressing undo, with their hands in the title field.
+    await addStepFromCanvas(page, "Clinic tent");
+    await chooseStep(page, "Border post");
+    await page.getByLabel("Step title").click();
+    await page.keyboard.press("ControlOrMeta+z");
+
+    // The press took back the document's last edit — the naming of the other
+    // Step — so the panel went to the Step that edit was on.
+    await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+
+    // And an edit of the open Step's own is taken back without the panel
+    // moving anywhere at all.
+    await retypeField(page.getByLabel("Step title"), "Clinic tent");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+    await expect(canvasNode(page, "Untitled step")).toBeVisible();
+
+    await expectSaved(page);
+    await page.screenshot({
+      path: evidencePath(testInfo.title, `${testInfo.title}.png`),
+      fullPage: true,
+    });
+  });
+
+  test("canvas-undo-delete-direction-retarget", async ({
+    page,
+    context,
+  }, testInfo) => {
+    const { journeyId } = await startJourney(page, context);
+
+    // Nothing has been done to this Draft yet, and both buttons say so.
+    await expect(undoButton(page)).toBeDisabled();
+    await expect(redoButton(page)).toBeDisabled();
+
+    await renameStep(page, "Border post");
+
+    // With the panel put away, an undo still opens the Step it belongs to —
+    // the panel comes back for it — and moves the view no further than
+    // bringing its box on. The one box is on the map already, so the map
+    // stays exactly where "Hide panel" left it settled.
+    const wholeMap = await hidePanel(page);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(page.getByLabel("Step title")).toHaveValue("Start");
+    expect(await settledTransform(page)).toBe(wholeMap);
+    await redoButton(page).click();
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+
+    await addStepFromCanvas(page, "Clinic tent");
+    await addStepFromCanvas(page, "Waved through");
+    await expectBoxOnMap(page, "Waved through");
+    await fitWholeMap(page, 3);
+
+    const label = await connectByDragging(
+      page,
+      "Border post",
+      "Clinic tent",
+      1,
+    );
+    await label.fill("Find the clinic");
+    await expect(label).toHaveValue("Find the clinic");
+
+    // An edit made: one button has something to do and the other has not.
+    await expect(undoButton(page)).toBeEnabled();
+    await expect(redoButton(page)).toBeDisabled();
+
+    // The head of the arrow taken in hand and dropped on another box.
+    await fitWholeMap(page, 3);
+    const arrow = arrowLabelled(page, "Find the clinic");
+    await clickArrow(page, arrow);
+    await expect(arrow).toHaveAttribute("data-emphasis", "selected");
+    await dragTo(
+      page,
+      arrow.locator(".react-flow__edgeupdater-target"),
+      canvasNode(page, "Waved through"),
+    );
+    await expect(arrow).toHaveAttribute(
+      "aria-label",
+      "Find the clinic: Border post → Waved through",
+    );
+
+    // One press of the button puts the Choice back where it pointed, and one
+    // press of the other sends it out again.
+    await undoButton(page).click();
+    await expect(arrow).toHaveAttribute(
+      "aria-label",
+      "Find the clinic: Border post → Clinic tent",
+    );
+    await redoButton(page).click();
+    await expect(arrow).toHaveAttribute(
+      "aria-label",
+      "Find the clinic: Border post → Waved through",
+    );
+
+    // The way the map runs is an edit like any other, and comes back the same.
+    await setDirection(page, "Left to right");
+    await undoButton(page).click();
+    await expect(directionRadio(page, "Top to bottom")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await redoButton(page).click();
+    await expect(directionRadio(page, "Left to right")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    // A Step deleted from the panel, confirmation and all, comes back with one
+    // press — and brings the Author back to it. "Clinic tent" is the one
+    // deleted because the Choice was moved off it a moment ago: nothing points
+    // at it, so the map loses a box outright rather than keeping a placeholder
+    // in its place for a Choice left pointing at a Step that is gone.
+    await chooseStep(page, "Clinic tent");
+    await stepPanel(page)
+      .getByRole("button", { name: "Delete step", exact: true })
+      .click();
+    const confirmation = page.getByRole("alertdialog");
+    await confirmation
+      .getByRole("button", { name: "Delete step", exact: true })
+      .click();
+    await expect(confirmation).toBeHidden();
+    await expect(canvasNodes(page)).toHaveCount(2);
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(canvasNodes(page)).toHaveCount(3);
+    await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+
+    // And back to the beginning, one press at a time, until the button says
+    // there is nothing left. Polled, rather than looped over one read of the
+    // button per press: a press lands a moment after the click, and a read
+    // taken inside that moment would send one press too many at a button
+    // already disabled. The press is forced past Playwright's own wait for
+    // an enabled button for the same reason, and a press on nothing is
+    // nothing — so the poll can only end in the one place.
+    await expect
+      .poll(async () => {
+        if (!(await undoButton(page).isEnabled())) return "nothing left";
+        await undoButton(page).click({ force: true });
+        return "still pressing";
+      })
+      .toBe("nothing left");
+
+    // Nothing left to take back: a Draft of one Step, named as a new Draft
+    // names it, drawn the way a new Draft is drawn.
+    await expect(undoButton(page)).toBeDisabled();
+    await expect(canvasNodes(page)).toHaveCount(1);
+    await expect(canvasEdges(page)).toHaveCount(0);
+    await expect(page.getByLabel("Step title")).toHaveValue("Start");
+    await expect(directionRadio(page, "Top to bottom")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    await expectSaved(page);
+    const stored = await readDraft(journeyId);
+    expect(Object.keys(stored.steps)).toHaveLength(1);
+    expect(stored.layoutDirection).toBe("TB");
+
+    await page.screenshot({
+      path: evidencePath(testInfo.title, `${testInfo.title}.png`),
+      fullPage: true,
     });
   });
 });

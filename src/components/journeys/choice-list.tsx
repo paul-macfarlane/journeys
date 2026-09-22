@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
 import {
   SELECT_CLASS,
+  type ApplyEdit,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ export function ChoiceList({
    * selected on the map, drawn or clicked — or `null` when none is.
    */
   markedChoiceId: string | null;
-  onChange: (document: GraphDocument) => void;
+  onChange: ApplyEdit;
   onSelectStep: SelectStep;
 }) {
   const [adding, setAdding] = useState(false);
@@ -153,11 +154,14 @@ export function ChoiceList({
                   autoComplete="off"
                   className="w-56"
                   value={choice.label}
+                  // Named as the field it is, so a label typed in one go is
+                  // one thing to undo rather than one undo per letter.
                   onChange={(event) =>
                     onChange(
                       updateChoice(document, step.id, choice.id, {
                         label: event.target.value,
                       }),
+                      { field: `choice-label:${choice.id}` },
                     )
                   }
                 />

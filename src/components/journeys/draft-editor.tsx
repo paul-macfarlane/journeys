@@ -8,7 +8,11 @@ import {
   saveDraftAction,
   type SaveDraftActionResult,
 } from "@/app/projects/[projectId]/journeys/actions";
-import { counted, type SelectStep } from "@/components/journeys/editor-shared";
+import {
+  counted,
+  type ApplyEdit,
+  type SelectStep,
+} from "@/components/journeys/editor-shared";
 import { FindStep } from "@/components/journeys/find-step";
 import {
   JourneyCanvas,
@@ -33,6 +37,16 @@ import {
   updateChoice,
   updateStep,
 } from "@/lib/graph/edit";
+import {
+  canRedo,
+  canUndo,
+  emptyHistory,
+  recordEdit,
+  redo as redoHistory,
+  undo as undoHistory,
+  type History,
+  type HistoryMove,
+} from "@/lib/graph/history";
 import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
@@ -60,6 +74,21 @@ const SAVE_DEBOUNCE_MS = 600;
  */
 const PANEL_STORAGE_KEY = "journeys:step-panel";
 
+/**
+ * Whether anything on the page has the keyboard to itself. Both of the page's
+ * shortcuts ask before they claim a press: while a dialog is open the
+ * keyboard belongs to the dialog, and a shortcut answering from behind it
+ * would act on something the Author cannot see.
+ *
+ * `window.document`: the Draft is what `document` names inside this module.
+ */
+function dialogIsOpen(): boolean {
+  return (
+    window.document.querySelector('[role="dialog"], [role="alertdialog"]') !==
+    null
+  );
+}
+
 type SaveStatus = "saved" | "saving" | "unsaved";
 
 const STATUS_TEXT: Record<SaveStatus, string> = {
@@ -81,6 +110,16 @@ export function DraftEditor({
 
   const [document, setDocument] = useState<GraphDocument>(draft);
   const [selectedStepId, setSelectedStepId] = useState(draft.startStepId);
+  /**
+   * The Draft's one undo and redo, over the whole document: what the two
+   * buttons on the map read to know whether they have anything to do, and
+   * what the keyboard reaches from anywhere on the page. Held in state for
+   * them and in a ref for everything that reads it from a handler.
+   *
+   * `window.history`: the Draft's is what `history` names inside this
+   * component, as `document` is the Draft.
+   */
+  const [history, setHistory] = useState<History>(emptyHistory);
   const [status, setStatus] = useState<SaveStatus>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   // Whether the live "All problems" list is open. Left as the Author set it
@@ -124,6 +163,13 @@ export function DraftEditor({
   // from an event handler, both of which would otherwise see whatever render
   // they were created in.
   const documentRef = useRef(draft);
+  const historyRef = useRef<History>(emptyHistory());
+  /**
+   * The Step an edit belongs to when it does not say — every edit made in the
+   * panel — and the Step a redo puts back. Kept beside the state rather than
+   * read off it, because an edit and a shortcut are both handlers.
+   */
+  const selectedStepIdRef = useRef(draft.startStepId);
   const lastSavedRef = useRef(draft);
   const savingRef = useRef(false);
   const queuedRef = useRef(false);
@@ -227,7 +273,14 @@ export function DraftEditor({
     await save();
   }, [clearTimer, save]);
 
-  const applyEdit = useCallback(
+  /**
+   * The document becoming another one, written the way every change to it is:
+   * held here, shown, and saved a moment later. An edit takes this path with
+   * a note of what it was for the history; an undo and a redo take it with
+   * nothing recorded, because they are the history moving rather than
+   * something to be taken back in turn.
+   */
+  const applyDocument = useCallback(
     (next: GraphDocument) => {
       documentRef.current = next;
       setDocument(next);
@@ -240,6 +293,35 @@ export function DraftEditor({
       }, SAVE_DEBOUNCE_MS);
     },
     [clearTimer, save],
+  );
+
+  /**
+   * Every change an Author makes to the Draft comes through here: recorded on
+   * the history, then applied. What the edit was — the Step it belongs to,
+   * the field it was typed into — is what an undo of it puts back and what
+   * decides whether it joins the keystroke before it.
+   */
+  const applyEdit = useCallback<ApplyEdit>(
+    (next, edit) => {
+      // A move that hands back the document it was given changed nothing —
+      // a title set to what it already said, a Choice dropped where it
+      // already pointed. There is nothing to undo and nothing to write.
+      if (next === documentRef.current) return;
+
+      const nextHistory = recordEdit(
+        historyRef.current,
+        {
+          document: documentRef.current,
+          selectedStepId: edit?.stepId ?? selectedStepIdRef.current,
+        },
+        { field: edit?.field ?? null, at: Date.now() },
+      );
+      historyRef.current = nextHistory;
+      setHistory(nextHistory);
+
+      applyDocument(next);
+    },
+    [applyDocument],
   );
 
   /**
@@ -266,9 +348,18 @@ export function DraftEditor({
     setDocument(draft);
     setStatus("saved");
     setRevision((current) => current + 1);
-    setSelectedStepId((current) =>
-      Object.hasOwn(draft.steps, current) ? current : draft.startStepId,
-    );
+
+    const kept = Object.hasOwn(draft.steps, selectedStepIdRef.current)
+      ? selectedStepIdRef.current
+      : draft.startStepId;
+    selectedStepIdRef.current = kept;
+    setSelectedStepId(kept);
+
+    // The history goes with the document it was a history of: every snapshot
+    // on it is a state of a Draft this editor is no longer holding, and an
+    // undo back into one of them would throw away the write that arrived.
+    historyRef.current = emptyHistory();
+    setHistory(historyRef.current);
   }, [draft]);
 
   // Unmounting with an edit still unsaved — the Author opened the Versions
@@ -317,14 +408,7 @@ export function DraftEditor({
       if (!event.metaKey && !event.ctrlKey) return;
       if (event.shiftKey || event.altKey) return;
       if (event.key.toLowerCase() !== "k") return;
-      // `window.document`: the Draft is what `document` names in here.
-      if (
-        window.document.querySelector(
-          '[role="dialog"], [role="alertdialog"]',
-        ) !== null
-      ) {
-        return;
-      }
+      if (dialogIsOpen()) return;
 
       event.preventDefault();
       setFindFocusRequest((current) => current + 1);
@@ -343,7 +427,13 @@ export function DraftEditor({
 
   const handleContentChange = useCallback(
     (stepId: string, content: Content) => {
-      applyEdit(updateStep(documentRef.current, stepId, { content }));
+      // The Step's own surface is a field like any other: a run of typing in
+      // it is one thing to undo, and an undo of it opens the Step it was
+      // typed on even if the Author has since moved to another.
+      applyEdit(updateStep(documentRef.current, stepId, { content }), {
+        stepId,
+        field: `content:${stepId}`,
+      });
     },
     [applyEdit],
   );
@@ -463,12 +553,13 @@ export function DraftEditor({
       // wherever the narrower frame puts it.
       const panelWasHidden = !panelShownRef.current;
       revealPanel();
+      selectedStepIdRef.current = stepId;
       setSelectedStepId(stepId);
       setLocate((current) => ({
         request: current.request + 1,
         view: options?.keepView
           ? "keep"
-          : options?.zoom === true || panelWasHidden
+          : options?.zoom === true || (panelWasHidden && !options?.reveal)
             ? "zoom"
             : "reveal",
       }));
@@ -491,6 +582,110 @@ export function DraftEditor({
   useEffect(() => {
     selectStepRef.current = selectStep;
   }, [selectStep]);
+
+  /**
+   * A move taken off the history put into effect. The document is set through
+   * the ordinary path, so an undo autosaves like the edit it takes back; the
+   * rich text surface is re-fed when the move replaced what is under the open
+   * Step's surface, and left alone — caret and all — when the move was about
+   * something else; and the Step the move belongs to is opened with nothing
+   * asked of the map beyond bringing its box on if it is off it.
+   */
+  const applyMove = useCallback(
+    (move: HistoryMove | null) => {
+      if (move === null) return;
+
+      // A Step the restored document does not have — the edit belonged to a
+      // Step a later move deleted — leaves the Start to stand in, the way
+      // every other selection that outlives its Step does.
+      const restored = move.snapshot;
+      const stepId = Object.hasOwn(
+        restored.document.steps,
+        restored.selectedStepId,
+      )
+        ? restored.selectedStepId
+        : restored.document.startStepId;
+      // Read before the document moves: the content is one immutable value
+      // per edit, so a different reference is a different reading.
+      const contentReplaced =
+        restored.document.steps[stepId].content !==
+        documentRef.current.steps[stepId]?.content;
+
+      historyRef.current = move.history;
+      setHistory(move.history);
+      applyDocument(restored.document);
+      if (contentReplaced) setRevision((current) => current + 1);
+      selectStep(stepId, { reveal: true });
+    },
+    [applyDocument, selectStep],
+  );
+
+  /** Where an undo or a redo is taken back from, and taken back to. */
+  const currentSnapshot = useCallback(
+    () => ({
+      document: documentRef.current,
+      selectedStepId: selectedStepIdRef.current,
+    }),
+    [],
+  );
+
+  const undoEdit = useCallback(() => {
+    applyMove(
+      undoHistory(historyRef.current, currentSnapshot(), { at: Date.now() }),
+    );
+  }, [applyMove, currentSnapshot]);
+
+  const redoEdit = useCallback(() => {
+    applyMove(
+      redoHistory(historyRef.current, currentSnapshot(), { at: Date.now() }),
+    );
+  }, [applyMove, currentSnapshot]);
+
+  // Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z — Ctrl+Y as well, for hands used to it —
+  // from anywhere on the Journey page, the Cmd/Ctrl+K listener above being
+  // the model for all of it: on `window`, because the point is not having to
+  // reach for the buttons; and a press made while a dialog is open belongs to
+  // the dialog. A press carrying Alt is a different shortcut and not this one.
+  //
+  // The default is prevented for every press this claims, an empty stack
+  // included: the browser's own undo would otherwise replay old values into
+  // whatever field the Author happens to be in, which is the thing this
+  // ticket exists to stop. There is one undo on this page, and it is this.
+  //
+  // Which is why this one listens on the way down rather than on the way up,
+  // where "Find step" listens. ProseMirror answers Mod-B, Mod-I, Mod-Y and
+  // Mod-Z on its surface whatever extensions it was given — `captureKeyDown`
+  // swallows them so the browser cannot rewrite the document behind its back
+  // — so a press made while the Author is writing a Step's reading would
+  // arrive here already answered and this would stand aside from the one
+  // undo the page has. Claiming it first is what makes the surface's undo
+  // the Draft's, as the ticket asks. Nothing else on the page answers these
+  // keys, so there is nothing here to take a press away from — and, being
+  // first, nothing has had the chance to answer one before this reads it.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.altKey) return;
+      if (!event.metaKey && !event.ctrlKey) return;
+      if (dialogIsOpen()) return;
+
+      // Shift+Z arrives as "Z": the key is read in one case.
+      const key = event.key.toLowerCase();
+      if (key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redoEdit();
+        else undoEdit();
+        return;
+      }
+      // Ctrl+Y only: Cmd+Y is the system's on an Apple platform.
+      if (key === "y" && event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        redoEdit();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [redoEdit, undoEdit]);
 
   /**
    * A selected arrow can outlive the Choice it draws — deleted here, or by
@@ -518,7 +713,9 @@ export function DraftEditor({
       }
       if (next === documentRef.current) return;
 
-      applyEdit(next);
+      // The Step the first arrow left: where an undo of this puts the Author
+      // back, whatever the map had selected by then.
+      applyEdit(next, { stepId: arrows[0].stepId });
     },
     [applyEdit],
   );
@@ -544,7 +741,7 @@ export function DraftEditor({
       });
       if (created.choiceId === "") return;
 
-      applyEdit(created.document);
+      applyEdit(created.document, { stepId });
       selectStep(created.stepId, { focusTitle: true, zoom: true });
     },
     [applyEdit, selectStep],
@@ -560,7 +757,7 @@ export function DraftEditor({
       const created = duplicateStep(documentRef.current, stepId);
       if (created.stepId === "") return;
 
-      applyEdit(created.document);
+      applyEdit(created.document, { stepId });
       selectStep(created.stepId, { focusTitle: true, zoom: true });
     },
     [applyEdit, selectStep],
@@ -568,7 +765,7 @@ export function DraftEditor({
 
   const makeStart = useCallback(
     (stepId: string) => {
-      applyEdit(setStart(documentRef.current, stepId));
+      applyEdit(setStart(documentRef.current, stepId), { stepId });
     },
     [applyEdit],
   );
@@ -600,7 +797,7 @@ export function DraftEditor({
       });
       if (created.choiceId === "") return;
 
-      applyEdit(created.document);
+      applyEdit(created.document, { stepId });
       selectStep(stepId, { markChoiceId: created.choiceId });
     },
     [applyEdit, selectStep],
@@ -620,7 +817,7 @@ export function DraftEditor({
       });
       if (created.choiceId === "") return;
 
-      applyEdit(created.document);
+      applyEdit(created.document, { stepId });
       selectStep(created.stepId, { focusTitle: true, zoom: true });
     },
     [applyEdit, selectStep],
@@ -631,6 +828,7 @@ export function DraftEditor({
     (stepId: string, choiceId: string, targetStepId: string) => {
       applyEdit(
         updateChoice(documentRef.current, stepId, choiceId, { targetStepId }),
+        { stepId },
       );
     },
     [applyEdit],
@@ -641,7 +839,9 @@ export function DraftEditor({
       const result = deleteStep(documentRef.current, stepId);
       if (!result.ok) return;
 
-      applyEdit(result.document);
+      // The Step that goes: an undo brings it back, and brings the Author
+      // back to it.
+      applyEdit(result.document, { stepId });
       // The arrow in hand is let go of and no Choice's label is asked for,
       // and the view is left exactly as it was: a Step going is not somewhere
       // the Author asked to be taken.
@@ -822,6 +1022,10 @@ export function DraftEditor({
           }
           onSelectStep={selectStep}
           onAddStep={addNewStep}
+          canUndo={canUndo(history)}
+          canRedo={canRedo(history)}
+          onUndo={undoEdit}
+          onRedo={redoEdit}
           onSetLayoutDirection={setDirection}
           panelShown={panelShown}
           fitRequest={fitRequest}

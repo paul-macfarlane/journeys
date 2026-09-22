@@ -1,9 +1,38 @@
+import type { GraphDocument } from "@/lib/graph/document";
+
 /**
  * The scraps every piece of the Draft editor needs: the count-and-noun
  * phrasing its summary lines use, how a Choice with no label yet is still
- * named, and the look of the native `<select>`s it reaches for where the app
- * has no shadcn primitive.
+ * named, the shape of an edit on its way to the document, and the look of the
+ * native `<select>`s it reaches for where the app has no shadcn primitive.
  */
+
+/**
+ * What an edit is about, for the one undo the editor keeps over the whole
+ * document. Both parts are optional because most edits need neither.
+ *
+ * `stepId` is the Step the edit belongs to, which is the Step an undo of it
+ * opens: the source Step for a Choice drawn, retargeted, or removed on the
+ * map, the Step deleted, the Step a move on a box was made on. Left out, the
+ * edit belongs to whichever Step is open — every edit made in the panel, and
+ * the ones that belong to no Step at all, like "Add step" and which way the
+ * map runs.
+ *
+ * `field` names the text field being typed into — `title:<stepId>`,
+ * `content:<stepId>`, `choice-label:<choiceId>`, `outcome-label:<outcomeId>`
+ * — so a run of keystrokes in one field is one thing to undo rather than one
+ * per letter. An edit that is not typing names none.
+ */
+export type EditMeta = {
+  stepId?: string;
+  field?: string;
+};
+
+/**
+ * The one way anything in the editor changes the document: hand back the
+ * document it should become, and say what the edit was.
+ */
+export type ApplyEdit = (next: GraphDocument, edit?: EditMeta) => void;
 
 /**
  * How a Step is opened in the panel. `focusTitle` is for a Step that was just
@@ -19,13 +48,17 @@
  * working — and `keepView` moves nothing at all, for an opening that is the
  * aftermath of something else, like the Start opened when a Step is deleted.
  * Neither given, a box already on the map is left where it stands and one off
- * it is brought on.
+ * it is brought on — unless the panel was away, when the frame is about to
+ * narrow and the opening zooms to the Step instead. `reveal` holds to the
+ * first rule even then: an undo or a redo moves the view no further than
+ * bringing the box on, whatever the panel was doing.
  */
 export type SelectStepOptions = {
   focusTitle?: boolean;
   markChoiceId?: string;
   zoom?: boolean;
   keepView?: boolean;
+  reveal?: boolean;
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;

@@ -969,6 +969,17 @@ export type JourneyCanvasProps = {
   findStep: ReactNode;
   onSelectStep: SelectStep;
   onAddStep: () => void;
+  /**
+   * The Draft's one undo and redo, carried on the map because the map is
+   * where most of what there is to take back is done — a Choice drawn, an
+   * arrow moved, a Step deleted. The same history the keyboard reaches from
+   * anywhere on the page; these two are the way to it for an Author whose
+   * hands are on the mouse.
+   */
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   /** Which way the map is asked to run, from the control beside "Add step". */
   onSetLayoutDirection: (direction: LayoutDirection) => void;
   /**
@@ -1806,6 +1817,36 @@ export function JourneyCanvas(props: JourneyCanvasProps) {
 
         <Button variant="outline" size="sm" onClick={props.onAddStep}>
           Add step
+        </Button>
+
+        {/* Straight after "Add step": the moves, and the way to take the
+            last one back. Each names the keys that do the same thing for
+            assistive technology, which is what `aria-keyshortcuts` reaches;
+            nothing is drawn for it.
+
+            The press is prevented from moving focus, the way the rich text
+            toolbar's buttons are: an Author who has just typed into a field
+            and reaches for Undo keeps the keyboard where it was, and what
+            they undo is the document rather than the field they left. */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!props.canUndo}
+          aria-keyshortcuts="Meta+Z Control+Z"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={props.onUndo}
+        >
+          Undo
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!props.canRedo}
+          aria-keyshortcuts="Meta+Shift+Z Control+Shift+Z Control+Y"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={props.onRedo}
+        >
+          Redo
         </Button>
 
         <DirectionControl

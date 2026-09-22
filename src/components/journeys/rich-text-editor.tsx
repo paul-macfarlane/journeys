@@ -22,7 +22,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { sanitizeContent, type Content } from "@/lib/graph/content";
-import { editorExtensions } from "@/lib/rich-text/extensions";
+import {
+  draftEditorExtensions,
+  editorExtensions,
+} from "@/lib/rich-text/extensions";
 import { formatShortcut, isApplePlatform } from "@/lib/rich-text/shortcuts";
 
 /**
@@ -162,6 +165,7 @@ export function RichTextEditor({
   resetKey,
   label = "Step content",
   content,
+  history = true,
   onChange,
   onRefused,
   onBlur,
@@ -178,6 +182,13 @@ export function RichTextEditor({
    */
   label?: string;
   content: Content;
+  /**
+   * Whether the surface keeps an undo of its own. The Draft editor says no
+   * (ticket 23): the Draft has one history over the whole document, and
+   * Cmd/Ctrl+Z inside the surface belongs to it. A caller with no history of
+   * its own — the Project description — leaves it as it is.
+   */
+  history?: boolean;
   onChange: (content: Content) => void;
   onRefused: (error: string) => void;
   /**
@@ -204,7 +215,9 @@ export function RichTextEditor({
   const [linkError, setLinkError] = useState<string | null>(null);
 
   const editor = useEditor({
-    extensions: editorExtensions,
+    // Read once, as the editor is: whether the surface has its own undo is
+    // the caller's shape, not something that changes under the Author.
+    extensions: history ? editorExtensions : draftEditorExtensions,
     content: withTextBlock(content),
     // The panel is server-rendered by Next; rendering the editor immediately
     // would produce markup the client then disagrees with.
