@@ -63,8 +63,10 @@ document.
 - **Rich text is sanitized on the way in.** `sanitizeContent` runs server-side
   at every write, allowing only the small set of blocks and marks the editor
   can produce, stripping any link or image whose URL is not an absolute
-  `http(s)` address (the text of a stripped link stays), and refusing the write
-  outright only when an image has no credit.
+  `http(s)` address (the text of a stripped link stays). Nothing is refused:
+  an image keeps whatever alt text and caption it has, empty included, so an
+  Author can edit it into shape later (ticket 30; before it, an image without
+  a credit refused the write).
 - **Outcomes live inside the document.** A Published Version therefore carries
   its own Outcome labels, so a Run analysed a year later is grouped by the
   labels that were true when it was walked.

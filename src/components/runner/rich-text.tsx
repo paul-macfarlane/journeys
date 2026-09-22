@@ -1,10 +1,11 @@
 import { generateHTML } from "@tiptap/html";
 
-import type {
-  Block,
-  Content,
-  ListItem,
-  TextElement,
+import {
+  readStoredImageAttrs,
+  type Block,
+  type Content,
+  type ListItem,
+  type TextElement,
 } from "@/lib/graph/content";
 import { richTextExtensions } from "@/lib/rich-text/extensions";
 
@@ -49,7 +50,12 @@ function hardenListItem(item: ListItem): ListItem {
   } as ListItem;
 }
 
-/** An image the rule refuses is dropped whole, credit included. */
+/**
+ * An image the rule refuses is dropped whole, caption included. One that
+ * passes is read with the schema's own compatibility rule, in case a
+ * Published Version written before ticket 30 (caption named `credit`, alt
+ * `null`) reaches here without passing through the schema.
+ */
 function hardenBlock(block: Block): Block | null {
   switch (block.type) {
     case "paragraph":
@@ -58,8 +64,13 @@ function hardenBlock(block: Block): Block | null {
     case "bulletList":
     case "orderedList":
       return { ...block, content: block.content.map(hardenListItem) };
-    case "image":
-      return isHttpUrl(block.attrs.src) ? block : null;
+    case "image": {
+      if (!isHttpUrl(block.attrs.src)) {
+        return null;
+      }
+      const { alt, caption } = readStoredImageAttrs(block.attrs);
+      return { type: "image", attrs: { src: block.attrs.src, alt, caption } };
+    }
   }
 }
 
@@ -82,7 +93,7 @@ export function RichText({ content }: { content: Content }) {
     <div
       // `[&_img]` keeps a picture inside the reading column whatever its own
       // dimensions are, and `break-words` (inherited by every descendant)
-      // breaks the long bare URLs image credits are full of — without both, a
+      // breaks the long bare URLs image captions are full of — without both, a
       // phone scrolls sideways to reach the text.
       className="flex flex-col gap-4 break-words [&_a]:underline [&_a]:underline-offset-4 [&_figcaption]:mt-2 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
       dangerouslySetInnerHTML={{ __html: html }}

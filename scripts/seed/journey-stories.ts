@@ -5,12 +5,14 @@
  * The documents beside this file were converted once from the legacy repo's
  * `src/data/cases/*.json` and are the source of truth — nothing re-reads the
  * legacy site, and the converter was not kept. To rename an Outcome, edit the
- * label in the document and rerun this command.
+ * label in the document and rerun this command. The legacy credit lines are
+ * the images' captions; every `alt` is `""` until an Author writes one in
+ * the editor.
  *
  * Images keep the third-party URLs the legacy pages linked — some eighteen
  * hosts, none of them the legacy site — so one stops loading when its own host
  * does. A dozen strings across the three documents (long image paths and two
- * credit URLs) carry a `\u` JSON escape that breaks up a 40+ character
+ * caption URLs) carry a `\u` JSON escape that breaks up a 40+ character
  * alphanumeric run, which the Atlas commit-time secret scrub would refuse.
  * The escapes are content-preserving; keep them when editing.
  */

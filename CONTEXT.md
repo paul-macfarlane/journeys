@@ -30,6 +30,14 @@ _Avoid_: Node, passage, page, scene
 One option shown on a step that leads the participant to another step.
 _Avoid_: Decision, link, edge, option
 
+**Caption**:
+The visible line under an image in a step's content. Optional; a credit or attribution is simply written into it. Stored as the image's `caption` (documents written before ticket 30 named it `credit`, which is read as the caption).
+_Avoid_: Credit, subtitle, figcaption
+
+**Alt text**:
+The description of an image for people who cannot see it, read by assistive technology and never displayed. Required by the image dialog; a stored image without it is kept and can be edited into shape.
+_Avoid_: Caption, title, description
+
 **Start**:
 The single step a journey begins on. Every journey has exactly one.
 _Avoid_: Root, entry node

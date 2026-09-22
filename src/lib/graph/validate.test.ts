@@ -436,7 +436,7 @@ describe("the seeded Journey Stories documents", () => {
   );
 
   it.each(journeyStories)(
-    "$name credits every image and links it over http(s)",
+    "$name captions every image and links it over http(s)",
     ({ source, images: imageCount }) => {
       const images = Object.values(documentOf(source).steps).flatMap((step) =>
         step.content.content.filter((block) => block.type === "image"),
@@ -444,7 +444,8 @@ describe("the seeded Journey Stories documents", () => {
 
       expect(images).toHaveLength(imageCount);
       for (const image of images) {
-        expect(image.attrs.credit.trim().length).toBeGreaterThan(0);
+        expect(image.attrs.caption.trim().length).toBeGreaterThan(0);
+        expect(image.attrs.alt).toBe("");
         expect(image.attrs.src).toMatch(/^https?:\/\//);
       }
     },

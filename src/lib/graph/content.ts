@@ -44,10 +44,16 @@ export type OrderedList = {
   content: ListItem[];
 };
 
-/** Every image carries the credit its Author must supply. */
+/**
+ * An image with its alt text (for assistive technology, never displayed,
+ * `""` until the Author writes one) and its caption (the visible line under
+ * the picture, `""` when there is none; a credit is simply written into it).
+ * Documents stored before ticket 30 named the caption `credit`; the schema
+ * reads that name as `caption` so nothing stored has to be rewritten.
+ */
 export type ImageBlock = {
   type: "image";
-  attrs: { src: string; credit: string; alt?: string | null };
+  attrs: { src: string; alt: string; caption: string };
 };
 
 export type Block = Paragraph | Heading | BulletList | OrderedList | ImageBlock;
@@ -108,13 +114,42 @@ const orderedListSchema: z.ZodType<OrderedList> = z.object({
   content: z.array(z.lazy(() => listItemSchema)),
 });
 
+/**
+ * The one compatibility read every reader of a stored image shares: an attr
+ * named `credit` is the caption when no `caption` is present, and an alt
+ * that is not a string (the `null` documents before ticket 30 stored) is
+ * `""`. Published Versions are immutable and keep the old name forever; a
+ * Draft writes `caption` on its next save. Values are passed through as they
+ * are — trimming is the sanitizer's job, on the way in.
+ */
+export function readStoredImageAttrs(attrs: unknown): {
+  src: unknown;
+  alt: string;
+  caption: string;
+} {
+  const record = isRecord(attrs) ? attrs : {};
+  return {
+    src: record.src,
+    alt: typeof record.alt === "string" ? record.alt : "",
+    caption:
+      typeof record.caption === "string"
+        ? record.caption
+        : typeof record.credit === "string"
+          ? record.credit
+          : "",
+  };
+}
+
 const imageSchema: z.ZodType<ImageBlock> = z.object({
   type: z.literal("image"),
-  attrs: z.object({
-    src: z.string().min(1),
-    credit: z.string().min(1),
-    alt: z.string().nullable().optional(),
-  }),
+  attrs: z.preprocess(
+    readStoredImageAttrs,
+    z.object({
+      src: z.string().min(1),
+      alt: z.string(),
+      caption: z.string(),
+    }),
+  ),
 });
 
 const blockSchema: z.ZodType<Block> = z.union([
@@ -133,12 +168,6 @@ export const contentSchema: z.ZodType<Content> = z.object({
 
 export type SanitizeContentResult =
   { ok: true; content: Content } | { ok: false; error: string };
-
-/** The one condition that refuses a write outright rather than cleaning it. */
-const MISSING_CREDIT = "Every image needs a credit";
-
-/** Thrown from deep inside the walk to abort the whole sanitize. */
-class SanitizeRefused extends Error {}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -231,20 +260,18 @@ function headingLevel(attrs: unknown): number {
 function sanitizeImage(input: Record<string, unknown>): ImageBlock | null {
   const attrs = isRecord(input.attrs) ? input.attrs : {};
 
-  // Source first: an image the participant's browser cannot safely load is
-  // simply removed, credited or not.
+  // An image the participant's browser cannot safely load is simply removed,
+  // captioned or not.
   const src = absoluteHttpUrl(attrs.src);
   if (src === null) {
     return null;
   }
 
-  const credit = typeof attrs.credit === "string" ? attrs.credit.trim() : "";
-  if (credit.length === 0) {
-    throw new SanitizeRefused(MISSING_CREDIT);
-  }
-
-  const alt = typeof attrs.alt === "string" ? attrs.alt : null;
-  return { type: "image", attrs: { src, credit, alt } };
+  const stored = readStoredImageAttrs(attrs);
+  return {
+    type: "image",
+    attrs: { src, alt: stored.alt.trim(), caption: stored.caption.trim() },
+  };
 }
 
 function sanitizeListItems(input: unknown): ListItem[] {
@@ -324,9 +351,11 @@ function sanitizeBlock(input: unknown): Block | null {
  * because the editor is not the only thing that can reach the write path.
  *
  * Removes blocks and inline elements outside the allowed set, drops marks and
- * attrs it does not understand, strips links and images whose URL is not an
- * absolute http(s) address, and refuses the whole write when an image has no
- * credit. The returned content always satisfies `contentSchema`.
+ * attrs it does not understand, and strips links and images whose URL is not
+ * an absolute http(s) address. Nothing is refused: an image with no alt text
+ * or caption is kept as it is, so an Author can edit it into shape later.
+ * The returned content always satisfies `contentSchema`. The only `ok: false`
+ * is input that is not a document at all.
  */
 export function sanitizeContent(input: unknown): SanitizeContentResult {
   if (
@@ -340,17 +369,10 @@ export function sanitizeContent(input: unknown): SanitizeContentResult {
     };
   }
 
-  try {
-    const blocks = input.content
-      .map((block) => sanitizeBlock(block))
-      .filter((block): block is Block => block !== null);
-    return { ok: true, content: { type: "doc", content: blocks } };
-  } catch (error) {
-    if (error instanceof SanitizeRefused) {
-      return { ok: false, error: error.message };
-    }
-    throw error;
-  }
+  const blocks = input.content
+    .map((block) => sanitizeBlock(block))
+    .filter((block): block is Block => block !== null);
+  return { ok: true, content: { type: "doc", content: blocks } };
 }
 
 /** How much of a Step's content a peek at its box on the map shows. */
@@ -375,7 +397,7 @@ function collectText(blocks: Array<Block | ListItem>, into: string[]): void {
         collectText(block.content ?? [], into);
         break;
       case "image":
-        // An image's words are its credit and its alt text, and both are
+        // An image's words are its caption and its alt text, and both are
         // about the image rather than about the Step.
         break;
     }

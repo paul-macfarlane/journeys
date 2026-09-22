@@ -237,8 +237,8 @@ const steps: Step[] = [
         type: "image",
         attrs: {
           src: "https://example.test/images/signal-lamp.jpg",
-          credit: "Coastal Archive, public domain",
           alt: "A hand-worked signal lamp on a stone gallery",
+          caption: "Coastal Archive, public domain",
         },
       },
     ),
@@ -477,8 +477,8 @@ const steps: Step[] = [
         type: "image",
         attrs: {
           src: "https://example.test/images/harbour-wall.jpg",
-          credit: "Harbour Trust collection",
-          alt: null,
+          alt: "",
+          caption: "Harbour Trust collection",
         },
       },
     ),

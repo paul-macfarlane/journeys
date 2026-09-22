@@ -135,7 +135,7 @@ describe("RichText", () => {
     expect(html).toContain('start="5"');
   });
 
-  it("renders an image with its credit in a figcaption", () => {
+  it("renders an image with its alt text and its caption in a figcaption", () => {
     const content: Content = {
       type: "doc",
       content: [
@@ -143,8 +143,8 @@ describe("RichText", () => {
           type: "image",
           attrs: {
             src: "https://example.com/photo.jpg",
-            credit: "Photo by Jane Doe",
             alt: "A queue at a border post",
+            caption: "Photo by Jane Doe",
           },
         },
       ],
@@ -156,6 +156,51 @@ describe("RichText", () => {
     expect(html).toContain('alt="A queue at a border post"');
     expect(html).toContain("<figcaption");
     expect(html).toContain("Photo by Jane Doe");
+  });
+
+  it("omits the figcaption when the caption is empty, and still emits alt", () => {
+    const content: Content = {
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: {
+            src: "https://example.com/photo.jpg",
+            alt: "",
+            caption: "",
+          },
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(<RichText content={content} />);
+    expect(html).toContain("<figure");
+    expect(html).toContain('alt=""');
+    expect(html).not.toContain("<figcaption");
+  });
+
+  it("reads a Published Version's image whose caption is still named credit", () => {
+    // Published Versions are immutable, so a document written before ticket
+    // 30 reaches the renderer with the old name whenever it bypasses the
+    // schema's own compatibility read.
+    const content = {
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: {
+            src: "https://example.com/photo.jpg",
+            credit: "Photo by Jane Doe",
+            alt: null,
+          },
+        },
+      ],
+    } as unknown as Content;
+
+    const html = renderToStaticMarkup(<RichText content={content} />);
+    expect(html).toContain("<figcaption");
+    expect(html).toContain("Photo by Jane Doe");
+    expect(html).toContain('alt=""');
   });
 
   it("keeps the text but not the anchor of a link whose URL is not http(s), and drops such an image", () => {
@@ -182,7 +227,11 @@ describe("RichText", () => {
         },
         {
           type: "image",
-          attrs: { src: "data:image/png;base64,AAAA", credit: "Nobody" },
+          attrs: {
+            src: "data:image/png;base64,AAAA",
+            alt: "",
+            caption: "Nobody",
+          },
         },
       ],
     };

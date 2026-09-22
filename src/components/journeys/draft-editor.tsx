@@ -87,8 +87,8 @@ export function DraftEditor({
   // across document changes — it is the count reaching zero, not a toggle,
   // that ever makes the section disappear on its own.
   const [liveProblemsOpen, setLiveProblemsOpen] = useState(false);
-  // Something the rich text surface did on the Author's behalf (removing a
-  // pasted image that had no credit), shown while that Step stays selected.
+  // Something the rich text surface refused on the Author's behalf, shown
+  // while that Step stays selected.
   const [contentNotice, setContentNotice] = useState<{
     stepId: string;
     message: string;

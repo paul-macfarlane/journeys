@@ -1,63 +1,54 @@
-# DoD-1 command chain — ticket 29 (App shell navbar)
-# head 7c0aab5, captured 2026-09-22T16:29:44Z, Route: polish
-# E2E_EVIDENCE=navbar-switch-project-and-theme,sign-out
+# DoD-1 command chain — ticket 30 (Rich text: image caption, alt text, editing, tooltips)
+# head ea0ff4b, captured 2026-09-22T17:45:19Z, Route: contract
+# E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone
 # pnpm test:e2e builds the app (next build) before the suite; its full list output is in dod-1-e2e.txt, only the tail is repeated here.
 
 === pnpm lint
 
-
-> journeys@0.1.0 lint .
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
 > eslint
-
 
 exit=0
 
 === pnpm format:check
 
-
-> journeys@0.1.0 format:check .
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
 > prettier --check .
 
 Checking formatting...
 All matched files use Prettier code style!
-
 exit=0
 
 === pnpm typecheck
 
-
-> journeys@0.1.0 typecheck .
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
 > tsc --noEmit
-
 
 exit=0
 
 === pnpm test
 
-
-> journeys@0.1.0 test .
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
 > vitest run
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
- RUN  v4.1.11 .
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
 
 
- Test Files  18 passed (18)
-      Tests  287 passed (287)
-   Start at  12:29:53
-   Duration  853ms (transform 1.01s, setup 0ms, import 2.59s, tests 651ms, environment 3ms)
-
+ Test Files  19 passed (19)
+      Tests  297 passed (297)
+   Start at  13:45:27
+   Duration  712ms (transform 900ms, setup 0ms, import 2.24s, tests 534ms, environment 1ms)
 
 exit=0
 
-=== E2E_EVIDENCE=navbar-switch-project-and-theme,sign-out pnpm test:e2e (tail; full output in dod-1-e2e.txt)
-
-  ✓  72 [chromium] › e2e/step-editing.spec.ts:414:5 › step-editing-choices-reorder-retarget (4.9s)
-  ✓  70 [chromium] › e2e/step-editing.spec.ts:563:5 › panel-choice-target-search (5.1s)
+=== E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone pnpm test:e2e
+  ✓  69 [chromium] › e2e/step-editing.spec.ts:801:5 › panel-outcomes-from-the-ending (5.3s)
+  ✓  71 [chromium] › e2e/step-editing.spec.ts:679:5 › panel-choice-target-search (4.5s)
+  ✓  72 [chromium] › e2e/step-editing.spec.ts:530:5 › step-editing-choices-reorder-retarget (4.3s)
 
   72 passed (1.3m)
-
 exit=0
