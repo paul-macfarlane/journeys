@@ -140,14 +140,13 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
 
-  // The user menu names the Author and switches the theme; the choice
-  // survives a reload and the menu reports it back.
+  // The user menu names the Author and switches the theme from three plain
+  // rows; the choice survives a reload and the menu reports it back.
   const account = page.getByRole("button", { name: "Account: Test Author" });
   await account.click();
   const accountMenu = page.getByRole("menu");
   await expect(accountMenu.getByText("Test Author")).toBeVisible();
   await expect(accountMenu.getByText(author.email)).toBeVisible();
-  await accountMenu.getByRole("menuitem", { name: "Theme" }).click();
   await page.getByRole("menuitemradio", { name: "Dark" }).click();
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
@@ -164,7 +163,6 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   });
 
   await account.click();
-  await page.getByRole("menuitem", { name: "Theme" }).click();
   await expect(
     page.getByRole("menuitemradio", { name: "Dark" }),
   ).toHaveAttribute("aria-checked", "true");
@@ -176,7 +174,6 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   // System follows the OS: with the OS emulated dark, the page goes dark.
   await page.emulateMedia({ colorScheme: "dark" });
   await account.click();
-  await page.getByRole("menuitem", { name: "Theme" }).click();
   await page.getByRole("menuitemradio", { name: "System" }).click();
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
@@ -203,9 +200,31 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   await expect(appNav(page)).toHaveCount(0);
 
   // At phone width the bar keeps to one row and nothing scrolls sideways:
-  // the switcher shows the title alone and the user menu its avatar.
+  // the switcher shows the title alone and the user menu its avatar, and a
+  // menu opens as a full-width sheet on the bottom edge rather than a
+  // popover under its trigger.
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(`/projects/${p1Id}`);
+  await account.click();
+  const sheet = page.getByRole("menu");
+  await expect(sheet.getByText(author.email)).toBeVisible();
+  // Polled: the sheet slides up into place, so its bottom edge only meets
+  // the viewport's once the enter animation has finished.
+  await expect
+    .poll(async () => {
+      const box = await sheet.boundingBox();
+      return box ? Math.round(box.y + box.height) : -1;
+    })
+    .toBe(812);
+  const sheetBox = await sheet.boundingBox();
+  expect(sheetBox?.x).toBe(0);
+  expect(sheetBox?.width).toBe(375);
+  await page.screenshot({
+    path: evidencePath("navbar-switch-project-and-theme", "phone-sheet.png"),
+  });
+  await sheet.getByRole("menuitemradio", { name: "Dark" }).click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
   await expect(appNav(page).getByRole("button", { name: p1 })).toBeVisible();
   await expect(account).toBeVisible();
   const bar = await page.getByRole("banner").boundingBox();

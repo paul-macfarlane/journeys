@@ -55,3 +55,7 @@ PR: https://github.com/paul-macfarlane/journeys/pull/34 (base `staging`, compari
 **Queued for Paul (non-blocking, also in the PR).** (1) Two signed-out exits now exist (`/sign-in` after Sign out, `/` from the proxy and `requireSession`). (2) "Most recently updated" means the Project row: work inside a Journey does not move its Project up the switcher. (3) The `Signed in as …` line on `/projects` still stands beside the user menu's name; remove it if it reads as doubled.
 
 **Next in Paul's order:** 30 → 31 → 23; 17 post-hackathon.
+
+### [SCOPE CHANGE] 2026-09-22 — Paul, in conversation after PR #34 opened
+
+Paul asked whether a hamburger menu opening a drawer would feel more mobile. Recommendation given and accepted: keep the two triggers (the Project title and the avatar stay visible in the bar) and change presentation, not structure — at phone width each menu opens as a full-width bottom sheet behind a scrim instead of a popover under its trigger, and the Theme fly-out submenu becomes three plain radio rows under a "Theme" label at every width. Paul chose to land it in this PR rather than a separate ticket. Same route (polish); the `navbar-switch-project-and-theme` spec grows a sheet check and a `phone-sheet.png`; the full suite runs once more at the end.

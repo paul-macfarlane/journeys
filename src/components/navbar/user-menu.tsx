@@ -11,11 +11,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { authClient } from "@/lib/auth-client";
@@ -30,9 +29,11 @@ const THEMES = [
 
 /**
  * The navbar's account menu: the Author's avatar (their initials when the
- * provider gave no image) opens their name and email, the Theme choice, and
- * Sign out. The name also sits beside the avatar from tablet width up and
- * hides at phone width, where the avatar alone is the trigger.
+ * provider gave no image) opens their name and email, the three Theme
+ * choices as plain rows (a fly-out submenu is a desktop idiom that cramps a
+ * phone), and Sign out. The name also sits beside the avatar from tablet
+ * width up and hides at phone width, where the avatar alone is the trigger
+ * and the menu opens as a bottom sheet (see `DropdownMenuContent`).
  *
  * Sign out is the sign-out button `/projects` used to carry: end the
  * session, then push *and* refresh, because the server components above
@@ -83,12 +84,10 @@ export function UserMenu({
           </span>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <ThemeChoices />
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Theme</DropdownMenuLabel>
+          <ThemeChoices />
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={signingOut} onClick={signOut}>
           Sign out
@@ -99,7 +98,7 @@ export function UserMenu({
 }
 
 /**
- * Rendered only once the submenu opens, so `useTheme` is read on the client
+ * Rendered only once the menu opens, so `useTheme` is read on the client
  * after hydration — during server rendering next-themes has no answer yet,
  * and a radio checked on one side and not the other would mismatch.
  */
