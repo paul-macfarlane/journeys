@@ -704,6 +704,17 @@ function connectHandle(page: Page, title: string) {
  */
 async function clickBox(page: Page, title: string): Promise<void> {
   await settledTransform(page);
+  // Said outright when the box's middle — where the click lands — is not on
+  // the map or on screen: Playwright would scroll the pane to reach it,
+  // React Flow scrolls the pane straight back, and the click retries until
+  // the test times out with no word about why.
+  await expect
+    .poll(
+      async () =>
+        (await nodeViews(page)).find((view) => view.title === title)?.clickable,
+      { timeout: 10_000, message: `the box "${title}" is not clickable` },
+    )
+    .toBe(true);
   await canvasNode(page, title).click();
 }
 
@@ -718,8 +729,7 @@ function boxToolbar(page: Page, title: string) {
  * into until it is pressed.
  */
 async function stepActions(page: Page, title: string): Promise<Locator> {
-  await settledTransform(page);
-  await canvasNode(page, title).click();
+  await clickBox(page, title);
 
   const opener = boxToolbar(page, title).getByRole("button", {
     name: "Step actions",
@@ -1497,7 +1507,11 @@ test("canvas-step-actions", async ({ page, context }) => {
   await expect(canvas(page).locator(".react-flow__minimap")).toHaveCount(0);
 
   // While another Step's box still offers the delete, and so does the panel
-  // once that Step is open.
+  // once that Step is open. Zooming in with the view on the Start pushed the
+  // other boxes toward the frame's edge — past it on a machine whose fonts
+  // make the boxes taller — and a box outside the frame cannot be clicked,
+  // so the whole map is asked for first.
+  await fitWholeMap(page, 3);
   const clinicToolbar = await expandStepActions(page, "Clinic tent");
   await expect(
     clinicToolbar.getByRole("button", { name: "Delete step", exact: true }),
@@ -2279,6 +2293,9 @@ test("canvas-validation-marks", async ({ page, context }) => {
 
   // A Choice back to the Start closes a loop, and a loop is allowed since
   // ticket 18: it leaves no mark on either Step or either arrow.
+  // The Choice just added gave its target a rank of its own, which moved the
+  // boxes; the whole map is asked for before the next one is clicked.
+  await fitWholeMap(page, 2);
   await clickBox(page, "Clinic tent");
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await addChoiceToStep(page, "Go back", "Border post");
@@ -2407,6 +2424,9 @@ test("canvas-problems-readable", async ({ page, context }) => {
 
   // A dangling Choice: read the same live message on the Choice row that
   // dangles and in that Step's own Problems section.
+  // The Choice just added gave its target a rank of its own, which moved the
+  // boxes; the whole map is asked for before the next one is clicked.
+  await fitWholeMap(page, 2);
   await clickBox(page, "Clinic tent");
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await page
