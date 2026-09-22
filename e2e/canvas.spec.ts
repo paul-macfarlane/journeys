@@ -2520,6 +2520,85 @@ test("canvas-problems-readable", async ({ page, context }) => {
   ).toBeVisible();
 });
 
+test("canvas-empty-choice-label", async ({ page, context }) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+  await addStepFromCanvas(page, "Clinic tent");
+  // The drag below wants both boxes, and adding a Step took the map to the
+  // one it made, so the whole map is taken back first.
+  await expectBoxOnMap(page, "Clinic tent");
+  await fitWholeMap(page, 2);
+
+  // A Choice drawn on the map starts with no label. Drawing it reached
+  // "Clinic tent", so the one thing wrong with the Draft is that the Choice
+  // has no name: read on the arrow, under the Choice's own row, and in the
+  // header count.
+  const label = await connectByDragging(page, "Border post", "Clinic tent", 1);
+  const message = 'Step "Border post" has a choice with no label';
+
+  await expect(problemEdges(page)).toHaveCount(1);
+  const choiceId = await canvasEdges(page).getAttribute("data-choice-id");
+  expect(choiceId).not.toBeNull();
+  const arrow = canvasEdge(page, choiceId!);
+  await expect(arrow).toHaveAttribute("data-problems", "1");
+  await expect(markedChoiceRow(page).getByText(message)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "1 problem", exact: true }),
+  ).toBeVisible();
+  await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
+    "data-problems",
+    "0",
+  );
+
+  await page.screenshot({
+    path: evidencePath(
+      "canvas-empty-choice-label",
+      "canvas-empty-choice-label.png",
+    ),
+    fullPage: true,
+  });
+
+  // Typing the label clears all three.
+  await label.fill("Find the clinic");
+  await expect(label).toHaveValue("Find the clinic");
+  await expect(arrow).toHaveAttribute("data-problems", "0");
+  await expect(problemEdges(page)).toHaveCount(0);
+  await expect(markedChoiceRow(page).getByText(message)).toHaveCount(0);
+  await expect(page.getByText("No problems", { exact: true })).toBeVisible();
+
+  // Whitespace is no label either. Blanked to spaces and saved, the Draft is
+  // refused publication with the same message in the refusal's list.
+  await label.fill("   ");
+  await expect(problemEdges(page)).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "1 problem", exact: true }),
+  ).toBeVisible();
+  await label.blur();
+  await expectSaved(page);
+
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  const refusal = page.getByRole("alertdialog");
+  await expect(refusal).toContainText("This journey can't be published yet");
+  const problems = refusal.getByRole("list", { name: "Publishing problems" });
+  await expect(problems.getByRole("listitem")).toHaveCount(1);
+  await expect(problems).toHaveText(message);
+
+  await page.screenshot({
+    path: evidencePath(
+      "canvas-empty-choice-label",
+      "canvas-empty-choice-label-refused.png",
+    ),
+    fullPage: true,
+  });
+
+  await refusal.getByRole("button", { name: "Close" }).click();
+  await expect(refusal).toBeHidden();
+  await expect(
+    page.getByText("Never published", { exact: true }),
+  ).toBeVisible();
+});
+
 /** One arrow on the map, named by the Choice it draws. */
 function canvasEdge(page: Page, choiceId: string) {
   return canvas(page).locator(`[data-choice-id="${choiceId}"]`);

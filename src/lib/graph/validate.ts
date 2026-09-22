@@ -15,6 +15,7 @@ import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
 export type PublishProblemCode =
   | "missing-start"
   | "dangling-choice-target"
+  | "empty-choice-label"
   | "unreachable-step"
   | "unknown-outcome";
 
@@ -74,6 +75,23 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
         problems.push({
           code: "dangling-choice-target",
           message: `Step "${stepName(step)}" has a choice pointing at a step that no longer exists`,
+          stepId,
+          choiceId: choice.id,
+        });
+      }
+    }
+  }
+
+  // A Choice drawn on the map starts with no label, and the editor reads that
+  // as "Untitled choice" while the Author works; a Participant would be shown
+  // a link with no text and no accessible name, so a Published Version may
+  // not carry one. Whitespace is no label either.
+  for (const [stepId, step] of entries) {
+    for (const choice of step.choices) {
+      if (choice.label.trim().length === 0) {
+        problems.push({
+          code: "empty-choice-label",
+          message: `Step "${stepName(step)}" has a choice with no label`,
           stepId,
           choiceId: choice.id,
         });
