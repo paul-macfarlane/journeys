@@ -12,8 +12,10 @@ import { APP_NAME, APP_TAGLINE, BRAND_COLORS } from "@/lib/brand";
 // headings, a legibility-first sans for everything else. globals.css names
 // the resulting families literally in @theme inline (which can't resolve
 // runtime CSS variables), so swapping a face means updating it there too.
+// The variable names deliberately differ from Tailwind's --font-display and
+// --font-sans so the two definitions never compete on <html>.
 const displayFont = Literata({
-  variable: "--font-display",
+  variable: "--font-display-face",
   subsets: ["latin"],
   axes: ["opsz"],
   display: "swap",

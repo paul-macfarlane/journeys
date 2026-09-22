@@ -35,4 +35,6 @@ export const BRAND_COLORS = {
   ink: "#122119",
   /** `--muted-foreground` in light mode. */
   moss: "#475e51",
+  /** `--primary-foreground` in light mode; the fork on the tile. */
+  paper: "#f6fcf7",
 } as const;

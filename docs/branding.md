@@ -91,8 +91,9 @@ the low-chroma palette ask for.
 ## Contrast
 
 WCAG AA asks for 4.5:1 on body text. The ratios below are computed from the
-tokens (`scratchpad/contrast.mjs`, oklch → linear sRGB → relative luminance)
-and confirmed as painted by the `theme-light-and-dark` spec, which reads the
+tokens by `scripts/contrast.mjs` (oklch → linear sRGB → relative luminance;
+run it with `node scripts/contrast.mjs` and the palette JSON its header
+describes) and confirmed as painted by the `theme-light-and-dark` spec, which reads the
 rendered text and background colours out of Chromium on each surface and
 fails under 4.5:1.
 
@@ -123,14 +124,22 @@ numbers differ from the table only by Chromium's rounding to 8-bit sRGB):
 All under `src/app/`, by Next's metadata file conventions, so every page links
 them without a component knowing:
 
-| File                  | Served at               | Made by                                                                                                        |
-| --------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `icon.svg`            | `/icon.svg`             | hand-written; the source of the mark                                                                           |
-| `favicon.ico`         | `/favicon.ico`          | 16, 32, 48 px PNG entries rendered from `icon.svg` with the repo's Chromium (script in the ticket 31 closeout) |
-| `apple-icon.png`      | `/apple-icon.png`       | 180 px, the tile full-bleed (iOS rounds the corners itself), same script                                       |
-| `manifest.ts`         | `/manifest.webmanifest` | name, tagline, colours, the two icons                                                                          |
-| `opengraph-image.tsx` | `/opengraph-image`      | 1200×630, the tile, the name in Literata, the tagline                                                          |
+| File                  | Served at               | Made by                                                                                                 |
+| --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| `icon.svg`            | `/icon.svg`             | hand-written; the source of the mark                                                                    |
+| `favicon.ico`         | `/favicon.ico`          | 16, 32, 48 px PNG entries rendered from `icon.svg` with the repo's Chromium by `scripts/make-icons.mjs` |
+| `apple-icon.png`      | `/apple-icon.png`       | 180 px, the tile full-bleed (iOS rounds the corners itself), same script                                |
+| `manifest.ts`         | `/manifest.webmanifest` | name, tagline, colours, the two icons                                                                   |
+| `opengraph-image.tsx` | `/opengraph-image`      | 1200×630, the tile, the name and tagline in Literata (the only face the renderer is given)              |
 
-Regenerating the two raster files: render `icon.svg` at each size with a
-headless browser and wrap the PNGs in an ICO container; the one-file Node
-script that did it is recorded in the ticket 31 closeout.
+Regenerating the two raster files after a change to `icon.svg`:
+
+```bash
+node scripts/make-icons.mjs
+```
+
+The manifest's `theme_color` is spruce (an installed app's title bar takes
+the brand colour) while the pages' `theme-color` meta tags are the page
+background in each scheme (the browser chrome matches the page); both are
+deliberate. There is no 192 or 512 px PNG: the SVG serves every size, and an
+install path that still prefers a PNG falls back to the 180 px icon.

@@ -39,6 +39,11 @@ export default function PrivacyPage() {
           We never see or store your password.
         </li>
         <li>
+          A sign-in session record, holding the browser and IP address the
+          session was created from, and the tokens Google or Discord issue so
+          that we can keep you signed in.
+        </li>
+        <li>
           The projects and journeys you create: their titles, descriptions,
           every step and choice, each published version, and which projects you
           are a member of.
@@ -68,20 +73,23 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Session cookie</strong> (Authors). Set when you sign in so
-          that you stay signed in. Removed when you sign out or it expires.
+          that you stay signed in. It lasts seven days, extended while you keep
+          using Journeys, and is removed when you sign out.
         </li>
         <li>
-          <strong>Participant cookie</strong> (Participants). A random id, set
-          on the first choice you make in any journey, so that a journey can
-          tell your walk apart from somebody else’s on the same device. It is
+          <strong>Participant cookie</strong> (Participants,{" "}
+          <code>journeys.participant</code>). A random id, set on the first
+          choice you make in any journey and kept as the same id across every
+          journey you walk in this browser, so that your walks can be counted
+          together and told apart from somebody else’s on the same device. It is
           scoped to journey pages, lasts up to 400 days, and is never linked to
-          an account.
+          an account or to any way of reaching you.
         </li>
         <li>
-          <strong>Run cookie</strong> (Participants). One per journey you are
-          walking, holding the id of that run so the journey can pick up where
-          you left off. It lasts 30 days and is only ever sent to that journey’s
-          pages.
+          <strong>Run cookie</strong> (Participants, <code>journeys.run.</code>{" "}
+          followed by the journey’s id). One per journey you are walking,
+          holding the id of that run so the journey can pick up where you left
+          off. It lasts 30 days and is only ever sent to that journey’s pages.
         </li>
       </ul>
       <p>

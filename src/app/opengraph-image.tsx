@@ -52,7 +52,7 @@ export default async function OpenGraphImage() {
         <rect width="32" height="32" rx="8" fill={BRAND_COLORS.spruce} />
         <g
           fill="none"
-          stroke="#f6fcf7"
+          stroke={BRAND_COLORS.paper}
           strokeWidth="3.4"
           strokeLinecap="round"
           strokeLinejoin="round"
