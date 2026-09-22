@@ -13,6 +13,7 @@ import {
   START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
+import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
@@ -172,6 +173,7 @@ test("public-project-page", async ({ page, context, browser }) => {
 
   // A Participant: no session, on a phone, holding only the link.
   const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
     viewport: { width: 390, height: 844 },
   });
   try {

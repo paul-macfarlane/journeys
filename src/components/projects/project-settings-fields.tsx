@@ -77,7 +77,11 @@ export function ProjectSettingsFields({
   );
 }
 
-/** Two documents are the same when they would be stored the same. */
+/**
+ * Two documents are the same when they would be stored the same. A string
+ * comparison is enough because both sides came out of `sanitizeContent`,
+ * which builds every object in one fixed key order.
+ */
 function sameContent(a: Content, b: Content): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }

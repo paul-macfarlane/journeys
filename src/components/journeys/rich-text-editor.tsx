@@ -48,7 +48,7 @@ import { formatShortcut, isApplePlatform } from "@/lib/rich-text/shortcuts";
  * its own. One empty paragraph, the shape a new Step's content already has,
  * is what "nothing" looks like on the surface.
  */
-function editable(content: Content): Content {
+function withTextBlock(content: Content): Content {
   return content.content.length > 0
     ? content
     : { type: "doc", content: [{ type: "paragraph" }] };
@@ -205,7 +205,7 @@ export function RichTextEditor({
 
   const editor = useEditor({
     extensions: editorExtensions,
-    content: editable(content),
+    content: withTextBlock(content),
     // The panel is server-rendered by Next; rendering the editor immediately
     // would produce markup the client then disagrees with.
     immediatelyRender: false,
@@ -257,7 +257,7 @@ export function RichTextEditor({
     }
     if (appliedResetKey.current === resetKey) return;
     appliedResetKey.current = resetKey;
-    editor.commands.setContent(editable(contentRef.current), {
+    editor.commands.setContent(withTextBlock(contentRef.current), {
       emitUpdate: false,
     });
   }, [editor, resetKey]);

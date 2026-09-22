@@ -156,46 +156,49 @@ export const getPublicProject = cache(
 );
 
 /**
- * Renames a Project. Its id — and so its URL — is untouched. Returns null
- * when the Author is not a Member of `projectId`.
+ * The one write shape every Settings-tab edit has: the Member check, the
+ * update stamped with `updatedAt` (which is what moves the Project up the
+ * navbar's switcher), and the row read back. Null when the Author is not a
+ * Member of `projectId`.
  */
-export async function renameProject(
+async function updateProjectForMember(
   projectId: string,
-  input: { title: string },
   userId: string,
+  changes: Partial<{ title: string; descriptionContent: Content }>,
 ): Promise<ProjectSummary | null> {
   const existing = await getProjectForMember(projectId, userId);
   if (!existing) return null;
 
   const [updated] = await db
     .update(project)
-    .set({ title: input.title, updatedAt: new Date() })
+    .set({ ...changes, updatedAt: new Date() })
     .where(eq(project.id, existing.id))
     .returning(projectColumns);
 
   return updated ? toSummary(updated) : null;
 }
 
+/** Renames a Project. Its id — and so its URL — is untouched. */
+export function renameProject(
+  projectId: string,
+  input: { title: string },
+  userId: string,
+): Promise<ProjectSummary | null> {
+  return updateProjectForMember(projectId, userId, { title: input.title });
+}
+
 /**
  * Replaces a Project's rich-text description. The caller has already put
  * `description` through `sanitizeContent`; this stores what it was given.
- * Returns null when the Author is not a Member of `projectId`.
  */
-export async function editProjectDescription(
+export function editProjectDescription(
   projectId: string,
   description: Content,
   userId: string,
 ): Promise<ProjectSummary | null> {
-  const existing = await getProjectForMember(projectId, userId);
-  if (!existing) return null;
-
-  const [updated] = await db
-    .update(project)
-    .set({ descriptionContent: description, updatedAt: new Date() })
-    .where(eq(project.id, existing.id))
-    .returning(projectColumns);
-
-  return updated ? toSummary(updated) : null;
+  return updateProjectForMember(projectId, userId, {
+    descriptionContent: description,
+  });
 }
 
 /**

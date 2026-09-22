@@ -405,7 +405,7 @@ function collectText(blocks: Array<Block | ListItem>, into: string[]): void {
 }
 
 /** Whether any of these blocks shows a Participant something. */
-function hasSomething(blocks: Array<Block | ListItem>): boolean {
+function showsAnything(blocks: Array<Block | ListItem>): boolean {
   return blocks.some((block) => {
     switch (block.type) {
       case "paragraph":
@@ -413,9 +413,9 @@ function hasSomething(blocks: Array<Block | ListItem>): boolean {
         return (block.content ?? []).some((run) => run.text.trim() !== "");
       case "bulletList":
       case "orderedList":
-        return hasSomething(block.content);
+        return showsAnything(block.content);
       case "listItem":
-        return hasSomething(block.content ?? []);
+        return showsAnything(block.content ?? []);
       case "image":
         // A picture is something to see whether or not it is captioned.
         return true;
@@ -431,7 +431,7 @@ function hasSomething(blocks: Array<Block | ListItem>): boolean {
  * the public Project page renders nothing rather than an empty block.
  */
 export function isBlankContent(content: Content): boolean {
-  return !hasSomething(content.content);
+  return !showsAnything(content.content);
 }
 
 /**
