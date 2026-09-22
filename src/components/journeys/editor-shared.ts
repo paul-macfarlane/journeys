@@ -48,13 +48,17 @@ export type ApplyEdit = (next: GraphDocument, edit?: EditMeta) => void;
  * working — and `keepView` moves nothing at all, for an opening that is the
  * aftermath of something else, like the Start opened when a Step is deleted.
  * Neither given, a box already on the map is left where it stands and one off
- * it is brought on.
+ * it is brought on — unless the panel was away, when the frame is about to
+ * narrow and the opening zooms to the Step instead. `reveal` holds to the
+ * first rule even then: an undo or a redo moves the view no further than
+ * bringing the box on, whatever the panel was doing.
  */
 export type SelectStepOptions = {
   focusTitle?: boolean;
   markChoiceId?: string;
   zoom?: boolean;
   keepView?: boolean;
+  reveal?: boolean;
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;

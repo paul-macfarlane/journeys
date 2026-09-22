@@ -117,6 +117,23 @@ describe("recordEdit", () => {
     expect(history.undo.map((entry) => entry.snapshot)).toEqual([first, later]);
   });
 
+  it("coalesces an edit made exactly at the window's edge", () => {
+    const first = snapshot("Before");
+
+    let history = recordEdit(emptyHistory(), first, {
+      field: titleField,
+      at: 1000,
+    });
+    history = recordEdit(history, snapshot("B"), {
+      field: titleField,
+      at: 1000 + COALESCE_WINDOW_MS,
+    });
+
+    // The window is inclusive: a gap of exactly a second is the same thought.
+    expect(history.undo).toHaveLength(1);
+    expect(history.undo[0].snapshot).toBe(first);
+  });
+
   it("never coalesces edits on different fields", () => {
     const first = snapshot("Before");
     const second = snapshot("Second");

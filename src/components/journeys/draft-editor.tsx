@@ -115,6 +115,9 @@ export function DraftEditor({
    * buttons on the map read to know whether they have anything to do, and
    * what the keyboard reaches from anywhere on the page. Held in state for
    * them and in a ref for everything that reads it from a handler.
+   *
+   * `window.history`: the Draft's is what `history` names inside this
+   * component, as `document` is the Draft.
    */
   const [history, setHistory] = useState<History>(emptyHistory);
   const [status, setStatus] = useState<SaveStatus>("saved");
@@ -556,7 +559,7 @@ export function DraftEditor({
         request: current.request + 1,
         view: options?.keepView
           ? "keep"
-          : options?.zoom === true || panelWasHidden
+          : options?.zoom === true || (panelWasHidden && !options?.reveal)
             ? "zoom"
             : "reveal",
       }));
@@ -583,29 +586,36 @@ export function DraftEditor({
   /**
    * A move taken off the history put into effect. The document is set through
    * the ordinary path, so an undo autosaves like the edit it takes back; the
-   * rich text surface is re-fed, because the content under the open Step has
-   * been replaced by something the Author did not type; and the Step the
-   * move belongs to is opened with nothing asked of the map beyond bringing
-   * its box on if it is off it.
+   * rich text surface is re-fed when the move replaced what is under the open
+   * Step's surface, and left alone — caret and all — when the move was about
+   * something else; and the Step the move belongs to is opened with nothing
+   * asked of the map beyond bringing its box on if it is off it.
    */
-  const travel = useCallback(
+  const applyMove = useCallback(
     (move: HistoryMove | null) => {
       if (move === null) return;
-
-      historyRef.current = move.history;
-      setHistory(move.history);
-      applyDocument(move.snapshot.document);
-      setRevision((current) => current + 1);
 
       // A Step the restored document does not have — the edit belonged to a
       // Step a later move deleted — leaves the Start to stand in, the way
       // every other selection that outlives its Step does.
       const restored = move.snapshot;
-      selectStep(
-        Object.hasOwn(restored.document.steps, restored.selectedStepId)
-          ? restored.selectedStepId
-          : restored.document.startStepId,
-      );
+      const stepId = Object.hasOwn(
+        restored.document.steps,
+        restored.selectedStepId,
+      )
+        ? restored.selectedStepId
+        : restored.document.startStepId;
+      // Read before the document moves: the content is one immutable value
+      // per edit, so a different reference is a different reading.
+      const contentReplaced =
+        restored.document.steps[stepId].content !==
+        documentRef.current.steps[stepId]?.content;
+
+      historyRef.current = move.history;
+      setHistory(move.history);
+      applyDocument(restored.document);
+      if (contentReplaced) setRevision((current) => current + 1);
+      selectStep(stepId, { reveal: true });
     },
     [applyDocument, selectStep],
   );
@@ -620,16 +630,16 @@ export function DraftEditor({
   );
 
   const undoEdit = useCallback(() => {
-    travel(
+    applyMove(
       undoHistory(historyRef.current, currentSnapshot(), { at: Date.now() }),
     );
-  }, [currentSnapshot, travel]);
+  }, [applyMove, currentSnapshot]);
 
   const redoEdit = useCallback(() => {
-    travel(
+    applyMove(
       redoHistory(historyRef.current, currentSnapshot(), { at: Date.now() }),
     );
-  }, [currentSnapshot, travel]);
+  }, [applyMove, currentSnapshot]);
 
   // Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z — Ctrl+Y as well, for hands used to it —
   // from anywhere on the Journey page, the Cmd/Ctrl+K listener above being
@@ -650,11 +660,10 @@ export function DraftEditor({
   // arrive here already answered and this would stand aside from the one
   // undo the page has. Claiming it first is what makes the surface's undo
   // the Draft's, as the ticket asks. Nothing else on the page answers these
-  // keys, so there is nothing here to take a press away from; a press some
-  // other listener on the way down has already answered is still left alone.
+  // keys, so there is nothing here to take a press away from — and, being
+  // first, nothing has had the chance to answer one before this reads it.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.defaultPrevented) return;
       if (event.altKey) return;
       if (!event.metaKey && !event.ctrlKey) return;
       if (dialogIsOpen()) return;

@@ -3516,7 +3516,7 @@ test.describe("authoring from the map", () => {
     // The typing was on another Step, so the panel goes to the Step it was on.
     await page.keyboard.press("ControlOrMeta+z");
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
-    await expect(page.getByLabel("Step content")).not.toContainText(opening);
+    await expect(page.getByLabel("Step content")).toHaveText("");
 
     // And the way the map runs is an edit like any other.
     await page.keyboard.press("ControlOrMeta+z");
@@ -3726,14 +3726,16 @@ test.describe("undo and redo", () => {
     // The surface keeps no history of its own: the press inside it belongs to
     // the Draft, and gives back the reading as it stood before the typing.
     await page.keyboard.press("ControlOrMeta+z");
-    await expect(content).not.toContainText(reading);
+    // Empty, as it stood — not one letter shorter, which is what a surface
+    // keeping a history of its own would have given back.
+    await expect(content).toHaveText("");
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
 
     await expectSaved(page);
     const undone = await readDraft(journeyId);
     expect(
-      contentPreview(storedStep(undone, "Border post").content, 10_000),
-    ).not.toContain(reading);
+      contentPreview(storedStep(undone, "Border post").content, 10_000).trim(),
+    ).toBe("");
 
     // A second Step, named last of all — and then the Author moves away from
     // it before pressing undo, with their hands in the title field.
@@ -3771,6 +3773,18 @@ test.describe("undo and redo", () => {
     await expect(redoButton(page)).toBeDisabled();
 
     await renameStep(page, "Border post");
+
+    // With the panel put away, an undo still opens the Step it belongs to —
+    // the panel comes back for it — and moves the view no further than
+    // bringing its box on. The one box is on the map already, so the map
+    // stays exactly where "Hide panel" left it settled.
+    const wholeMap = await hidePanel(page);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(page.getByLabel("Step title")).toHaveValue("Start");
+    expect(await settledTransform(page)).toBe(wholeMap);
+    await redoButton(page).click();
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+
     await addStepFromCanvas(page, "Clinic tent");
     await addStepFromCanvas(page, "Waved through");
     await expectBoxOnMap(page, "Waved through");
@@ -3850,16 +3864,20 @@ test.describe("undo and redo", () => {
     await expect(canvasNodes(page)).toHaveCount(3);
     await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
 
-    // And back to the beginning, one press at a time. The cap is only there so
-    // a button that never gives up ends the loop rather than the test's clock;
-    // what is being said is that the pressing stops on its own.
-    for (let press = 0; press < 20; press += 1) {
-      if (!(await undoButton(page).isEnabled())) break;
-      await undoButton(page).click();
-      // Waited for, as well as asserted: everything taken back is something to
-      // put back, and the next press is only read once this one has landed.
-      await expect(redoButton(page)).toBeEnabled();
-    }
+    // And back to the beginning, one press at a time, until the button says
+    // there is nothing left. Polled, rather than looped over one read of the
+    // button per press: a press lands a moment after the click, and a read
+    // taken inside that moment would send one press too many at a button
+    // already disabled. The press is forced past Playwright's own wait for
+    // an enabled button for the same reason, and a press on nothing is
+    // nothing — so the poll can only end in the one place.
+    await expect
+      .poll(async () => {
+        if (!(await undoButton(page).isEnabled())) return "nothing left";
+        await undoButton(page).click({ force: true });
+        return "still pressing";
+      })
+      .toBe("nothing left");
 
     // Nothing left to take back: a Draft of one Step, named as a new Draft
     // names it, drawn the way a new Draft is drawn.

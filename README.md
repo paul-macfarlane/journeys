@@ -101,11 +101,12 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   retarget, a delete, a direction switch, a step's typing — taken from the two
   buttons beside "Add step" or with Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (Ctrl+Y)
   from anywhere on the page, with typing undone a field at a time rather than
-  a letter at a time. The draft autosaves. Publish the draft as an immutable version (refused, with
-  the problems listed, while the draft has any), unpublish to take it back
-  from participants, preview it, and see every published version — number,
-  when, and who published it — with the live one marked and any of them
-  restorable into the draft. Members of the project only; anyone else gets a 404.
+  a letter at a time. The draft autosaves. Publish the draft as an immutable
+  version (refused, with the problems listed, while the draft has any),
+  unpublish to take it back from participants, preview it, and see every
+  published version — number, when, and who published it — with the live one
+  marked and any of them restorable into the draft. Members of the project
+  only; anyone else gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>/preview` — walks the draft
   from its start step to an ending in the participant runner's own frame,
   exactly as a participant would, under a banner saying nothing is recorded.

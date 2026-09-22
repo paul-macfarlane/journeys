@@ -1820,8 +1820,9 @@ export function JourneyCanvas(props: JourneyCanvasProps) {
         </Button>
 
         {/* Straight after "Add step": the moves, and the way to take the
-            last one back. Each says the keys that do the same thing, so an
-            Author reading the button learns the shortcut.
+            last one back. Each names the keys that do the same thing for
+            assistive technology, which is what `aria-keyshortcuts` reaches;
+            nothing is drawn for it.
 
             The press is prevented from moving focus, the way the rich text
             toolbar's buttons are: an Author who has just typed into a field
