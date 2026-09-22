@@ -157,26 +157,25 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
     await stubOffOriginImages(phone);
     const participant = await phone.newPage();
 
+    // The Journey opens on its Start Step: the title in the header, the
+    // description beneath it, and the Step's own content and Choices — no
+    // title page in front of it, and no Run yet.
     await participant.goto(`/j/${journeyId}`);
-    await expect(
-      participant.getByRole("heading", { name: journeyTitle }),
-    ).toBeVisible();
+    await expect(participant.getByRole("banner")).toHaveText(journeyTitle);
     await expect(participant.getByText(description)).toBeVisible();
-    await expectNoSidewaysScroll(participant);
-
-    await participant.getByRole("button", { name: "Begin" }).click();
-    await expect(participant).toHaveURL(
-      `${E2E_BASE_URL}/j/${journeyId}/step-7`,
-    );
     await expect(
       participant.getByRole("heading", { name: "Preface" }),
     ).toBeVisible();
     await expectNoSidewaysScroll(participant);
+    expect(await readRuns(versionId)).toHaveLength(0);
 
-    await participant.getByRole("link", { name: "Next" }).click();
+    // The first Choice is what creates the Run, and it lands on the chosen
+    // Step with the title still in the header.
+    await participant.getByRole("button", { name: "Next" }).click();
     await expect(participant).toHaveURL(
       `${E2E_BASE_URL}/j/${journeyId}/step-1`,
     );
+    await expect(participant.getByRole("banner")).toHaveText(journeyTitle);
     await expect(
       participant.getByRole("heading", { name: "The Horses" }),
     ).toBeVisible();
@@ -267,12 +266,11 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     const participant = await participantContext.newPage();
 
     await participant.goto(`/j/${journeyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
     await expect(
       participant.getByRole("heading", { name: START_STEP_TITLE }),
     ).toBeVisible();
 
-    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
@@ -347,14 +345,22 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
       fullPage: true,
     });
 
-    // Starting over from the Ending is a new Run, not a reset: the finished
-    // one keeps its path and Outcome, and the walk begins again at the Start.
+    // Starting over from the Ending shows the Start Step fresh and records
+    // nothing by itself: the finished Run keeps its path and Outcome, and a
+    // new Run is created — not a reset — by the next Choice.
     await participant.getByRole("button", { name: "Start over" }).click();
-    await expect(participant).toHaveURL(
-      `${E2E_BASE_URL}/j/${journeyId}/${START_STEP_ID}`,
-    );
+    await expect(participant).toHaveURL(`${E2E_BASE_URL}/j/${journeyId}`);
     await expect(
       participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+    await expect(
+      participant.getByRole("link", { name: "Continue where you left off" }),
+    ).toHaveCount(0);
+    expect(await readRuns(versionId)).toHaveLength(1);
+
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
 
     const afterStartOver = await readRuns(versionId);
@@ -362,7 +368,7 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     expect(afterStartOver[0].id).toBe(afterSecondChoice[0].id);
     expect(afterStartOver[0].path).toEqual([START_STEP_ID, "turned-back"]);
     expect(afterStartOver[0].outcome_id).toBe("turned-away");
-    expect(afterStartOver[1].path).toEqual([START_STEP_ID]);
+    expect(afterStartOver[1].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
     expect(afterStartOver[1].ended_at).toBeNull();
   } finally {
     await participantContext.close();
@@ -393,14 +399,14 @@ test("runner-loop-and-back", async ({ page, context, browser }) => {
     const participant = await participantContext.newPage();
 
     await participant.goto(`/j/${journeyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
     await expect(
       participant.getByRole("heading", { name: START_STEP_TITLE }),
     ).toBeVisible();
 
     // Twice around the loop: every visit is its own entry, and choosing the
-    // Step behind you is a forward move, not a backtrack.
-    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    // Step behind you is a forward move, not a backtrack. The first Choice
+    // is a button (it creates the Run); every later one is a link.
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
@@ -524,9 +530,9 @@ test("runner-path-cap", async ({ page, context, browser }) => {
     const participant = await participantContext.newPage();
 
     await participant.goto(`/j/${journeyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(
-      participant.getByRole("heading", { name: START_STEP_TITLE }),
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
 
     const started = await readRuns(versionId);
@@ -614,10 +620,15 @@ test("runner-case-2-restored-choice", async ({ page, context, browser }) => {
     const participant = await participantContext.newPage();
 
     await participant.goto(`/j/${journeyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
 
-    for (const label of route) {
-      await participant.getByRole("link", { name: label, exact: true }).click();
+    // The first Choice is a button on the Start Step; the rest are links.
+    for (const [index, label] of route.entries()) {
+      await participant
+        .getByRole(index === 0 ? "button" : "link", {
+          name: label,
+          exact: true,
+        })
+        .click();
     }
     await expect(
       participant.getByRole("heading", { name: "I quit!" }),
@@ -684,12 +695,22 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
   try {
     const participant = await firstContext.newPage();
 
+    // Opening the Journey records nothing; the first Choice creates the Run,
+    // already holding the Start and the chosen Step.
     await participant.goto(`/j/${firstJourneyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
-    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+    expect(await readRuns(firstVersionId)).toHaveLength(0);
+
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
+
+    const afterFirstChoice = await readRuns(firstVersionId);
+    expect(afterFirstChoice).toHaveLength(1);
+    expect(afterFirstChoice[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
 
     // A refresh resumes the Run where it was, and records no second one.
     await participant.reload();
@@ -702,7 +723,7 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
     expect(afterReload[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
 
     // A second Participant holds no Run cookie for this Journey, so a step
-    // URL sends them to the start screen rather than into somebody's Run.
+    // URL sends them to the Start Step rather than into somebody's Run.
     const strangerContext = await browser.newContext({
       baseURL: E2E_BASE_URL,
     });
@@ -711,10 +732,11 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
       await stranger.goto(`/j/${firstJourneyId}/${QUEUE_STEP_ID}`);
       await expect(stranger).toHaveURL(`${E2E_BASE_URL}/j/${firstJourneyId}`);
 
-      await stranger.getByRole("button", { name: "Begin" }).click();
       await expect(
         stranger.getByRole("heading", { name: START_STEP_TITLE }),
       ).toBeVisible();
+      await stranger.getByRole("button", { name: "Walk away" }).click();
+      await expect(stranger.getByText("The end")).toBeVisible();
     } finally {
       await strangerContext.close();
     }
@@ -728,14 +750,14 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
     // A second Journey open in the same browser keeps a Run of its own: the
     // Run cookie is scoped to the Journey, the Participant id is not.
     await participant.goto(`/j/${secondJourneyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(
-      participant.getByRole("heading", { name: START_STEP_TITLE }),
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
 
     const secondJourneyRuns = await readRuns(secondVersionId);
     expect(secondJourneyRuns).toHaveLength(1);
-    expect(secondJourneyRuns[0].path).toEqual([START_STEP_ID]);
+    expect(secondJourneyRuns[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
     expect(secondJourneyRuns[0].participant_id).toBe(
       afterReload[0].participant_id,
     );
@@ -749,9 +771,18 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
     expect(firstJourneyRuns).toHaveLength(2);
     expect(firstJourneyRuns[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
 
+    // Reopening the Journey mid-Run offers the way back above the Start
+    // Step, which is shown in full beneath it.
     await participant.goto(`/j/${firstJourneyId}`);
+    const resume = participant.getByRole("link", {
+      name: "Continue where you left off",
+    });
+    await expect(resume).toBeVisible();
     await expect(
-      participant.getByRole("link", { name: "Continue where you left off" }),
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+    await expect(
+      participant.getByRole("button", { name: "Wait your turn" }),
     ).toBeVisible();
     await participant.screenshot({
       path: evidencePath(
@@ -760,6 +791,36 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
       ),
       fullPage: true,
     });
+
+    await resume.click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    expect(await readRuns(firstVersionId)).toHaveLength(2);
+
+    // Starting over abandons the Run where it stands — neither ended nor
+    // touched — and the next Choice is a new Run.
+    await participant.goto(`/j/${firstJourneyId}`);
+    await participant.getByRole("button", { name: "Start over" }).click();
+    // The offer is what goes; the address stays the same, so it is checked
+    // second, once the fresh page is on screen.
+    await expect(resume).toHaveCount(0);
+    await expect(participant).toHaveURL(`${E2E_BASE_URL}/j/${firstJourneyId}`);
+    expect(await readRuns(firstVersionId)).toHaveLength(2);
+
+    await participant.getByRole("button", { name: "Walk away" }).click();
+    await expect(participant.getByText("The end")).toBeVisible();
+
+    const afterStartOver = await readRuns(firstVersionId);
+    expect(afterStartOver).toHaveLength(3);
+    expect(afterStartOver[0].id).toBe(afterFirstChoice[0].id);
+    expect(afterStartOver[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
+    expect(afterStartOver[0].ended_at).toBeNull();
+    expect(afterStartOver[2].path).toEqual([START_STEP_ID, "turned-back"]);
+    expect(afterStartOver[2].ended_at).not.toBeNull();
+    expect(afterStartOver[2].participant_id).toBe(
+      afterFirstChoice[0].participant_id,
+    );
   } finally {
     await firstContext.close();
   }
@@ -787,23 +848,20 @@ test("runner-pinned-version", async ({ page, context, browser }) => {
   try {
     const midRun = await midRunContext.newPage();
     await midRun.goto(`/j/${journeyId}`);
-    await midRun.getByRole("button", { name: "Begin" }).click();
-    await midRun.getByRole("link", { name: "Wait your turn" }).click();
+    await midRun.getByRole("button", { name: "Wait your turn" }).click();
     await expect(
       midRun.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
 
     // A rename after publishing changes the Journey row, not what a
-    // Participant sees: the start screen reads version 1's own title.
+    // Participant sees: the header reads version 1's own title.
     const journeyTitle = `Border Crossing ${suffix}`;
     await queryE2eDatabase('UPDATE "journey" SET title = $1 WHERE id = $2', [
       `Renamed after publishing ${suffix}`,
       journeyId,
     ]);
     await midRun.goto(`/j/${journeyId}`);
-    await expect(
-      midRun.getByRole("heading", { name: journeyTitle, exact: true }),
-    ).toBeVisible();
+    await expect(midRun.getByRole("banner")).toHaveText(journeyTitle);
     await expect(midRun.getByText("Renamed after publishing")).toHaveCount(0);
     await midRun.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
 
@@ -830,8 +888,7 @@ test("runner-pinned-version", async ({ page, context, browser }) => {
     // A Run started now is pinned to version 2 and reads version 2's words.
     const fresh = await freshContext.newPage();
     await fresh.goto(`/j/${journeyId}`);
-    await fresh.getByRole("button", { name: "Begin" }).click();
-    await fresh.getByRole("link", { name: "Wait your turn" }).click();
+    await fresh.getByRole("button", { name: "Wait your turn" }).click();
     await expect(
       fresh.getByRole("heading", { name: laterTitle }),
     ).toBeVisible();

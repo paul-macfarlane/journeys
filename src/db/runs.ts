@@ -38,7 +38,7 @@ export type PublicJourney =
 /**
  * What an anonymous Participant may see of a Journey by id: its live
  * Published Version, or why there isn't one. Null for an unknown Journey id
- * (the start screen 404s); `unavailable` when the Journey exists but has no
+ * (the runner 404s); `unavailable` when the Journey exists but has no
  * live pointer, whether it was never published or was later unpublished —
  * the two read the same to a Participant. Title and description come from
  * the Published Version, never the Journey row, so a rename after publish
@@ -132,7 +132,7 @@ export type RunForJourney = {
  * pinned to — joined through `published_version` and refused (null) when
  * that version does not belong to `journeyId`, so a Run cookie minted on one
  * Journey can never open a step page on another. Also null for an unknown
- * Run id, which a step page answers the same way: back to the start screen.
+ * Run id, which a step page answers the same way: back to the Start Step.
  */
 export async function getRunForJourney(
   runId: string,

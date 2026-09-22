@@ -2,20 +2,28 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
-import { choiceLinkClassName } from "@/components/runner/step-view";
+import { choiceLinkClassName, StepView } from "@/components/runner/step-view";
 import { getPublicJourney, getRunForJourney } from "@/db/runs";
 import { currentStepId } from "@/lib/graph/run";
 import { runCookieName } from "@/lib/run-cookies";
 
-import { beginRunAction } from "./actions";
+import { chooseFromStartAction, startOverAction } from "./actions";
 
 /**
- * The participant runner's start screen. Public and anonymous: no session, no
- * Project membership, no account — a Participant only ever needs the link.
+ * The participant runner's first screen: the Start Step itself, under the
+ * Journey's title, with the description beneath the header (ticket 27 —
+ * there is no title page in front of the Journey). Public and anonymous: no
+ * session, no Project membership, no account — a Participant only ever
+ * needs the link.
  *
- * The title and description come from the live Published Version, never the
- * `journey` row, so renaming a Journey after publishing never changes what a
- * Participant is looking at until the next publish.
+ * Nothing is recorded by opening this page. The Start Step's Choices are a
+ * form, and the Run is created — already holding the Start and the chosen
+ * Step — when a Choice is taken. A Journey whose Start is an Ending shows
+ * "The end" here and records no Run at all.
+ *
+ * The title, description, and Start Step come from the live Published
+ * Version, never the `journey` row, so renaming a Journey after publishing
+ * never changes what a Participant is looking at until the next publish.
  */
 export default async function JourneyStartPage({
   params,
@@ -53,37 +61,52 @@ export default async function JourneyStartPage({
   // Ending is finished, and this screen offers a fresh walk instead.
   const inProgress = found && found.run.endedAt === null ? found.run : null;
 
-  return (
-    <RunnerFrame>
-      <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {journey.title}
-        </h1>
-        {journey.description ? (
-          <p className="text-muted-foreground text-lg">{journey.description}</p>
-        ) : null}
-      </div>
+  const { document } = journey;
+  // A Published Version passed publish-time validation, so its Start Step
+  // exists; the reducer indexes it the same way.
+  const startStep = document.steps[document.startStepId];
 
-      <div className="flex flex-col gap-3">
-        {inProgress ? (
+  return (
+    <RunnerFrame
+      title={journey.title}
+      description={journey.description || undefined}
+    >
+      {inProgress ? (
+        // Native controls rather than the shared Button: this page stays a
+        // Server Component with no client bundle, and the class already
+        // matches the Choices below. Starting over is a POST an action owns,
+        // since it changes what the next request will see.
+        <div className="flex flex-col gap-3 rounded-xl border p-4">
+          <p className="text-sm">
+            You&apos;re partway through this journey. Choosing below starts it
+            again from the beginning.
+          </p>
           <a
             href={`/j/${journeyId}/${currentStepId(inProgress)}`}
             className={choiceLinkClassName}
           >
             Continue where you left off
           </a>
-        ) : null}
+          <form action={startOverAction.bind(null, journeyId)}>
+            <button type="submit" className={choiceLinkClassName}>
+              Start over
+            </button>
+          </form>
+        </div>
+      ) : null}
 
-        {/* Starting a Run writes a row and two cookies, so it is a POST an
-            action owns, not a link somebody can prefetch. A native button
-            rather than the shared Button: this page stays a Server Component
-            with no client bundle, and the class already matches the Choices. */}
-        <form action={beginRunAction.bind(null, journeyId)}>
-          <button type="submit" className={choiceLinkClassName}>
-            {inProgress ? "Start over" : "Begin"}
-          </button>
-        </form>
-      </div>
+      {/* No "Start over" on an Ending here: with no Run begun there is
+          nothing to start over from, and the Choices — when the Start has
+          any — are the way in. */}
+      <StepView
+        step={startStep}
+        document={document}
+        choices={{
+          kind: "form",
+          action: chooseFromStartAction.bind(null, journeyId),
+        }}
+        startOver={null}
+      />
     </RunnerFrame>
   );
 }

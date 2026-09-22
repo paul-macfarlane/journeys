@@ -1,0 +1,33 @@
+# AC-2 — reopening /j/<id> mid-Run offers Continue where you left off above the Start Step;
+# Start over leaves the old Run abandoned and the next Choice creates a new Run. Head f7ee3ed, 2026-09-22T14:41:17Z.
+
+## The assertions (e2e/runner.spec.ts, runner-run-cookie-and-refresh)
+801:    // Starting over abandons the Run where it stands — neither ended nor
+802-    // touched — and the next Choice is a new Run.
+803-    await participant.goto(`/j/${firstJourneyId}`);
+804-    await participant.getByRole("button", { name: "Start over" }).click();
+805-    // The offer is what goes; the address stays the same, so it is checked
+814:    const afterStartOver = await readRuns(firstVersionId);
+815-    expect(afterStartOver).toHaveLength(3);
+816-    expect(afterStartOver[0].id).toBe(afterFirstChoice[0].id);
+817-    expect(afterStartOver[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
+818-    expect(afterStartOver[0].ended_at).toBeNull();
+819-    expect(afterStartOver[2].path).toEqual([START_STEP_ID, "turned-back"]);
+820-    expect(afterStartOver[2].ended_at).not.toBeNull();
+821-    expect(afterStartOver[2].participant_id).toBe(
+822-      afterFirstChoice[0].participant_id,
+823-    );
+
+## Unit cases (src/app/j/[journeyId]/actions.test.ts)
+155:  it("creates one Run holding the Start and the chosen Step, and lands on that Step", async () => {
+182:  it("starts a fresh Run while another is in progress, and leaves the old one as it was", async () => {
+211:  it("mints the participant cookie on a browser's first Run and keeps it afterwards", async () => {
+229:  it("refuses a Choice the Start Step does not offer and records nothing", async () => {
+242:  it("begins nothing for a Choice back onto the Start, which is a stay", async () => {
+266:  it("refuses a form with no Choice in it", async () => {
+276:  it("sends a Journey that is not live back to its Start, which says why", async () => {
+290:  it("drops the Run cookie, touches no Run, and shows the Start Step fresh", async () => {
+
+## Passing run (from the DoD-1 chain above)
+# E2E_EVIDENCE=runner-case-3-on-a-phone,runner-back-and-choose-again,runner-loop-and-back,runner-path-cap,runner-case-2-restored-choice,runner-run-cookie-and-refresh,runner-pinned-version,runner-unavailable-and-unknown,preview,preview-non-member,author-flow,publish-untagged-ending,canvas-build-by-dragging-and-walk,canvas-build-by-dropping-and-walk,canvas-build-left-to-right-and-walk,step-editing-image-credit-and-preview,step-editing-outcome-rename
+  ✓  65 [chromium] › e2e/runner.spec.ts:664:5 › runner-run-cookie-and-refresh (3.4s)

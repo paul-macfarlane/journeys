@@ -5,7 +5,7 @@ Blocked by: 06, 09
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 
-**What to build:** A Member opens a published Journey's analytics for a chosen Published Version and sees the canvas with numbers on it — percentage taking each Choice, Run count on each Ending, abandonment count on each Step — plus a Runs-by-Outcome chart and starts/completions totals. All computed from Run paths (no event table). Members-only. The Runs-by-Outcome chart groups untagged Endings each by its own Step title, so "40% reached 'Turned back'" still reads (from ticket 24, 2026-09-22).
+**What to build:** A Member opens a published Journey's analytics for a chosen Published Version and sees the canvas with numbers on it — percentage taking each Choice, Run count on each Ending, abandonment count on each Step — plus a Runs-by-Outcome chart and starts/completions totals. All computed from Run paths (no event table). Members-only. The Runs-by-Outcome chart groups untagged Endings each by its own Step title, so "40% reached 'Turned back'" still reads (from ticket 24, 2026-09-22). A Journey whose Start Step is an Ending records no Run at all — a Run is created by the Participant's first Choice, and such a Journey offers none — so its starts, completions, and Ending counts read zero however many people open it (from ticket 27, 2026-09-22).
 
 - [ ] Seam A: aggregation functions produce hand-computed expectations for choice take-rate, ending counts, outcome distribution, abandonment, starts, completions; zero-run and all-abandoned cases; Runs from other versions excluded.
 - [ ] Canvas overlay shows the numbers; switching version changes them.

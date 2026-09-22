@@ -57,7 +57,7 @@ An immutable snapshot of a journey's draft created by publishing. At most one is
 _Avoid_: Release, revision, snapshot
 
 **Run**:
-One participant's walk through one published version, from start to an ending or abandonment. Pinned to the version it began on; its path is the participant's current route, not every detour.
+One participant's walk through one published version, from start to an ending or abandonment. Created when a participant takes their first choice, never by merely opening the journey; pinned to the version it began on; its path is the participant's current route, not every detour.
 _Avoid_: Session, playthrough, attempt
 
 **Backtrack**:
