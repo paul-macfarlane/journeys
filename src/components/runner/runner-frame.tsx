@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { JourneysMark, LegalLinks } from "@/components/brand";
+
 /**
  * The shell every participant screen sits in — the Start Step, each later
  * Step, the unavailable screen — and, since ticket 27, every Preview screen
@@ -17,8 +19,10 @@ import type { ReactNode } from "react";
  * as in `StepView`: the runner's navigations are whole-document by design,
  * and the frame carries no client bundle of its own.
  *
- * Deliberately plain: a per-Project Theme colors this surface in ticket 11,
- * and anything decorative added here now would only have to be undone.
+ * The footer is the one place the app names itself to a Participant — the
+ * mark, the name, and the two legal pages — kept small and in the muted
+ * tone so it never competes with the Step. A per-Project Theme (ticket 11)
+ * colours the frame through the tokens above it; the footer stays.
  */
 export function RunnerFrame({
   title,
@@ -53,7 +57,7 @@ export function RunnerFrame({
       {title ? (
         <header className="border-b">
           <div className="mx-auto w-full max-w-prose px-4 py-3 sm:px-6">
-            <p className="text-sm font-medium">{title}</p>
+            <p className="font-display text-base font-medium">{title}</p>
           </div>
         </header>
       ) : null}
@@ -64,6 +68,21 @@ export function RunnerFrame({
         ) : null}
         {children}
       </main>
+
+      <footer className="border-t">
+        <div className="text-muted-foreground mx-auto flex w-full max-w-prose flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 text-sm sm:px-6">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a
+              plain anchor on purpose: the frame ships no client bundle. */}
+          <a
+            href="/"
+            className="hover:text-foreground inline-flex items-center gap-1.5"
+          >
+            <JourneysMark variant="line" className="size-4" />
+            <span className="font-display">Made with Journeys</span>
+          </a>
+          <LegalLinks />
+        </div>
+      </footer>
     </div>
   );
 }

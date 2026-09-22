@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Wordmark } from "@/components/brand";
 import { ProjectSwitcher } from "@/components/navbar/project-switcher";
 import { UserMenu } from "@/components/navbar/user-menu";
 import {
@@ -40,11 +41,8 @@ export async function AppNavbar({ projectId }: { projectId?: string }) {
     <header className="border-b bg-background">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <nav aria-label="App" className="flex min-w-0 items-center gap-1">
-          <Link
-            href="/projects"
-            className="shrink-0 px-2 text-sm font-semibold tracking-tight"
-          >
-            Journeys
+          <Link href="/projects" className="shrink-0 px-2">
+            <Wordmark className="text-base" markClassName="size-5" />
           </Link>
           <ProjectSwitcher
             projects={switcherProjects(recent, currentProject)}
