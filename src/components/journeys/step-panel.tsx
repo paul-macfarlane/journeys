@@ -193,8 +193,7 @@ export function StepPanel({
   choiceProblems,
   revision,
   focusTitle,
-  focusChoiceId,
-  focusChoiceRequest,
+  markedChoiceId,
   onChange,
   onSelectStep,
   onContentChange,
@@ -215,10 +214,8 @@ export function StepPanel({
   revision: number;
   /** True when this Step was just created from a Choice and wants a name. */
   focusTitle: boolean;
-  /** A Choice on this Step whose label field is being asked for. */
-  focusChoiceId: string | null;
-  /** Bumped each time that was asked for, so asking twice focuses twice. */
-  focusChoiceRequest: number;
+  /** A Choice on this Step that is the one in hand on the map, if any. */
+  markedChoiceId: string | null;
   onChange: (document: GraphDocument) => void;
   onSelectStep: SelectStep;
   onContentChange: (stepId: string, content: Content) => void;
@@ -298,8 +295,7 @@ export function StepPanel({
         step={step}
         order={order}
         choiceProblems={choiceProblems}
-        focusChoiceId={focusChoiceId}
-        focusChoiceRequest={focusChoiceRequest}
+        markedChoiceId={markedChoiceId}
         onChange={onChange}
         onSelectStep={onSelectStep}
       />

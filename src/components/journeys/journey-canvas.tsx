@@ -108,12 +108,14 @@ import "@xyflow/react/dist/style.css";
  * carries a toolbar, one small button that opens onto the moves that shape
  * the Journey around that Step — adding the next step, duplicating it, making
  * it the start, and deleting it — and one that only moves the view, zooming
- * to it. A Choice is made by dragging from a box onto another, an arrow's
- * head is dragged to move where its Choice leads, and a clicked arrow is the
- * Choice in hand — opened in the panel, and removed by the Delete key.
- * Nothing here edits the document: each of those is handed back to the
- * editor in the document's own words (a Step, a Choice), and the map redraws
- * from whatever the editor makes of it.
+ * to it. A Choice is made by dragging from a box onto another — or onto bare
+ * map, which makes the Step it leads to in the same motion — the head of the
+ * arrow in hand is dragged to move where its Choice leads, and a clicked
+ * arrow is the Choice in hand: its Step opened in the panel with that Choice's
+ * row marked, nothing scrolled, the keyboard left on the map, and the Delete
+ * key removing it. Nothing here edits the document: each of those is handed
+ * back to the editor in the document's own words (a Step, a Choice), and the
+ * map redraws from whatever the editor makes of it.
  *
  * And it is a map to be read: hovering or focusing a box peeks at what the
  * Step says without opening it, and the arrow keys walk from box to nearest
@@ -816,6 +818,17 @@ const ACROSS_WEIGHT = 2;
 const FIT_AFTER_TOGGLE_MS = 500;
 
 /**
+ * How long after a Choice was let go of a click on a box still counts as that
+ * drag's own rather than the Author's. A Choice drawn back to its own Step is
+ * one press and one release inside the same box, so the browser follows the
+ * drag with a click on that box — which would re-open the Step and let go of
+ * the very Choice the drag just drew. A press and a release the Author means
+ * as a click are never a quarter of a second apart from a drag that has just
+ * ended.
+ */
+const CLICK_AFTER_CONNECT_MS = 250;
+
+/**
  * How many frames the Zoom-to-step move waits for a box React Flow has not
  * measured yet: a Step made a moment ago is rendered before it is measured,
  * and a `fitView` on a box with no dimensions does nothing. A handful of
@@ -944,6 +957,11 @@ export type JourneyCanvasProps = {
   onDeleteStep: (stepId: string) => void;
   /** A Choice drawn between two boxes, and one whose head was moved. */
   onConnectChoice: (stepId: string, targetStepId: string) => void;
+  /**
+   * A Choice drawn from a box onto bare map, where there is no Step for it
+   * to lead to: the Step and the Choice are made together.
+   */
+  onConnectToNewStep: (stepId: string) => void;
   onRetargetChoice: (
     stepId: string,
     choiceId: string,
@@ -972,6 +990,7 @@ function CanvasFlow({
   onSetStart,
   onDeleteStep,
   onConnectChoice,
+  onConnectToNewStep,
   onRetargetChoice,
   onSelectArrow,
   onRemoveChoices,
@@ -1145,10 +1164,14 @@ function CanvasFlow({
         // Named rather than left to React Flow's first target handle: the
         // box has a second, invisible one covering it for drops to land on.
         targetHandle: "in",
-        // The head of the arrow can be picked up and dropped on another box;
-        // where a Choice leaves from is the Step it is written on, which is
-        // not something to drag.
-        reconnectable: "target" as const,
+        // The head of the arrow the Author has in hand can be picked up and
+        // dropped on another box; where a Choice leaves from is the Step it
+        // is written on, which is not something to drag. Only the selected
+        // arrow grows a head, and it is drawn over the rest: every arrow
+        // into a box ends on the same handle, so the heads stack, and a head
+        // dragged out of a stack has to be the Choice the Author chose.
+        reconnectable: isSelected ? ("target" as const) : false,
+        zIndex: isSelected ? 1 : 0,
         type: "choice",
         selected: isSelected,
         label,
@@ -1178,6 +1201,14 @@ function CanvasFlow({
     () => new Set(Object.keys(document.steps)),
     [document.steps],
   );
+
+  /**
+   * When a Choice was last let go of, for `CLICK_AFTER_CONNECT_MS`. Never,
+   * to begin with — and never is not zero: `performance.now()` counts from
+   * the moment the page was opened, so zero is "the page had just loaded",
+   * which would swallow the first click an Author made on a box.
+   */
+  const connectedAt = useRef(Number.NEGATIVE_INFINITY);
 
   const { fitView, getInternalNode, getNodesBounds, getViewport } =
     useReactFlow();
@@ -1520,6 +1551,36 @@ function CanvasFlow({
           if (!stepIds.has(source) || !stepIds.has(target)) return;
           onConnectChoice(source, target);
         }}
+        // And a Choice let go of over bare map: there is no Step there to
+        // lead to, so the Step is made where the Author said the Journey
+        // goes next and the Choice with it.
+        //
+        // Only a drag that began on a box's connect dot. React Flow calls
+        // this for a reconnect as well — an arrow's head dragged off starts
+        // its own connection, from the Choice's own anchor — and a head let
+        // go of on nothing leaves its Choice exactly as it was.
+        //
+        // And only a release over the pane: let go over the Controls, the
+        // minimap, or clean outside the map, the Author broke the drag off
+        // rather than pointing it at empty map, and nothing is made.
+        onConnectEnd={(event, connectionState) => {
+          // Noted whatever the drag turned out to mean: the click the browser
+          // sends after it is the drag's, not a box being opened.
+          connectedAt.current = performance.now();
+
+          const { fromHandle, fromNode, toNode } = connectionState;
+          if (fromHandle?.id !== "connect") return;
+          if (fromNode === null || !stepIds.has(fromNode.id)) return;
+          if (toNode !== null) return;
+          if (
+            (event.target as Element | null)?.closest(".react-flow__pane") ==
+            null
+          ) {
+            return;
+          }
+
+          onConnectToNewStep(fromNode.id);
+        }}
         // The head of an arrow dropped on another box. A drop on nothing
         // never gets here, which is what leaves the Choice as it was.
         onReconnect={(oldEdge, connection) => {
@@ -1527,12 +1588,21 @@ function CanvasFlow({
           if (arrow === undefined || !stepIds.has(connection.target)) return;
           onRetargetChoice(arrow.stepId, arrow.choiceId, connection.target);
         }}
-        // Clicking an arrow opens the Choice it draws: the Step it is
-        // written on, with its label in hand.
+        // Clicking an arrow is taking the Choice in hand — opened in the
+        // panel with its row marked; nothing takes the keyboard, and the
+        // page the Author is reading the map on does not move.
         onEdgeClick={(_event, edge) => {
           const arrow = arrows.get(edge.id);
           if (arrow === undefined) return;
-          onSelectStep(arrow.stepId, { focusChoiceId: arrow.choiceId });
+
+          // The keyboard is left on the map the Author is working on. An
+          // arrow is not something a browser can give focus to, so the click
+          // drops the keyboard on the page behind it; the map takes it back,
+          // where Escape, the Delete key, and the arrow keys all are.
+          // Nothing is scrolled to do it: the arrow was clicked, so it is
+          // already in front of them.
+          canvasRef.current?.focus({ preventScroll: true });
+          onSelectStep(arrow.stepId, { markChoiceId: arrow.choiceId });
         }}
         // React Flow's own account of what the Author did to the arrows,
         // turned back into the Choices they draw: a click selects one (and a
@@ -1582,8 +1652,16 @@ function CanvasFlow({
         // A placeholder stands for a Step that is gone, so it may have
         // nothing to open; a box always does. Clicking a box is also what
         // puts the moves on it — folded up, and folded up again on the box
-        // whose moves were open when it is clicked a second time.
+        // whose moves were open when it is clicked a second time. A click
+        // that is only the tail of a Choice just drawn is none of that.
         onNodeClick={(_event, node) => {
+          if (
+            performance.now() - connectedAt.current <
+            CLICK_AFTER_CONNECT_MS
+          ) {
+            return;
+          }
+
           if (node.type === "step") {
             setToolbar({
               stepId: node.data.opens,

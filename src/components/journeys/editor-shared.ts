@@ -8,9 +8,10 @@
 /**
  * How a Step is opened in the panel. `focusTitle` is for a Step that was just
  * created from a Choice: it opens with its title field focused so the Author
- * names it in the same breath. `focusChoiceId` is the same move one level
- * down — a Choice drawn on the map, or one whose arrow was clicked, opens its
- * Step with that Choice's label field focused.
+ * names it in the same breath. `markChoiceId` names the Choice whose row is
+ * marked as the one in hand — an arrow clicked, or a Choice just drawn — and
+ * moves no focus at all: the Author is working on the map, and the panel says
+ * which Choice that is rather than reaching for the keyboard.
  *
  * The other two are about the map rather than the panel, and the view is the
  * Author's: `zoom` makes the Zoom-to-step move on the opened Step — for a
@@ -22,7 +23,7 @@
  */
 export type SelectStepOptions = {
   focusTitle?: boolean;
-  focusChoiceId?: string;
+  markChoiceId?: string;
   zoom?: boolean;
   keepView?: boolean;
 };

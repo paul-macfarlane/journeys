@@ -49,27 +49,39 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 - `/projects/<project-id>/journeys/<journey-id>` — one journey: edit its
   title and description, delete it, and edit its draft — find a step by name
   and change its title and rich text in the panel, add, reorder,
-  retarget and remove its choices (creating the step a choice needs in the
-  same motion), make a step the start, delete a step and see which choices
-  break, manage the journey's outcomes and tag each ending with one, and run
-  validation on demand. The draft is also drawn as a map on a canvas — laid
-  out automatically from the steps and choices themselves, never from stored
-  positions — where clicking a box opens that step in the panel, a step can
-  be added from the canvas, and validation problems are marked on the
-  step or choice it is about. The map is drawn either top to bottom or left
-  to right, switched from the control beside "Add step" and stored on the
+  retarget and remove its choices — the field that says where a choice leads
+  is searchable, and it creates the step a choice needs in the same motion —
+  make a step the start, delete a step and see which choices
+  break, make, choose and rename an ending's outcome from the ending itself
+  (searchable too; an outcome the last ending drops is removed with it), and
+  run validation on demand. The draft is also drawn as a map on a canvas —
+  laid out automatically from the steps and choices themselves, never from
+  stored positions — where clicking a box opens that step in the panel, a
+  step can be added from the canvas, and validation problems are marked on
+  the step or choice it is about. The map is drawn either top to bottom or
+  left to right, switched from the control beside "Add step" and stored on the
   draft rather than in the browser, so every member of the project sees the
   journey the same way round; changing it re-fits the whole map. Its arrows
-  follow the routes the layout computes, the arrows into and out of the step
-  the panel has open are drawn at full strength while the rest dim, opening a
-  step that is off the map brings it back into view, and the legend names
-  every outcome in the color its endings carry. The journey is built on the
+  follow the routes the layout computes, and the arrows into and out of the
+  step the panel has open are drawn at full strength while the rest dim.
+  The view is the author's and moves only when they ask: the first render, a
+  change of direction, "Hide panel" and "Show panel", and the zoom to a step
+  opened from a hidden panel, found by name, or just made — adding or
+  deleting a step otherwise leaves the map where they left it. Nothing on it
+  is coloured by outcome and there is no legend: the start and a step's
+  problems are read from its badge and its ring, and an ending names its
+  outcome in words. The journey is built on the
   map too: dragging from a box's connect dot onto another box makes the
-  choice between them (and dragging an arrow's head onto a third box moves
-  it there), the open box's toolbar adds the next step, duplicates the step,
-  zooms the map to it, makes it the start or deletes it — the panel's footer
-  duplicates it too — and clicking an arrow opens its choice for renaming or
-  deletes it with the Delete key. The map is read as well as built: hovering
+  choice between them, dropping one on bare map makes the step it leads to as
+  well, and dragging the head of the arrow in hand onto a third box moves it
+  there — only the selected arrow has a head to take hold of, so a head
+  dragged out of a stack is the choice the author chose. The box the author
+  clicks carries a "Step actions" button that opens onto the five moves: add
+  the next step, duplicate the step, zoom the map to it, make it the start,
+  delete it — the panel's footer duplicates it too — and clicking an arrow
+  opens its step with that choice's row marked, scrolling nothing and taking
+  the keyboard nowhere, while the Delete key on the arrow removes the choice.
+  The map is read as well as built: hovering
   or focusing a box shows the opening of that step's content without opening
   it, and the arrow keys walk from box to nearest box, where Enter opens the
   one the keyboard is on and Escape steps back out to the map itself. The

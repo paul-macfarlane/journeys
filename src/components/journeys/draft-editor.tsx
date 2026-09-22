@@ -347,18 +347,6 @@ export function DraftEditor({
   const [titleFocusStepId, setTitleFocusStepId] = useState<string | null>(null);
 
   /**
-   * The Choice whose label field should take focus, for a Choice drawn on
-   * the map and so still unnamed. `request` counts the times one was asked
-   * for, so clicking the same arrow twice running focuses it twice rather
-   * than once.
-   */
-  const [choiceFocus, setChoiceFocus] = useState<{
-    stepId: string;
-    choiceId: string;
-    request: number;
-  } | null>(null);
-
-  /**
    * The arrow the Author has last clicked on the map, as asked for. Held here
    * rather than in React Flow so that the arrows the canvas draws are derived
    * from the document and this, and there is never a second account of what
@@ -480,19 +468,14 @@ export function DraftEditor({
       }));
       setTitleFocusStepId(options?.focusTitle ? stepId : null);
 
-      const focusChoiceId = options?.focusChoiceId;
-      setChoiceFocus((current) =>
-        focusChoiceId === undefined
-          ? null
-          : {
-              stepId,
-              choiceId: focusChoiceId,
-              request: (current?.request ?? 0) + 1,
-            },
+      // The Choice in hand is one thing, not two: the arrow drawn heaviest
+      // on the map and the row marked in the panel are the same Choice, so
+      // an opening that names one is the arrow being taken hold of, and an
+      // opening that names none is the Author's attention leaving it.
+      const markChoiceId = options?.markChoiceId;
+      setArrowSelection(
+        markChoiceId === undefined ? null : { stepId, choiceId: markChoiceId },
       );
-      // Opening a Step is the Author's attention leaving the arrow — except
-      // when the Step was opened by clicking that very arrow.
-      if (focusChoiceId === undefined) setArrowSelection(null);
     },
     [revealPanel],
   );
@@ -600,7 +583,8 @@ export function DraftEditor({
   /**
    * An arrow drawn from one box onto another: the Choice exists the moment
    * the Author lets go, and the panel opens on the Step it leaves with the
-   * label field waiting — the drag said where it goes, not what it says.
+   * new row marked — the drag said where the Choice goes, not what it says,
+   * and the Author's hands are still on the map.
    */
   const connectSteps = useCallback(
     (stepId: string, targetStepId: string) => {
@@ -611,7 +595,27 @@ export function DraftEditor({
       if (created.choiceId === "") return;
 
       applyEdit(created.document);
-      selectStep(stepId, { focusChoiceId: created.choiceId });
+      selectStep(stepId, { markChoiceId: created.choiceId });
+    },
+    [applyEdit, selectStep],
+  );
+
+  /**
+   * An arrow drawn from a box onto bare map: there is no Step there to lead
+   * to, so one is made and the Choice with it, in the one motion — opened
+   * with its title field focused and the map zoomed to where it landed,
+   * exactly as "Add next step" opens the Step it makes. What the Choice is
+   * called is the next thing to write, on the Step it leaves.
+   */
+  const connectToNewStep = useCallback(
+    (stepId: string) => {
+      const created = addChoiceToNewStep(documentRef.current, stepId, {
+        label: "",
+      });
+      if (created.choiceId === "") return;
+
+      applyEdit(created.document);
+      selectStep(created.stepId, { focusTitle: true, zoom: true });
     },
     [applyEdit, selectStep],
   );
@@ -899,6 +903,7 @@ export function DraftEditor({
             onSetStart={makeStart}
             onDeleteStep={removeStep}
             onConnectChoice={connectSteps}
+            onConnectToNewStep={connectToNewStep}
             onRetargetChoice={retargetChoice}
             selectedArrow={selectedArrow}
             onSelectArrow={setArrowSelection}
@@ -918,12 +923,11 @@ export function DraftEditor({
               choiceProblems={selectedStepChoiceProblems}
               revision={revision}
               focusTitle={titleFocusStepId === selectedStep.id}
-              focusChoiceId={
-                choiceFocus?.stepId === selectedStep.id
-                  ? choiceFocus.choiceId
+              markedChoiceId={
+                selectedArrow?.stepId === selectedStep.id
+                  ? selectedArrow.choiceId
                   : null
               }
-              focusChoiceRequest={choiceFocus?.request ?? 0}
               onChange={applyEdit}
               onSelectStep={selectStep}
               onContentChange={handleContentChange}

@@ -38,11 +38,13 @@ import {
  * Seam B for ticket 09: the Draft as a map on the Journey page — every Step a
  * node, every Choice an edge, the Start and the Endings set apart, publish
  * problems marked on the exact node and edge, and the moves an Author makes
- * from the map itself: adding a Step, opening one in the panel, the toolbar
- * on the open box, drawing a Choice by dragging from one box to another,
- * moving an arrow's head to another box, and clicking an arrow to open or
- * delete the Choice it draws — up to building a whole Journey by dragging
- * and walking it as a Participant.
+ * from the map itself: adding a Step, opening one in the panel, the moves on
+ * the box the Author clicked, drawing a Choice by dragging from one box to
+ * another, dropping one on bare map to make the Step it leads to as well,
+ * moving the head of the arrow in hand onto another box, and clicking an
+ * arrow to take the Choice it draws in hand or delete it — up to building a
+ * whole Journey by dragging, and another by dropping, and walking each as a
+ * Participant.
  *
  * Every Journey here is built through the browser, the way an Author builds
  * one, except the seeded case-3 document: 36 Steps is what the map is being
@@ -123,6 +125,17 @@ function canvas(page: Page) {
  */
 function stepPanel(page: Page) {
   return page.getByRole("region", { name: "Step", exact: true });
+}
+
+/**
+ * The Choice row the panel has marked as the one in hand: the arrow the
+ * Author clicked, or the Choice they have just drawn. Marked is all it is —
+ * nothing here ever holds the keyboard.
+ */
+function markedChoiceRow(page: Page) {
+  return page
+    .getByRole("list", { name: "Choices" })
+    .locator('li[aria-current="true"]');
 }
 
 /** The button on the canvas that brings a hidden panel back. */
@@ -721,7 +734,10 @@ async function emptySpot(page: Page): Promise<Point> {
 /**
  * One Choice made the way the map makes one: dragged from the source box's
  * connect dot onto the target box, leaving the panel on the source Step with
- * the new Choice's empty label field focused and waiting to be typed into.
+ * the new Choice's row marked as the one in hand. The label field on that row
+ * is handed back, because what the drag left to say is what the Choice is
+ * called — and it is reached for rather than typed into, the Author's hands
+ * being still on the map.
  */
 async function connectByDragging(
   page: Page,
@@ -734,14 +750,40 @@ async function connectByDragging(
    * is a count of nothing.
    */
   expectedEdges: number,
-): Promise<void> {
+): Promise<Locator> {
   await dragTo(page, connectHandle(page, from), canvasNode(page, to));
 
   await expect(canvasEdges(page)).toHaveCount(expectedEdges);
   await expect(page.getByLabel("Step title")).toHaveValue(from);
-  const label = page.getByLabel("Choice label").last();
+
+  const marked = markedChoiceRow(page);
+  await expect(marked).toHaveCount(1);
+  const label = marked.getByLabel("Choice label");
   await expect(label).toHaveValue("");
-  await expect(label).toBeFocused();
+  return label;
+}
+
+/**
+ * One Choice dropped where there is no Step to lead to: dragged from the
+ * box's connect dot onto bare map, which makes the Step as well and opens it
+ * with its title field waiting to be written into.
+ */
+async function dropChoiceOnEmptyMap(
+  page: Page,
+  fromTitle: string,
+): Promise<void> {
+  // The whole map inside the window first: a drag runs between two points the
+  // pointer has to be able to reach, and on a map zoomed in on one box the
+  // connect dot can sit below the fold of a short window.
+  await settledTransform(page);
+  await canvas(page).scrollIntoViewIfNeeded();
+
+  const nowhere = await emptySpot(page);
+  await dragTo(page, connectHandle(page, fromTitle), nowhere);
+
+  const title = page.getByLabel("Step title");
+  await expect(title).toHaveValue("Untitled step");
+  await expect(title).toBeFocused();
 }
 
 /**
@@ -2333,8 +2375,9 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
     "0",
   );
 
-  // An arrow is clicked to open the Choice it draws, wherever the panel
-  // happens to be: the Step the Choice is written on, with its label in hand.
+  // An arrow is clicked to take the Choice it draws in hand, wherever the
+  // panel happens to be: the Step the Choice is written on opens, with that
+  // Choice's row marked as the one in hand.
   const choiceId = await canvasEdges(page).getAttribute("data-choice-id");
   expect(choiceId).not.toBeNull();
   const arrow = canvasEdge(page, choiceId!);
@@ -2345,9 +2388,12 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
   await arrow.locator(".react-flow__edge-textwrapper").click();
 
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
-  const label = page.getByLabel("Choice label");
+  const marked = markedChoiceRow(page);
+  await expect(marked).toHaveCount(1);
+  const label = marked.getByLabel("Choice label");
   await expect(label).toHaveValue("Find the clinic");
-  await expect(label).toBeFocused();
+  // Marked is all it is: the click left the keyboard where it was.
+  await expect(label).not.toBeFocused();
   await expect(arrow).toHaveAttribute("data-emphasis", "selected");
 
   await page.screenshot({
@@ -2355,9 +2401,10 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
     fullPage: true,
   });
 
-  // Backspace in the label is typing, never deleting: the field opens with
-  // its text selected, so the caret is collapsed to the end of it first.
-  await page.keyboard.press("ArrowRight");
+  // Backspace in the label is typing, never deleting: the Author reaches for
+  // the field on the row the click marked, and types at the end of it.
+  await label.click();
+  await page.keyboard.press("End");
   await page.keyboard.press("Backspace");
   await expect(label).toHaveValue("Find the clini");
   await expect(canvasEdges(page)).toHaveCount(1);
@@ -2399,27 +2446,29 @@ test("canvas-arrow-select-second-arrow", async ({ page, context }) => {
   // the map's own list it happens to sit at.
   const findTheClinic = arrowLabelled(page, "Find the clinic");
   const walkAway = arrowLabelled(page, "Walk away");
-  const labels = page.getByLabel("Choice label");
+  // Whichever arrow is in hand, and only ever the one.
+  const marked = markedChoiceRow(page);
+  const markedLabel = marked.getByLabel("Choice label");
 
   await clickArrow(page, findTheClinic);
   await expect(findTheClinic).toHaveAttribute("data-emphasis", "selected");
   await expect(walkAway).not.toHaveAttribute("data-emphasis", "selected");
-  await expect(labels.nth(0)).toHaveValue("Find the clinic");
-  await expect(labels.nth(0)).toBeFocused();
+  await expect(marked).toHaveCount(1);
+  await expect(markedLabel).toHaveValue("Find the clinic");
 
   // The second arrow takes the selection off the first.
   await clickArrow(page, walkAway);
   await expect(walkAway).toHaveAttribute("data-emphasis", "selected");
   await expect(findTheClinic).not.toHaveAttribute("data-emphasis", "selected");
-  await expect(labels.nth(1)).toHaveValue("Walk away");
-  await expect(labels.nth(1)).toBeFocused();
+  await expect(marked).toHaveCount(1);
+  await expect(markedLabel).toHaveValue("Walk away");
 
   // And back: this is the way round that the map used to answer with nothing
   // selected at all, because the arrow being let go of came second.
   await clickArrow(page, findTheClinic);
   await expect(findTheClinic).toHaveAttribute("data-emphasis", "selected");
   await expect(walkAway).not.toHaveAttribute("data-emphasis", "selected");
-  await expect(labels.nth(0)).toBeFocused();
+  await expect(markedLabel).toHaveValue("Find the clinic");
 
   await page.screenshot({
     path: "test-results/canvas-arrow-select-second-arrow/canvas-arrow-select-second-arrow.png",
@@ -2440,6 +2489,78 @@ test("canvas-arrow-select-second-arrow", async ({ page, context }) => {
   await expect(remaining.getByLabel("Choice label")).toHaveValue("Walk away");
 
   await expectSaved(page);
+});
+
+/**
+ * A window short enough that the Journey page itself scrolls, which is what
+ * makes "the click moved nothing" a thing that can be measured at all.
+ */
+test.describe("a map read down the page", () => {
+  test.use({ viewport: { width: 1280, height: 640 } });
+
+  test("canvas-arrow-click-stays-on-canvas", async ({ page, context }) => {
+    await startJourney(page, context);
+
+    await renameStep(page, "Border post");
+    await addStepFromCanvas(page, "Clinic tent");
+    await expectBoxOnMap(page, "Clinic tent");
+    await fitWholeMap(page, 2);
+
+    await canvasNode(page, "Border post").click();
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+    await addChoiceToStep(page, "Cross", "Clinic tent");
+    await expect(canvasEdges(page)).toHaveCount(1);
+    // The Choice gave "Clinic tent" a rank of its own, which moved its box;
+    // the whole map is taken back so the arrow is there to be clicked.
+    await fitWholeMap(page, 2);
+
+    // The map at the top of the window, which is where an Author reading it
+    // is when they reach for an arrow.
+    await page.evaluate(() => {
+      window.document
+        .querySelector('[aria-label="Canvas"]')
+        ?.scrollIntoView({ block: "start" });
+    });
+    await settledTransform(page);
+    const scrolled = await page.evaluate(() => window.scrollY);
+    expect(
+      scrolled,
+      "the page does not scroll in this window, so there is nothing to keep still",
+    ).toBeGreaterThan(0);
+
+    // The Author is working on the map: the keyboard is on a box there when
+    // they reach for the arrow.
+    await canvasNode(page, "Border post").focus();
+    await expect(canvasNode(page, "Border post")).toBeFocused();
+
+    await clickArrow(page, arrowLabelled(page, "Cross"));
+
+    // The Choice is in hand: the Step it is written on is open, and its row
+    // is marked and ringed as the one the Author has hold of.
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+    const marked = markedChoiceRow(page);
+    await expect(marked).toHaveCount(1);
+    await expect(marked).toHaveAttribute("aria-current", "true");
+    await expect(marked).toHaveClass(/ring-ring/);
+    await expect(marked.getByLabel("Choice label")).toHaveValue("Cross");
+
+    // And the Author is left where they were working: the keyboard is still
+    // somewhere on the map, and the page has not moved.
+    expect(
+      await page.evaluate(() => {
+        const region = window.document.querySelector('[aria-label="Canvas"]');
+        const active = window.document.activeElement;
+        return region !== null && active !== null && region.contains(active);
+      }),
+      "the click took the keyboard off the map",
+    ).toBe(true);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+
+    await page.screenshot({
+      path: "test-results/canvas-arrow-click-stays-on-canvas/canvas-arrow-click-stays-on-canvas.png",
+      fullPage: true,
+    });
+  });
 });
 
 test.describe("authoring from the map", () => {
@@ -2521,20 +2642,27 @@ test.describe("authoring from the map", () => {
       await expect(canvasEdges(page)).toHaveCount(1);
       await expect(page.getByLabel("Step title")).toHaveValue("Border post");
 
-      // The Choice arrives with nothing written on it, and the panel is
-      // waiting on the one thing left to say about it.
-      const label = page.getByLabel("Choice label");
-      await expect(label).toHaveCount(1);
+      // The Choice arrives with nothing written on it, its row marked as the
+      // one just drawn, and the keyboard left on the map where the Author's
+      // hands are: what the Choice is called is reached for, not typed into
+      // a field that grabbed them.
+      const marked = markedChoiceRow(page);
+      await expect(marked).toHaveCount(1);
+      const label = marked.getByLabel("Choice label");
       await expect(label).toHaveValue("");
-      await expect(label).toBeFocused();
+      await expect(label).not.toBeFocused();
 
-      await page.keyboard.type("Find the clinic");
+      await label.fill("Find the clinic");
       await expect(label).toHaveValue("Find the clinic");
       await expect(
         canvasEdges(page).getByText("Find the clinic"),
       ).toBeVisible();
 
       // Dragging the arrow's head onto another box moves the Choice there.
+      // Only the arrow in hand has a head to take hold of, so the arrow is
+      // clicked first — which is how an Author says which Choice they are
+      // moving where several arrows end on the same box.
+      //
       // On the left-to-right map the whole map is taken back first: the
       // Choice just made re-ranks the Step it leads to along the horizontal
       // rank axis, and an arrow is not a box added, so the map does not
@@ -2544,9 +2672,9 @@ test.describe("authoring from the map", () => {
       if (direction.turns) await fitWholeMap(page, 3);
       const choiceId = await canvasEdges(page).getAttribute("data-choice-id");
       expect(choiceId).not.toBeNull();
-      const head = canvasEdge(page, choiceId!).locator(
-        ".react-flow__edgeupdater-target",
-      );
+      const arrow = canvasEdge(page, choiceId!);
+      await clickArrow(page, arrow);
+      const head = arrow.locator(".react-flow__edgeupdater-target");
       await expect(head).toHaveCount(1);
       await dragTo(page, head, canvasNode(page, "Waved through"));
 
@@ -2564,14 +2692,23 @@ test.describe("authoring from the map", () => {
         "Waved through",
       );
 
-      // A drag that ends on bare map leaves the Draft exactly as it was. The
-      // retarget above re-ranked a Step too, so the left-to-right map is
+      // That same head let go of on bare map leaves the Choice exactly where
+      // it now leads: a Choice that already reaches a Step is not an
+      // instruction to make another one — drawing a new Choice onto bare map
+      // is, and `canvas-drop-choice-on-empty-map` is where that is proved.
+      // The retarget above re-ranked a Step too, so the left-to-right map is
       // taken back again for the same reason.
       if (direction.turns) await fitWholeMap(page, 3);
       const nowhere = await emptySpot(page);
-      await dragTo(page, connectHandle(page, "Clinic tent"), nowhere);
+      await expect(head).toHaveCount(1);
+      await dragTo(page, head, nowhere);
+
+      await expect(canvasNodes(page)).toHaveCount(3);
       await expect(canvasEdges(page)).toHaveCount(1);
-      await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+      await expect(canvasEdges(page)).toHaveAttribute(
+        "aria-label",
+        "Find the clinic: Border post → Waved through",
+      );
 
       // A Choice that leads back to its own Step, drawn the same way: from a
       // box's connect dot onto the box it belongs to.
@@ -2583,9 +2720,9 @@ test.describe("authoring from the map", () => {
 
       await expect(canvasEdges(page)).toHaveCount(2);
       await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
-      const loopLabel = page.getByLabel("Choice label").last();
-      await expect(loopLabel).toBeFocused();
-      await page.keyboard.type("Wait here");
+      const loopLabel = markedChoiceRow(page).getByLabel("Choice label");
+      await expect(loopLabel).toHaveValue("");
+      await loopLabel.fill("Wait here");
       await expect(loopLabel).toHaveValue("Wait here");
 
       await expectSaved(page);
@@ -2643,6 +2780,122 @@ test.describe("authoring from the map", () => {
     });
   }
 
+  test("canvas-retarget-selected-arrow", async ({ page, context }) => {
+    const { journeyId } = await startJourney(page, context);
+
+    // Two Choices from two Steps into one box, which is where their heads
+    // stack: every arrow into a box ends on the same handle.
+    await renameStep(page, "Border post");
+    await addStepFromCanvas(page, "Clinic tent");
+    await addStepFromCanvas(page, "Ward round");
+    await addStepFromCanvas(page, "Waved through");
+    await expectBoxOnMap(page, "Waved through");
+    await fitWholeMap(page, 4);
+
+    await canvasNode(page, "Border post").click();
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+    await addChoiceToStep(page, "From the border", "Ward round");
+
+    await canvasNode(page, "Clinic tent").click();
+    await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+    await addChoiceToStep(page, "From the clinic", "Ward round");
+    await expect(canvasEdges(page)).toHaveCount(2);
+    await fitWholeMap(page, 4);
+
+    const fromTheBorder = arrowLabelled(page, "From the border");
+    const fromTheClinic = arrowLabelled(page, "From the clinic");
+    /** The head of an arrow: what a drag takes hold of to move its Choice. */
+    const head = ".react-flow__edgeupdater-target";
+
+    // With no arrow in hand, neither has a head to take hold of.
+    await expect(fromTheBorder.locator(head)).toHaveCount(0);
+    await expect(fromTheClinic.locator(head)).toHaveCount(0);
+
+    // The second arrow taken in hand grows one, and it is the only arrow
+    // that does: a head dragged out of the stack is the Choice the Author
+    // chose, never whichever one happened to be drawn last.
+    await clickArrow(page, fromTheClinic);
+    await expect(fromTheClinic).toHaveAttribute("data-emphasis", "selected");
+    await expect(fromTheClinic.locator(head)).toHaveCount(1);
+    await expect(fromTheBorder.locator(head)).toHaveCount(0);
+
+    await dragTo(
+      page,
+      fromTheClinic.locator(head),
+      canvasNode(page, "Waved through"),
+    );
+
+    await expect(arrowLabelled(page, "From the clinic")).toHaveAttribute(
+      "aria-label",
+      "From the clinic: Clinic tent → Waved through",
+    );
+    await expect(arrowLabelled(page, "From the border")).toHaveAttribute(
+      "aria-label",
+      "From the border: Border post → Ward round",
+    );
+
+    // And the row says the same: the Choice that was moved is the Choice the
+    // Draft holds pointed somewhere new, and the other is untouched.
+    await expectSaved(page);
+    const stored = await readDraft(journeyId);
+    const stepNamed = (title: string) =>
+      Object.values(stored.steps).find((step) => step.title === title);
+
+    const clinic = stepNamed("Clinic tent");
+    const border = stepNamed("Border post");
+    const ward = stepNamed("Ward round");
+    const waved = stepNamed("Waved through");
+    expect(clinic, '"Clinic tent" is gone from the Draft').toBeDefined();
+    expect(waved, '"Waved through" is gone from the Draft').toBeDefined();
+    expect(clinic!.choices).toHaveLength(1);
+    expect(clinic!.choices[0].targetStepId).toBe(waved!.id);
+    expect(border!.choices).toHaveLength(1);
+    expect(border!.choices[0].targetStepId).toBe(ward!.id);
+
+    await page.screenshot({
+      path: "test-results/canvas-retarget-selected-arrow/canvas-retarget-selected-arrow.png",
+      fullPage: true,
+    });
+  });
+
+  test("canvas-drop-choice-on-empty-map", async ({ page, context }) => {
+    const { journeyId } = await startJourney(page, context);
+
+    await renameStep(page, "Border post");
+    await expect(canvasNodes(page)).toHaveCount(1);
+    await expect(canvasEdges(page)).toHaveCount(0);
+
+    // Dragged from the box's connect dot onto bare map: there is no Step
+    // there to lead to, so the Step is made and the Choice with it, in the
+    // one motion, and the Step opens with its title waiting.
+    await dropChoiceOnEmptyMap(page, "Border post");
+
+    await expect(stepPanel(page)).toBeVisible();
+    await expect(canvasNodes(page)).toHaveCount(2);
+    await expect(canvasEdges(page)).toHaveCount(1);
+    // And the map went to the box it made.
+    await expectBoxOnMap(page, "Untitled step");
+
+    await expectSaved(page);
+    const stored = await readDraft(journeyId);
+    expect(Object.keys(stored.steps)).toHaveLength(2);
+
+    const start = stored.steps[stored.startStepId];
+    expect(start.title).toBe("Border post");
+    expect(start.choices).toHaveLength(1);
+    // What the Choice is called is the next thing to write, not something
+    // the drag decided.
+    expect(start.choices[0].label).toBe("");
+    expect(stored.steps[start.choices[0].targetStepId].title).toBe(
+      "Untitled step",
+    );
+
+    await page.screenshot({
+      path: "test-results/canvas-drop-choice-on-empty-map/canvas-drop-choice-on-empty-map.png",
+      fullPage: true,
+    });
+  });
+
   test("canvas-build-by-dragging-and-walk", async ({
     page,
     context,
@@ -2658,21 +2911,65 @@ test.describe("authoring from the map", () => {
     await fitWholeMap(page, 3);
 
     // The whole branch drawn on the map: one drag per Choice, its label
-    // typed into the field the drag left waiting.
-    await connectByDragging(page, "Border post", "Waved through", 1);
-    await page.keyboard.type("Wait your turn");
-    await expect(page.getByLabel("Choice label").last()).toHaveValue(
-      "Wait your turn",
+    // written on the row the drag marked.
+    const waved = await connectByDragging(
+      page,
+      "Border post",
+      "Waved through",
+      1,
     );
+    await waved.fill("Wait your turn");
+    await expect(waved).toHaveValue("Wait your turn");
 
-    await connectByDragging(page, "Border post", "Turned back", 2);
-    await page.keyboard.type("Walk away");
-    await expect(page.getByLabel("Choice label").last()).toHaveValue(
-      "Walk away",
+    const turned = await connectByDragging(
+      page,
+      "Border post",
+      "Turned back",
+      2,
     );
+    await turned.fill("Walk away");
+    await expect(turned).toHaveValue("Walk away");
     await expect(canvasEdges(page)).toHaveCount(2);
 
     // A Journey built entirely by dragging is a Journey like any other.
+    await tagEndingsPublishAndWalk(page, context, journeyId, testInfo);
+  });
+
+  test("canvas-build-by-dropping-and-walk", async ({
+    page,
+    context,
+  }, testInfo) => {
+    const { journeyId } = await startJourney(page, context);
+
+    await renameStep(page, "Border post");
+
+    // The whole branch made where the Author dropped it: each Ending and the
+    // Choice that reaches it in one motion onto bare map, named in the panel
+    // the drop opened on it.
+    await dropChoiceOnEmptyMap(page, "Border post");
+    await renameStep(page, "Waved through");
+    // The drop took the map to the box it made, and the next drop is made
+    // from the Start, so the whole map is taken back first.
+    await fitWholeMap(page, 2);
+
+    await dropChoiceOnEmptyMap(page, "Border post");
+    await renameStep(page, "Turned back");
+    await fitWholeMap(page, 3);
+
+    // What the drops left to say: what each Choice is called, written on the
+    // rows the Start now carries.
+    await canvasNode(page, "Border post").click();
+    await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+    const rows = page
+      .getByRole("list", { name: "Choices" })
+      .getByRole("listitem");
+    await expect(rows).toHaveCount(2);
+    await rows.nth(0).getByLabel("Choice label").fill("Wait your turn");
+    await rows.nth(1).getByLabel("Choice label").fill("Walk away");
+    await expect(arrowLabelled(page, "Wait your turn")).toHaveCount(1);
+    await expect(arrowLabelled(page, "Walk away")).toHaveCount(1);
+
+    // A Journey built entirely by dropping is a Journey like any other.
     await tagEndingsPublishAndWalk(page, context, journeyId, testInfo);
   });
 
@@ -2702,24 +2999,30 @@ test.describe("authoring from the map", () => {
       .toEqual([]);
 
     // A Choice drawn on the full-width map, and the panel back again on the
-    // Step it leaves with the new Choice's label waiting.
-    await connectByDragging(page, "Border post", "Waved through", 1);
-    await expect(stepPanel(page)).toBeVisible();
-    await page.keyboard.type("Wait your turn");
-    await expect(page.getByLabel("Choice label").last()).toHaveValue(
-      "Wait your turn",
+    // Step it leaves with the new Choice's row marked.
+    const waved = await connectByDragging(
+      page,
+      "Border post",
+      "Waved through",
+      1,
     );
+    await expect(stepPanel(page)).toBeVisible();
+    await waved.fill("Wait your turn");
+    await expect(waved).toHaveValue("Wait your turn");
 
     // The first Choice gave "Waved through" a rank of its own and the panel
     // came back beside the map, so the whole map is taken back before the
     // next box is dragged onto.
     await fitWholeMap(page, 3);
 
-    await connectByDragging(page, "Border post", "Turned back", 2);
-    await page.keyboard.type("Walk away");
-    await expect(page.getByLabel("Choice label").last()).toHaveValue(
-      "Walk away",
+    const turned = await connectByDragging(
+      page,
+      "Border post",
+      "Turned back",
+      2,
     );
+    await turned.fill("Walk away");
+    await expect(turned).toHaveValue("Walk away");
     await expect(canvasEdges(page)).toHaveCount(2);
 
     // Both Steps the branch leads to stand past the Start's right edge: the
@@ -2839,16 +3142,14 @@ test.describe("authoring from the map", () => {
       await fitWholeMap(page, stepCount + 1);
 
       // Then reached from the Step it was copied from, by dragging on the map.
-      await connectByDragging(
+      const askAgain = await connectByDragging(
         page,
         "Preface",
         "Second opinion",
         choiceCount + 1,
       );
-      await page.keyboard.type("Ask again");
-      await expect(page.getByLabel("Choice label").last()).toHaveValue(
-        "Ask again",
-      );
+      await askAgain.fill("Ask again");
+      await expect(askAgain).toHaveValue("Ask again");
 
       await expectSaved(page);
       const stored = await readDraft(journeyId);

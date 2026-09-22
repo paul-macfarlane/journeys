@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
 import {
@@ -31,6 +31,11 @@ import { cn } from "@/lib/utils";
  * field names the Step the Choice points at, and typing part of another
  * Step's title picks it out of the whole Draft, which on a forty-step Journey
  * is the difference between reading a list and scrolling one.
+ *
+ * One row can be marked as the Choice in hand — the arrow the Author clicked
+ * on the map, or the Choice they have just drawn there. Marked is all it is:
+ * the row is ringed and reads as the current one, and nothing here takes the
+ * keyboard off the map the Author is working on.
  */
 
 /** The sentinel a target field uses for "make me one". */
@@ -41,8 +46,7 @@ export function ChoiceList({
   step,
   order,
   choiceProblems,
-  focusChoiceId,
-  focusChoiceRequest,
+  markedChoiceId,
   onChange,
   onSelectStep,
 }: {
@@ -56,33 +60,17 @@ export function ChoiceList({
   order: string[];
   /** This Step's own Choices' live publish problems, keyed by Choice id. */
   choiceProblems: Map<string, PublishProblem[]>;
-  /** A Choice here whose label field is being asked for — one drawn on the
-   * map, or one whose arrow the Author clicked. */
-  focusChoiceId: string | null;
-  /** Bumped each time that was asked for, so asking twice focuses twice. */
-  focusChoiceRequest: number;
+  /**
+   * The Choice here that is the one in hand — the arrow the Author has
+   * selected on the map, drawn or clicked — or `null` when none is.
+   */
+  markedChoiceId: string | null;
   onChange: (document: GraphDocument) => void;
   onSelectStep: SelectStep;
 }) {
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
   const [target, setTarget] = useState<string>(NEW_STEP);
-
-  // The label fields, by Choice, so the one the map asks for can be given
-  // focus without the panel knowing anything about how a row is built.
-  const labelFields = useRef(new Map<string, HTMLInputElement>());
-
-  useEffect(() => {
-    if (focusChoiceId === null) return;
-
-    const field = labelFields.current.get(focusChoiceId);
-    if (field === undefined) return;
-
-    field.focus();
-    // Selected rather than left with a caret: what is there is either
-    // nothing at all or a label the Author has just come back to rename.
-    field.select();
-  }, [focusChoiceId, focusChoiceRequest]);
 
   // Every Step is a valid Choice target, the current one included — a loop
   // is an ordinary path since ticket 18.
@@ -138,21 +126,22 @@ export function ChoiceList({
           // Own property only: `steps` is a plain object parsed from JSON, so
           // a target id like "toString" must read as missing, not as a Step.
           const dangling = !Object.hasOwn(document.steps, choice.targetStepId);
+          const marked = choice.id === markedChoiceId;
 
           return (
+            // The Choice in hand, said the two ways a row can say it: read
+            // out as the current one, and ringed the way a field the Author
+            // is working in is.
             <li
               key={choice.id}
-              className="flex flex-col gap-2 rounded-xl px-3 py-2 ring-1 ring-foreground/10"
+              aria-current={marked ? "true" : undefined}
+              className={cn(
+                "flex flex-col gap-2 rounded-xl px-3 py-2",
+                marked ? "ring-2 ring-ring" : "ring-1 ring-foreground/10",
+              )}
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Input
-                  ref={(field) => {
-                    if (field === null) {
-                      labelFields.current.delete(choice.id);
-                      return;
-                    }
-                    labelFields.current.set(choice.id, field);
-                  }}
                   aria-label="Choice label"
                   autoComplete="off"
                   className="w-56"

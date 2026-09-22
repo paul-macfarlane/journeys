@@ -39,13 +39,13 @@ A step with no choices. Every ending is tagged with exactly one outcome.
 _Avoid_: Terminal, leaf, end node, dead end
 
 **Outcome**:
-An author-defined, journey-scoped label that groups endings for analysis (e.g. "Reached care", "Death"). Identified by a stable id so its text can be renamed.
+An author-defined, journey-scoped label that groups endings for analysis (e.g. "Reached care", "Death"). Identified by a stable id so its text can be renamed. Made, chosen, and renamed from an ending's panel, and removed from the journey when the last ending drops it.
 _Avoid_: Result, ending type, category
 
 ## Publishing
 
 **Canvas**:
-The editor's map of a draft: every step drawn as a box, every choice as an arrow between boxes, laid out automatically and never by hand, top to bottom or left to right — a choice stored on the draft and shared by the project's members. Clicking a box opens that step in the panel, which can be hidden to give the map the whole width; hiding it is remembered per browser, never on the journey.
+The editor's map of a draft: every step drawn as a box, every choice as an arrow between boxes, laid out automatically and never by hand, top to bottom or left to right — a choice stored on the draft and shared by the project's members. Clicking a box opens that step in the panel, which can be hidden to give the map the whole width; hiding it is remembered per browser, never on the journey. The view is the author's and moves only when they ask for it, and the box they click carries "Step actions", which opens onto the moves that shape the journey around that step.
 _Avoid_: Graph view, diagram, board, flowchart
 
 **Draft**:
