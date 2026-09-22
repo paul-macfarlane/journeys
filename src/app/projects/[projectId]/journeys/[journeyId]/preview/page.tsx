@@ -4,7 +4,9 @@ import { RunnerFrame } from "@/components/runner/runner-frame";
 import { StepView } from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
+import { getProjectForMember } from "@/db/projects";
 import { requireSession } from "@/lib/session";
+import { effectiveTheme } from "@/lib/theme";
 
 import { previewChooseAction } from "./actions";
 
@@ -36,6 +38,13 @@ export default async function PreviewStartPage({
   const draft = await getDraftForMember(projectId, journeyId, session.user.id);
   if (!draft) notFound();
 
+  // Preview paints the Theme a Participant will see (the Journey's
+  // override, else the Project's), so an Author sees the look along with
+  // the words. The Project read is the request-cached one the layout made.
+  const project = await getProjectForMember(projectId, session.user.id);
+  if (!project) notFound();
+  const theme = effectiveTheme(project.theme, journey.theme);
+
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
   // Own property only: a Start pointer naming "toString" would otherwise
@@ -47,6 +56,7 @@ export default async function PreviewStartPage({
       title={journey.title}
       description={journey.description || undefined}
       preview={{ editorHref: journeyHref }}
+      theme={theme}
     >
       {hasStart ? (
         // No "Start over" on an Ending here: this is the start. The live

@@ -14,6 +14,7 @@ const doubles = vi.hoisted(() => ({
     createJourney: vi.fn(),
     deleteJourney: vi.fn(),
     moveJourney: vi.fn(),
+    setJourneyTheme: vi.fn(),
     updateJourney: vi.fn(),
   },
   revalidatePath: vi.fn(),
@@ -33,7 +34,80 @@ vi.mock("@/db/versions", () => ({
   unpublishJourney: vi.fn(),
 }));
 
-import { moveJourneyAction } from "./actions";
+import { moveJourneyAction, setJourneyThemeAction } from "./actions";
+
+describe("setJourneyThemeAction", () => {
+  const summary = {
+    id: "journey-1",
+    title: "Border Crossing",
+    description: "",
+    publishState: "never-published",
+    theme: { preset: "dusk", accent: null },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doubles.journeys.setJourneyTheme.mockResolvedValue(summary);
+  });
+
+  it("stores the override for the signed-in Author and refreshes the Journey page", async () => {
+    const result = await setJourneyThemeAction("project-1", "journey-1", {
+      preset: "dusk",
+      accent: "#FFD400",
+    });
+
+    expect(result).toEqual({ ok: true, id: "journey-1" });
+    expect(doubles.journeys.setJourneyTheme).toHaveBeenCalledWith(
+      "project-1",
+      "journey-1",
+      { preset: "dusk", accent: "#ffd400" },
+      "author-1",
+    );
+    expect(doubles.revalidatePath).toHaveBeenCalledWith(
+      "/projects/[projectId]/journeys/[journeyId]",
+      "page",
+    );
+  });
+
+  it("clears the override, and any accent with it, when the preset is null", async () => {
+    await setJourneyThemeAction("project-1", "journey-1", {
+      preset: null,
+      accent: "#ffd400",
+    });
+
+    expect(doubles.journeys.setJourneyTheme).toHaveBeenCalledWith(
+      "project-1",
+      "journey-1",
+      { preset: null, accent: null },
+      "author-1",
+    );
+  });
+
+  it("refuses a preset that is not one of the six without touching the database", async () => {
+    const result = await setJourneyThemeAction("project-1", "journey-1", {
+      preset: "neon",
+      accent: null,
+    });
+
+    expect(result).toEqual({ ok: false, error: "Choose one of the themes" });
+    expect(doubles.journeys.setJourneyTheme).not.toHaveBeenCalled();
+  });
+
+  it("answers a non-Member like a Journey that is not there", async () => {
+    doubles.journeys.setJourneyTheme.mockResolvedValue(null);
+
+    const result = await setJourneyThemeAction("project-1", "journey-1", {
+      preset: "dusk",
+      accent: null,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "That journey no longer exists",
+    });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+});
 
 describe("moveJourneyAction", () => {
   beforeEach(() => {

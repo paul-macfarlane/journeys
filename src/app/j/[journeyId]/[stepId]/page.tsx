@@ -63,7 +63,7 @@ export default async function RunStepPage({
   const found = await getRunForJourney(runId, journeyId);
   if (!found) redirect(`/j/${journeyId}`);
 
-  const { run, version } = found;
+  const { run, version, theme } = found;
   const moved = navigateTo(
     version.document,
     run,
@@ -118,6 +118,7 @@ export default async function RunStepPage({
           ? version.description || undefined
           : undefined
       }
+      theme={theme}
     >
       {/* The index this page stands at is remembered while the page is still
           parsing, and a back navigation the server has already read as a

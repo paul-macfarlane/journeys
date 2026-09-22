@@ -8,6 +8,7 @@ import {
   createJourney,
   deleteJourney,
   moveJourney,
+  setJourneyTheme,
   updateJourney,
 } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
@@ -16,6 +17,7 @@ import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,
+  journeyThemeSchema,
   moveDirectionSchema,
   updateJourneySchema,
 } from "@/lib/validation/journey";
@@ -79,6 +81,35 @@ export async function updateJourneyAction(
   );
   // Not a Member (or no such Journey/Project): same answer as the page's
   // 404.
+  if (!updated) return { ok: false, error: "That journey no longer exists" };
+
+  revalidateJourneyPaths();
+  return { ok: true, id: updated.id };
+}
+
+/**
+ * Sets or clears a Journey's Theme override (ticket 11). A null preset is
+ * the clear; the schema drops any accent sent with it. The runner reads the
+ * rows on every request, so only the Author's pages need revalidating.
+ */
+export async function setJourneyThemeAction(
+  projectId: string,
+  journeyId: string,
+  input: unknown,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  const parsed = journeyThemeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error.issues) };
+  }
+
+  const updated = await setJourneyTheme(
+    projectId,
+    journeyId,
+    parsed.data,
+    session.user.id,
+  );
   if (!updated) return { ok: false, error: "That journey no longer exists" };
 
   revalidateJourneyPaths();

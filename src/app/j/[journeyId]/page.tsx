@@ -47,7 +47,7 @@ export default async function JourneyStartPage({
 
   if (journey.kind === "unavailable") {
     return (
-      <RunnerFrame>
+      <RunnerFrame theme={journey.theme}>
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold tracking-tight">
             This journey isn&apos;t available
@@ -76,6 +76,7 @@ export default async function JourneyStartPage({
     <RunnerFrame
       title={journey.title}
       description={journey.description || undefined}
+      theme={journey.theme}
     >
       {inProgress ? (
         // Native controls rather than the shared Button: this page stays a

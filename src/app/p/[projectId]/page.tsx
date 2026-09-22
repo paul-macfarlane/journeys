@@ -67,7 +67,9 @@ export default async function PublicProjectPage({
   const journeys = await listPublicJourneysForProject(project.id);
 
   return (
-    <RunnerFrame>
+    // The Project's own Theme: a Journey's override is the Journey's, and
+    // shows once a Participant follows its link.
+    <RunnerFrame theme={project.theme}>
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold tracking-tight">
           {project.title}

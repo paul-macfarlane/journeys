@@ -10,6 +10,7 @@ import { draft, journey, member, project, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
 import { moveInOrder, type MoveDirection } from "@/lib/journey-order";
 import { publishStateOf, type PublishState } from "@/lib/publish-state";
+import { toThemePreset, type ThemeOverride } from "@/lib/theme";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
@@ -33,13 +34,31 @@ export type JourneySummary = {
   title: string;
   description: string;
   publishState: PublishState;
+  /** The Journey's Theme override (ticket 11); a null preset means none. */
+  theme: ThemeOverride;
 };
 
 const journeyColumns = {
   id: journey.id,
   title: journey.title,
   description: journey.description,
+  themePreset: journey.themePreset,
+  themeAccent: journey.themeAccent,
 };
+
+/**
+ * The override as stored: a set preset is read through `toThemePreset`, as
+ * the Project's is, so a retired id degrades to the app's palette rather
+ * than failing the page; a null preset is no override at all.
+ */
+function toThemeOverride(row: {
+  themePreset: string | null;
+  themeAccent: string | null;
+}): ThemeOverride {
+  return row.themePreset === null
+    ? { preset: null, accent: null }
+    : { preset: toThemePreset(row.themePreset), accent: row.themeAccent };
+}
 
 /** The Journey itself plus the live pointer publish state is derived from. */
 const journeyStateColumns = {
@@ -78,14 +97,21 @@ function toSummary(
     id: string;
     title: string;
     description: string;
+    themePreset: string | null;
+    themeAccent: string | null;
     liveVersionId: string | null;
   },
   versionCount: number,
 ): JourneySummary {
-  const { liveVersionId, ...rest } = row;
   return {
-    ...rest,
-    publishState: publishStateOf({ liveVersionId, versionCount }),
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    publishState: publishStateOf({
+      liveVersionId: row.liveVersionId,
+      versionCount,
+    }),
+    theme: toThemeOverride(row),
   };
 }
 
@@ -200,7 +226,7 @@ export async function createJourney(
 
     // A Journey that has just come into being has no Published Version and
     // no live pointer, so its state is not worth a second query.
-    return { ...created, publishState: "never-published" as const };
+    return toSummary({ ...created, liveVersionId: null }, 0);
   });
 }
 
@@ -261,7 +287,46 @@ export async function updateJourney(
 
   // A title and a description are all this changes; publish state is
   // whatever the membership check already read.
-  return updated ? { ...updated, publishState: existing.publishState } : null;
+  return updated
+    ? {
+        ...toSummary({ ...updated, liveVersionId: null }, 0),
+        publishState: existing.publishState,
+      }
+    : null;
+}
+
+/**
+ * Sets or clears a Journey's Theme override. A null preset clears it (the
+ * Journey goes back to its Project's Theme); a set preset is taken whole
+ * with `theme.accent` or none. The caller has already parsed the pair
+ * through the Journey Theme schema. Returns null when the Author is not a
+ * Member of the Journey's Project, or the Journey doesn't exist under it.
+ */
+export async function setJourneyTheme(
+  projectId: string,
+  journeyId: string,
+  theme: ThemeOverride,
+  userId: string,
+): Promise<JourneySummary | null> {
+  const existing = await getJourneyForMember(projectId, journeyId, userId);
+  if (!existing) return null;
+
+  const [updated] = await db
+    .update(journey)
+    .set({
+      themePreset: theme.preset,
+      themeAccent: theme.preset === null ? null : theme.accent,
+      updatedAt: new Date(),
+    })
+    .where(eq(journey.id, existing.id))
+    .returning(journeyColumns);
+
+  return updated
+    ? {
+        ...toSummary({ ...updated, liveVersionId: null }, 0),
+        publishState: existing.publishState,
+      }
+    : null;
 }
 
 /**

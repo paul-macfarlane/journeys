@@ -9,12 +9,14 @@ import {
   deleteProject,
   editProjectDescription,
   renameProject,
+  setProjectTheme,
 } from "@/db/projects";
 import { sanitizeContent } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
 import { addMemberSchema } from "@/lib/validation/member";
 import {
   createProjectSchema,
+  projectThemeSchema,
   renameProjectSchema,
 } from "@/lib/validation/project";
 
@@ -90,6 +92,33 @@ export async function editProjectDescriptionAction(
 
   revalidatePath("/projects/[projectId]", "page");
   return { ok: true, id: edited.id };
+}
+
+/**
+ * Sets the Project's Theme (ticket 11): the preset and the optional accent
+ * the runner and the public Project page are painted in. Both are rendered
+ * on every request, so neither needs revalidating; the Settings tab does.
+ */
+export async function setProjectThemeAction(
+  projectId: string,
+  input: unknown,
+): Promise<ProjectActionResult> {
+  const session = await requireSession();
+
+  const parsed = projectThemeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error.issues) };
+  }
+
+  const updated = await setProjectTheme(
+    projectId,
+    parsed.data,
+    session.user.id,
+  );
+  if (!updated) return { ok: false, error: "That project no longer exists" };
+
+  revalidatePath("/projects/[projectId]", "page");
+  return { ok: true, id: updated.id };
 }
 
 export async function deleteProjectAction(

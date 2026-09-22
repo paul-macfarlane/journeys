@@ -116,6 +116,20 @@ export const project = pgTable("project", {
     .$type<Content>()
     .notNull()
     .default({ type: "doc", content: [] }),
+  // The Project's Theme (ticket 11): one of the preset ids in
+  // `src/lib/theme.ts` and an optional `#rrggbb` accent, painted on the
+  // runner and the public Project page. A Journey may override both (see
+  // `journey.themePreset` below). Defaulted to the app's own palette so a
+  // build older than migration 0009 still inserts, and so every Project
+  // that predates the column keeps looking as it did.
+  themePreset: text("theme_preset").notNull().default("trail"),
+  themeAccent: text("theme_accent"),
+  // Reserved and unused (spec, Data model): where a custom token set would
+  // go if a Theme ever became more than a preset and an accent. Nothing
+  // reads or writes it; it is here so adding that needs no migration.
+  themeCustomTokens: jsonb("theme_custom_tokens").$type<
+    Record<string, string>
+  >(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -177,6 +191,13 @@ export const journey = pgTable("journey", {
   // migration numbers every Journey that predates the column by
   // `created_at` within its Project.
   position: integer("position").notNull().default(0),
+  // The Journey's Theme override (ticket 11). Null preset means "the
+  // Project's Theme", which is every Journey until an Author says
+  // otherwise; a set preset is taken whole, with this accent or none — the
+  // Project's accent is never layered under it. Both nullable, so a build
+  // older than migration 0009 still inserts.
+  themePreset: text("theme_preset"),
+  themeAccent: text("theme_accent"),
   // Circular: `published_version` points back at `journey`, so the column
   // type is annotated (`AnyPgColumn`) for TypeScript's benefit.
   liveVersionId: text("live_version_id").references(
