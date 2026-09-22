@@ -634,14 +634,24 @@ export function DraftEditor({
   // Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z — Ctrl+Y as well, for hands used to it —
   // from anywhere on the Journey page, the Cmd/Ctrl+K listener above being
   // the model for all of it: on `window`, because the point is not having to
-  // reach for the buttons; a press something else has already answered is
-  // left alone; and a press made while a dialog is open belongs to the
-  // dialog. A press carrying Alt is a different shortcut and not this one.
+  // reach for the buttons; and a press made while a dialog is open belongs to
+  // the dialog. A press carrying Alt is a different shortcut and not this one.
   //
   // The default is prevented for every press this claims, an empty stack
   // included: the browser's own undo would otherwise replay old values into
   // whatever field the Author happens to be in, which is the thing this
   // ticket exists to stop. There is one undo on this page, and it is this.
+  //
+  // Which is why this one listens on the way down rather than on the way up,
+  // where "Find step" listens. ProseMirror answers Mod-B, Mod-I, Mod-Y and
+  // Mod-Z on its surface whatever extensions it was given — `captureKeyDown`
+  // swallows them so the browser cannot rewrite the document behind its back
+  // — so a press made while the Author is writing a Step's reading would
+  // arrive here already answered and this would stand aside from the one
+  // undo the page has. Claiming it first is what makes the surface's undo
+  // the Draft's, as the ticket asks. Nothing else on the page answers these
+  // keys, so there is nothing here to take a press away from; a press some
+  // other listener on the way down has already answered is still left alone.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
@@ -664,8 +674,8 @@ export function DraftEditor({
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [redoEdit, undoEdit]);
 
   /**
