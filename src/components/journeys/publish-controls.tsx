@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import {
@@ -46,7 +45,6 @@ export function PublishButton({
    */
   hasUnpublishedChanges: boolean;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
 
@@ -58,8 +56,10 @@ export function PublishButton({
         setRefusal({ error: result.error, problems: result.problems ?? [] });
         return;
       }
-
-      router.refresh();
+      // No router.refresh(): the action revalidates the Journey page, so its
+      // response already carries the re-rendered tree. A second refresh
+      // landed hundreds of milliseconds later under load and re-rendered
+      // the Versions list beneath whatever the Author had just opened.
     });
   }
 
@@ -123,7 +123,6 @@ export function UnpublishButton({
   projectId: string;
   journeyId: string;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,8 +137,8 @@ export function UnpublishButton({
         return;
       }
 
+      // The action revalidates the page; see PublishButton.
       setOpen(false);
-      router.refresh();
     });
   }
 

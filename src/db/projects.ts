@@ -4,6 +4,7 @@
 import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
+import { cache } from "react";
 
 import { db } from "@/db";
 import { member, project } from "@/db/schema";
@@ -44,6 +45,26 @@ export async function listProjectsForAuthor(
 }
 
 /**
+ * The Projects the Author is a Member of that changed most recently, at most
+ * `limit` of them — the navbar's switcher (ticket 29). "Changed" is the
+ * Project row itself: a title or description edit, or its creation; work
+ * inside its Journeys does not move it up. Ties fall back to newest first,
+ * then id, so the list is stable between renders.
+ */
+export async function listRecentProjectsForAuthor(
+  userId: string,
+  limit: number,
+): Promise<ProjectSummary[]> {
+  return db
+    .select(projectColumns)
+    .from(project)
+    .innerJoin(member, eq(member.projectId, project.id))
+    .where(eq(member.userId, userId))
+    .orderBy(desc(project.updatedAt), desc(project.createdAt), desc(project.id))
+    .limit(limit);
+}
+
+/**
  * Creates a Project with the creating Author as its first Member. Both rows in one
  * transaction: a Project with no Members could never be opened again, and
  * the database refuses to let one lose its last Member anyway.
@@ -68,20 +89,24 @@ export async function createProject(
  * The Project behind an id, but only for one of its Members. Returns null
  * for a non-Member and for an unknown id alike, so callers can answer both
  * with the same 404.
+ *
+ * Request-scoped `cache()`, like `getSession`: the layout under
+ * `[projectId]` asks for the Project to label the navbar and the page asks
+ * again for the same render, and the two render in parallel, so this is
+ * what makes that one query rather than two.
  */
-export async function getProjectForMember(
-  projectId: string,
-  userId: string,
-): Promise<ProjectSummary | null> {
-  const [row] = await db
-    .select(projectColumns)
-    .from(project)
-    .innerJoin(member, eq(member.projectId, project.id))
-    .where(and(eq(project.id, projectId), eq(member.userId, userId)))
-    .limit(1);
+export const getProjectForMember = cache(
+  async (projectId: string, userId: string): Promise<ProjectSummary | null> => {
+    const [row] = await db
+      .select(projectColumns)
+      .from(project)
+      .innerJoin(member, eq(member.projectId, project.id))
+      .where(and(eq(project.id, projectId), eq(member.userId, userId)))
+      .limit(1);
 
-  return row ?? null;
-}
+    return row ?? null;
+  },
+);
 
 /**
  * Edits a Project's title and description. Its id — and so its URL — is

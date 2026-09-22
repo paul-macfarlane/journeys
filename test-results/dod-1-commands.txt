@@ -1,9 +1,10 @@
-# DoD-1 command chain — ticket 28 (Project page tabs, Journey ordering, Project settings)
-# head c1388db, captured 2026-09-22T15:11:54Z, Route: contract
-# E2E_EVIDENCE=project-rename,project-delete,project-delete-cascade,author-flow,journeys-reorder,members-add-and-edit,members-add-refused,members-remove-and-last-refused
-# pnpm test:e2e builds the app (next build) before the suite; pnpm db:migrate runs against the local dev database (already at 0006, so it reports nothing to apply — the first application is in ac-1-migration.txt).
+# DoD-1 command chain — ticket 29 (App shell navbar)
+# head 7c0aab5, captured 2026-09-22T16:29:44Z, Route: polish
+# E2E_EVIDENCE=navbar-switch-project-and-theme,sign-out
+# pnpm test:e2e builds the app (next build) before the suite; its full list output is in dod-1-e2e.txt, only the tail is repeated here.
 
 === pnpm lint
+
 
 > journeys@0.1.0 lint .
 > eslint
@@ -12,6 +13,7 @@
 exit=0
 
 === pnpm format:check
+
 
 > journeys@0.1.0 format:check .
 > prettier --check .
@@ -23,6 +25,7 @@ exit=0
 
 === pnpm typecheck
 
+
 > journeys@0.1.0 typecheck .
 > tsc --noEmit
 
@@ -30,6 +33,7 @@ exit=0
 exit=0
 
 === pnpm test
+
 
 > journeys@0.1.0 test .
 > vitest run
@@ -41,26 +45,19 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 .
 
 
- Test Files  17 passed (17)
-      Tests  278 passed (278)
-   Start at  11:12:02
-   Duration  711ms (transform 1.01s, setup 0ms, import 2.26s, tests 553ms, environment 1ms)
+ Test Files  18 passed (18)
+      Tests  287 passed (287)
+   Start at  12:29:53
+   Duration  853ms (transform 1.01s, setup 0ms, import 2.59s, tests 651ms, environment 3ms)
 
 
 exit=0
 
-=== pnpm db:migrate
+=== E2E_EVIDENCE=navbar-switch-project-and-theme,sign-out pnpm test:e2e (tail; full output in dod-1-e2e.txt)
 
-> journeys@0.1.0 db:migrate .
-> drizzle-kit migrate
+  ✓  72 [chromium] › e2e/step-editing.spec.ts:414:5 › step-editing-choices-reorder-retarget (4.9s)
+  ✓  70 [chromium] › e2e/step-editing.spec.ts:563:5 › panel-choice-target-search (5.1s)
 
-No config path provided, using default 'drizzle.config.ts'
-Reading config file './drizzle.config.ts'
-◇ injected env (8) from .env.local // tip: ⌘ suppress logs { quiet: true }
-Using 'pg' driver for database querying
-[⣷] applying migrations... [✓] migrations applied successfully!
+  72 passed (1.3m)
+
 exit=0
-
-=== pnpm test:e2e  (full list output in dod-1-e2e.txt)
-exit=0
-  71 passed (1.1m)
