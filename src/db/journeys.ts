@@ -3,11 +3,12 @@
 // from both sides.
 import "server-only";
 
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray, max } from "drizzle-orm";
 
 import { db } from "@/db";
 import { draft, journey, member, project, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
+import { moveInOrder, type MoveDirection } from "@/lib/journey-order";
 import { publishStateOf, type PublishState } from "@/lib/publish-state";
 
 /**
@@ -21,6 +22,10 @@ import { publishStateOf, type PublishState } from "@/lib/publish-state";
  * Publish state is not a column: it is derived from the live-version
  * pointer and the count of Published Versions, so a Journey can never be
  * marked published while pointing at nothing (see `@/lib/publish-state`).
+ *
+ * A Project's Journeys are listed in the Author's order: `position`, then
+ * `created_at` for any tie. A new Journey goes last, and `moveJourney`
+ * swaps one with its neighbour (see `@/lib/journey-order`).
  */
 
 export type JourneySummary = {
@@ -84,7 +89,27 @@ function toSummary(
   };
 }
 
-/** Every Journey in the Project, newest first. */
+/** The Author's order: `position` first, `created_at` breaking any tie. */
+const listOrder = [asc(journey.position), asc(journey.createdAt)];
+
+/**
+ * Serializes the writes that number a Project's Journeys. Two creates, or
+ * a create and a move, running at once under READ COMMITTED would both read
+ * the same positions and write the same number twice; holding the Project
+ * row makes the second wait for the first and read what it wrote.
+ */
+async function lockProject(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  projectId: string,
+): Promise<void> {
+  await tx
+    .select({ id: project.id })
+    .from(project)
+    .where(eq(project.id, projectId))
+    .for("update");
+}
+
+/** Every Journey in the Project, in the Author's order. */
 export async function listJourneysForProject(
   projectId: string,
 ): Promise<JourneySummary[]> {
@@ -92,7 +117,7 @@ export async function listJourneysForProject(
     .select(journeyStateColumns)
     .from(journey)
     .where(eq(journey.projectId, projectId))
-    .orderBy(desc(journey.createdAt));
+    .orderBy(...listOrder);
 
   const versionCounts = await countVersionsByJourney(rows.map((row) => row.id));
 
@@ -102,7 +127,8 @@ export async function listJourneysForProject(
 /**
  * Creates a Journey inside a Project, with the Draft every Journey has: one
  * Start Step and nothing else. Both rows in one transaction, because a
- * Journey without a Draft is a Journey an Author could never author.
+ * Journey without a Draft is a Journey an Author could never author. The
+ * new Journey goes last in the Project's list.
  *
  * The caller is responsible for having already confirmed the Author is a
  * Member of `projectId` — every action that calls this resolves the Project
@@ -113,12 +139,20 @@ export async function createJourney(
   input: { title: string; description: string },
 ): Promise<JourneySummary> {
   return db.transaction(async (tx) => {
+    await lockProject(tx, projectId);
+
+    const [{ last }] = await tx
+      .select({ last: max(journey.position) })
+      .from(journey)
+      .where(eq(journey.projectId, projectId));
+
     const [created] = await tx
       .insert(journey)
       .values({
         projectId,
         title: input.title,
         description: input.description,
+        position: last === null ? 0 : last + 1,
       })
       .returning(journeyColumns);
 
@@ -190,6 +224,58 @@ export async function updateJourney(
   // A title and a description are all this changes; publish state is
   // whatever the membership check already read.
   return updated ? { ...updated, publishState: existing.publishState } : null;
+}
+
+/**
+ * Moves a Journey one place up or down in its Project's list. The whole
+ * order is read and rewritten inside one transaction: normally only the two
+ * swapped rows change, but a list left with equal positions (Journeys made
+ * by a build older than migration 0006) is numbered properly by whichever
+ * move first touches it, so the swap is visible rather than a no-op on
+ * tied rows.
+ *
+ * Returns false when the Author is not a Member of the Journey's Project or
+ * the Journey is not there, which callers answer with the same 404 as an
+ * unknown id. A move off either end of the list is not an error: nothing
+ * changes and the call returns true, so a control that was already stale
+ * when clicked fails quietly.
+ */
+export async function moveJourney(
+  projectId: string,
+  journeyId: string,
+  direction: MoveDirection,
+  userId: string,
+): Promise<boolean> {
+  const existing = await getJourneyForMember(projectId, journeyId, userId);
+  if (!existing) return false;
+
+  await db.transaction(async (tx) => {
+    await lockProject(tx, projectId);
+
+    const rows = await tx
+      .select({ id: journey.id, position: journey.position })
+      .from(journey)
+      .where(eq(journey.projectId, projectId))
+      .orderBy(...listOrder);
+
+    const next = moveInOrder(
+      rows.map((row) => row.id),
+      existing.id,
+      direction,
+    );
+    if (!next) return;
+
+    const before = new Map(rows.map((row) => [row.id, row.position]));
+    for (const [index, id] of next.entries()) {
+      if (before.get(id) === index) continue;
+      await tx
+        .update(journey)
+        .set({ position: index })
+        .where(eq(journey.id, id));
+    }
+  });
+
+  return true;
 }
 
 /**

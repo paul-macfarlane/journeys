@@ -16,6 +16,10 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 
 ## Comments
 
+### Note 2026-09-22 — from ticket 28
+
+Ticket 28 added `project.description` (plain text, edited on the Project page's Settings tab) and `journey.position`. The public Project page renders `project.description` and lists its published Journeys in `position` order (`listJourneysForProject` already sorts by it). Whether the description becomes rich text is this ticket's call; the column is plain text today.
+
 ### [SCOPE CHANGE] 2026-09-19 — slugs dropped (see ticket 02)
 
 Paul decided during PR #10 review that Projects and Journeys have no slug: every path parameter is the id. Read every "slug" in this ticket as the id (`/j/{journey-id}`, `/p/{project-id}`), and drop any "slug frozen at first publish" behavior. Recorded in ticket 02's [SCOPE CHANGE] and the spec's Comments.

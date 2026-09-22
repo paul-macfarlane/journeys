@@ -99,6 +99,10 @@ export const project = pgTable("project", {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   title: text("title").notNull(),
+  // A short summary, shown under the title and on the public Project page
+  // (ticket 07). Defaulted so a build older than migration 0006 still
+  // inserts.
+  description: text("description").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -153,6 +157,13 @@ export const journey = pgTable("journey", {
     .references(() => project.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
+  // Where the Journey sits in its Project's list, 0 first: set by the Author
+  // with "Move up" / "Move down", appended at the end on creation, and read
+  // in `position` then `created_at` order (see `@/lib/journey-order`).
+  // Defaulted so a build older than migration 0006 still inserts; that
+  // migration numbers every Journey that predates the column by
+  // `created_at` within its Project.
+  position: integer("position").notNull().default(0),
   // Circular: `published_version` points back at `journey`, so the column
   // type is annotated (`AnyPgColumn`) for TypeScript's benefit.
   liveVersionId: text("live_version_id").references(

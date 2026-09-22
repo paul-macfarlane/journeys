@@ -4,6 +4,7 @@ import {
   createJourney,
   createProject,
   editJourneyField,
+  openTab,
   uniqueSuffix,
 } from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
@@ -53,7 +54,9 @@ test("members-add-and-edit", async ({ page, context, browser }) => {
     await page.goto(`/projects/${projectId}`);
     const journeyId = await createJourney(page, projectId, journeyTitle);
 
-    // A's page starts with exactly A's own row.
+    // Members live on their own tab. A's page starts with exactly A's own
+    // row.
+    await openTab(page, "Members");
     const membersList = page.getByRole("list", { name: "Members" });
     await expect(membersList.getByRole("listitem")).toHaveCount(1);
     const authorARow = membersList.getByRole("listitem").filter({
@@ -96,7 +99,7 @@ test("members-add-and-edit", async ({ page, context, browser }) => {
       bPage.getByRole("listitem").filter({ hasText: projectTitle }),
     ).toHaveCount(1);
 
-    await bPage.goto(`/projects/${projectId}`);
+    await bPage.goto(`/projects/${projectId}?tab=members`);
     await expect(
       bPage.getByRole("list", { name: "Members" }).getByRole("listitem"),
     ).toHaveCount(2);
@@ -113,7 +116,7 @@ test("members-add-and-edit", async ({ page, context, browser }) => {
     ).toHaveCount(1);
 
     // B removes themself.
-    await bPage.goto(`/projects/${projectId}`);
+    await bPage.goto(`/projects/${projectId}?tab=members`);
     const bOwnRow = bPage
       .getByRole("list", { name: "Members" })
       .getByRole("listitem")
@@ -142,6 +145,7 @@ test("members-add-refused", async ({ page, context }) => {
   await page.goto("/projects");
   const projectId = await createProject(page, projectTitle);
   await page.goto(`/projects/${projectId}`);
+  await openTab(page, "Members");
 
   const membersList = page.getByRole("list", { name: "Members" });
 
@@ -149,9 +153,7 @@ test("members-add-refused", async ({ page, context }) => {
   await page.getByLabel("Email").fill(`nobody-${suffix}@example.com`);
   await page.getByRole("button", { name: "Add member" }).click();
   await expect(
-    page.getByText(
-      "No account has that email — they need to sign in once first",
-    ),
+    page.getByText("No account has that email — they need to sign up first"),
   ).toBeVisible();
 
   await page.screenshot({
@@ -198,6 +200,7 @@ test("members-remove-and-last-refused", async ({ page, context, browser }) => {
     await page.goto("/projects");
     const projectId = await createProject(page, projectTitle);
     await page.goto(`/projects/${projectId}`);
+    await openTab(page, "Members");
 
     await page.getByLabel("Email").fill(authorB.email);
     await page.getByRole("button", { name: "Add member" }).click();
@@ -209,7 +212,7 @@ test("members-remove-and-last-refused", async ({ page, context, browser }) => {
     // either removal below — its render still shows both Members.
     const stalePage = await context.newPage();
     try {
-      await stalePage.goto(`/projects/${projectId}`);
+      await stalePage.goto(`/projects/${projectId}?tab=members`);
       const staleList = stalePage.getByRole("list", { name: "Members" });
       await expect(staleList.getByRole("listitem")).toHaveCount(2);
       const staleButtons = staleList.getByRole("button", { name: "Remove" });
@@ -218,7 +221,7 @@ test("members-remove-and-last-refused", async ({ page, context, browser }) => {
 
       // B opens the Project page in B's own context.
       const bPage = await bContext.newPage();
-      await bPage.goto(`/projects/${projectId}`);
+      await bPage.goto(`/projects/${projectId}?tab=members`);
 
       // A's first page (not the stale one) removes B.
       const membersList = page.getByRole("list", { name: "Members" });

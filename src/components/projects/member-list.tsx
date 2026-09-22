@@ -28,8 +28,8 @@ const DEFAULT_VALUES: AddMemberInput = { email: "" };
 
 /**
  * A Project's Members: every Author who can see it and edit its Journeys.
- * Lists them, adds one by the email of an account that has signed in
- * before, and removes one — the Project's last Member never can be.
+ * Lists them, adds one by the email of an account that has signed up, and
+ * removes one — the Project's last Member never can be.
  */
 export function MemberList({
   projectId,
@@ -65,8 +65,6 @@ export function MemberList({
 
   return (
     <section aria-label="Members" className="flex flex-col gap-4">
-      <h2 className="text-lg font-medium tracking-tight">Members</h2>
-
       {/* role="list" is explicit: the flex layout below strips the list
           marker, and some browsers drop the implicit role with it. */}
       <ul role="list" aria-label="Members" className="flex flex-col gap-3">

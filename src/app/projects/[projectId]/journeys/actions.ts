@@ -4,13 +4,19 @@ import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
 import { saveDraft } from "@/db/drafts";
-import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
+import {
+  createJourney,
+  deleteJourney,
+  moveJourney,
+  updateJourney,
+} from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
 import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,
+  moveDirectionSchema,
   updateJourneySchema,
 } from "@/lib/validation/journey";
 
@@ -77,6 +83,34 @@ export async function updateJourneyAction(
 
   revalidateJourneyPaths();
   return { ok: true, id: updated.id };
+}
+
+/**
+ * Moves a Journey one place up or down in its Project's list. Nothing
+ * happens off either end, so a stale control is harmless.
+ */
+export async function moveJourneyAction(
+  projectId: string,
+  journeyId: string,
+  input: unknown,
+): Promise<JourneyActionResult> {
+  const session = await requireSession();
+
+  const parsed = moveDirectionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error.issues) };
+  }
+
+  const moved = await moveJourney(
+    projectId,
+    journeyId,
+    parsed.data,
+    session.user.id,
+  );
+  if (!moved) return { ok: false, error: "That journey no longer exists" };
+
+  revalidateJourneyPaths();
+  return { ok: true, id: journeyId };
 }
 
 export async function deleteJourneyAction(

@@ -12,14 +12,27 @@ export const projectTitleSchema = z
   .min(1, "Enter a title")
   .max(120, "Use 120 characters or fewer");
 
-/** A Project is its title; its id is the address, and never authored. */
+/**
+ * A short summary, shown under the title and, once ticket 07 lands, on the
+ * public Project page. Empty is allowed (the column defaults to `''`) — the
+ * form always sends a string, so there is nothing for a schema-level
+ * `.default()` to do, and one would only fight react-hook-form's inferred
+ * field type.
+ */
+export const projectDescriptionSchema = z
+  .string()
+  .trim()
+  .max(500, "Use 500 characters or fewer");
+
+/** A new Project is its title; its id is the address, and never authored. */
 export const createProjectSchema = z.object({
   title: projectTitleSchema,
 });
 
-/** Renaming is the only edit there is. */
+/** Title and description are the whole of a Project's settings. */
 export const editProjectSchema = z.object({
   title: projectTitleSchema,
+  description: projectDescriptionSchema,
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
