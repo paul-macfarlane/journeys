@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { saveResponse } from "@/db/responses";
+import { deleteResponse, saveResponse } from "@/db/responses";
 import {
   createRun,
   getPublicJourney,
@@ -12,7 +12,7 @@ import {
 } from "@/db/runs";
 import { beginRun } from "@/lib/graph/begin";
 import { hasStep } from "@/lib/graph/document";
-import { readResponse } from "@/lib/graph/prompt";
+import { readResponse, refusalNotice } from "@/lib/graph/prompt";
 import { currentStepId, navigateTo } from "@/lib/graph/run";
 import {
   PARTICIPANT_COOKIE,
@@ -71,12 +71,8 @@ export async function chooseFromStartAction(
   // did not go through it.
   const startStep = journey.document.steps[journey.document.startStepId];
   const reading = readResponse(startStep, formData.get("response"));
-  if (reading.kind === "missing") {
-    redirect(`/j/${journeyId}?notice=response-required`);
-  }
-  if (reading.kind === "too-long") {
-    redirect(`/j/${journeyId}?notice=response-too-long`);
-  }
+  const refused = refusalNotice(reading);
+  if (refused) redirect(`/j/${journeyId}?notice=${refused}`);
 
   const cookieStore = await cookies();
 
@@ -140,11 +136,14 @@ export async function startOverAction(journeyId: string): Promise<void> {
  * The answer is read first and refused first: a required Prompt left blank
  * moves nothing, and neither does an answer over the cap. An answer is saved
  * against `stepId` — the Step the form was on — before the move, so a move
- * the reducer refuses still keeps what was written. The move itself is the
- * same `navigateTo` the step page applies to a link, so a form posted from a
- * page the Participant reached with the browser's back button resolves the
- * way a link from it would. Landing is a redirect to the chosen Step's own
- * URL, which the step page reads as a stay: nothing is recorded twice.
+ * the reducer refuses still keeps what was written; an optional Prompt left
+ * blank on a Step already answered takes that answer back, since the box
+ * showed it and the Participant emptied it. The move itself is the same
+ * `navigateTo` the step page applies to a link, without the path index a
+ * Back carries: a form is a Choice, never a Back, and the page it was on has
+ * already been read as current by the time it renders. Landing is a redirect
+ * to the chosen Step's own URL, which the step page reads as a stay: nothing
+ * is recorded twice.
  */
 export async function respondAndChooseAction(
   journeyId: string,
@@ -168,10 +167,12 @@ export async function respondAndChooseAction(
   const here = `/j/${journeyId}/${stepId}`;
   const step = version.document.steps[stepId];
   const reading = readResponse(step, formData.get("response"));
-  if (reading.kind === "missing") redirect(`${here}?notice=response-required`);
-  if (reading.kind === "too-long") redirect(`${here}?notice=response-too-long`);
+  const refused = refusalNotice(reading);
+  if (refused) redirect(`${here}?notice=${refused}`);
   if (reading.kind === "answered") {
     await saveResponse(run.id, stepId, reading.text);
+  } else if (step.prompt !== null) {
+    await deleteResponse(run.id, stepId);
   }
 
   const to = formData.get("to");
@@ -179,7 +180,7 @@ export async function respondAndChooseAction(
     // An Ending's "Save response": there is nothing to move to, and the
     // Participant is told what happened where they stand.
     redirect(
-      reading.kind === "answered" ? `${here}?notice=response-saved` : here,
+      `${here}?notice=${reading.kind === "answered" ? "response-saved" : "response-cleared"}`,
     );
   }
 

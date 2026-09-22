@@ -195,20 +195,40 @@ test("prompts-participant-answers-and-author-reads", async ({
     expect(await readRuns(versionId)).toHaveLength(1);
     expect(await readResponses(versionId)).toEqual([]);
 
-    // The middle Step's question is required: the browser refuses the
-    // Choice while the box is blank, and the Run has not moved.
+    // The middle Step's Prompt is required: the browser refuses the Choice
+    // while the box is blank, and the Run has not moved.
     const queueBox = promptBox(participant, QUEUE_PROMPT);
     await expect(queueBox).toBeVisible();
     await expect(queueBox).toHaveAttribute("required", "");
     await participant.getByRole("button", { name: "Show your papers" }).click();
-    await expect(participant).toHaveURL(
-      `${E2E_BASE_URL}/j/${journeyId}/${QUEUE_STEP_ID}`,
-    );
     await expect(queueBox).toHaveJSProperty("validity.valueMissing", true);
     expect((await readRuns(versionId))[0].path).toEqual([
       START_STEP_ID,
       QUEUE_STEP_ID,
     ]);
+
+    // The same form posted past the browser's check — what a crafted
+    // request looks like — is refused by the server with the notice, and
+    // still moves nothing.
+    await queueBox.evaluate((box) => {
+      const form = (box as HTMLTextAreaElement).form;
+      if (!form) throw new Error("the Prompt's box is outside its form");
+      form.noValidate = true;
+      form.requestSubmit(
+        form.querySelector<HTMLButtonElement>('button[value="waved-through"]'),
+      );
+    });
+    await expect(participant.getByRole("status")).toHaveText(
+      "This step needs a response before you go on.",
+    );
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    expect((await readRuns(versionId))[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+    ]);
+    expect(await readResponses(versionId)).toEqual([]);
 
     await queueBox.fill(queueAnswer);
     await participant.screenshot({
@@ -248,6 +268,24 @@ test("prompts-participant-answers-and-author-reads", async ({
       { run_id: run.id, step_id: QUEUE_STEP_ID, text: queueAnswer },
       { run_id: run.id, step_id: "waved-through", text: endingAnswer },
     ]);
+
+    // Emptied and saved again, the Ending's optional answer is taken back:
+    // the box showed it, and the Participant chose not to keep it.
+    await promptBox(participant, `${ENDING_PROMPT} (optional)`).fill("");
+    await participant.getByRole("button", { name: "Save response" }).click();
+    await expect(participant.getByRole("status")).toHaveText(
+      "Your response was removed.",
+    );
+    expect(await readResponses(versionId)).toEqual([
+      { run_id: run.id, step_id: QUEUE_STEP_ID, text: queueAnswer },
+    ]);
+    await promptBox(participant, `${ENDING_PROMPT} (optional)`).fill(
+      endingAnswer,
+    );
+    await participant.getByRole("button", { name: "Save response" }).click();
+    await expect(participant.getByRole("status")).toHaveText(
+      "Your response was saved.",
+    );
 
     // Back to the middle Step: the answer given there is shown again, and
     // answering differently replaces it rather than adding a second one.
@@ -347,14 +385,12 @@ test("prompts-preview-stores-nothing", async ({ page, context }) => {
     `${E2E_BASE_URL}${previewPath}/${QUEUE_STEP_ID}`,
   );
 
-  // The required question is required here too — the same box, the same
+  // The required Prompt is required here too — the same box, the same
   // browser check — and then walks on to the Ending.
   const queueBox = promptBox(page, QUEUE_PROMPT);
   await expect(queueBox).toHaveAttribute("required", "");
   await page.getByRole("button", { name: "Show your papers" }).click();
-  await expect(page).toHaveURL(
-    `${E2E_BASE_URL}${previewPath}/${QUEUE_STEP_ID}`,
-  );
+  await expect(queueBox).toHaveJSProperty("validity.valueMissing", true);
   await queueBox.fill("Whether I will be believed.");
   await page.getByRole("button", { name: "Show your papers" }).click();
   await expect(

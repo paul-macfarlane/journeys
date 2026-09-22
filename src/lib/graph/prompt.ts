@@ -42,3 +42,16 @@ export function readResponse(step: Step, raw: unknown): ResponseReading {
 
   return { kind: "answered", text };
 }
+
+/**
+ * The `?notice=` a refused reading sends the Participant back with, or null
+ * when nothing was refused. One place, so the three actions that read a form
+ * name the same notices the pages show.
+ */
+export function refusalNotice(
+  reading: ResponseReading,
+): "response-required" | "response-too-long" | null {
+  if (reading.kind === "missing") return "response-required";
+  if (reading.kind === "too-long") return "response-too-long";
+  return null;
+}

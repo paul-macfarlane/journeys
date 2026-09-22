@@ -357,15 +357,15 @@ export function readRuns(versionId: string): Promise<RunRow[]> {
 }
 
 /** A `response` row as the specs read it back: the Step, the words, the Run. */
-export type ResponseRow = { run_id: string; step_id: string; text: string };
+export type StoredResponse = { run_id: string; step_id: string; text: string };
 
 /**
  * Every Response recorded against any Run of one Published Version, oldest
  * first. Like a Run, a Response is invisible from the Participant's side by
  * design, so the row is where a spec proves what was and was not written.
  */
-export function readResponses(versionId: string): Promise<ResponseRow[]> {
-  return queryE2eDatabase<ResponseRow>(
+export function readResponses(versionId: string): Promise<StoredResponse[]> {
+  return queryE2eDatabase<StoredResponse>(
     `SELECT r.run_id, r.step_id, r.text
      FROM "response" r JOIN "run" ON "run".id = r.run_id
      WHERE "run".version_id = $1

@@ -2,6 +2,7 @@ import type {
   Choice,
   GraphDocument,
   LayoutDirection,
+  Prompt,
   Step,
 } from "@/lib/graph/document";
 import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
@@ -131,7 +132,7 @@ export function updateStep(
 export function setStepPrompt(
   document: GraphDocument,
   stepId: string,
-  prompt: { label: string; required: boolean },
+  prompt: Omit<Prompt, "type">,
 ): GraphDocument {
   if (!hasStep(document, stepId)) {
     return document;

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getDraftForMember } from "@/db/drafts";
 import { hasStep } from "@/lib/graph/document";
-import { readResponse } from "@/lib/graph/prompt";
+import { readResponse, refusalNotice } from "@/lib/graph/prompt";
 import { requireSession } from "@/lib/session";
 
 /**
@@ -36,8 +36,8 @@ export async function previewChooseAction(
 
   const here = `${base}/${stepId}`;
   const reading = readResponse(draft.steps[stepId], formData.get("response"));
-  if (reading.kind === "missing") redirect(`${here}?notice=response-required`);
-  if (reading.kind === "too-long") redirect(`${here}?notice=response-too-long`);
+  const refused = refusalNotice(reading);
+  if (refused) redirect(`${here}?notice=${refused}`);
 
   const to = formData.get("to");
   if (typeof to === "string" && hasStep(draft, to)) redirect(`${base}/${to}`);

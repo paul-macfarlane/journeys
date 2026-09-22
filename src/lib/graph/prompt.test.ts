@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { Step } from "@/lib/graph/document";
-import { MAX_RESPONSE_LENGTH, readResponse } from "@/lib/graph/prompt";
+import {
+  MAX_RESPONSE_LENGTH,
+  readResponse,
+  refusalNotice,
+} from "@/lib/graph/prompt";
 
 /**
  * Seam A for ticket 12's runner rule: what a Participant's form field means
@@ -84,5 +88,14 @@ describe("readResponse", () => {
     });
     expect(readResponse(optional, `${atCap}y`)).toEqual({ kind: "too-long" });
     expect(readResponse(required, `${atCap}y`)).toEqual({ kind: "too-long" });
+  });
+});
+
+describe("refusalNotice", () => {
+  it("names the notice for each refusal and nothing otherwise", () => {
+    expect(refusalNotice({ kind: "missing" })).toBe("response-required");
+    expect(refusalNotice({ kind: "too-long" })).toBe("response-too-long");
+    expect(refusalNotice({ kind: "skipped" })).toBeNull();
+    expect(refusalNotice({ kind: "answered", text: "x" })).toBeNull();
   });
 });

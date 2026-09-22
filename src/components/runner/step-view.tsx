@@ -65,18 +65,19 @@ export type ChoiceControls =
 /**
  * The one-line notices the runner's pages carry in `?notice=` and show above
  * the Step; the address is read on the server and stripped by `RunHistory`.
- * Two are refusals, two are confirmations; anything else is not a notice.
+ * Two are refusals, the rest confirmations; anything else is not a notice.
  */
 const RESPONSE_NOTICES: Record<string, { text: string; refusal: boolean }> = {
   "response-required": {
-    text: "This step needs an answer before you go on.",
+    text: "This step needs a response before you go on.",
     refusal: true,
   },
   "response-too-long": {
-    text: `Keep your answer under ${MAX_RESPONSE_LENGTH} characters.`,
+    text: `Keep your response under ${MAX_RESPONSE_LENGTH} characters.`,
     refusal: true,
   },
   "response-saved": { text: "Your response was saved.", refusal: false },
+  "response-cleared": { text: "Your response was removed.", refusal: false },
   "response-preview": {
     text: "Nothing was recorded. In the live journey, this response would be saved.",
     refusal: false,
@@ -114,7 +115,7 @@ export function ResponseNotice({
  * server enforces. A native label, like everything else in the runner: the
  * page ships no client bundle.
  */
-function PromptField({
+function ResponseField({
   step,
   prompt,
   response,
@@ -178,7 +179,7 @@ function EndingView({
           form cannot hold another. */}
       {step.prompt !== null && choices.kind === "form" ? (
         <form action={choices.action} className="flex flex-col gap-3">
-          <PromptField
+          <ResponseField
             step={step}
             prompt={step.prompt}
             response={choices.response}
@@ -243,7 +244,7 @@ function ChoiceList({
   return (
     <form action={choices.action} className="flex flex-col gap-6">
       {step.prompt !== null ? (
-        <PromptField
+        <ResponseField
           step={step}
           prompt={step.prompt}
           response={choices.response}

@@ -246,7 +246,7 @@ function PromptField({
       <Input
         id={labelFieldId}
         autoComplete="off"
-        placeholder="A question participants answer before choosing"
+        placeholder="Something participants respond to before choosing"
         value={step.prompt?.label ?? ""}
         // Named as the field it is, like the title: a question typed in one
         // go comes back in one undo.

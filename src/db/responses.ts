@@ -43,6 +43,20 @@ export async function saveResponse(
 }
 
 /**
+ * Takes back what this Run wrote on this Step, if anything: a Participant
+ * who returns to an optional Prompt and leaves it blank has chosen not to
+ * record a Response after all. Nothing to do when there was none.
+ */
+export async function deleteResponse(
+  runId: string,
+  stepId: string,
+): Promise<void> {
+  await db
+    .delete(response)
+    .where(and(eq(response.runId, runId), eq(response.stepId, stepId)));
+}
+
+/**
  * What this Run already answered on this Step, or null: shown back in the
  * textbox when a Participant returns to a Step they answered on.
  */
