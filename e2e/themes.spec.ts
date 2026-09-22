@@ -53,7 +53,43 @@ test.afterAll(async () => {
 
 /** The one element that carries the Theme: the runner frame. */
 function themedFrame(page: Page) {
-  return page.locator("[data-theme]");
+  return page.locator('[data-slot="runner-frame"]');
+}
+
+/**
+ * The WCAG relative luminance of one painted color on an element, read the
+ * way `e2e/branding.spec.ts` reads contrast: painted onto a one-pixel canvas
+ * so an oklch-specified color comes back as the 8-bit sRGB Chromium drew.
+ */
+async function paintedLuminance(
+  page: Page,
+  selector: string,
+  property: "border-top-color" | "background-color",
+): Promise<number> {
+  const value = await page.evaluate(
+    ([selector, property]) => {
+      const element = window.document.querySelector(selector);
+      if (!element) return null;
+      const canvas = window.document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext("2d");
+      if (!context) return null;
+      context.fillStyle = window
+        .getComputedStyle(element)
+        .getPropertyValue(property);
+      context.fillRect(0, 0, 1, 1);
+      const [r, g, b] = Array.from(context.getImageData(0, 0, 1, 1).data);
+      const linear = (channel: number) => {
+        const s = channel / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+    },
+    [selector, property] as const,
+  );
+  expect(value, `${selector} ${property} painted`).not.toBeNull();
+  return value as number;
 }
 
 async function readProjectTheme(projectId: string) {
@@ -161,9 +197,16 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
       "tide",
     );
     await expect(themedFrame(participant)).toHaveAttribute(
-      "style",
-      /--primary: ?#c2410c/,
+      "data-accent",
+      "#c2410c",
     );
+    // The stripe along the top is the accent as given, by day…
+    const byDay = await paintedLuminance(
+      participant,
+      '[data-slot="runner-frame"]',
+      "border-top-color",
+    );
+    expect(byDay).toBeLessThan(0.2);
     await participant.screenshot({
       path: evidencePath("themes-settings", "project-page-tide.png"),
       fullPage: true,
@@ -186,8 +229,8 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
       "tide",
     );
     await expect(themedFrame(participant)).toHaveAttribute(
-      "style",
-      /--primary: ?#c2410c/,
+      "data-accent",
+      "#c2410c",
     );
     await participant.screenshot({
       path: evidencePath("themes-settings", "runner-step-tide.png"),
@@ -197,10 +240,36 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
     await phone.close();
   }
 
+  // …and lifted by night, so a deep accent still shows on dark paper.
+  const night = await newParticipant(browser, "dark");
+  try {
+    const participant = await night.newPage();
+    await participant.goto(`/j/${journeyId}`);
+    await expect(participant.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(themedFrame(participant)).toHaveAttribute(
+      "data-accent",
+      "#c2410c",
+    );
+    const byNight = await paintedLuminance(
+      participant,
+      '[data-slot="runner-frame"]',
+      "border-top-color",
+    );
+    expect(byNight).toBeGreaterThan(0.4);
+    await participant.screenshot({
+      path: evidencePath("themes-settings", "runner-start-tide-dark.png"),
+      fullPage: true,
+    });
+  } finally {
+    await night.close();
+  }
+
   // The Journey's Settings tab: its own Theme, starting from the Project's.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
-  // The editor carries no Theme: nothing on the page does while it is open.
+  // The editor carries no Theme: no frame, and nothing on the page carries
+  // the attribute while the editor is the open tab.
   await expect(themedFrame(page)).toHaveCount(0);
+  await expect(page.locator("[data-theme]")).toHaveCount(0);
   await openTab(page, "Settings");
   await expect(page.getByText("uses the project's theme (Tide)")).toBeVisible();
   const override = page.getByRole("checkbox", {
@@ -245,10 +314,7 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
       "data-theme",
       "dusk",
     );
-    await expect(themedFrame(participant)).not.toHaveAttribute(
-      "style",
-      /--primary/,
-    );
+    await expect(themedFrame(participant)).not.toHaveAttribute("data-accent");
     await participant.screenshot({
       path: evidencePath("themes-settings", "runner-start-dusk.png"),
       fullPage: true,

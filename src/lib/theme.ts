@@ -105,6 +105,20 @@ export type ThemeOverride = {
 };
 
 /**
+ * A Journey's override as its two columns store it: a null preset is no
+ * override at all, and a set one is read through `toThemePreset` like the
+ * Project's. Every read of the `journey` row's Theme goes through here.
+ */
+export function readThemeOverride(row: {
+  themePreset: string | null;
+  themeAccent: string | null;
+}): ThemeOverride {
+  return row.themePreset === null
+    ? { preset: null, accent: null }
+    : { preset: toThemePreset(row.themePreset), accent: row.themeAccent };
+}
+
+/**
  * What a Participant sees: the Journey's Theme when it overrides, else the
  * Project's. The override is taken whole — its own accent, or none — rather
  * than layered over the Project's accent, so an Author who picks a preset
@@ -152,19 +166,22 @@ export function accentForeground(accent: string): string {
 }
 
 /**
- * The inline custom properties the themed frame sets for an accent. Inline
- * beats every stylesheet rule, so the accent replaces the preset's own
- * primary and ring in both schemes; without an accent nothing is set and the
- * preset's tokens stand. The accent is a fill and a border in the runner
- * (the stripe across the top, a Choice's hover and focus border, focus
- * rings), never body text, which is why an arbitrary accent cannot break
- * the presets' contrast guarantee.
+ * The inline custom properties the themed frame carries for an accent: the
+ * color itself and the text color that reads on it. The frame's
+ * `data-accent` attribute is what turns them into tokens — the
+ * `[data-theme][data-accent]` rules in `globals.css` map them onto
+ * `--primary`, `--primary-foreground`, and `--ring` over whichever preset
+ * is set, and in the dark scheme lift the accent's lightness first, so a
+ * deep accent that reads on light paper is not lost on dark. Without an
+ * accent nothing is set and the preset's tokens stand. The accent is a fill
+ * and a border in the runner (the stripe across the top, a Choice's hover
+ * and focus border, focus rings), never body text, which is why an
+ * arbitrary accent cannot break the presets' contrast guarantee.
  */
 export function themeStyle(theme: Theme): Record<string, string> {
   if (theme.accent === null) return {};
   return {
-    "--primary": theme.accent,
-    "--primary-foreground": accentForeground(theme.accent),
-    "--ring": theme.accent,
+    "--theme-accent": theme.accent,
+    "--theme-accent-foreground": accentForeground(theme.accent),
   };
 }

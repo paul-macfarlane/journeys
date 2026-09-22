@@ -6,13 +6,13 @@ import { z } from "zod";
 
 import { useBlurSavedForm } from "@/components/blur-saved-form";
 import type { ActionResult } from "@/lib/action-result";
+import { BRAND_COLORS } from "@/lib/brand";
 import {
   accentColorSchema,
   THEME_PRESETS,
   themePresetSchema,
   type Theme,
 } from "@/lib/theme";
-import { cn } from "@/lib/utils";
 
 /**
  * The picker's own shape: the accent is a string, empty for none, because
@@ -28,7 +28,7 @@ const themeFormSchema = z.object({
 type ThemeFormInput = z.infer<typeof themeFormSchema>;
 
 /** What a fresh accent starts as when the checkbox is ticked: the app's spruce. */
-const FIRST_ACCENT = "#095b41";
+const FIRST_ACCENT = BRAND_COLORS.spruce;
 
 /**
  * A Theme picker (ticket 11): the six presets as a radio group, each with a
@@ -170,9 +170,7 @@ function ThemeSwatch({ preset }: { preset: Theme["preset"] }) {
     <span
       data-theme={preset}
       aria-hidden
-      className={cn(
-        "bg-background flex shrink-0 items-center gap-1 rounded-full border p-1",
-      )}
+      className="bg-background flex shrink-0 items-center gap-1 rounded-full border p-1"
     >
       <span className="bg-primary size-3 rounded-full" />
       <span className="bg-foreground size-3 rounded-full" />

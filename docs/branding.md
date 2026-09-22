@@ -139,12 +139,18 @@ the palette above and has no block of its own.
 | `ember`     | warm stone `oklch(0.97 0.01 60)`      | burnt orange `oklch(0.5 0.15 45)` |                                            |
 | `slate`     | plain grey `oklch(0.975 0.003 250)`   | cobalt `oklch(0.45 0.16 262)`     |                                            |
 
-An Author's accent (`#rrggbb`) replaces `--primary` and `--ring` on the
-frame as inline custom properties, in both schemes, and is used only as a
-fill and a border: the stripe along the top of the frame, a Choice's hover
-and focus border, focus rings. Its own foreground is chosen by luminance
-(`accentForeground`), so the accent never decides whether text is readable;
-the presets alone carry the guarantee below.
+An Author's accent (`#rrggbb`) travels on the frame as `data-accent` plus
+two inline custom properties (`--theme-accent` and, chosen by luminance in
+`accentForeground`, `--theme-accent-foreground`); the
+`[data-theme][data-accent]` rules at the end of the themes block map them
+onto `--primary`, `--primary-foreground`, and `--ring` over whichever preset
+is set. In the light scheme the accent is used as given; in the dark scheme
+its oklch lightness is lifted to a floor of 0.75 first (relative color
+syntax), for the same reason the presets' own primaries are pale in the
+dark, and the text on it is then the dark ink. The accent is used only as a
+fill and a border — the stripe along the top of the frame, a Choice's hover
+and focus border, focus rings — never as text, so the accent never decides
+whether text is readable; the presets alone carry the guarantee below.
 
 ### Contrast
 

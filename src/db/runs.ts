@@ -9,7 +9,12 @@ import { db } from "@/db";
 import { journey, project, publishedVersion, response, run } from "@/db/schema";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import type { RunState } from "@/lib/graph/run";
-import { effectiveTheme, toThemePreset, type Theme } from "@/lib/theme";
+import {
+  effectiveTheme,
+  readThemeOverride,
+  toThemePreset,
+  type Theme,
+} from "@/lib/theme";
 
 /**
  * The Theme a Participant sees a Journey in: the Journey's override when it
@@ -19,30 +24,26 @@ import { effectiveTheme, toThemePreset, type Theme } from "@/lib/theme";
  * publish. The four columns are selected together wherever a runner read
  * joins `journey` and `project`.
  */
+// One level deep, which is as far as Drizzle nests a selection.
 const themeColumns = {
-  journeyThemePreset: journey.themePreset,
-  journeyThemeAccent: journey.themeAccent,
-  projectThemePreset: project.themePreset,
-  projectThemeAccent: project.themeAccent,
+  journeyPreset: journey.themePreset,
+  journeyAccent: journey.themeAccent,
+  projectPreset: project.themePreset,
+  projectAccent: project.themeAccent,
 };
 
 function toTheme(row: {
-  journeyThemePreset: string | null;
-  journeyThemeAccent: string | null;
-  projectThemePreset: string;
-  projectThemeAccent: string | null;
+  journeyPreset: string | null;
+  journeyAccent: string | null;
+  projectPreset: string;
+  projectAccent: string | null;
 }): Theme {
   return effectiveTheme(
-    {
-      preset: toThemePreset(row.projectThemePreset),
-      accent: row.projectThemeAccent,
-    },
-    row.journeyThemePreset === null
-      ? { preset: null, accent: null }
-      : {
-          preset: toThemePreset(row.journeyThemePreset),
-          accent: row.journeyThemeAccent,
-        },
+    { preset: toThemePreset(row.projectPreset), accent: row.projectAccent },
+    readThemeOverride({
+      themePreset: row.journeyPreset,
+      themeAccent: row.journeyAccent,
+    }),
   );
 }
 
@@ -92,7 +93,7 @@ export async function getPublicJourney(
       title: publishedVersion.title,
       description: publishedVersion.description,
       document: publishedVersion.document,
-      ...themeColumns,
+      theme: themeColumns,
     })
     .from(journey)
     .innerJoin(project, eq(project.id, journey.projectId))
@@ -104,7 +105,7 @@ export async function getPublicJourney(
 
   if (!row) return null;
 
-  const theme = toTheme(row);
+  const theme = toTheme(row.theme);
 
   // The left join fills every `published_version` column from one row or
   // none, so the four are null together; narrowing on all of them keeps the
@@ -197,20 +198,27 @@ export async function getRunForJourney(
   runId: string,
   journeyId: string,
 ): Promise<RunForJourney | null> {
+  // Selected in the shape the result has: Drizzle nests a selection object
+  // as one, so the Run's columns, the version's, and the Theme's arrive
+  // already apart.
   const [row] = await db
     .select({
-      id: run.id,
-      versionId: run.versionId,
-      participantId: run.participantId,
-      path: run.path,
-      backtrackCount: run.backtrackCount,
-      startedAt: run.startedAt,
-      endedAt: run.endedAt,
-      outcomeId: run.outcomeId,
-      title: publishedVersion.title,
-      description: publishedVersion.description,
-      document: publishedVersion.document,
-      ...themeColumns,
+      run: {
+        id: run.id,
+        versionId: run.versionId,
+        participantId: run.participantId,
+        path: run.path,
+        backtrackCount: run.backtrackCount,
+        startedAt: run.startedAt,
+        endedAt: run.endedAt,
+        outcomeId: run.outcomeId,
+      },
+      version: {
+        title: publishedVersion.title,
+        description: publishedVersion.description,
+        document: publishedVersion.document,
+      },
+      theme: themeColumns,
     })
     .from(run)
     .innerJoin(publishedVersion, eq(publishedVersion.id, run.versionId))
@@ -221,29 +229,13 @@ export async function getRunForJourney(
 
   if (!row) return null;
 
-  const {
-    title,
-    description,
-    document,
-    journeyThemePreset,
-    journeyThemeAccent,
-    projectThemePreset,
-    projectThemeAccent,
-    ...runRow
-  } = row;
   return {
-    run: runRow,
+    run: row.run,
     version: {
-      title,
-      description,
-      document: graphDocumentSchema.parse(document),
+      ...row.version,
+      document: graphDocumentSchema.parse(row.version.document),
     },
-    theme: toTheme({
-      journeyThemePreset,
-      journeyThemeAccent,
-      projectThemePreset,
-      projectThemeAccent,
-    }),
+    theme: toTheme(row.theme),
   };
 }
 

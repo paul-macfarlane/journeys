@@ -5,6 +5,7 @@ import {
   accentForeground,
   DEFAULT_THEME_PRESET,
   effectiveTheme,
+  readThemeOverride,
   THEME_PRESETS,
   themePresetSchema,
   themeStyle,
@@ -61,6 +62,20 @@ describe("toThemePreset", () => {
   });
 });
 
+describe("readThemeOverride", () => {
+  it("reads no override from a null preset, whatever the accent column holds", () => {
+    expect(
+      readThemeOverride({ themePreset: null, themeAccent: "#ffd400" }),
+    ).toEqual({ preset: null, accent: null });
+  });
+
+  it("reads a set preset with its accent", () => {
+    expect(
+      readThemeOverride({ themePreset: "dusk", themeAccent: "#ffd400" }),
+    ).toEqual({ preset: "dusk", accent: "#ffd400" });
+  });
+});
+
 describe("effectiveTheme", () => {
   const project = { preset: "tide", accent: "#095b41" } as const;
 
@@ -101,11 +116,10 @@ describe("themeStyle", () => {
     expect(themeStyle({ preset: "tide", accent: null })).toEqual({});
   });
 
-  it("replaces the primary and ring tokens with the accent", () => {
+  it("carries the accent and the text color that reads on it", () => {
     expect(themeStyle({ preset: "tide", accent: "#095b41" })).toEqual({
-      "--primary": "#095b41",
-      "--primary-foreground": "#ffffff",
-      "--ring": "#095b41",
+      "--theme-accent": "#095b41",
+      "--theme-accent-foreground": "#ffffff",
     });
   });
 });

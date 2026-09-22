@@ -10,7 +10,7 @@ import { draft, journey, member, project, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
 import { moveInOrder, type MoveDirection } from "@/lib/journey-order";
 import { publishStateOf, type PublishState } from "@/lib/publish-state";
-import { toThemePreset, type ThemeOverride } from "@/lib/theme";
+import { readThemeOverride, type ThemeOverride } from "@/lib/theme";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
@@ -46,20 +46,6 @@ const journeyColumns = {
   themeAccent: journey.themeAccent,
 };
 
-/**
- * The override as stored: a set preset is read through `toThemePreset`, as
- * the Project's is, so a retired id degrades to the app's palette rather
- * than failing the page; a null preset is no override at all.
- */
-function toThemeOverride(row: {
-  themePreset: string | null;
-  themeAccent: string | null;
-}): ThemeOverride {
-  return row.themePreset === null
-    ? { preset: null, accent: null }
-    : { preset: toThemePreset(row.themePreset), accent: row.themeAccent };
-}
-
 /** The Journey itself plus the live pointer publish state is derived from. */
 const journeyStateColumns = {
   ...journeyColumns,
@@ -92,6 +78,12 @@ async function countVersionsByJourney(
   return new Map(rows.map((row) => [row.journeyId, row.versionCount]));
 }
 
+/**
+ * A `journey` row as the app reads it, with the publish state the caller
+ * has already derived — from the live pointer and the version count on a
+ * read, or carried over from the membership check on a write that changes
+ * neither.
+ */
 function toSummary(
   row: {
     id: string;
@@ -99,20 +91,24 @@ function toSummary(
     description: string;
     themePreset: string | null;
     themeAccent: string | null;
-    liveVersionId: string | null;
   },
-  versionCount: number,
+  publishState: PublishState,
 ): JourneySummary {
   return {
     id: row.id,
     title: row.title,
     description: row.description,
-    publishState: publishStateOf({
-      liveVersionId: row.liveVersionId,
-      versionCount,
-    }),
-    theme: toThemeOverride(row),
+    publishState,
+    theme: readThemeOverride(row),
   };
+}
+
+/** The publish state a read derives (see `@/lib/publish-state`). */
+function stateOf(
+  row: { liveVersionId: string | null },
+  versionCount: number,
+): PublishState {
+  return publishStateOf({ liveVersionId: row.liveVersionId, versionCount });
 }
 
 /** The Author's order: `position` first, `created_at` breaking any tie. */
@@ -147,7 +143,9 @@ export async function listJourneysForProject(
 
   const versionCounts = await countVersionsByJourney(rows.map((row) => row.id));
 
-  return rows.map((row) => toSummary(row, versionCounts.get(row.id) ?? 0));
+  return rows.map((row) =>
+    toSummary(row, stateOf(row, versionCounts.get(row.id) ?? 0)),
+  );
 }
 
 export type PublicJourneySummary = {
@@ -226,7 +224,7 @@ export async function createJourney(
 
     // A Journey that has just come into being has no Published Version and
     // no live pointer, so its state is not worth a second query.
-    return toSummary({ ...created, liveVersionId: null }, 0);
+    return toSummary(created, "never-published");
   });
 }
 
@@ -258,7 +256,7 @@ export async function getJourneyForMember(
   if (!row) return null;
 
   const versionCounts = await countVersionsByJourney([row.id]);
-  return toSummary(row, versionCounts.get(row.id) ?? 0);
+  return toSummary(row, stateOf(row, versionCounts.get(row.id) ?? 0));
 }
 
 /**
@@ -287,12 +285,7 @@ export async function updateJourney(
 
   // A title and a description are all this changes; publish state is
   // whatever the membership check already read.
-  return updated
-    ? {
-        ...toSummary({ ...updated, liveVersionId: null }, 0),
-        publishState: existing.publishState,
-      }
-    : null;
+  return updated ? toSummary(updated, existing.publishState) : null;
 }
 
 /**
@@ -321,12 +314,7 @@ export async function setJourneyTheme(
     .where(eq(journey.id, existing.id))
     .returning(journeyColumns);
 
-  return updated
-    ? {
-        ...toSummary({ ...updated, liveVersionId: null }, 0),
-        publishState: existing.publishState,
-      }
-    : null;
+  return updated ? toSummary(updated, existing.publishState) : null;
 }
 
 /**

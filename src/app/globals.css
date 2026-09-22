@@ -362,6 +362,26 @@
   --ring: oklch(0.7 0.1 255);
 }
 
+/* An Author's accent, over whichever preset is set (so these rules come
+   after every preset block: they tie on specificity with a preset's dark
+   block and must win by order). The frame carries the color and the text
+   color that reads on it as inline custom properties (`themeStyle` in
+   `src/lib/theme.ts`) and `data-accent` as the switch. In the light scheme
+   the accent is used as given. In the dark scheme its lightness is lifted
+   to a floor first — the presets' own primaries are pale in the dark for
+   the same reason — so a deep accent chosen against light paper does not
+   vanish against dark; the text on it is then always the dark ink. */
+[data-theme][data-accent] {
+  --primary: var(--theme-accent);
+  --primary-foreground: var(--theme-accent-foreground);
+  --ring: var(--theme-accent);
+}
+.dark [data-theme][data-accent] {
+  --primary: oklch(from var(--theme-accent) max(l, 0.75) c h);
+  --primary-foreground: oklch(from var(--theme-accent) 0.2 min(c, 0.04) h);
+  --ring: oklch(from var(--theme-accent) max(l, 0.7) c h);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

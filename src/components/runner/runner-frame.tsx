@@ -27,12 +27,14 @@ import { themeStyle, type Theme } from "@/lib/theme";
  *
  * The frame is also where a Theme (ticket 11) is painted, and the only
  * place: `data-theme` names the preset, which `globals.css` turns into the
- * frame's own token set in both schemes, and an accent arrives as inline
- * custom properties that replace the preset's primary and ring. The frame
- * paints its own background rather than inheriting the page's, so the
- * Theme fills the viewport edge to edge; the stripe along the top is the
- * accent's one guaranteed appearance. Nothing outside this frame — no
- * Author page, no editor — ever carries the attribute (story 75).
+ * frame's own token set in both schemes, and an accent arrives as
+ * `data-accent` plus inline custom properties, which the same stylesheet
+ * maps onto the preset's primary and ring (lifted in the dark scheme). The
+ * frame paints its own background rather than inheriting the page's, so
+ * the Theme fills the viewport edge to edge; the stripe along the top is
+ * the accent's one guaranteed appearance. Nothing outside this frame — no
+ * Author page, no editor — ever carries `data-theme` except the picker's
+ * own swatches, so `data-slot="runner-frame"` is how a test finds the frame.
  */
 export function RunnerFrame({
   title,
@@ -53,7 +55,9 @@ export function RunnerFrame({
 }) {
   return (
     <div
+      data-slot="runner-frame"
       data-theme={theme.preset}
+      data-accent={theme.accent ?? undefined}
       // Custom properties are not in React's CSSProperties; the cast is the
       // usual way to set them inline.
       style={themeStyle(theme) as CSSProperties}
