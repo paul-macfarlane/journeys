@@ -1,17 +1,16 @@
 import { notFound } from "next/navigation";
 
-import { PreviewFrame } from "@/components/journeys/preview-frame";
-import { StepView } from "@/components/runner/step-view";
-import { buttonVariants } from "@/components/ui/button";
+import { RunnerFrame } from "@/components/runner/runner-frame";
+import { choiceLinkClassName, StepView } from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { requireSession } from "@/lib/session";
-import { cn } from "@/lib/utils";
 
 /**
  * Preview's per-Step screen: one Step of the Draft, walked exactly the way a
- * participant would walk it, but recording nothing. Member-only, same as
- * every other Journey page — a non-Member and an unknown Step both 404.
+ * Participant would walk it, in the participant runner's own frame, but
+ * recording nothing. Member-only, same as every other Journey page — a
+ * non-Member and an unknown Step both 404.
  */
 export default async function PreviewStepPage({
   params,
@@ -36,26 +35,35 @@ export default async function PreviewStepPage({
   if (!Object.hasOwn(draft.steps, stepId)) notFound();
   const step = draft.steps[stepId];
 
+  const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
+
   return (
-    <PreviewFrame projectId={projectId} journeyId={journeyId}>
+    <RunnerFrame
+      title={journey.title}
+      // The description belongs to the Start Step alone, as in the runner.
+      description={
+        stepId === draft.startStepId
+          ? journey.description || undefined
+          : undefined
+      }
+      preview={{ editorHref: journeyHref }}
+    >
       <StepView
         step={step}
         document={draft}
-        stepHref={(targetStepId) =>
-          `/projects/${projectId}/journeys/${journeyId}/preview/${targetStepId}`
-        }
+        choices={{
+          kind: "links",
+          href: (targetStepId) => `${journeyHref}/preview/${targetStepId}`,
+        }}
         // Preview records nothing, so starting over is just a link back to
-        // its start screen — the runner posts a server action here instead,
-        // because starting over there creates a Run.
+        // its first screen — the runner posts a server action here instead,
+        // because starting over there drops the Run cookie.
         startOver={
-          <a
-            href={`/projects/${projectId}/journeys/${journeyId}/preview`}
-            className={cn(buttonVariants({ variant: "outline" }), "self-start")}
-          >
+          <a href={`${journeyHref}/preview`} className={choiceLinkClassName}>
             Start over
           </a>
         }
       />
-    </PreviewFrame>
+    </RunnerFrame>
   );
 }

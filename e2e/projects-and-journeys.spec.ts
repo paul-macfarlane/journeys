@@ -10,6 +10,7 @@ import {
 import {
   publishableDocument,
   readRuns,
+  START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
@@ -350,12 +351,12 @@ test("author-flow", async ({ page, context, browser }) => {
   try {
     const participant = await participantContext.newPage();
     await participant.goto(`/j/${journeyId}`);
+    await expect(participant.getByRole("banner")).toHaveText(renamedTitle);
     await expect(
-      participant.getByRole("heading", { name: renamedTitle }),
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
     ).toBeVisible();
 
-    await participant.getByRole("button", { name: "Begin" }).click();
-    await participant.getByRole("link", { name: "Wait your turn" }).click();
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(participant.getByText("The end")).toBeVisible();
     await expect(participant.getByText("Outcome: Reached care")).toBeVisible();
   } finally {

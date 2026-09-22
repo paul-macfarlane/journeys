@@ -4,29 +4,53 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createRun, getPublicJourney } from "@/db/runs";
-import { startRun } from "@/lib/graph/run";
+import { beginRun } from "@/lib/graph/begin";
+import { currentStepId } from "@/lib/graph/run";
 import {
   PARTICIPANT_COOKIE,
   participantCookieOptions,
   runCookieName,
   runCookieOptions,
+  runCookiePath,
 } from "@/lib/run-cookies";
 
 /**
- * The one server action the participant runner has, and the only place in the
- * app that writes a cookie: a page render may read one, never set one.
+ * The two server actions the participant runner has, and the only place in
+ * the app that writes a cookie: a page render may read one, never set one.
  *
- * "Begin" and "Start over" are the same move. Starting over does not reset a
- * Run — it creates a new one, pinned to whatever version is live now, and
- * leaves the old Run exactly as the Participant left it, because a Run is a
- * record of one walk and rewriting it would lose what happened.
+ * A Run is created when a Participant takes their first Choice (ticket 27),
+ * not when they open the Journey — a Run created on page load would count
+ * every prefetch and crawler as a start. So `/j/{journey-id}` shows the
+ * Start Step, and its Choices post here.
  */
-export async function beginRunAction(journeyId: string): Promise<void> {
+
+/**
+ * The first Choice of a walk: creates the Run, already holding the Start and
+ * the chosen Step, sets the cookies, and lands on that Step in one round
+ * trip. The chosen Step travels as the form's `to` field. A Run already in
+ * progress for this Journey is left exactly as it was — a Run is a record of
+ * one walk, and rewriting it would lose what happened — and the new Run's id
+ * simply replaces it in the cookie.
+ */
+export async function chooseFromStartAction(
+  journeyId: string,
+  formData: FormData,
+): Promise<void> {
   const journey = await getPublicJourney(journeyId);
-  // Unknown or not live: back to the start screen, which 404s or says why.
-  // Checked here as well as on the page because an action is a public
-  // endpoint of its own, not something only that page can reach.
+  // Unknown or not live: back to the Start, which 404s or says why. Checked
+  // here as well as on the page because an action is a public endpoint of
+  // its own, not something only that page can reach.
   if (!journey || journey.kind !== "live") redirect(`/j/${journeyId}`);
+
+  const to = formData.get("to");
+  const begun =
+    typeof to === "string"
+      ? beginRun(journey.document, to, new Date())
+      : ({ kind: "refused" } as const);
+  // Not a Choice the Start Step offers (a typed request, a stale form from a
+  // version since replaced): nothing is recorded, and the Start is shown
+  // again with the Choices it does offer.
+  if (begun.kind === "refused") redirect(`/j/${journeyId}`);
 
   const cookieStore = await cookies();
 
@@ -43,11 +67,10 @@ export async function beginRunAction(journeyId: string): Promise<void> {
     );
   }
 
-  const state = startRun(journey.document, new Date());
   const created = await createRun({
     versionId: journey.versionId,
     participantId,
-    state,
+    state: begun.state,
   });
 
   // The new Run's id replaces whatever this Journey's cookie held.
@@ -57,5 +80,22 @@ export async function beginRunAction(journeyId: string): Promise<void> {
     runCookieOptions(journeyId),
   );
 
-  redirect(`/j/${journeyId}/${journey.document.startStepId}`);
+  redirect(`/j/${journeyId}/${currentStepId(begun.state)}`);
+}
+
+/**
+ * Starting over drops the Run cookie and shows the Start Step fresh; the
+ * next Choice creates a new Run. The old Run is neither ended nor deleted —
+ * it is abandoned where the Participant left it, which is what an Author's
+ * analytics should see. Deleted by name *and* path: a cookie is one of
+ * (name, domain, path), and a deletion on any other path would leave it.
+ */
+export async function startOverAction(journeyId: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete({
+    name: runCookieName(journeyId),
+    path: runCookiePath(journeyId),
+  });
+
+  redirect(`/j/${journeyId}`);
 }

@@ -951,12 +951,11 @@ async function tagEndingsPublishAndWalk(
     const participant = await participantContext.newPage();
 
     await participant.goto(`/j/${journeyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
     await expect(
       participant.getByRole("heading", { name: "Border post" }),
     ).toBeVisible();
 
-    await participant.getByRole("link", { name: "Walk away" }).click();
+    await participant.getByRole("button", { name: "Walk away" }).click();
     await expect(
       participant.getByRole("heading", { name: "Turned back" }),
     ).toBeVisible();

@@ -100,22 +100,28 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   when, and who published it — with the live one marked and any of them
   restorable into the draft. Members of the project only; anyone else gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>/preview` — walks the draft
-  from its start step to an ending, exactly as a participant would, and
-  records nothing. Members of the project only; anyone else gets a 404, and a
-  signed-out request is redirected to `/`.
-- `/j/<journey-id>` — the public participant runner's start screen: the live
-  published version's title and description, and a button that begins a run.
-  Anonymous — no account, no sign-in. An unpublished (or never published)
-  journey shows an "unavailable" screen instead; an unknown id gets a 404.
+  from its start step to an ending in the participant runner's own frame,
+  exactly as a participant would, under a banner saying nothing is recorded.
+  Members of the project only; anyone else gets a 404, and a signed-out
+  request is redirected to `/`.
+- `/j/<journey-id>` — the public participant runner, opening on the live
+  published version's start step: the journey's title in a header (on every
+  screen from here on), its description beneath the header, and the step's
+  text and choices. Opening the link records nothing; taking the first choice
+  creates the run and lands on the chosen step, and reopening the link mid-run
+  offers to continue where you left off or start over. Anonymous — no account,
+  no sign-in. An unpublished (or never published) journey shows an
+  "unavailable" screen instead; an unknown id gets a 404.
 - `/j/<journey-id>/<step-id>` — one step of a run: its text, its choices as
   links, and a back control. The run is identified by an unguessable id in a
   cookie scoped to that journey's path, so two journeys open in one browser
   keep separate runs and a step URL opened without one lands on the start
-  screen. Going back — the browser's button or the in-app control — truncates
+  step. Going back — the browser's button or the in-app control — truncates
   the run's path to that step and counts a backtrack; reaching an ending
-  records its outcome, if it has one; starting over begins a new run and
-  leaves the old one as it was. A run in progress keeps walking the version it started on, even
-  if a new version is published meanwhile.
+  records its outcome, if it has one; starting over shows the start step fresh
+  and leaves the old run as it was, and the next choice begins a new one. A
+  run in progress keeps walking the version it started on, even if a new
+  version is published meanwhile.
 
 ## Commands
 

@@ -47,16 +47,15 @@ test("preview", async ({ page, context }) => {
   await page.goto(journeyPath);
   await page.getByRole("link", { name: "Preview" }).click();
 
+  // Preview opens on the Draft's Start Step in the participant runner's own
+  // frame — title in the header, the Step's content and Choices — with only
+  // the banner and its way back to the editor telling it apart.
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
-  await expect(page.getByRole("heading", { name: journeyTitle })).toBeVisible();
+  await expect(page.getByRole("banner")).toHaveText(journeyTitle);
+  await expect(page.getByText("Preview — nothing is recorded.")).toBeVisible();
   await expect(
-    page.getByText("Preview — nothing you do here is recorded."),
-  ).toBeVisible();
-
-  await page.getByRole("link", { name: "Begin" }).click();
-  await expect(page).toHaveURL(
-    `${E2E_BASE_URL}${journeyPath}/preview/${START_STEP_ID}`,
-  );
+    page.getByRole("link", { name: "Back to editor" }),
+  ).toHaveAttribute("href", journeyPath);
   await expect(
     page.getByRole("heading", { name: START_STEP_TITLE }),
   ).toBeVisible();
@@ -69,11 +68,17 @@ test("preview", async ({ page, context }) => {
   await expect(page.getByRole("link", { name: "Walk away" })).toBeVisible();
 
   await page.getByRole("link", { name: "Wait your turn" }).click();
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}${journeyPath}/preview/waved-through`,
+  );
   await expect(
     page.getByRole("heading", { name: "Waved through" }),
   ).toBeVisible();
   await expect(page.getByText("The end")).toBeVisible();
   await expect(page.getByText("Outcome: Reached care")).toBeVisible();
+  // The same frame on every Step: title and banner travel with the walk.
+  await expect(page.getByRole("banner")).toHaveText(journeyTitle);
+  await expect(page.getByText("Preview — nothing is recorded.")).toBeVisible();
 
   await page.screenshot({
     path: evidencePath("preview", "preview.png"),

@@ -9,7 +9,7 @@ import { getRunForJourney, saveRunState } from "@/db/runs";
 import { navigateTo, parsePathIndex } from "@/lib/graph/run";
 import { runCookieName } from "@/lib/run-cookies";
 
-import { beginRunAction } from "../actions";
+import { startOverAction } from "../actions";
 
 /**
  * One Step of a Run. Every Step has a URL of its own so the browser's back
@@ -20,10 +20,10 @@ import { beginRunAction } from "../actions";
  *
  * The Run cookie is the only credential. Without one, or with one naming a
  * Run of some other Journey, there is nothing to resume and the Participant
- * goes to the start screen. A Run that does resume keeps walking the
- * Published Version it was pinned to, even if the Journey was unpublished
- * mid-walk: only the start screen and a cookie-less step URL answer
- * "unavailable".
+ * goes to the Start Step at `/j/{journey-id}`. A Run that does resume keeps
+ * walking the Published Version it was pinned to, even if the Journey was
+ * unpublished mid-walk: only that first screen and a cookie-less step URL
+ * answer "unavailable".
  *
  * Two query parameters travel with a navigation and are read here, never
  * kept: `at` is the path index the browser came back to, which is what tells
@@ -81,13 +81,13 @@ export default async function RunStepPage({
   const step = version.document.steps[stepId];
 
   // A native button rather than the shared Button, for the same reason as on
-  // the start screen: the page stays a Server Component. An Ending offers it
+  // the first screen: the page stays a Server Component. An Ending offers it
   // below the Outcome; the path-full notice offers it beside the notice,
   // since telling a Participant to start over without a way to is no help.
   // Only one of the two ever renders — a Step that refused a forward move
   // had a Choice to refuse, so it is not an Ending.
   const startOver = (
-    <form action={beginRunAction.bind(null, journeyId)}>
+    <form action={startOverAction.bind(null, journeyId)}>
       <button type="submit" className={choiceLinkClassName}>
         Start over
       </button>
@@ -95,7 +95,16 @@ export default async function RunStepPage({
   );
 
   return (
-    <RunnerFrame>
+    <RunnerFrame
+      title={version.title}
+      // The description belongs to the Start Step alone — here, only when a
+      // backtrack has brought the Participant all the way back to it.
+      description={
+        stepId === version.document.startStepId
+          ? version.description || undefined
+          : undefined
+      }
+    >
       {/* The index this page stands at is remembered while the page is still
           parsing, and a back navigation the server has already read as a
           Choice is corrected there and then; a page restored from the
@@ -104,19 +113,16 @@ export default async function RunStepPage({
       <RunHistoryScript pathIndex={path.length - 1} />
       <RunHistory pathIndex={path.length - 1} />
 
-      <div className="flex flex-col gap-3">
-        <p className="text-muted-foreground text-sm">{version.title}</p>
-        {previousStepId ? (
-          // The index, not just the Step: on a loop-closing Step the Step
-          // behind this one is also a Choice, and a bare URL reads as one.
-          <a
-            href={`/j/${journeyId}/${previousStepId}?at=${path.length - 2}`}
-            className="text-muted-foreground hover:text-foreground self-start text-sm"
-          >
-            ← Back
-          </a>
-        ) : null}
-      </div>
+      {previousStepId ? (
+        // The index, not just the Step: on a loop-closing Step the Step
+        // behind this one is also a Choice, and a bare URL reads as one.
+        <a
+          href={`/j/${journeyId}/${previousStepId}?at=${path.length - 2}`}
+          className="text-muted-foreground hover:text-foreground self-start text-sm"
+        >
+          ← Back
+        </a>
+      ) : null}
 
       {typeof notice === "string" && notice === "path-full" ? (
         <div className="flex flex-col gap-3">
@@ -131,7 +137,10 @@ export default async function RunStepPage({
       <StepView
         step={step}
         document={version.document}
-        stepHref={(targetStepId) => `/j/${journeyId}/${targetStepId}`}
+        choices={{
+          kind: "links",
+          href: (targetStepId) => `/j/${journeyId}/${targetStepId}`,
+        }}
         startOver={startOver}
       />
     </RunnerFrame>

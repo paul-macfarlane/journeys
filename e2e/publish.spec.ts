@@ -11,6 +11,7 @@ import {
 import {
   loopDocument,
   publishableDocument,
+  readRuns,
   START_STEP_ID,
   START_STEP_TITLE,
   writeDraftDocument,
@@ -172,10 +173,15 @@ test("publish-untagged-ending", async ({ page, context, browser }) => {
   try {
     const participant = await participantContext.newPage();
 
+    // The Start is the Ending, so the Journey opens straight onto "The end"
+    // — and, a Run being created by the first Choice, with none to take it
+    // records no Run at all (ticket 27).
     await participant.goto(`/j/${journeyId}`);
-    await participant.getByRole("button", { name: "Begin" }).click();
     await expect(participant.getByText("The end")).toBeVisible();
     await expect(participant.getByText("Outcome:")).toHaveCount(0);
+    await expect(
+      participant.getByRole("button", { name: "Start over" }),
+    ).toHaveCount(0);
 
     await participant.screenshot({
       path: evidencePath(
@@ -187,6 +193,9 @@ test("publish-untagged-ending", async ({ page, context, browser }) => {
   } finally {
     await participantContext.close();
   }
+
+  const [version] = await readVersionRows(journeyId);
+  expect(await readRuns(version.id)).toHaveLength(0);
 });
 
 test("publish-draft-with-loop", async ({ page, context }) => {

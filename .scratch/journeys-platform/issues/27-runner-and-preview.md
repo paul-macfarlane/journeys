@@ -1,8 +1,8 @@
 # 27: Runner and preview — start on the first Step
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude Fable 5.1 (`/implement`), session of Paul Macfarlane, claimed 2026-09-22
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 2 (Paul, 2026-09-21): harness simplification → 24 → 25 → 26 → **27** → 10 → 28 → 29 → 30 → 31 → 23; 17 is post-hackathon.
 Route: contract
@@ -33,3 +33,22 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `contract`): commit only the screenshot directories of the specs this ticket names plus `ac-<n>-<slug>.txt` for the Run-row assertions; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-21, items 19, 20, 21.
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-22 — Claude Fable 5.1 (`/implement`, Route: contract)
+
+Route: contract. Repository delivery: `journeys` on `feat/27-runner-start-on-first-step`, comparison SHA `d3a3494` (staging). Direct checkout, one implementer (this session), no worktrees: every deliverable touches the runner routes, so parallel work would only conflict.
+
+**Seams and order.** (1) Seam A, test first: a pure `beginRun(document, targetStepId, now)` in `src/lib/graph/begin.ts` (start + first Choice in one reducer step; refuses a target the Start Step does not offer); `run.ts` and `run.test.ts` untouched. (2) Server actions in `src/app/j/[journeyId]/actions.ts`: `chooseFromStartAction` (creates the Run on the first Choice, mints the participant cookie, sets the Run cookie exactly as `beginRunAction` did, redirects to the target Step) and `startOverAction` (drops the Run cookie, leaves the old Run as it is, redirects to `/j/{id}`); unit tests with mocked `@/db/runs`, `next/headers`, `next/navigation` for the in-progress-Run and unknown-Choice cases. (3) `RunnerFrame` gains `title`, `description` (Start Step only), and `preview` (banner + link back to the editor); `PreviewFrame` deleted; `StepView` renders Choices as a form of submit buttons when given an action, plain links otherwise. (4) `/j/{id}` renders the Start Step with the resume banner when a Run is in progress; `/j/{id}/{stepId}` and both preview pages use the shared frame. (5) e2e: every spec that clicked "Begin" chooses from the Start Step; `runner-run-cookie-and-refresh` asserts no Run row before the first Choice, one after, and the start-over path; `publish-untagged-ending` asserts no Run for an Ending-as-Start Journey. (6) Docs: `CONTEXT.md` Run entry, README runner paragraph, spec `[SCOPE CHANGE]`, ticket 10 note.
+
+**Verification map (contract route, `docs/agents/testing.md`):**
+
+| Criterion | Command | Evidence |
+|---|---|---|
+| AC-1 title in header, Start Step first, Run on first Choice with path `[start, target]` | `E2E_EVIDENCE=… pnpm test:e2e` → `runner-run-cookie-and-refresh`, `runner-case-3-on-a-phone`, `author-flow` | `test-results/runner-run-cookie-and-refresh/`, `test-results/runner-case-3-on-a-phone/`, `test-results/ac-1-run-on-first-choice.txt` |
+| AC-2 resume banner; Start over abandons, next Choice is a new Run | same → `runner-run-cookie-and-refresh` | `test-results/ac-2-start-over-new-run.txt` |
+| AC-3 preview mirrors it, no Run | same → `preview` | `test-results/preview/` |
+| AC-4 Ending as Start: "The end", no Run; ticket 10 note | same → `publish-untagged-ending`; `grep` on `10-analytics.md` | `test-results/publish-untagged-ending/`, `test-results/ac-4-ending-as-start-no-run.txt` |
+| AC-5 Seam A | `pnpm test`; `git diff staging -- src/lib/graph/run.test.ts` empty | `test-results/ac-5-begin-and-choose-unit.txt` |
+| AC-6 full e2e once at the end | `pnpm lint; pnpm format:check; pnpm typecheck; pnpm test; pnpm test:e2e` | `test-results/dod-1-commands.txt` |
+
+No schema change, so `pnpm db:migrate` is not in play; `pnpm test:e2e` builds. Review: two readers (correctness, contract) via the two-axis code review.

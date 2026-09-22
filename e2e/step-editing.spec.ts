@@ -386,7 +386,6 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
 
   // The same content, read the way a participant reads it.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}/preview`);
-  await page.getByRole("link", { name: "Begin" }).click();
   await expect(
     page.getByRole("heading", { name: "Border post" }),
   ).toBeVisible();
@@ -549,7 +548,6 @@ test("step-editing-outcome-rename", async ({ page, context }) => {
 
   // What a participant would be told at the end.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}/preview`);
-  await page.getByRole("link", { name: "Begin" }).click();
   await page.getByRole("link", { name: "Wait your turn" }).click();
   await expect(page.getByText("Outcome: Reached the clinic")).toBeVisible();
 
