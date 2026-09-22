@@ -1,0 +1,59 @@
+# AC-5 — Seam A: the Run reducer tests are unchanged and pass; beginRun and the begin-and-choose action
+# have unit tests for the in-progress-Run and unknown-Choice cases. Head f7ee3ed, 2026-09-22T14:41:17Z.
+
+=== git diff --stat d3a3494 -- src/lib/graph/run.ts src/lib/graph/run.test.ts (empty means unchanged)
+exit=0
+
+=== pnpm exec vitest run --reporter=verbose src/lib/graph/run.test.ts src/lib/graph/begin.test.ts "src/app/j/[journeyId]/actions.test.ts"
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 .
+
+ ✓ src/lib/graph/begin.test.ts > beginRun > begins with the Start and the chosen Step, in that order 1ms
+ ✓ src/lib/graph/begin.test.ts > beginRun > ends at once when the first Choice leads to an Ending 0ms
+ ✓ src/lib/graph/begin.test.ts > beginRun > begins nothing when the Choice leads back onto the Start: a stay 0ms
+ ✓ src/lib/graph/begin.test.ts > beginRun > refuses a real Step the Start does not offer 0ms
+ ✓ src/lib/graph/begin.test.ts > beginRun > refuses an id that names no Step at all 0ms
+ ✓ src/lib/graph/begin.test.ts > beginRun > refuses every Choice when the Start is itself an Ending 0ms
+ ✓ src/lib/graph/begin.test.ts > beginRun > never mutates the document it is given 0ms
+ ✓ src/lib/graph/run.test.ts > startRun > starts at the Start Step, not ended 1ms
+ ✓ src/lib/graph/run.test.ts > startRun > ends at once when the Start is itself an Ending 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > appends the chosen Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > sets endedAt and outcomeId on reaching an Ending 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > stays when navigating to the current Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > truncates, increments, and clears the Ending when backing to an earlier Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > truncates, increments, and appends when choosing from an earlier path Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > appends from the current Step when an earlier path Step also offers the target 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > refuses a Step id that is not part of the document, naming the current Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > refuses a real Step that no Step in the path offers, naming the current Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > leaves the state unchanged on a refusal 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > never mutates the document or the state it is given 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > appends every visit when the loop is walked forward 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > backtracks by index when Back names the previous entry of a loop-closing Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > takes the Choice when the same Step arrives with no index 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > ignores an index that names a different Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > treats a Choice onto the Step's own Step as a stay, not a second entry 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > ignores an index outside the path and resolves the navigation itself 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > stays when the index names the current entry 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > backtracks to the latest occurrence of a repeated Step 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > accepts the entry that fills the path to the cap 1ms
+ ✓ src/lib/graph/run.test.ts > navigateTo around a loop > refuses the entry past the cap and changes nothing 0ms
+ ✓ src/lib/graph/run.test.ts > parsePathIndex > reads a run of digits as an index 0ms
+ ✓ src/lib/graph/run.test.ts > parsePathIndex > refuses anything that is not one 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction > creates one Run holding the Start and the chosen Step, and lands on that Step 14ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction > starts a fresh Run while another is in progress, and leaves the old one as it was 1ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction > mints the participant cookie on a browser's first Run and keeps it afterwards 1ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction > refuses a Choice the Start Step does not offer and records nothing 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction > begins nothing for a Choice back onto the Start, which is a stay 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction > refuses a form with no Choice in it 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction > sends a Journey that is not live back to its Start, which says why 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > startOverAction > drops the Run cookie, touches no Run, and shows the Start Step fresh 0ms
+
+ Test Files  3 passed (3)
+      Tests  39 passed (39)
+   Start at  10:42:45
+   Duration  208ms (transform 147ms, setup 0ms, import 282ms, tests 25ms, environment 0ms)
+
+exit=0

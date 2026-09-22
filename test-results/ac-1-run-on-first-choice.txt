@@ -1,0 +1,24 @@
+# AC-1 — opening /j/<id> shows the title, the Start Step, and its Choices with no run row yet;
+# the first Choice creates exactly one Run whose path is [start, target]. Head f7ee3ed, 2026-09-22T14:41:17Z.
+
+## The assertions (e2e/runner.spec.ts, runner-run-cookie-and-refresh and runner-case-3-on-a-phone)
+169-    await expectNoSidewaysScroll(participant);
+170:    expect(await readRuns(versionId)).toHaveLength(0);
+171-
+172-    // The first Choice is what creates the Run, and it lands on the chosen
+--
+703-    ).toBeVisible();
+704:    expect(await readRuns(firstVersionId)).toHaveLength(0);
+705-
+706-    await participant.getByRole("button", { name: "Wait your turn" }).click();
+--
+712-    expect(afterFirstChoice).toHaveLength(1);
+713:    expect(afterFirstChoice[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
+714-
+715-    // A refresh resumes the Run where it was, and records no second one.
+
+## Passing runs (from the DoD-1 chain above)
+# E2E_EVIDENCE=runner-case-3-on-a-phone,runner-back-and-choose-again,runner-loop-and-back,runner-path-cap,runner-case-2-restored-choice,runner-run-cookie-and-refresh,runner-pinned-version,runner-unavailable-and-unknown,preview,preview-non-member,author-flow,publish-untagged-ending,canvas-build-by-dragging-and-walk,canvas-build-by-dropping-and-walk,canvas-build-left-to-right-and-walk,step-editing-image-credit-and-preview,step-editing-outcome-rename
+  ✓  45 [chromium] › e2e/projects-and-journeys.spec.ts:312:5 › author-flow (3.5s)
+  ✓  54 [chromium] › e2e/runner.spec.ts:126:5 › runner-case-3-on-a-phone (2.0s)
+  ✓  65 [chromium] › e2e/runner.spec.ts:664:5 › runner-run-cookie-and-refresh (3.4s)
