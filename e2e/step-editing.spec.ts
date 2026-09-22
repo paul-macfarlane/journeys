@@ -538,8 +538,14 @@ test("step-editing-image-caption-alt-and-preview", async ({
   await expect(editorFigure).toHaveCount(0);
   await page.keyboard.press("ControlOrMeta+z");
   await expect(editorFigure).toHaveCount(1);
+  // Undo hands the selection back to the image; a click on the text first
+  // makes the re-selection below a real change of selection rather than a
+  // click ProseMirror treats as a no-op.
+  await page.getByLabel("Step content").getByText("Shade").click();
   await editorFigure.locator("img").click();
-  await expect(editorFigure).toHaveClass(/ProseMirror-selectednode/);
+  await expect(
+    page.getByRole("toolbar", { name: "Image tools" }),
+  ).toBeVisible();
   await page.keyboard.press("Backspace");
   await expect(editorFigure).toHaveCount(0);
   await expectSaved(page);
