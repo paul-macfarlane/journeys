@@ -1,0 +1,13 @@
+# AC-2 — pnpm seed:journey-stories <author-email> over the converted documents (credit → caption, alt ""), local docker Postgres (2026-09-22T17:09:04Z, head c18ce1f). Output unchanged from before the conversion; the author email is redacted.
+
+> journeys@0.1.0 seed:journey-stories /Users/paulmacfarlane/Code/journeys
+> tsx scripts/seed/journey-stories.ts <author-email>
+
+◇ injected env (8) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+Database: localhost:5436
+Case 1: 46 steps, 70 choices, 6 endings, 4 outcomes
+Case 2: 64 steps, 105 choices, 9 endings, 5 outcomes
+Case 3: 36 steps, 50 choices, 6 endings, 3 outcomes
+Project: Journey Stories (00000000-5eed-4000-8000-000000000001)
+Member: <author-email>
+exit=0
