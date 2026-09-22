@@ -1,9 +1,0 @@
-# S-1 at 39e6029
-$ grep -n 'layoutDirection' .scratch/journeys-platform/spec.md src/lib/graph/document.ts
-src/lib/graph/document.ts:53:export const layoutDirectionSchema = z.enum(["TB", "LR"]);
-src/lib/graph/document.ts:54:export type LayoutDirection = z.infer<typeof layoutDirectionSchema>;
-src/lib/graph/document.ts:117: * `layoutDirection` is a property of the Journey, not of any one Author: its
-src/lib/graph/document.ts:132:      layoutDirection: layoutDirectionSchema.default("TB"),
-src/lib/graph/document.ts:276:    layoutDirection: "TB",
-.scratch/journeys-platform/spec.md:280:Amends "Graph document": the document gains a Journey-level `layoutDirection` field, `"TB"` or `"LR"`, defaulting to `"TB"` in the zod schema so every stored document parses. It is a property of the Journey, not of the Author: Members share one view and switch it freely; it lives in the Draft and autosaves like every other edit (last write wins); publishing copies it with the document; nothing reads it at run time. Step positions are still not stored (that is ticket 17). Whether the Step panel is shown is a way of reading, remembered per browser and never stored on the Journey. Decided by Paul, 2026-09-21; recorded in ticket 21's [EXECUTION PLAN].
-exit=0
