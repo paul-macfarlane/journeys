@@ -1,8 +1,8 @@
 # 25: Canvas polish — feedback round 2
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 24
-Owner:
+Owner: Claude (Fable 5.1), 2026-09-22
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 2 (Paul, 2026-09-21): harness simplification → 24 → **25** → 26 → 27 → 10 → 28 → 29 → 30 → 31 → 23; 17 is post-hackathon.
 Route: polish

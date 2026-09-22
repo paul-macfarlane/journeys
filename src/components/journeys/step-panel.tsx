@@ -339,7 +339,8 @@ export function StepPanel({
       {/* The moves that change the Journey's shape around this Step —
           making it the Start, duplicating it, and deleting it — kept
           together at the foot of the panel. Every Step, the Start included,
-          can be duplicated; only the Start has no "Make this the start". */}
+          can be duplicated; only the Start has neither "Make this the start"
+          nor "Delete step". */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-foreground/10 pt-4">
         <div className="flex flex-wrap items-center gap-2">
           {isStart ? null : (
@@ -359,13 +360,17 @@ export function StepPanel({
             Duplicate
           </Button>
         </div>
-        <DeleteStepDialog
-          key={`delete-${step.id}`}
-          document={document}
-          step={step}
-          isStart={isStart}
-          onDeleteStep={onDeleteStep}
-        />
+        {/* The Start has no "Delete step" at all: it cannot be deleted while
+            it is the Start, and a button that only ever refuses is a button
+            that should not be there. */}
+        {isStart ? null : (
+          <DeleteStepDialog
+            key={`delete-${step.id}`}
+            document={document}
+            step={step}
+            onDeleteStep={onDeleteStep}
+          />
+        )}
       </div>
     </section>
   );

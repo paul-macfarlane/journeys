@@ -173,6 +173,15 @@ function canvasEdges(page: Page) {
   return canvas(page).locator("[data-choice-id]");
 }
 
+/**
+ * The label drawn on an arrow — the chip halfway along it — by its text. The
+ * arrow also carries the whole label as its `<title>`, which a text search
+ * would find too, so the chip is asked for by name.
+ */
+function arrowLabel(arrows: Locator, text: string) {
+  return arrows.locator("[data-edge-label]", { hasText: text });
+}
+
 /** The arrows marked with a problem. */
 function problemEdges(page: Page) {
   return canvas(page).locator('[data-choice-id]:not([data-problems="0"])');
@@ -370,8 +379,8 @@ async function mapFaults(page: Page, expected: number): Promise<string[]> {
 /**
  * Where each box sits relative to the Canvas frame right now: whether the
  * whole box is inside it, whether any of it shows at all, and whether a click
- * on its middle would reach the box rather than an overlay (the Controls, the
- * minimap) sitting on top of it.
+ * on its middle would reach the box rather than an overlay (the Controls)
+ * sitting on top of it.
  */
 type NodeView = {
   title: string;
@@ -578,6 +587,93 @@ async function expectTargetsPast(
       ).toBeGreaterThan(fromRect.y + fromRect.height);
     }
   }
+}
+
+/**
+ * Where the Steps a Step's Choices lead to stand relative to one another: in
+ * Choice order across the map — left to right when it runs top to bottom,
+ * top to bottom when it runs left to right — so the map reads the same way
+ * round as the panel's Choice list. Read in flow coordinates like
+ * `expectTargetsPast`.
+ */
+async function expectTargetsInChoiceOrder(
+  page: Page,
+  targets: string[],
+  across: "x" | "y",
+): Promise<void> {
+  await settledTransform(page);
+  const rects = await Promise.all(
+    targets.map((title) => nodeFlowRect(page, title)),
+  );
+  for (let index = 1; index < rects.length; index += 1) {
+    expect(
+      rects[index][across],
+      `"${targets[index]}" is not past "${targets[index - 1]}" across the map`,
+    ).toBeGreaterThan(rects[index - 1][across]);
+  }
+}
+
+/**
+ * Every arrow's label, checked against the boxes at its two ends: on a map
+ * running left to right the label is drawn in the gap between them — past
+ * the right edge of the box it leaves and short of the left edge of the box
+ * it reaches — rather than over either. Read off the screen, where the boxes
+ * and the labels share one zoom. A fault per label that is not; `[]` when
+ * every one is.
+ */
+async function labelsOutsideGaps(
+  page: Page,
+  document: GraphDocument,
+): Promise<string[]> {
+  const targetByEdgeId = new Map<string, string>();
+  for (const [stepId, step] of Object.entries(document.steps)) {
+    for (const choice of step.choices) {
+      targetByEdgeId.set(`${stepId}:${choice.id}`, choice.targetStepId);
+    }
+  }
+
+  return canvas(page)
+    .locator(".react-flow__edge")
+    .evaluateAll((elements, targets) => {
+      const faults: string[] = [];
+      const boxRect = (stepId: string) =>
+        window.document
+          .querySelector(`.react-flow__node[data-id="${stepId}"]`)
+          ?.getBoundingClientRect();
+
+      for (const element of elements) {
+        const edgeId = element.getAttribute("data-id") ?? "";
+        const label = element.querySelector("[data-edge-label]");
+        if (label === null) {
+          faults.push(`${edgeId} has no label`);
+          continue;
+        }
+        const sourceId = edgeId.slice(0, edgeId.indexOf(":"));
+        const source = boxRect(sourceId);
+        const target = boxRect(targets[edgeId] ?? "");
+        if (source === undefined || target === undefined) {
+          faults.push(`${edgeId} has no boxes to measure against`);
+          continue;
+        }
+        const rect = label.getBoundingClientRect();
+        if (rect.left < source.right - 1 || rect.right > target.left + 1) {
+          faults.push(
+            `${edgeId} label spans ${Math.round(rect.left)} to ${Math.round(rect.right)}, gap ${Math.round(source.right)} to ${Math.round(target.left)}`,
+          );
+        }
+      }
+      return faults;
+    }, Object.fromEntries(targetByEdgeId));
+}
+
+/** Two rectangles on the screen that share any area. */
+function rectsOverlap(a: Box, b: Box): boolean {
+  return (
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height
+  );
 }
 
 /** The dot an Author drags from to connect a box to another. */
@@ -1096,6 +1192,10 @@ test("canvas-keyboard-navigation", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
   await renameStep(page, "Waved through");
 
+  // The Step just made was zoomed to, at the zoom a lone Start was fitted
+  // at, which leaves the Start itself off the top of the map: the whole map
+  // is asked for before its box is reached for again.
+  await fitWholeMap(page, 2);
   const secondChild = await expandStepActions(page, "Border post");
   await secondChild
     .getByRole("button", { name: "Add next step", exact: true })
@@ -1326,6 +1426,61 @@ test("canvas-step-actions", async ({ page, context }) => {
   await chooseStep(page, "Border post");
   await expect(anyActions).toHaveCount(0);
   await expect(anyToolbar).toHaveCount(0);
+
+  // The Start is never offered a delete — not on its box, not at the foot
+  // of the panel — because it cannot be deleted while it is the Start, and a
+  // button that only ever refuses is not a move. Another Step's box and
+  // panel still carry one.
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await expect(
+    stepPanel(page).getByRole("button", { name: "Delete step", exact: true }),
+  ).toHaveCount(0);
+  const startToolbar = await expandStepActions(page, "Border post");
+  await expect(
+    startToolbar.getByRole("button", { name: "Add next step", exact: true }),
+  ).toBeVisible();
+  await expect(
+    startToolbar.getByRole("button", { name: "Delete step", exact: true }),
+  ).toHaveCount(0);
+
+  // The Start is the top box of the map, and its moves fold out above it:
+  // the controls that are always there — "Find step", "Add step", which way
+  // the map runs — are a row of their own above the map, so the two never
+  // lie over one another, and the controls are where they were once the map
+  // is zoomed.
+  const controls = canvas(page).getByRole("group", { name: "Map controls" });
+  const controlsBox = await controls.boundingBox();
+  const toolbarBox = await startToolbar.boundingBox();
+  expect(controlsBox, "the map controls have no box").not.toBeNull();
+  expect(toolbarBox, "the Start's moves have no box").not.toBeNull();
+  expect(rectsOverlap(controlsBox!, toolbarBox!)).toBe(false);
+  // Reaching for the Controls at the foot of the map scrolls the page, so
+  // where the controls sit is read against the Canvas rather than the window.
+  const frameBox = await canvas(page).boundingBox();
+  expect(frameBox, "the canvas has no box").not.toBeNull();
+  await canvas(page)
+    .getByRole("button", { name: /zoom in/i })
+    .click();
+  await settledTransform(page);
+  await expect(controls).toBeVisible();
+  const controlsAfter = await controls.boundingBox();
+  const frameAfter = await canvas(page).boundingBox();
+  expect(controlsAfter!.y - frameAfter!.y).toBe(controlsBox!.y - frameBox!.y);
+  expect(controlsAfter!.height).toBe(controlsBox!.height);
+
+  // And no minimap: nothing on the map but the map.
+  await expect(canvas(page).locator(".react-flow__minimap")).toHaveCount(0);
+
+  // While another Step's box still offers the delete, and so does the panel
+  // once that Step is open.
+  const clinicToolbar = await expandStepActions(page, "Clinic tent");
+  await expect(
+    clinicToolbar.getByRole("button", { name: "Delete step", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
+  await expect(
+    stepPanel(page).getByRole("button", { name: "Delete step", exact: true }),
+  ).toBeVisible();
 });
 
 test.describe("the seeded map", () => {
@@ -1445,6 +1600,36 @@ test.describe("the seeded map", () => {
       .poll(() => mapFaults(page, stepCount), { timeout: 20_000 })
       .toEqual([]);
     await expectTargetsPast(page, start.title, targets, "right");
+
+    // Running left to right a Choice's label lies along its arrow, so the
+    // gap between ranks is wide enough for one and a long one is cut short
+    // with an ellipsis: every label is drawn in the gap between its boxes.
+    expect(await labelsOutsideGaps(page, seeded)).toEqual([]);
+
+    // The whole of the longest Choice in the Draft is still there to be
+    // read: it is the arrow's accessible name and its title, and the panel's
+    // row shows it in full.
+    const longest = Object.values(seeded.steps)
+      .flatMap((step) =>
+        step.choices.map((choice, index) => ({ step, choice, index })),
+      )
+      .toSorted((a, b) => b.choice.label.length - a.choice.label.length)[0];
+    expect(longest.choice.label.length).toBeGreaterThan(60);
+    const longestArrow = canvasEdge(page, longest.choice.id);
+    await expect(longestArrow).toHaveAttribute(
+      "aria-label",
+      new RegExp(`^${longest.choice.label}: `),
+    );
+    await expect(longestArrow.locator("title")).toHaveText(
+      longest.choice.label,
+    );
+    await chooseStep(page, longest.step.title);
+    await expect(
+      page
+        .getByRole("list", { name: "Choices" })
+        .getByLabel("Choice label", { exact: true })
+        .nth(longest.index),
+    ).toHaveValue(longest.choice.label);
 
     // And it is the Journey's direction, not this browser's: it is stored on
     // the Draft, where the next Member to open it reads it.
@@ -2363,11 +2548,11 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
   const choiceId = await canvasEdges(page).getAttribute("data-choice-id");
   expect(choiceId).not.toBeNull();
   const arrow = canvasEdge(page, choiceId!);
-  await expect(arrow.getByText("Find the clinic")).toBeVisible();
+  await expect(arrowLabel(arrow, "Find the clinic")).toBeVisible();
   // The label as it is drawn: its text sits inside a background chip, so the
   // chip is what a pointer lands on.
   await settledTransform(page);
-  await arrow.locator(".react-flow__edge-textwrapper").click();
+  await arrowLabel(arrow, "Find the clinic").click();
 
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   const marked = markedChoiceRow(page);
@@ -2584,7 +2769,9 @@ test.describe("authoring from the map", () => {
       "aria-label",
       "Find the clinic: Border post → Clinic tent",
     );
-    await expect(canvasEdges(page).getByText("Find the clinic")).toBeVisible();
+    await expect(
+      arrowLabel(canvasEdges(page), "Find the clinic"),
+    ).toBeVisible();
 
     await expectSaved(page);
     await page.screenshot({
@@ -2637,7 +2824,7 @@ test.describe("authoring from the map", () => {
       await label.fill("Find the clinic");
       await expect(label).toHaveValue("Find the clinic");
       await expect(
-        canvasEdges(page).getByText("Find the clinic"),
+        arrowLabel(canvasEdges(page), "Find the clinic"),
       ).toBeVisible();
 
       // Dragging the arrow's head onto another box moves the Choice there.
@@ -3023,12 +3210,19 @@ test.describe("authoring from the map", () => {
     await expect(canvasEdges(page)).toHaveCount(2);
 
     // Both Steps the branch leads to stand past the Start's right edge: the
-    // Journey was drawn the way the map runs.
+    // Journey was drawn the way the map runs. And the first Choice's Step
+    // stands above the second's: the map reads the same way round as the
+    // panel's Choice list.
     await expectTargetsPast(
       page,
       "Border post",
       ["Waved through", "Turned back"],
       "right",
+    );
+    await expectTargetsInChoiceOrder(
+      page,
+      ["Waved through", "Turned back"],
+      "y",
     );
 
     await tagEndingsPublishAndWalk(page, context, journeyId, testInfo);
@@ -3057,6 +3251,14 @@ test.describe("authoring from the map", () => {
     await addChoiceToStep(page, "Wait your turn", "Waved through");
     await addChoiceToStep(page, "Walk away", "Turned back");
     await expect(canvasEdges(page)).toHaveCount(2);
+
+    // The first Choice's Step stands to the left of the second's, top to
+    // bottom: the map reads the same way round as the panel's Choice list.
+    await expectTargetsInChoiceOrder(
+      page,
+      ["Waved through", "Turned back"],
+      "x",
+    );
 
     for (const ending of ["Waved through", "Turned back"]) {
       await tagEndingWithOutcome(page, ending, "Reached care");
