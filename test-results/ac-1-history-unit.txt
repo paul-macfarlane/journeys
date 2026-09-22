@@ -1,0 +1,34 @@
+# ticket 23 — AC-1 Seam A: the history helper, at 8a383bb on 2026-09-22T20:16Z
+
+$ pnpm test src/lib/graph/history.test.ts
+
+> journeys@0.1.0 test .
+> vitest run src/lib/graph/history.test.ts --reporter=verbose
+
+
+ RUN  v4.1.11 .
+
+ ✓ src/lib/graph/history.test.ts > emptyHistory > has nothing to undo and nothing to redo 1ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > records the state before the edit, with its field and its time 1ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > coalesces same-field edits inside the window into the first snapshot 1ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > runs the window from the last edit rather than from the first 0ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > pushes a same-field edit that comes after the window 0ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > coalesces an edit made exactly at the window's edge 0ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > never coalesces edits on different fields 0ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > never coalesces an edit that belongs to no field 0ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > drops the oldest entry once the limit is reached 0ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > empties the redo stack 0ms
+ ✓ src/lib/graph/history.test.ts > recordEdit > leaves the history it is given exactly as it was 0ms
+ ✓ src/lib/graph/history.test.ts > undo and redo > has nothing to undo or redo on a fresh history 0ms
+ ✓ src/lib/graph/history.test.ts > undo and redo > puts back what stood before the edit and offers it back again 0ms
+ ✓ src/lib/graph/history.test.ts > undo and redo > round-trips the document and the open Step through undo and redo 0ms
+ ✓ src/lib/graph/history.test.ts > undo and redo > empties the redo stack when a new edit is made after an undo 0ms
+ ✓ src/lib/graph/history.test.ts > undo and redo > never lets typing join the entry an undo pushed 0ms
+ ✓ src/lib/graph/history.test.ts > undo and redo > leaves the history it is given exactly as it was 0ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  16:16:49
+   Duration  192ms (transform 43ms, setup 0ms, import 91ms, tests 6ms, environment 0ms)
+
+exit=0

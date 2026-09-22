@@ -1,6 +1,6 @@
 # 23: Undo and redo in the Draft editor
 
-Status: in-progress
+Status: ai-review
 Blocked by: 22
 Route: contract
 Owner: Atlas orchestrator (Claude Fable 5.1), 2026-09-22
@@ -66,3 +66,35 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 | AC-6 Seam B | test `canvas-undo-build-branch-and-walk` (recorded) | as AC-2 | a branch built by dragging, three moves undone, two redone, what stands published and walked by a Participant; screenshots of the map and the runner and the recording | `test-results/canvas-undo-build-branch-and-walk/….png`, `…-runner.png`, `….webm`, `dod-1-e2e.txt` | after D2 | as AC-2 |
 | DoD-1 | `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && E2E_EVIDENCE=canvas-undo-drawn-choice,canvas-undo-title-typing,canvas-undo-rich-text,canvas-undo-delete-direction-retarget,canvas-undo-build-branch-and-walk pnpm test:e2e` (no `db:migrate`: no schema change) | local; docker Postgres 5436 | all exit 0; no test retried; every existing spec passes | `test-results/dod-1-commands.txt`, `test-results/dod-1-e2e.txt` | after D2 | any source, config, or test change |
 | DoD-2 | evidence review at closeout | local | every PASS artifact committed; fixture journeys only, no participant data | this ticket's `[CLOSEOUT]` | closeout | — |
+
+### [AI CODE REVIEW] 2026-09-22 — aggregate review of `1b9d328..36b51f7`, fixes in D3 (`8a383bb`)
+
+Two fresh reviewers (one per axis, opus) read the whole diff against the ticket, the execution plan, `CONTEXT.md`, the ADRs, `docs/agents/testing.md`, `CLAUDE.md`, the ESLint/Prettier config, and the `staging` versions of the rewritten files; the axis 1 reader also read `draft-editor.tsx` in full and every `applyEdit` caller. The orchestrator adjudicated every candidate from the cited hunks, verified the capture-phase premise in `prosemirror-view@1.42.4` (`captureKeyDown` returns true for Mod-[biyz]), and applied the fixes itself as D3. Both readers confirmed: all five "What to build" bullets built; every `applyEdit` caller passes the Step reading (a) names; the four field keys and no others; the cap and the window; redo emptied by a new edit; adoption clears both stacks; Tiptap history off on the Draft surface only (the Project description keeps its own); the buttons after "Add step" with `aria-keyshortcuts`, disabled when empty; the shortcuts from anywhere with the default prevented; the shared dialog guard; README updated; `CONTEXT.md` untouched; `src/lib/graph/history.ts` pure; vocabulary conforming; lint, format, typecheck clean. **No blocking finding on either axis.**
+
+**Deviations approved during acceptance (before the review):** `undo`/`redo` take `(history, current, { at })` and return `HistoryMove | null`; the undo/redo listener registers in the capture phase, because ProseMirror's `captureKeyDown` prevents Mod-Z on its surface whatever extensions are loaded and a bubble-phase listener saw the press already answered (D2 found it; the orchestrator verified it in `node_modules`); `canvas-undo-delete-direction-retarget` deletes the Step nothing points at (a deleted Choice target leaves a placeholder box); `canvas-undo-build-branch-and-walk` leaves the third Choice undone and redoes the direction and the rich text (a Choice drawn out of an Ending stops it being one, and the shared finish tags both Endings).
+
+**Axis 1 — technical implementation and spec conformity** (8 candidates; conformity table: every bullet and AC-1..AC-6 conform, B2c and AC-4 partial before D3)
+
+| # | Finding | Severity | Disposition |
+|---|---|---|---|
+| 1 | Undo with the panel put away zoomed the map: `selectStep` forces the Zoom-to-step move when the panel was hidden, and `travel` passed no option — a literal deviation from "no viewport move beyond bringing the box on" | non-blocking | **resolved (D3)**: `SelectStepOptions.reveal` holds to the reveal rule even from a hidden panel; `applyMove` passes it; proved by a hidden-panel undo in `canvas-undo-delete-direction-retarget` whose settled transform is unchanged |
+| 2 | AC-4's rich text assertions (`not.toContainText`) would pass with per-letter undo | non-blocking | **resolved (D3)**: `toHaveText("")` on the surface and `contentPreview(...).trim()` `toBe("")` on the row; the branch test likewise |
+| 3 | The undo-to-exhaustion loop read `isEnabled()` once per press; a stale read could send a click at a disabled button and time out | non-blocking | **resolved (D3)**: `expect.poll` with a forced click, ending only when the button is disabled |
+| 4 | The e2e coalescing proofs depend on keystroke spacing staying inside the 1 s window | non-blocking | **deviation approved**: Seam A is the deterministic proof of the window; the e2e shows the two layers are wired. Known low-probability risk on a starved CI runner |
+| 5 | `revision` bumped on every undo, resetting the rich text caret for moves that changed no content | nit | **resolved (D3)**: bumped only when the opened Step's content reference changed (amends reading (g)) |
+| 6 | The `defaultPrevented` guard is dead at capture and its comment claimed a protection that cannot arise | nit | **resolved (D3)**: guard and sentence removed |
+| 7 | The window's exact boundary (`<=`) untested | nit | **resolved (D3)**: one case at exactly `COALESCE_WINDOW_MS` |
+| 8 | README paragraph left a 99-column line | nit | **resolved (D3)**: rewrapped |
+
+**Axis 2 — coding standards** (6 candidates; checklist: vocabulary, architecture, testing policy, formatting, README/CONTEXT all conform)
+
+| # | Finding | Severity | Disposition |
+|---|---|---|---|
+| 1 | `test-results/ac-1-history-unit.txt` not yet on the branch | closeout item | **resolved**: captured over `8a383bb` and committed with the `dod-1-*` captures |
+| 2 | README rewrap (as axis 1 #8) | non-blocking | **resolved (D3)** |
+| 3 | The button comment said a sighted Author "reading the button learns the shortcut"; `aria-keyshortcuts` reaches only assistive technology | non-blocking | **resolved (D3)**: reworded |
+| 4 | `history` state shadows `window.history` without the note the file gives `document` | trivial | **resolved (D3)**: noted in the same voice |
+| 5 | The undo/redo listener re-subscribes when `undoEdit`/`redoEdit` identities change, unlike the Cmd/Ctrl+K twin | trivial | **deviation approved**: add/remove is symmetric and the handler reads the history through the ref as the plan asked; the dependency-driven effect stays |
+| 6 | `travel` reads as a Participant's walk | trivial | **resolved (D3)**: renamed `applyMove` |
+
+**Remaining risks:** the capture-phase listener claims Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z and Ctrl+Y for the whole Journey page before any other handler; a future in-page surface with its own undo would have to opt out through the dialog guard or a new one. The e2e typing runs are timing-bound (axis 1 #4).
