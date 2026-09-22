@@ -16,7 +16,6 @@ export type PublishProblemCode =
   | "missing-start"
   | "dangling-choice-target"
   | "unreachable-step"
-  | "ending-without-outcome"
   | "unknown-outcome";
 
 /**
@@ -98,17 +97,13 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
   }
 
   for (const [stepId, step] of entries) {
-    // Only an Ending carries an Outcome; an outcome id left on a Step that
-    // still has Choices is ignored rather than reported.
-    if (!isEnding(step)) {
-      continue;
-    }
-    if (step.outcomeId === null) {
-      problems.push({
-        code: "ending-without-outcome",
-        message: `Ending "${stepName(step)}" has no outcome`,
-        stepId,
-      });
+    // An Ending needs no Outcome — an Ending is an outcome in itself, and an
+    // Outcome only groups Endings for analysis — so an untagged Ending is
+    // nothing to report. What is still broken data is a tag naming an Outcome
+    // the document no longer defines. Only an Ending carries one at all; an
+    // outcome id left on a Step that still has Choices is ignored rather than
+    // reported.
+    if (!isEnding(step) || step.outcomeId === null) {
       continue;
     }
     if (!hasOutcome(document, step.outcomeId)) {

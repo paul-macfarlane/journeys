@@ -13,6 +13,7 @@ import {
   START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
+import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   cleanup,
   closePools,
@@ -75,8 +76,25 @@ test("publish-invalid-draft", async ({ page, context }) => {
   await page.goto(`/projects/${projectId}`);
   const journeyId = await createJourney(page, projectId, journeyTitle);
 
-  // A brand-new Draft is one Step, which is the Start and — having no
-  // Choices — an Ending with no Outcome. That is a publish-time problem.
+  // A Draft whose Start offers a Choice leading nowhere: the Step that
+  // Choice named is not in the document at all. Written into the `draft` row
+  // so this stays a spec about publishing rather than about the editor.
+  const publishable = publishableDocument();
+  const start = publishable.steps[START_STEP_ID];
+  await writeDraftDocument(journeyId, {
+    ...publishable,
+    steps: {
+      ...publishable.steps,
+      [START_STEP_ID]: {
+        ...start,
+        choices: [
+          { ...start.choices[0], targetStepId: "step-that-is-gone" },
+          ...start.choices.slice(1),
+        ],
+      },
+    },
+  });
+
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
   await page.getByRole("button", { name: "Publish", exact: true }).click();
 
@@ -84,7 +102,9 @@ test("publish-invalid-draft", async ({ page, context }) => {
   // page-level `role="alert"` of its own, and it is not what refused.
   const refusal = page.locator("main").getByRole("alert");
   await expect(refusal).toContainText("This journey can't be published yet");
-  await expect(refusal).toContainText('Ending "Start" has no outcome');
+  await expect(refusal).toContainText(
+    `Step "${START_STEP_TITLE}" has a choice pointing at a step that no longer exists`,
+  );
 
   // Refused means nothing was written, and the Journey is where it was.
   expect(await readVersionRows(journeyId)).toHaveLength(0);
@@ -96,6 +116,61 @@ test("publish-invalid-draft", async ({ page, context }) => {
     path: "test-results/publish-invalid-draft/publish-invalid-draft.png",
     fullPage: true,
   });
+});
+
+test("publish-untagged-ending", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // A brand-new Draft is one Step, which is the Start and — having no
+  // Choices — an Ending. An Ending needs no Outcome, so there is nothing
+  // wrong with it and nothing standing between it and participants.
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  await expect(page.getByText("No problems", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+
+  const versions = page
+    .getByRole("list", { name: "Versions" })
+    .getByRole("listitem");
+  await expect(versions).toHaveCount(1);
+  await expect(
+    versions
+      .filter({ hasText: "Version 1" })
+      .getByText("Live", { exact: true }),
+  ).toBeVisible();
+  expect(await readVersionRows(journeyId)).toHaveLength(1);
+
+  // And a Participant walks it, in a browser of their own: one Step, and the
+  // end of the Journey on it. Nothing is said about an Outcome — what an
+  // Author has or has not grouped their Endings by is not a Participant's.
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Begin" }).click();
+    await expect(participant.getByText("The end")).toBeVisible();
+    await expect(participant.getByText("Outcome:")).toHaveCount(0);
+
+    await participant.screenshot({
+      path: "test-results/publish-untagged-ending/publish-untagged-ending.png",
+      fullPage: true,
+    });
+  } finally {
+    await participantContext.close();
+  }
 });
 
 test("publish-draft-with-loop", async ({ page, context }) => {

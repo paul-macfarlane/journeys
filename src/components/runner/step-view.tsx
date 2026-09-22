@@ -44,12 +44,17 @@ function EndingView({
     step.outcomeId !== null && Object.hasOwn(document.outcomes, step.outcomeId)
       ? document.outcomes[step.outcomeId]
       : null;
-  const outcomeLabel = outcome?.label ?? "No outcome yet";
 
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold tracking-tight">The end</h2>
-      <p>Outcome: {outcomeLabel}</p>
+      {/*
+       * Only an Ending the Author grouped says what it was grouped by. An
+       * Ending needs no Outcome, and nothing stands in for the one it does not
+       * carry: what an Author has or has not tagged is authoring state, and a
+       * Participant is not being shown it.
+       */}
+      {outcome === null ? null : <p>Outcome: {outcome.label}</p>}
       {startOver}
     </div>
   );

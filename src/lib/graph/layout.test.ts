@@ -643,7 +643,13 @@ describe("problemsByAddress", () => {
       allowBack: true,
       steps: byId([
         step("start", [choice("choice-dangling", "Go nowhere", "ghost")]),
-        step("orphan", [], { title: "Orphan ending" }),
+        // Tagged with an Outcome the document does not define, so this Step
+        // carries two problems of its own: an Ending needs no Outcome, but a
+        // tag naming one that is gone is still broken data.
+        step("orphan", [], {
+          title: "Orphan ending",
+          outcomeId: "outcome-renamed-away",
+        }),
       ]),
       outcomes: {},
       layoutDirection: "TB",
@@ -653,7 +659,7 @@ describe("problemsByAddress", () => {
     expect(problems.map((problem) => problem.code)).toEqual([
       "dangling-choice-target",
       "unreachable-step",
-      "ending-without-outcome",
+      "unknown-outcome",
     ]);
 
     const { steps, choices } = problemsByAddress(problems);
