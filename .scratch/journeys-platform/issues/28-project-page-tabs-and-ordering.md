@@ -1,6 +1,6 @@
 # 28: Project page tabs, Journey ordering, and Project settings
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Claude Fable 5.1 (/implement, 2026-09-22)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -61,3 +61,26 @@ Route: contract. Repository delivery: `journeys` on `feat/28-project-tabs-and-or
 **Spec axis.** Verdict: the ticket's contract is met; every named item present (append at `max+1`, order by `position` then `created_at`, Member-only transactional move, tab order and `?tab=` default, `journeys-reorder` as described, members specs on the Members tab reading the new copy, delete specs on Settings, ticket 07 note, `EditProjectDialog` gone, `description` on the edit action; migration columns, defaults, and backfill as specified). Findings, none blocking: (1) the parent spec's rich-text Project description (`spec.md`) is a plain textarea — ticket 28 says only "a Project gains a description" and the ticket 07 note records the deferral; (2) "New journey" sits in the Journeys tab panel rather than the header — the ticket's own wording ("the 'New journey' button on the Journeys tab"), noted for Paul; (3) the 500-character description cap mirrors the Journey's — kept for consistency; (4) `listProjectsForAuthor` returns `description` the Projects list does not render — one shared column set, kept; (5) the cross-Member adoption effect — same behaviour the Journey fields already had, now shared; (6) deploy window: a Journey inserted by the previously deployed build gets `position = 0` and sorts among the first until any move renumbers the list — one deploy window, self-correcting, recorded below; (7) existing Projects' lists flip from newest-first to oldest-first — what the ticket's backfill asks for, flagged for Paul.
 
 Fixes landed as c1388db. Remaining risk: none blocking; the deployed surface is checked after Paul merges.
+
+### [CLOSEOUT] 2026-09-22 — Claude Fable 5.1 (`/implement`, Route: contract)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/33 (base `staging`, comparison SHA `c04cd01`). Status set to `done` in this commit; merging the PR is Paul's acceptance.
+
+**Deliverables (all this session, direct checkout as planned).** 69b8b23 — migration 0006 (`project.description`, `journey.position`, `ROW_NUMBER()` backfill), the `moveInOrder` seam and `editProjectSchema` with their unit tests, `moveJourney` / position-ordered reads / append-last create, `moveJourneyAction` with doubles test, the members copy, the tabbed Project page (`JourneyList`, `ProjectSettingsFields`, `MemberList` trimmed, `EditProjectDialog` deleted), README, ticket 07 note, every spec change and the new `journeys-reorder`. c1388db — review fixes (`useBlurSavedForm` shared by both inline-field components, `moveDirectionSchema`, `lockProject` in both numbering transactions, section label, reload count). 686a826 — evidence and the review record. This commit — closeout.
+
+**Verified run command (final tree, head c1388db):** `pnpm lint; pnpm format:check; pnpm typecheck; pnpm test; pnpm db:migrate; pnpm test:e2e` with `E2E_EVIDENCE` naming the ticket's specs — every block `exit=0`; unit 278/278; e2e 71 passed in 1.1m, 0 flaky, retries 0. Docker Postgres :5436, production build on :3100, Chromium.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 migration applies to a database holding existing Projects and Journeys; `position` matches `created_at` order per Project; CI `pnpm db:migrate` | PASS locally (2 Projects, 4 Journeys, 0 mismatches); CI migrate job pending at this commit | `test-results/ac-1-migration.txt`; PR #33 checks |
+| AC-2 three tabs in the order Journeys, Members, Settings; `?tab=settings` survives a reload | PASS | `test-results/project-rename/project-rename.png` (viewed: Journeys, Members, Settings with Settings selected after the reload); `project-rename` in `dod-1-e2e.txt` |
+| AC-3 Settings title and description save on blur; Projects list and page header show the new title | PASS | `test-results/project-rename/project-rename.png` (viewed: renamed heading, description under it, both fields holding the saved values); the list assertion in `project-rename` |
+| AC-4 Move up / Move down reorder; order survives a reload; a new Journey appears last | PASS | `test-results/journeys-reorder/journeys-reorder.png` (viewed: the third-made Journey first after two moves, top row's Move up disabled); the post-reload and fourth-Journey assertions plus the `position` rows read from the database in `journeys-reorder` |
+| AC-5 unknown email reads "No account has that email — they need to sign up first" | PASS | `test-results/members-add-refused/members-add-refused.png`; `members-add-refused` in `dod-1-e2e.txt` |
+| AC-6 `pnpm test:e2e` once in full at the end | PASS locally (71/71, 0 flaky); PR CI is the durable proof and is pending at this commit | `test-results/dod-1-commands.txt`, `test-results/dod-1-e2e.txt`; PR #33 checks |
+
+**Deviations.** (1) `pnpm build` was not run on its own: `pnpm test:e2e` builds the app. (2) `ac-1-migration.txt` was captured at the base SHA `c04cd01` before the first commit, since the local dev database can only take migration 0006 once; the migration file has not changed since. (3) The first final capture lost its output to a broken `sed` escape in the capture script and was re-run in full; only the re-run is committed. (4) `project-delete`, `project-delete-cascade`, and `author-flow` screenshots came out byte-identical to the committed ones (they picture the 404 and the empty list after the delete), so git shows no change for them.
+
+**Queued for Paul (non-blocking, also in the PR).** (1) Existing Projects' lists flip from newest-first to oldest-first, as the backfill asks. (2) During the deploy window a Journey made by the old build gets `position = 0` and sorts among the first until any move renumbers the list. (3) The description is plain text; ticket 07 can upgrade it. (4) "New journey" sits on the Journeys tab, not in the header.
+
+**Next in Paul's order:** 10 (analytics) → 29 → 30 → 31 → 23.
