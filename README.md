@@ -51,10 +51,11 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   change its title and rich text in the panel, add, reorder, retarget and
   remove its choices — the field that says where a choice leads is searchable,
   and it creates the step a choice needs in the same motion — make a step the
-  start, delete a step and see which choices break, make, choose and rename an
-  ending's outcome from the ending itself (searchable too; an outcome the last
-  ending drops is removed with it), and run validation on demand. The draft is
-  also drawn as a map on a canvas — laid out automatically from the steps and
+  start, delete a step and see which choices break, tag an ending with an
+  outcome if you want endings grouped and rename that outcome from the ending
+  itself (searchable too; an outcome the last ending drops is still removed
+  with it), and run validation on demand. The draft is also drawn as a map on
+  a canvas — laid out automatically from the steps and
   choices themselves, never from stored positions — where clicking a box opens
   that step in the panel, a step can be added from the canvas, and validation
   problems are marked on the step or choice it is about. The map is drawn
@@ -112,8 +113,8 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   keep separate runs and a step URL opened without one lands on the start
   screen. Going back — the browser's button or the in-app control — truncates
   the run's path to that step and counts a backtrack; reaching an ending
-  records the outcome; starting over begins a new run and leaves the old one
-  as it was. A run in progress keeps walking the version it started on, even
+  records its outcome, if it has one; starting over begins a new run and
+  leaves the old one as it was. A run in progress keeps walking the version it started on, even
   if a new version is published meanwhile.
 
 ## Commands

@@ -1034,9 +1034,9 @@ test("canvas-content-peek", async ({ page, context }) => {
   await page.keyboard.type(opening);
   await expect(page.getByLabel("Step content")).toContainText(opening);
 
-  // The Start is an Ending until it leads somewhere, and a box reads out its
-  // problems above its content: tagged, so this peek is the content alone.
-  await tagEndingWithOutcome(page, "Border post", "Reached care");
+  // A box reads out its problems above its content, and this one has none:
+  // the Start is an Ending until it leads somewhere, and an Ending needs no
+  // Outcome. So this peek is the content alone.
   await expect(canvasNode(page, "Border post")).toHaveAttribute(
     "data-problems",
     "0",
@@ -1068,18 +1068,17 @@ test("canvas-content-peek", async ({ page, context }) => {
   expect(await peek.textContent()).toBe(`${opening.slice(0, PREVIEW_LIMIT)}…`);
 
   // A Step with nothing written on it says so, under the problems it carries:
-  // this one is a Step nothing leads to, and an Ending with no Outcome.
+  // this one is a Step nothing leads to.
   await addStepFromCanvas(page, "Empty tent");
   await expect(canvasNode(page, "Empty tent")).toHaveAttribute(
     "data-problems",
-    "2",
+    "1",
   );
 
   await hoverBox(page, "Empty tent");
   await expect(peek).toBeVisible();
   expect((await peek.textContent())?.split("\n")).toEqual([
     'Step "Empty tent" cannot be reached from the start',
-    'Ending "Empty tent" has no outcome',
     "No content yet",
   ]);
 });
@@ -1590,9 +1589,9 @@ test.describe("the seeded map", () => {
           },
           choices: [],
           prompt: null,
-          // Reused from an existing case-3 Ending so this Step carries
-          // exactly one live problem — unreachable — not also a missing
-          // Outcome of its own.
+          // Reused from an existing case-3 Ending, so the tag names an
+          // Outcome this document still defines: the one live problem this
+          // Step carries is that nothing leads to it.
           outcomeId: "outcome-good-control",
           position: null,
         },
@@ -2034,36 +2033,26 @@ test("canvas-validation-marks", async ({ page, context }) => {
   await startJourney(page, context);
 
   // A brand-new Draft's one Step is both the Start and an Ending, and an
-  // Ending with nothing to be grouped by is the first thing to fix.
+  // Ending needs no Outcome: there is nothing wrong with it to mark.
   await renameStep(page, "Border post");
-  await expect(canvasNode(page, "Border post")).toHaveAttribute(
-    "data-problems",
-    "1",
-  );
-
-  await tagEndingWithOutcome(page, "Border post", "Reached care");
   await expect(canvasNode(page, "Border post")).toHaveAttribute(
     "data-problems",
     "0",
   );
 
-  // A Step nothing leads to yet, and with no Outcome on it either. The map
-  // goes to the box it made rather than out to the whole map, so the whole
-  // map is asked for before the Step it was added beside is reached for.
+  // A Step nothing leads to yet: that nothing does is the one thing wrong
+  // with it. The map goes to the box it made rather than out to the whole
+  // map, so the whole map is asked for before the Step it was added beside is
+  // reached for.
   await addStepFromCanvas(page, "Clinic tent");
   await expectBoxOnMap(page, "Clinic tent");
   await fitWholeMap(page, 2);
   await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
     "data-problems",
-    "2",
-  );
-  await tagEndingWithOutcome(page, "Clinic tent", "Reached care");
-  await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
-    "data-problems",
     "1",
   );
 
-  // A Choice from the Start reaches it, and the Start stops being an Ending.
+  // A Choice from the Start reaches it, and the mark goes with the problem.
   await canvasNode(page, "Border post").click();
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await addChoiceToStep(page, "Find the clinic", "Clinic tent");
@@ -2132,7 +2121,8 @@ test("canvas-validation-marks", async ({ page, context }) => {
     fullPage: true,
   });
 
-  // Removing the broken Choice takes the placeholder and the mark with it.
+  // Removing the broken Choice takes the placeholder and the mark with it,
+  // and leaves the Start an Ending again — which is nothing to mark.
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await page
     .getByRole("button", { name: "Remove choice", exact: true })
@@ -2150,12 +2140,29 @@ test("canvas-validation-marks", async ({ page, context }) => {
 test("canvas-problems-readable", async ({ page, context }) => {
   await startJourney(page, context);
 
-  // A brand-new Draft's one Step is an Ending with no Outcome: read on the
-  // Step's own panel, in the header count, and in the live list the count
-  // opens.
+  // A brand-new Draft's one Step is the Start and an Ending, and an Ending
+  // needs no Outcome: nothing is marked on its box, its panel lists no
+  // problem, and the header says there is none.
   await renameStep(page, "Border post");
 
-  const stepProblemsMessage = 'Ending "Border post" has no outcome';
+  await expect(page.getByText("No problems", { exact: true })).toBeVisible();
+  await expect(canvasNode(page, "Border post")).toHaveAttribute(
+    "data-problems",
+    "0",
+  );
+  await expect(page.getByRole("region", { name: "Step problems" })).toHaveCount(
+    0,
+  );
+
+  // So a problem is made, to be read: a Step added from the map is a Step
+  // nothing leads to. It is read on that Step's own panel, in the header
+  // count, and in the live list the count opens.
+  await addStepFromCanvas(page, "Clinic tent");
+  await expectBoxOnMap(page, "Clinic tent");
+  await fitWholeMap(page, 2);
+
+  const stepProblemsMessage =
+    'Step "Clinic tent" cannot be reached from the start';
   const stepProblems = page
     .getByRole("region", { name: "Step" })
     .getByRole("list", { name: "Step problems list" });
@@ -2177,8 +2184,10 @@ test("canvas-problems-readable", async ({ page, context }) => {
     fullPage: true,
   });
 
-  // Giving it an Outcome clears the problem everywhere it was shown.
-  await tagEndingWithOutcome(page, "Border post", "Reached care");
+  // A Choice that reaches it clears the problem everywhere it was shown.
+  await canvasNode(page, "Border post").click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await addChoiceToStep(page, "Find the clinic", "Clinic tent");
 
   await expect(page.getByRole("region", { name: "Step problems" })).toHaveCount(
     0,
@@ -2188,13 +2197,6 @@ test("canvas-problems-readable", async ({ page, context }) => {
 
   // A dangling Choice: read the same live message on the Choice row that
   // dangles and in that Step's own Problems section.
-  await addStepFromCanvas(page, "Clinic tent");
-  await expectBoxOnMap(page, "Clinic tent");
-  await fitWholeMap(page, 2);
-  await canvasNode(page, "Border post").click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
-  await addChoiceToStep(page, "Find the clinic", "Clinic tent");
-
   await canvasNode(page, "Clinic tent").click();
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await page
@@ -2347,9 +2349,9 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
   await addChoiceToStep(page, "Find the clinic", "Clinic tent");
   await expect(canvasEdges(page)).toHaveCount(1);
 
-  // Tagged while it is still reachable, so that when the Choice goes the one
-  // thing left wrong with it is that nothing leads there any more.
-  await tagEndingWithOutcome(page, "Clinic tent", "Reached care");
+  // Nothing is wrong with it while a Choice still reaches it — it is an
+  // Ending, and an Ending needs no Outcome — so when the Choice goes, the one
+  // thing wrong with it is that nothing leads there any more.
   await expect(canvasNode(page, "Clinic tent")).toHaveAttribute(
     "data-problems",
     "0",

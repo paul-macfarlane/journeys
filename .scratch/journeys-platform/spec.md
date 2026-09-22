@@ -59,7 +59,7 @@ A platform where signed-in Authors build Journeys as a visible graph of Steps an
 ### Outcomes
 
 25. As an Author, I want to define Outcomes for a Journey as short free-text labels (e.g. "Reached care", "Death", "Deported"), so that endings can be grouped by meaning.
-26. As an Author, I want every Ending to require exactly one Outcome, so that analytics can always say what happened.
+26. ~~As an Author, I want every Ending to require exactly one Outcome, so that analytics can always say what happened.~~ _Withdrawn by ticket 24 (2026-09-22); see the `[SCOPE CHANGE]` below._
 27. As an Author, I want to rename an Outcome without losing its history, so that wording can improve after runs exist.
 28. As an Author, I want to see how many Endings map to each Outcome, so that I notice an Outcome nothing reaches.
 
@@ -69,14 +69,14 @@ A platform where signed-in Authors build Journeys as a visible graph of Steps an
 30. As an Author, I want the graph laid out automatically, so that I never arrange boxes by hand.
 31. As an Author, I want to click a Step on the canvas and edit it in a side panel, so that navigating and editing are the same gesture.
 32. As an Author, I want the Start visually distinct and Endings visually distinct, colored by Outcome, so that structure is readable without reading text.
-33. As an Author, I want validation problems highlighted on the canvas (unreachable Steps, broken Choices, Endings missing an Outcome), so that I fix problems where they are.
+33. As an Author, I want validation problems highlighted on the canvas (unreachable Steps, broken Choices), so that I fix problems where they are.
 34. As an Author, I want to pan and zoom a 60-step graph and still find things, so that real-sized journeys stay usable.
 35. As an Author, I want to add a Step from the canvas, so that I do not have to leave the map to grow it.
 
 ### Validation, preview, and publishing
 
 36. As an Author, I want to run validation on demand and see a list of problems, so that I know what blocks publishing.
-37. As an Author, I want validation to check: exactly one Start; every Choice targets an existing Step; every Step is reachable from Start; every Ending has an Outcome; so that a published journey can never dead-end unexpectedly.
+37. As an Author, I want validation to check: exactly one Start; every Choice targets an existing Step; every Step is reachable from Start; so that a published journey can never dead-end unexpectedly.
 38. As an Author, I want to Preview the Draft exactly as a Participant would see it, so that I can test before publishing.
 39. As an Author, I want Preview to record no Run, so that my testing does not pollute analytics.
 40. As an Author, I want to Publish, and have publishing refuse if validation fails, so that the live journey is always coherent.
@@ -171,7 +171,7 @@ Next.js 16 App Router, React 19, TypeScript, pnpm. Drizzle ORM on Neon Postgres 
 
 The graph document is the contract everything else depends on (priority 2). It contains: a schema version; the Start step id; a map of Steps by stable id, each with title, Tiptap-JSON content, ordered Choices, and an optional Prompt; a map of Outcomes by stable id; and for Endings (steps with no Choices) an outcome id. Each Choice has a stable id, label, and target step id, plus reserved nullable `condition` and `effect` fields that nothing reads. Each Prompt has a `type` discriminator that accepts only `free_text` in MVP, a label, and a required flag. Step positions on the canvas are not stored; nullable position fields are reserved for a future manual-layout mode.
 
-The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Choice target exists; every Step is reachable from Start; every Ending has an Outcome that exists. Cycles are allowed (amended 2026-09-21; see the `[SCOPE CHANGE]` below and ADR-0002). Validation returns a structured list of problems with step or choice ids so the canvas can highlight them.
+The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Choice target exists; every Step is reachable from Start; an Ending that carries an Outcome names one the document defines (amended 2026-09-22 by ticket 24; see the `[SCOPE CHANGE]` below). Cycles are allowed (amended 2026-09-21; see the `[SCOPE CHANGE]` below and ADR-0002). Validation returns a structured list of problems with step or choice ids so the canvas can highlight them.
 
 Content is stored as Tiptap JSON and rendered to sanitized HTML on the server with Tiptap's renderer. The allowed node and mark set is fixed: paragraph, headings, bold, italic, bullet and ordered lists, links, and an image node whose attributes are a URL and a required `credit`. Link `href` and image `src` values must be absolute `http:` or `https:` URLs; anything else (including `javascript:` and `data:`) is stripped, and rendered links carry `rel="noopener noreferrer"`. Sanitization runs on the server at every write, not only in the editor, so a document submitted straight to the API is held to the same rules. Nothing is round-tripped through Markdown.
 
@@ -227,7 +227,7 @@ A good test exercises behavior a user or author would observe and never asserts 
 
 **Seam A — the graph domain module (Vitest, pure).** Everything that can silently corrupt content is a pure function over the graph document and Run paths, and is tested without a database:
 
-- Validation: each rule independently (multiple Starts, missing Start, dangling Choice target, unreachable Step, Ending without Outcome, Outcome id not defined) and a document with a loop is accepted, and the success case on a hand-authored 40+ step fixture; once the seeded case-3 document exists it is added as a second success case.
+- Validation: each rule independently (multiple Starts, missing Start, dangling Choice target, unreachable Step, Ending without Outcome accepted, Outcome id not defined) and a document with a loop is accepted, and the success case on a hand-authored 40+ step fixture; once the seeded case-3 document exists it is added as a second success case.
 - Runner transition: given a version document, a current step, and a Choice id, the next step is the Choice's target; an invalid Choice id is rejected; reaching an Ending yields its Outcome.
 - Analytics aggregation: given a set of Run paths, choice take-rates, ending counts, outcome distribution, abandonment per step, starts, and completions match hand-computed expectations, including edge cases (zero runs, all abandoned, runs pinned to a different version excluded).
 - Content sanitization: disallowed nodes and marks are stripped; image nodes without a credit are rejected; `javascript:` and other non-http(s) link and image URLs are stripped.
@@ -282,3 +282,7 @@ Amends "Graph document": the document gains a Journey-level `layoutDirection` fi
 ### [SCOPE CHANGE] 2026-09-21 — staging feedback round 2 takes priority; manual layout deferred
 
 After regression-testing staging (PR #26 merged), Paul filed 26 notes. They became tickets 25–31 and amendments to 15, 17, and 24, and the harness was made proportional (`docs/agents/testing.md` "Proportional verification", `docs/agents/issue-tracker.md` "Proportional records", the `Route: polish` line in `CLAUDE.md`). Order of work from here: 24 (an Ending needs no Outcome) → 25 (canvas polish round 2) → 26 (Journey page layout) → 27 (runner and preview start on the first Step) → 10 (analytics) → 28 (Project tabs, ordering, settings) → 29 (navbar) → 30 (rich text images and tooltips) → 31 (branding, theme, legal pages) → 23 (undo/redo); 20 stays small enough to slot anywhere; 07, 11, 12, 14 resume afterwards. Ticket 17 (manual layout) amends the 2026-09-21 tidy-up scope change: it is deferred past the hackathon and listed on ticket 15. Nothing is cut from the hackathon; the order is the commitment.
+
+### [SCOPE CHANGE] 2026-09-22 — an Ending needs no Outcome (ticket 24)
+
+Story 26 ("every Ending to require exactly one Outcome") is withdrawn; story 33's validation list drops "Endings missing an Outcome" and story 37's validation rule list drops "every Ending has an Outcome"; the "Graph document" publish rule "every Ending has an Outcome that exists" is replaced with "an Ending that carries an Outcome names one the document defines" (`unknown-outcome` is kept as a validation problem for an Outcome id that does not exist). Reason: Paul's feedback on PR #26 (2026-09-21) — an Ending is an outcome in itself, and an Author who does not group their Endings must not be blocked from publishing; an Outcome is a grouping for analytics, never a requirement. Analytics consequence: the Runs-by-Outcome chart groups each untagged Ending by its own Step title, so a result like "40% reached 'Turned back'" still reads (ticket 10). Recorded in ticket 24.

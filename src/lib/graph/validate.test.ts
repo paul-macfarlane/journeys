@@ -146,17 +146,15 @@ describe("validateForPublish", () => {
     expect(problems[0].stepId).toBe("step-orphan");
   });
 
-  it("reports an Ending with no Outcome", () => {
+  it("accepts an Ending with no Outcome", () => {
+    // An Ending is an outcome in itself: an Outcome only groups Endings for
+    // analysis, so a one-Step Draft — the Start, with no Choices and nothing
+    // to be grouped by — publishes clean.
     const document = graph([
-      step("step-start", [choice("choice-1", "step-end")]),
-      step("step-end", [], { title: "The last light" }),
+      step("step-start", [], { title: "The last light" }),
     ]);
 
-    const problems = validateForPublish(document);
-
-    expect(problems).toHaveLength(1);
-    expect(problems[0].code).toBe("ending-without-outcome");
-    expect(problems[0].stepId).toBe("step-end");
+    expect(validateForPublish(document)).toEqual([]);
   });
 
   it("reports an Ending tagged with an Outcome that does not exist", () => {
@@ -270,14 +268,14 @@ describe("validateForPublish", () => {
         choice("choice-1", "step-gone"),
         choice("choice-2", "step-end"),
       ]),
-      step("step-end", []),
+      step("step-end", [], { outcomeId: "outcome-renamed-away" }),
     ]);
 
     const problems = validateForPublish(document);
 
     expect(problems.map((problem) => problem.code)).toEqual([
       "dangling-choice-target",
-      "ending-without-outcome",
+      "unknown-outcome",
     ]);
     expect(problems[0]).toMatchObject({
       stepId: "step-start",
@@ -307,7 +305,10 @@ describe("validateForPublish", () => {
   it("gives every problem a message an Author can read", () => {
     const document = graph([
       step("step-start", [choice("choice-1", "step-end")]),
-      step("step-end", [], { title: "The last light" }),
+      step("step-end", [], {
+        title: "The last light",
+        outcomeId: "outcome-renamed-away",
+      }),
     ]);
 
     expect(validateForPublish(document)[0].message).toContain("The last light");

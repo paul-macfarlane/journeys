@@ -44,12 +44,15 @@ function EndingView({
     step.outcomeId !== null && Object.hasOwn(document.outcomes, step.outcomeId)
       ? document.outcomes[step.outcomeId]
       : null;
-  const outcomeLabel = outcome?.label ?? "No outcome yet";
 
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold tracking-tight">The end</h2>
-      <p>Outcome: {outcomeLabel}</p>
+      {/*
+       * An untagged Ending says nothing here: what an Author has or has not
+       * grouped is authoring state, not a Participant's.
+       */}
+      {outcome === null ? null : <p>Outcome: {outcome.label}</p>}
       {startOver}
     </div>
   );

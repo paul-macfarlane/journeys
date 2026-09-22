@@ -211,18 +211,13 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
 
   await expect(page.getByText("6 steps · 0 outcomes")).toBeVisible();
 
-  // Validation on demand, while the two Endings have nothing to be grouped by.
+  // Validation on demand, while the two Endings have nothing to be grouped
+  // by: an Ending needs no Outcome, so what was built is already publishable.
   await page.getByRole("button", { name: "Validate", exact: true }).click();
-  const problems = page.getByRole("list", { name: "Validation problems" });
-  await expect(
-    problems.getByText('Ending "Reached the ward" has no outcome'),
-  ).toBeVisible();
-  await expect(
-    problems.getByText('Ending "Sent away" has no outcome'),
-  ).toBeVisible();
+  await expect(page.getByText("No problems found.")).toBeVisible();
 
-  // Each Outcome made from the Ending that needs it, which is the only place
-  // one is made now.
+  // Each Outcome made from the Ending it groups, which is the only place one
+  // is made now — grouping the Endings, never unblocking them.
   await chooseStep(page, "Reached the ward");
   await tagWithOutcome(page, "Reached care");
   await chooseStep(page, "Sent away");
@@ -482,13 +477,14 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   await page.keyboard.press("Escape");
 
   // What the header says now, written out rather than recomputed the way the
-  // app computes it: four problems — "Turned back" dropped out of the walk
-  // when its Choice was retargeted, and each of the three Endings ("Waved
-  // through", "Turned back", "Untitled step") still has no Outcome.
+  // app computes it: one problem — "Turned back" dropped out of the walk when
+  // its Choice was retargeted. The three Endings ("Waved through", "Turned
+  // back", "Untitled step") have no Outcome between them, and none of them
+  // needs one.
   const turnedBackMessage =
     'Step "Turned back" cannot be reached from the start';
   const problemsButton = page.getByRole("button", {
-    name: "4 problems",
+    name: "1 problem",
     exact: true,
   });
   await expect(problemsButton).toBeVisible();

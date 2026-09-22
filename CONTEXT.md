@@ -35,7 +35,7 @@ The single step a journey begins on. Every journey has exactly one.
 _Avoid_: Root, entry node
 
 **Ending**:
-A step with no choices. Every ending is tagged with exactly one outcome.
+A step with no choices. It may carry an outcome that groups it for analysis; one without is an ending on its own.
 _Avoid_: Terminal, leaf, end node, dead end
 
 **Outcome**:

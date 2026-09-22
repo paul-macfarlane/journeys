@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Amended by: ADR-0002 (2026-09-21) — the "walk in circles" publish rule is withdrawn; cycles are allowed.
+- Amended by: ticket 24 (2026-09-22; `spec.md` `[SCOPE CHANGE]` of that date) — the "Ending with no Outcome" publish rule is withdrawn; an Ending may carry an Outcome or not.
 - Decided: 2026-09-18 (grilling session); written up 2026-09-19
 - Deciders: Paul Macfarlane
 
@@ -55,9 +56,9 @@ document.
   keep.
 - **Graph rules run at publish time.** `validateForPublish` returns a list of
   problems carrying Step and Choice ids: a Start that names no Step, a Choice
-  pointing nowhere, a Step unreachable from the Start, an Ending with no
-  Outcome or an Outcome that no longer exists, and any Choice that lets a
-  participant walk in circles. A Draft is allowed to be broken; a Published
+  pointing nowhere, a Step unreachable from the Start, an Ending tagged with
+  an Outcome that no longer exists (an Ending with no Outcome was a problem
+  until ticket 24), and any Choice that lets a participant walk in circles. A Draft is allowed to be broken; a Published
   Version is not.
 - **Rich text is sanitized on the way in.** `sanitizeContent` runs server-side
   at every write, allowing only the small set of blocks and marks the editor

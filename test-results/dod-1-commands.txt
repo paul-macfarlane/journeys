@@ -1,13 +1,13 @@
-# DoD-1 — verified run command, part 1 (HEAD a9e516d, local, docker Postgres 5436)
-
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint
+# ticket 24 verification, orchestrator run, 2026-09-22T04:34:26Z, branch feat/24-ending-needs-no-outcome, head 9cf6bf8
+## grep guard: ending-without-outcome / No outcome yet in src e2e
+grep exit=1 (1 = nothing found)
+## pnpm lint
 
 > journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
 > eslint
 
 exit=0
-
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm format:check
+## pnpm format:check
 
 > journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
 > prettier --check .
@@ -15,15 +15,13 @@ $ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm forma
 Checking formatting...
 All matched files use Prettier code style!
 exit=0
-
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm typecheck
+## pnpm typecheck
 
 > journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
 > tsc --noEmit
 
 exit=0
-
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test
+## pnpm test
 
 > journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
 > vitest run
@@ -37,29 +35,28 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  Test Files  11 passed (11)
       Tests  237 passed (237)
-   Start at  23:20:45
-   Duration  548ms (transform 603ms, setup 0ms, import 1.56s, tests 356ms, environment 1ms)
+   Start at  00:34:36
+   Duration  543ms (transform 719ms, setup 0ms, import 1.60s, tests 361ms, environment 1ms)
 
 exit=0
+## pnpm test:e2e
 
-$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm build
-
-> journeys@0.1.0 build /Users/paulmacfarlane/Code/journeys
-> next build
+> journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
+> next build && playwright test
 
 ▲ Next.js 16.2.10 (Turbopack)
 - Environments: .env.local
 
   Creating an optimized production build ...
-✓ Compiled successfully in 4.7s
+✓ Compiled successfully in 4.8s
   Running TypeScript ...
-  Finished TypeScript in 4.6s ...
+  Finished TypeScript in 4.7s ...
   Collecting page data using 9 workers ...
   Generating static pages using 9 workers (0/5) ...
   Generating static pages using 9 workers (1/5) 
   Generating static pages using 9 workers (2/5) 
   Generating static pages using 9 workers (3/5) 
-✓ Generating static pages using 9 workers (5/5) in 155ms
+✓ Generating static pages using 9 workers (5/5) in 121ms
   Finalizing page optimization ...
 
 Route (app)
@@ -81,4 +78,103 @@ Route (app)
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
 
+◇ injected env (8) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+[e2e] database: journeys_e2e on localhost:5436
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+Running 69 tests using 5 workers
+
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✓   3 [chromium] › e2e/canvas.spec.ts:1256:5 › canvas-step-actions (5.6s)
+  ✓   5 [chromium] › e2e/canvas.spec.ts:2858:7 › authoring from the map › canvas-drop-choice-on-empty-map (6.9s)
+  ✓   4 [chromium] › e2e/canvas.spec.ts:886:7 › canvas-add-next-step (7.2s)
+  ✓   1 [chromium] › e2e/canvas.spec.ts:2411:5 › canvas-arrow-select-second-arrow (7.3s)
+case-3 crossing pairs: f24a106 baseline=15 now=5
+  ✓   6 [chromium] › e2e/canvas.spec.ts:1336:7 › the seeded map › canvas-case-3-map (2.1s)
+  ✓   9 [chromium] › e2e/canvas.spec.ts:2483:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (4.4s)
+  ✓   8 [chromium] › e2e/canvas.spec.ts:886:7 › canvas-add-next-step-left-to-right (5.1s)
+  ✓   7 [chromium] › e2e/canvas.spec.ts:2896:7 › authoring from the map › canvas-build-by-dragging-and-walk (5.6s)
+  ✓  10 [chromium] › e2e/canvas.spec.ts:1410:7 › the seeded map › canvas-layout-direction (4.8s)
+  ✓   2 [chromium] › e2e/canvas.spec.ts:1855:7 › the seeded map › canvas-view-stays-put (13.6s)
+  ✓  11 [chromium] › e2e/canvas.spec.ts:2559:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (3.6s)
+  ✓  15 [chromium] › e2e/canvas.spec.ts:1984:7 › the seeded map › canvas-endings-uncolored (1.8s)
+  ✓  17 [chromium] › e2e/canvas.spec.ts:2032:5 › canvas-validation-marks (3.1s)
+  ✓  14 [chromium] › e2e/canvas.spec.ts:1488:7 › the seeded map › canvas-locate-on-map (6.8s)
+  ✓  12 [chromium] › e2e/canvas.spec.ts:950:5 › canvas-duplicate-step (7.5s)
+  ✓  13 [chromium] › e2e/canvas.spec.ts:2935:7 › authoring from the map › canvas-build-by-dropping-and-walk (8.1s)
+  ✓  18 [chromium] › e2e/canvas.spec.ts:2140:5 › canvas-problems-readable (2.9s)
+  ✓  19 [chromium] › e2e/canvas.spec.ts:1698:7 › the seeded map › canvas-find-step (3.7s)
+  ✓  22 [chromium] › e2e/canvas.spec.ts:2273:5 › canvas-selection-dims-arrows (1.7s)
+  ✓  16 [chromium] › e2e/canvas.spec.ts:2597:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (8.8s)
+  ✓  20 [chromium] › e2e/canvas.spec.ts:1022:5 › canvas-content-peek (4.6s)
+  ✓  23 [chromium] › e2e/canvas.spec.ts:1818:7 › the seeded map › canvas-find-step-lists-map-order (1.9s)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✓  24 [chromium] › e2e/canvas.spec.ts:2339:5 › canvas-arrow-select-and-delete (4.2s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✓  27 [chromium] › e2e/draft.spec.ts:47:5 › journey-draft (1.7s)
+  ✓  28 [chromium] › e2e/landing.spec.ts:3:5 › landing page explains the product and offers a single sign-in link while signed out (184ms)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✓  30 [chromium] › e2e/members.spec.ts:132:5 › members-add-refused (1.0s)
+  ✓  21 [chromium] › e2e/canvas.spec.ts:2973:7 › authoring from the map › canvas-build-left-to-right-and-walk (9.2s)
+  ✓  26 [chromium] › e2e/canvas.spec.ts:1086:5 › canvas-keyboard-navigation (6.0s)
+  ✓  29 [chromium] › e2e/members.spec.ts:27:5 › members-add-and-edit (2.6s)
+  ✓  31 [chromium] › e2e/members.spec.ts:182:5 › members-remove-and-last-refused (2.0s)
+  ✓  34 [chromium] › e2e/preview.spec.ts:30:5 › preview (1.6s)
+  ✓  36 [chromium] › e2e/projects-and-journeys.spec.ts:37:5 › project-create (804ms)
+  ✓  35 [chromium] › e2e/preview.spec.ts:108:5 › preview-non-member (1.6s)
+  ✓  32 [chromium] › e2e/canvas.spec.ts:3043:7 › authoring from the map › canvas-build-branch-and-publish (3.4s)
+  ✓  37 [chromium] › e2e/projects-and-journeys.spec.ts:68:5 › project-non-member (1.3s)
+  ✓  38 [chromium] › e2e/projects-and-journeys.spec.ts:113:5 › project-rename (1.2s)
+  ✓  25 [chromium] › e2e/canvas.spec.ts:2597:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (10.2s)
+  ✓  41 [chromium] › e2e/projects-and-journeys.spec.ts:148:5 › project-delete (1.2s)
+  ✓  40 [chromium] › e2e/projects-and-journeys.spec.ts:177:5 › journey-create (1.3s)
+  ✓  33 [chromium] › e2e/canvas.spec.ts:1158:5 › canvas-hide-and-show-panel (6.5s)
+  ✓  43 [chromium] › e2e/projects-and-journeys.spec.ts:268:5 › project-delete-cascade (1.6s)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✓  44 [chromium] › e2e/projects-and-journeys.spec.ts:215:5 › journey-edit-and-delete (2.7s)
+  ✓  47 [chromium] › e2e/projects.spec.ts:26:5 › signed-in visit to /projects shows the empty projects state (268ms)
+  ✓  46 [chromium] › e2e/projects.spec.ts:13:5 › signed-out visit to /projects redirects to the landing page (222ms)
+  ✓  48 [chromium] › e2e/projects.spec.ts:50:5 › signing out returns to the landing page, and /projects redirects again (412ms)
+  ✓  45 [chromium] › e2e/projects-and-journeys.spec.ts:301:5 › author-flow (2.9s)
+  ✓  49 [chromium] › e2e/publish.spec.ts:66:5 › publish-invalid-draft (1.5s)
+  ✓  42 [chromium] › e2e/canvas.spec.ts:2765:7 › authoring from the map › canvas-retarget-selected-arrow (6.1s)
+  ✓  50 [chromium] › e2e/publish.spec.ts:126:5 › publish-untagged-ending (1.8s)
+  ✓  39 [chromium] › e2e/canvas.spec.ts:3096:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (7.6s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+  ✓  51 [chromium] › e2e/publish.spec.ts:181:5 › publish-draft-with-loop (1.5s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✓  53 [chromium] › e2e/runner.spec.ts:365:5 › runner-loop-and-back (2.4s)
+  ✓  52 [chromium] › e2e/publish.spec.ts:214:5 › publish-versions-and-restore (3.7s)
+  ✓  54 [chromium] › e2e/runner.spec.ts:755:5 › runner-pinned-version (2.4s)
+  ✓  58 [chromium] › e2e/sign-in.spec.ts:13:5 › sign-in page offers Google and Discord with their logos (363ms)
+  ✓  55 [chromium] › e2e/runner.spec.ts:125:5 › runner-case-3-on-a-phone (2.5s)
+  ✓  60 [chromium] › e2e/sign-in.spec.ts:37:5 › a signed-in Author visiting /sign-in is sent to their projects (264ms)
+  ✓  57 [chromium] › e2e/runner.spec.ts:496:5 › runner-path-cap (1.8s)
+  ✓  56 [chromium] › e2e/runner.spec.ts:581:5 › runner-case-2-restored-choice (2.9s)
+  ✓  59 [chromium] › e2e/runner.spec.ts:841:5 › runner-unavailable-and-unknown (1.7s)
+  ✓  61 [chromium] › e2e/runner.spec.ts:242:5 › runner-back-and-choose-again (2.3s)
+  ✓  64 [chromium] › e2e/runner.spec.ts:643:5 › runner-run-cookie-and-refresh (2.6s)
+  ✓  62 [chromium] › e2e/step-editing.spec.ts:187:5 › step-editing-build-and-publish (3.5s)
+  ✓  65 [chromium] › e2e/step-editing.spec.ts:504:5 › step-editing-outcome-rename (3.5s)
+  ✓  63 [chromium] › e2e/step-editing.spec.ts:313:5 › step-editing-image-credit-and-preview (4.2s)
+  ✓  67 [chromium] › e2e/step-editing.spec.ts:255:5 › step-editing-delete-and-validate (1.8s)
+  ✓  66 [chromium] › e2e/step-editing.spec.ts:666:5 › panel-outcomes-from-the-ending (4.8s)
+  ✓  68 [chromium] › e2e/step-editing.spec.ts:547:5 › panel-choice-target-search (4.0s)
+  ✓  69 [chromium] › e2e/step-editing.spec.ts:403:5 › step-editing-choices-reorder-retarget (3.9s)
+
+  69 passed (56.2s)
 exit=0
