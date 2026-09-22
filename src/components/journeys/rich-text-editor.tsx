@@ -1,6 +1,7 @@
 import { getMarkAttributes } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
+import type React from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,17 @@ const URL_HINT = "Start the address with http:// or https://";
  */
 const EDITOR_CLASS =
   "min-h-64 px-4 py-3 outline-none [&>*+*]:mt-4 [&_a]:underline [&_a]:underline-offset-4 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figure]:w-fit [&_figure]:rounded-lg [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_.ProseMirror-selectednode]:ring-2 [&_.ProseMirror-selectednode]:ring-ring [&_.ProseMirror-selectednode]:ring-offset-2 [&_.ProseMirror-selectednode]:ring-offset-background";
+
+/**
+ * The floating image toolbar shows while the selection is an image node.
+ * Both values are module constants on purpose: `BubbleMenu` dispatches an
+ * options update into the editor whenever either changes identity, so an
+ * inline function or object here would dispatch one on every render.
+ */
+const showImageTools: NonNullable<
+  React.ComponentProps<typeof BubbleMenu>["shouldShow"]
+> = ({ editor: instance }) => instance.isActive("image");
+const IMAGE_TOOLS_PLACEMENT = { placement: "top", offset: 8 } as const;
 
 /** The help line under the alt text field, the one field the dialog insists on. */
 const ALT_HELP = "Describe the image for people who cannot see it";
@@ -394,8 +406,8 @@ export function RichTextEditor({
       {editor ? (
         <BubbleMenu
           editor={editor}
-          shouldShow={({ editor: instance }) => instance.isActive("image")}
-          options={{ placement: "top", offset: 8 }}
+          shouldShow={showImageTools}
+          options={IMAGE_TOOLS_PLACEMENT}
         >
           {/* The toolbar is a child rather than the menu element itself:
               `BubbleMenu` forwards only a fixed set of attributes to the
