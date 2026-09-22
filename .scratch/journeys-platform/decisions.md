@@ -215,3 +215,12 @@ public URLs, custom theme editor, manual canvas layout.
   seed; one pure validation test over the committed documents. Supersedes
   "Seeding real content" above and the "Seed scraper" wording in the priority
   order.
+
+## Amendment for ticket 30 (2026-09-22, decided by Paul on 2026-09-21)
+
+- Image contract: `credit` is renamed `caption` (the visible, optional line
+  under the picture; a credit is written into it) and `alt` becomes a
+  required-by-the-dialog string for assistive technology, `""` until written.
+  Stored documents are read with `credit` as `caption`; Published Versions
+  are never rewritten. The sanitizer no longer refuses an image for anything.
+  Supersedes "image node with a required `credit` attribute" above.

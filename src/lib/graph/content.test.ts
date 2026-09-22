@@ -58,8 +58,8 @@ const cleanContent = {
       type: "image",
       attrs: {
         src: "https://example.test/lamp.jpg",
-        credit: "Trinity House",
-        alt: null,
+        alt: "",
+        caption: "Trinity House",
       },
     },
     {
@@ -270,7 +270,7 @@ describe("sanitizeContent", () => {
     const input = docOf(
       {
         type: "image",
-        attrs: { src: "data:image/svg+xml,<svg/>", credit: "Nobody" },
+        attrs: { src: "data:image/svg+xml,<svg/>", caption: "Nobody" },
       },
       { type: "paragraph", content: [{ type: "text", text: "Kept" }] },
     );
@@ -283,37 +283,69 @@ describe("sanitizeContent", () => {
   it("removes an image whose src is a relative path", () => {
     const input = docOf({
       type: "image",
-      attrs: { src: "/uploads/lamp.jpg", credit: "Trinity House" },
+      attrs: { src: "/uploads/lamp.jpg", caption: "Trinity House" },
     });
 
     expect(sanitized(input)).toEqual(docOf());
   });
 
-  it("refuses the whole write when an image has no credit", () => {
+  it("keeps an image without a caption, defaulting alt and caption to empty strings", () => {
     const result = sanitizeContent(
       docOf({ type: "image", attrs: { src: "https://example.test/lamp.jpg" } }),
     );
 
-    expect(result).toEqual({ ok: false, error: "Every image needs a credit" });
+    expect(result).toEqual({
+      ok: true,
+      content: docOf({
+        type: "image",
+        attrs: { src: "https://example.test/lamp.jpg", alt: "", caption: "" },
+      }),
+    });
   });
 
-  it("refuses the whole write when an image credit is only whitespace", () => {
-    const result = sanitizeContent(
+  it("trims a caption that is only whitespace down to nothing", () => {
+    const input = docOf({
+      type: "image",
+      attrs: { src: "https://example.test/lamp.jpg", caption: "   " },
+    });
+
+    expect(sanitized(input)).toEqual(
       docOf({
         type: "image",
-        attrs: { src: "https://example.test/lamp.jpg", credit: "   " },
+        attrs: { src: "https://example.test/lamp.jpg", alt: "", caption: "" },
       }),
     );
-
-    expect(result).toEqual({ ok: false, error: "Every image needs a credit" });
   });
 
-  it("keeps a credited image and normalises a missing alt to null", () => {
+  it("reads a stored credit as the caption when no caption is present", () => {
     const input = docOf({
       type: "image",
       attrs: {
         src: "https://example.test/lamp.jpg",
         credit: "Trinity House",
+        alt: null,
+      },
+    });
+
+    expect(sanitized(input)).toEqual(
+      docOf({
+        type: "image",
+        attrs: {
+          src: "https://example.test/lamp.jpg",
+          alt: "",
+          caption: "Trinity House",
+        },
+      }),
+    );
+  });
+
+  it("keeps a captioned image with its alt text and drops attrs it does not know", () => {
+    const input = docOf({
+      type: "image",
+      attrs: {
+        src: "https://example.test/lamp.jpg",
+        alt: "The lamp",
+        caption: "Trinity House",
         width: 800,
       },
     });
@@ -323,8 +355,8 @@ describe("sanitizeContent", () => {
         type: "image",
         attrs: {
           src: "https://example.test/lamp.jpg",
-          credit: "Trinity House",
-          alt: null,
+          alt: "The lamp",
+          caption: "Trinity House",
         },
       }),
     );
@@ -500,7 +532,7 @@ describe("sanitizeContent", () => {
           { type: "hardBreak" },
         ],
       },
-      { type: "image", attrs: { src: "//evil.test/x.png", credit: "Nobody" } },
+      { type: "image", attrs: { src: "//evil.test/x.png", caption: "Nobody" } },
     );
 
     expect(() => contentSchema.parse(sanitized(hostile))).not.toThrow();
@@ -516,6 +548,70 @@ function contentOf(...blocks: unknown[]): Content {
 function sentence(text: string): Content {
   return contentOf({ type: "paragraph", content: [{ type: "text", text }] });
 }
+
+describe("contentSchema", () => {
+  it("reads a stored image whose caption is still named credit", () => {
+    const parsed = contentSchema.parse({
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: {
+            src: "https://example.test/lamp.jpg",
+            credit: "Trinity House",
+            alt: null,
+          },
+        },
+      ],
+    });
+
+    expect(parsed.content[0]).toEqual({
+      type: "image",
+      attrs: {
+        src: "https://example.test/lamp.jpg",
+        alt: "",
+        caption: "Trinity House",
+      },
+    });
+  });
+
+  it("reads an image with a caption and alt text unchanged", () => {
+    const image = {
+      type: "image",
+      attrs: {
+        src: "https://example.test/lamp.jpg",
+        alt: "The lamp",
+        caption: "Trinity House",
+      },
+    };
+
+    expect(contentSchema.parse({ type: "doc", content: [image] })).toEqual({
+      type: "doc",
+      content: [image],
+    });
+  });
+
+  it("prefers a present caption over a stale credit", () => {
+    const parsed = contentSchema.parse({
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: {
+            src: "https://example.test/lamp.jpg",
+            credit: "Old",
+            caption: "New",
+          },
+        },
+      ],
+    });
+
+    expect(parsed.content[0]).toEqual({
+      type: "image",
+      attrs: { src: "https://example.test/lamp.jpg", alt: "", caption: "New" },
+    });
+  });
+});
 
 describe("contentPreview", () => {
   it("reads the paragraphs, headings, and list items in document order", () => {
@@ -547,8 +643,8 @@ describe("contentPreview", () => {
       type: "image",
       attrs: {
         src: "https://example.test/lamp.jpg",
-        credit: "Trinity House",
         alt: "The lamp",
+        caption: "Trinity House",
       },
     });
 

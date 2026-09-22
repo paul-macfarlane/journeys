@@ -1,8 +1,8 @@
 # 30: Rich text editor — image caption, alt text, editing, and tooltips
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude Fable 5.1 (`/implement`, 2026-09-22)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 2 (Paul, 2026-09-21): harness simplification → 24 → 25 → 26 → 27 → 10 → 28 → 29 → **30** → 31 → 23; 17 is post-hackathon.
 Route: contract
@@ -31,3 +31,13 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `contract`): commit only the screenshot directories of the specs this ticket names plus `ac-1-contract.txt`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-21, items 13–17.
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-22 — Claude Fable 5.1 (`/implement`, Route: contract)
+
+Direct checkout on `feat/30-rich-text-images-and-tooltips` from `staging` at e94c15b; one session, no worktrees.
+
+1. **Seam A, test-first.** `src/lib/graph/content.ts`: image attrs become `src`, `alt` (string, default `""`), `caption` (string, default `""`); `contentSchema` reads a stored `credit` as `caption` when `caption` is absent; `sanitizeContent` no longer refuses anything for an image (the `SanitizeRefused` path goes). `src/lib/rich-text/extensions.ts`: `CaptionedImage` renders `<img alt>` and a `<figcaption>` only for a non-empty caption. Unit tests in `content.test.ts` and `runner/rich-text.test.tsx` cover the compatibility read, the unchanged parse, and both render shapes. A pure `src/lib/rich-text/shortcuts.ts` formats Tiptap key names for macOS and elsewhere, test-first.
+2. **Seeds.** Textual rewrite of the three documents under `scripts/seed/journey-stories/` (`"credit":` → `"caption":`, `"alt": null` → `"alt": ""`), preserving every `\u` escape; the seed command's output is unchanged.
+3. **Editor.** The image dialog gains Alt text (required, with its help line) and Caption (optional), opens pre-filled from a selected image, and updates the node's attrs on save; a selected image shows a focus ring and a Tiptap `BubbleMenu` with "Edit image" and "Remove"; every toolbar button gets a shadcn `Tooltip` (`src/components/ui/tooltip.tsx`, vendored from the CLI, stray `cn` package removed) reading its name and platform shortcut; Link gains a `Mod-k` binding inside the editor so the tooltip's ⌘K is true (the window-level Find-step shortcut already yields to a prevented press).
+4. **Docs and specs.** `CONTEXT.md` (Caption, Alt text), README, ADR-0001's sanitizer sentence, ticket 15's contract-gaps note; `step-editing-image-credit-and-preview` becomes `step-editing-image-caption-alt-and-preview` (required alt, ring and toolbar, caption edit, runner reads alt and caption, Bold tooltip on hover); the tracked evidence directory moves with it.
+5. **Verification.** `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `pnpm build` (via the e2e build), `E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone pnpm test:e2e` once at the end; `ac-1-contract.txt` and `dod-1-commands.txt` captured; two reviewers (correctness and contract) via `/code-review`; PR to `staging`.

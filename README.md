@@ -149,7 +149,9 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
 `pnpm seed:journey-stories <author-email>` writes the legacy site's three
 migrant-healthcare cases into one `Journey Stories` project as the journeys
 `Case 1`, `Case 2`, and `Case 3`, each with its draft: the steps, choices,
-endings, outcomes, and credited images the legacy case has. Each document is
+endings, outcomes, and captioned images the legacy case has (the legacy
+credit lines are the captions; alt text is empty until an Author writes it in
+the editor). Each document is
 validated for publish before anything is written.
 
 **Prerequisite:** the account must already exist. The command never creates
@@ -189,7 +191,7 @@ pnpm seed:journey-stories you@example.com    # seed the local dev database
   keeps the URL the legacy page linked, spread over some eighteen hosts (mostly
   flickr, rawpixel, and news sites) and never the legacy site itself, so an
   image stops loading when its own host does. A handful of long image paths
-  and credit URLs in the documents carry a `\u` JSON escape that breaks up a
+  and caption URLs in the documents carry a `\u` JSON escape that breaks up a
   40+ character alphanumeric run, which the commit-time secret scanner would
   otherwise refuse; the escapes change nothing when parsed — keep them.
 

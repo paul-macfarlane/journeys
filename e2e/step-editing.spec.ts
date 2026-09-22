@@ -17,6 +17,7 @@ import {
   tagWithOutcome,
   uniqueSuffix,
 } from "./setup/authoring";
+import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
@@ -319,7 +320,10 @@ test("step-editing-delete-and-validate", async ({ page, context }) => {
   });
 });
 
-test("step-editing-image-credit-and-preview", async ({ page, context }) => {
+test("step-editing-image-caption-alt-and-preview", async ({
+  page,
+  context,
+}) => {
   const { projectId, journeyId } = await startJourney(page, context);
 
   await renameStep(page, "Border post");
@@ -339,6 +343,20 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
   await page.keyboard.type("Shade");
   await expectSaved(page);
 
+  // A hover on Bold reads its tooltip: the name and the platform's shortcut
+  // (Chromium on this runner reports whichever platform it runs on, so the
+  // modifier is matched loosely). Base UI gives the popup no ARIA role on
+  // purpose — the button's own name is what a screen reader hears — so it
+  // is found by the slot the vendored component marks it with.
+  const tooltip = page.locator('[data-slot="tooltip-content"]');
+  await page.getByRole("button", { name: "Bold", exact: true }).hover();
+  await expect(tooltip).toHaveText(/^Bold(⌘|Ctrl\+)B$/);
+  await expect(
+    page.getByRole("button", { name: "Bold", exact: true }),
+  ).not.toHaveAttribute("aria-describedby", /.+/);
+  await page.getByLabel("Step content").hover();
+  await expect(tooltip).toHaveCount(0);
+
   // An image goes in at the top of the Step, above the heading.
   await page
     .getByLabel("Step content")
@@ -348,14 +366,18 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
 
   await page.getByRole("button", { name: "Image", exact: true }).click();
   const imageDialog = page.getByRole("dialog");
+  await expect(
+    imageDialog.getByText("Describe the image for people who cannot see it"),
+  ).toBeVisible();
   await imageDialog
     .getByLabel("Image URL")
     .fill("https://example.com/border.jpg");
 
-  // Refused before it ever reaches the Draft, and the row proves it.
+  // Alt text is required: refused before it ever reaches the Draft, and the
+  // row proves it.
   await imageDialog.getByRole("button", { name: "Insert image" }).click();
   await expect(
-    imageDialog.getByText("Every image needs a credit"),
+    imageDialog.getByText("Every image needs alt text"),
   ).toBeVisible();
 
   const withoutImage = await readDraft(journeyId);
@@ -366,23 +388,82 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
   ).not.toContain("image");
 
   await imageDialog
-    .getByLabel("Credit", { exact: true })
+    .getByLabel("Alt text", { exact: true })
+    .fill("A queue at a border post");
+  await imageDialog
+    .getByLabel("Caption (optional)")
     .fill("Photo: Ada Lovelace");
   await imageDialog.getByRole("button", { name: "Insert image" }).click();
   await expect(imageDialog).toBeHidden();
   await expectSaved(page);
 
-  // Stored as Tiptap JSON, credit and all.
+  // Stored as Tiptap JSON, alt and caption and all.
   const withImage = await readDraft(journeyId);
   const blocks = withImage.steps[withImage.startStepId].content.content;
   expect(blocks.find((block) => block.type === "image")).toEqual({
     type: "image",
     attrs: {
       src: "https://example.com/border.jpg",
-      credit: "Photo: Ada Lovelace",
-      alt: null,
+      alt: "A queue at a border post",
+      caption: "Photo: Ada Lovelace",
     },
   });
+
+  // Selecting the image shows the ring and the floating toolbar.
+  const figure = page.getByLabel("Step content").locator("figure");
+  await expect(figure.locator("figcaption")).toHaveText("Photo: Ada Lovelace");
+  await figure.locator("img").click();
+  await expect(figure).toHaveClass(/ProseMirror-selectednode/);
+  const imageTools = page.getByRole("toolbar", { name: "Image tools" });
+  await expect(
+    imageTools.getByRole("button", { name: "Remove" }),
+  ).toBeVisible();
+
+  await page.screenshot({
+    path: evidencePath(
+      "step-editing-image-caption-alt-and-preview",
+      "selected-image.png",
+    ),
+    fullPage: true,
+  });
+
+  // Editing rewrites the selected image's caption and alt in place.
+  await imageTools.getByRole("button", { name: "Edit image" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit image" });
+  await expect(editDialog.getByLabel("Image URL")).toHaveValue(
+    "https://example.com/border.jpg",
+  );
+  await expect(editDialog.getByLabel("Alt text", { exact: true })).toHaveValue(
+    "A queue at a border post",
+  );
+  await editDialog
+    .getByLabel("Alt text", { exact: true })
+    .fill("Travellers waiting at a border post");
+  await editDialog
+    .getByLabel("Caption (optional)")
+    .fill("Photo: Ada Lovelace, CC BY 4.0");
+  await editDialog.getByRole("button", { name: "Save image" }).click();
+  await expect(editDialog).toBeHidden();
+  await expect(figure.locator("figcaption")).toHaveText(
+    "Photo: Ada Lovelace, CC BY 4.0",
+  );
+  await expectSaved(page);
+
+  const edited = await readDraft(journeyId);
+  expect(
+    edited.steps[edited.startStepId].content.content.filter(
+      (block) => block.type === "image",
+    ),
+  ).toEqual([
+    {
+      type: "image",
+      attrs: {
+        src: "https://example.com/border.jpg",
+        alt: "Travellers waiting at a border post",
+        caption: "Photo: Ada Lovelace, CC BY 4.0",
+      },
+    },
+  ]);
 
   // The same content, read the way a participant reads it.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}/preview`);
@@ -394,7 +475,13 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
     "src",
     "https://example.com/border.jpg",
   );
-  await expect(page.locator("figcaption")).toHaveText("Photo: Ada Lovelace");
+  await expect(page.locator("figure img")).toHaveAttribute(
+    "alt",
+    "Travellers waiting at a border post",
+  );
+  await expect(page.locator("figcaption")).toHaveText(
+    "Photo: Ada Lovelace, CC BY 4.0",
+  );
   await expect(
     page.getByRole("heading", { name: "The queue", level: 2 }),
   ).toBeVisible();
@@ -404,11 +491,58 @@ test("step-editing-image-credit-and-preview", async ({ page, context }) => {
 
   await page.screenshot({
     path: evidencePath(
-      "step-editing-image-credit-and-preview",
-      "step-editing-image-credit-and-preview.png",
+      "step-editing-image-caption-alt-and-preview",
+      "step-editing-image-caption-alt-and-preview.png",
     ),
     fullPage: true,
   });
+
+  // Publish, and read alt and caption on the runner: the Published Version
+  // carries the new names from the start.
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  await expectSaved(page);
+  const publish = page.getByRole("button", { name: "Publish", exact: true });
+  await expect(publish).toBeEnabled();
+  await publish.click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  // A participant reads the Published Version anonymously.
+  const participant = await context.browser()!.newContext();
+  const runner = await participant.newPage();
+  await runner.goto(`${E2E_BASE_URL}/j/${journeyId}`);
+  await expect(runner.locator("figure img")).toHaveAttribute(
+    "alt",
+    "Travellers waiting at a border post",
+  );
+  await expect(runner.locator("figcaption")).toHaveText(
+    "Photo: Ada Lovelace, CC BY 4.0",
+  );
+  await runner.screenshot({
+    path: evidencePath(
+      "step-editing-image-caption-alt-and-preview",
+      "runner.png",
+    ),
+    fullPage: true,
+  });
+  await participant.close();
+
+  // Remove takes the image out of the Draft.
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  await page.getByLabel("Step content").locator("figure img").click();
+  await page
+    .getByRole("toolbar", { name: "Image tools" })
+    .getByRole("button", { name: "Remove" })
+    .click();
+  await expect(page.getByLabel("Step content").locator("figure")).toHaveCount(
+    0,
+  );
+  await expectSaved(page);
+  const removed = await readDraft(journeyId);
+  expect(
+    removed.steps[removed.startStepId].content.content.map(
+      (block) => block.type,
+    ),
+  ).not.toContain("image");
 });
 
 test("step-editing-choices-reorder-retarget", async ({ page, context }) => {

@@ -411,7 +411,7 @@ describe("prepareDocumentForWrite", () => {
     }
   });
 
-  it("refuses an uncredited image and names the Step holding it", () => {
+  it("keeps an image with neither alt text nor caption, filling both with empty strings", () => {
     const result = prepareDocumentForWrite({
       schemaVersion: 1,
       startStepId: "step-first",
@@ -419,31 +419,6 @@ describe("prepareDocumentForWrite", () => {
       steps: {
         "step-first": {
           id: "step-first",
-          title: "The gallery",
-          content: {
-            type: "doc",
-            content: [
-              {
-                type: "paragraph",
-                content: [{ type: "text", text: "Climb." }],
-              },
-            ],
-          },
-          choices: [
-            {
-              id: "choice-first-1",
-              label: "Look out",
-              targetStepId: "step-second",
-              condition: null,
-              effect: null,
-            },
-          ],
-          prompt: null,
-          outcomeId: null,
-          position: null,
-        },
-        "step-second": {
-          id: "step-second",
           title: "The lamp",
           content: {
             type: "doc",
@@ -463,11 +438,19 @@ describe("prepareDocumentForWrite", () => {
       outcomes: {},
     });
 
-    expect(result).toEqual({
-      ok: false,
-      error: "Every image needs a credit",
-      stepId: "step-second",
-    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.document.steps["step-first"].content.content).toEqual([
+        {
+          type: "image",
+          attrs: {
+            src: "https://example.test/images/lamp.jpg",
+            alt: "",
+            caption: "",
+          },
+        },
+      ]);
+    }
   });
 
   it("reports a broken envelope without ever reaching the sanitizer", () => {
@@ -487,7 +470,6 @@ describe("prepareDocumentForWrite", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toMatch(/startStepId/);
-      expect(result.error).not.toBe("Every image needs a credit");
       expect(result.stepId).toBeUndefined();
     }
   });

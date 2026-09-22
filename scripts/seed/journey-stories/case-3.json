@@ -22,8 +22,8 @@
             "type": "image",
             "attrs": {
               "src": "https://jumpernation.com/wp-content/uploads/2016/05/4607801339_ca63c2ae9b_o-759x500.jpg",
-              "credit": "Photo - Image by Steven Lilley, retrieved from: https://www.flickr.com/photos/sk8geek/4607801339/in/album-72157624061452030/ on March 17, 2024. Creative Commons License associated: CC BY-SA 2.0",
-              "alt": null
+              "caption": "Photo - Image by Steven Lilley, retrieved from: https://www.flickr.com/photos/sk8geek/4607801339/in/album-72157624061452030/ on March 17, 2024. Creative Commons License associated: CC BY-SA 2.0",
+              "alt": ""
             }
           }
         ]
@@ -396,8 +396,8 @@
             "type": "image",
             "attrs": {
               "src": "https://live.staticflickr.com/65535/49065345096_1646e391d6_b.jpg",
-              "credit": "Photo - Image by Ivan Radic, retrieved from: https://www.flickr.com/photos/26344495@N05/49065345096 on March 17, 2024. Creative Commons License associated: CC BY 2.0",
-              "alt": null
+              "caption": "Photo - Image by Ivan Radic, retrieved from: https://www.flickr.com/photos/26344495@N05/49065345096 on March 17, 2024. Creative Commons License associated: CC BY 2.0",
+              "alt": ""
             }
           }
         ]
@@ -486,8 +486,8 @@
             "type": "image",
             "attrs": {
               "src": "https://live.staticflickr.com/2853/11058888783_26b9144071_b.jpg",
-              "credit": "Photo - Image by Phillip Pessar, retrieved from: https://www.flickr.com/photos/southbeachcars/11058888783 on March 17, 2024. Creative Commons License associated:CC BY 2.0",
-              "alt": null
+              "caption": "Photo - Image by Phillip Pessar, retrieved from: https://www.flickr.com/photos/southbeachcars/11058888783 on March 17, 2024. Creative Commons License associated:CC BY 2.0",
+              "alt": ""
             }
           }
         ]
@@ -607,8 +607,8 @@
             "type": "image",
             "attrs": {
               "src": "https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vi\u00632l0ZS8yMDIzLTAzL2ZsNTEwNjYxODUx\u004fTYtaW1hZ2UuanBn.jpg",
-              "credit": "Photo - Image by Jaime Rodriguez Sr, retrieved from: https://www.rawpixel.com/image/8726438/photo-image-public-domain-person-2021 on March 17, 2024. Imageis in the public domain.",
-              "alt": null
+              "caption": "Photo - Image by Jaime Rodriguez Sr, retrieved from: https://www.rawpixel.com/image/8726438/photo-image-public-domain-person-2021 on March 17, 2024. Imageis in the public domain.",
+              "alt": ""
             }
           }
         ]
@@ -1680,8 +1680,8 @@
             "type": "image",
             "attrs": {
               "src": "https://images.pexels.com/photos/13106979/pexels-photo-13106979.jpeg",
-              "credit": "Photo - Image by Tom Fisk, retrieved from: https://www.pexels.com/photo/woman-and-man-taking-care-of-a-horse-in-a-stable-13106979/ on March 17, 2024. Image is in the public domain.",
-              "alt": null
+              "caption": "Photo - Image by Tom Fisk, retrieved from: https://www.pexels.com/photo/woman-and-man-taking-care-of-a-horse-in-a-stable-13106979/ on March 17, 2024. Image is in the public domain.",
+              "alt": ""
             }
           }
         ]
