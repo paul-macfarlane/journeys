@@ -25,13 +25,15 @@ import type { SwitcherProject } from "@/lib/navbar";
  */
 export function ProjectSwitcher({
   projects,
-  currentId,
-  label,
+  current,
 }: {
   projects: readonly SwitcherProject[];
-  currentId: string | null;
-  label: string;
+  /** The page's own Project, or null outside one. */
+  current: SwitcherProject | null;
 }) {
+  const label = current?.title ?? "Projects";
+  const currentId = current?.id ?? null;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger

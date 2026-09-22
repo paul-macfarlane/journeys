@@ -21,8 +21,12 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { initials } from "@/lib/navbar";
 
-/** The three answers next-themes accepts; "system" follows the OS. */
-const THEMES = ["light", "dark", "system"] as const;
+/** The three answers next-themes accepts, "system" following the OS. */
+const THEMES = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+] as const;
 
 /**
  * The navbar's account menu: the Author's avatar (their initials when the
@@ -109,9 +113,11 @@ function ThemeChoices() {
         if (typeof value === "string") setTheme(value);
       }}
     >
-      {THEMES.map((value) => (
-        <DropdownMenuRadioItem key={value} value={value} className="capitalize">
-          {value}
+      {THEMES.map(({ value, label }) => (
+        // closeOnClick: a radio item keeps the menu open by default, but a
+        // theme is chosen once, like every other entry here.
+        <DropdownMenuRadioItem key={value} value={value} closeOnClick>
+          {label}
         </DropdownMenuRadioItem>
       ))}
     </DropdownMenuRadioGroup>

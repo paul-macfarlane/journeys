@@ -64,12 +64,14 @@ test("signing out from the user menu lands on sign-in, and /projects redirects a
   await page.getByRole("menuitem", { name: "Sign out" }).click();
 
   await expect(page).toHaveURL(`${E2E_BASE_URL}/sign-in`);
-
-  await page.goto("/projects");
-  await expect(page).toHaveURL(`${E2E_BASE_URL}/`);
-
+  await expect(
+    page.getByRole("heading", { name: "Sign in", level: 1 }),
+  ).toBeVisible();
   await page.screenshot({
     path: evidencePath("sign-out", "sign-out.png"),
     fullPage: true,
   });
+
+  await page.goto("/projects");
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/`);
 });

@@ -48,8 +48,7 @@ export async function AppNavbar({ projectId }: { projectId?: string }) {
           </Link>
           <ProjectSwitcher
             projects={switcherProjects(recent, currentProject)}
-            currentId={currentProject?.id ?? null}
-            label={currentProject?.title ?? "Projects"}
+            current={currentProject}
           />
         </nav>
         <UserMenu
