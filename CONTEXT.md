@@ -45,7 +45,7 @@ _Avoid_: Result, ending type, category
 ## Publishing
 
 **Canvas**:
-The editor's map of a draft: every step drawn as a box, every choice as an arrow between boxes, laid out automatically and never by hand. Clicking a box opens that step in the panel.
+The editor's map of a draft: every step drawn as a box, every choice as an arrow between boxes, laid out automatically and never by hand, top to bottom or left to right — a choice stored on the draft and shared by the project's members. Clicking a box opens that step in the panel, which can be hidden to give the map the whole width; hiding it is remembered per browser, never on the journey.
 _Avoid_: Graph view, diagram, board, flowchart
 
 **Draft**:

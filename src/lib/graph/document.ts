@@ -47,6 +47,13 @@ export const outcomeSchema = z.object({
 });
 
 /**
+ * How the Canvas lays a Journey's map out: top to bottom or left to right.
+ * `"RL"` and any other value are refused — only these two are drawable today.
+ */
+export const layoutDirectionSchema = z.enum(["TB", "LR"]);
+export type LayoutDirection = z.infer<typeof layoutDirectionSchema>;
+
+/**
  * Everything about a Step except how strictly its rich text is read. The
  * write path reads content loosely so it can sanitize before storing; every
  * other caller reads it strictly.
@@ -106,6 +113,13 @@ function checkKeysMatchIds(
 /**
  * The envelope around whichever Step schema is in play, so the strict shape
  * and the write path's loose shape agree on everything but rich text.
+ *
+ * `layoutDirection` is a property of the Journey, not of any one Author: its
+ * Members share one view of the map and may switch it back and forth freely.
+ * It lives in the Draft document and autosaves with every other edit, last
+ * write wins; publishing copies it into the Published Version with the rest
+ * of the document. Nothing reads it at run time — it only ever steers
+ * `layoutGraph`. Step positions are still never stored here.
  */
 function graphDocumentSchemaWith<S extends z.ZodType<Addressed>>(step: S) {
   return z
@@ -115,6 +129,7 @@ function graphDocumentSchemaWith<S extends z.ZodType<Addressed>>(step: S) {
       allowBack: z.boolean().default(true),
       steps: z.record(idSchema, step),
       outcomes: z.record(idSchema, outcomeSchema),
+      layoutDirection: layoutDirectionSchema.default("TB"),
     })
     .superRefine(checkKeysMatchIds);
 }
@@ -258,6 +273,7 @@ export function createDraftDocument(): GraphDocument {
       },
     },
     outcomes: {},
+    layoutDirection: "TB",
   };
 }
 

@@ -1,4 +1,9 @@
-import type { Choice, GraphDocument, Step } from "@/lib/graph/document";
+import type {
+  Choice,
+  GraphDocument,
+  LayoutDirection,
+  Step,
+} from "@/lib/graph/document";
 import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
 
 // The panel names Steps with the same rule validation does; re-exported so
@@ -114,6 +119,18 @@ export function updateStep(
     ...document,
     steps: { ...document.steps, [stepId]: { ...step, ...patch } },
   };
+}
+
+/** Sets the Journey's layout direction, the same object back when it is already set. */
+export function setLayoutDirection(
+  document: GraphDocument,
+  direction: LayoutDirection,
+): GraphDocument {
+  if (document.layoutDirection === direction) {
+    return document;
+  }
+
+  return { ...document, layoutDirection: direction };
 }
 
 /** Points `startStepId` at another existing Step. */

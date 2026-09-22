@@ -1,7 +1,7 @@
 # 17: Manual layout
 
 Status: ready-for-agent
-Blocked by: 16, 21
+Blocked by: 16, 21, 22
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: last of the graph tidy-up series (18 → 16 → 19 → 21 → 17).

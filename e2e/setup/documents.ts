@@ -95,6 +95,7 @@ export function publishableDocument(): GraphDocument {
     allowBack: true,
     steps: Object.fromEntries(steps.map((item) => [item.id, item])),
     outcomes: Object.fromEntries(outcomes.map((item) => [item.id, item])),
+    layoutDirection: "TB",
   };
 }
 
@@ -158,6 +159,7 @@ export function runnerDocument(): GraphDocument {
     allowBack: true,
     steps: Object.fromEntries(steps.map((item) => [item.id, item])),
     outcomes: Object.fromEntries(outcomes.map((item) => [item.id, item])),
+    layoutDirection: "TB",
   };
 }
 
@@ -205,6 +207,7 @@ export function loopDocument(): GraphDocument {
     allowBack: true,
     steps: Object.fromEntries(steps.map((item) => [item.id, item])),
     outcomes: Object.fromEntries(outcomes.map((item) => [item.id, item])),
+    layoutDirection: "TB",
   };
 }
 
@@ -250,6 +253,7 @@ export function dimmingDocument(): GraphDocument {
     outcomes: {
       "reached-care": { id: "reached-care", label: "Reached care" },
     },
+    layoutDirection: "TB",
   };
 }
 

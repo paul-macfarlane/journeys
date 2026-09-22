@@ -38,10 +38,11 @@ Each Draft and each Published Version stores its whole graph as one `jsonb`
 document.
 
 - The shape is owned by `src/lib/graph/document.ts`: `schemaVersion`,
-  `startStepId`, `allowBack`, `steps` keyed by Step id, and `outcomes` keyed by
-  Outcome id. A Step carries its title, its rich text, its ordered Choices, an
-  optional Prompt, an Outcome id when it is an Ending, and a reserved canvas
-  position.
+  `startStepId`, `allowBack`, `layoutDirection` — which way round the editor
+  draws the map, whose zod default keeps every document stored before it
+  parseable — `steps` keyed by Step id, and `outcomes` keyed by Outcome id. A
+  Step carries its title, its rich text, its ordered Choices, an optional
+  Prompt, an Outcome id when it is an Ending, and a reserved canvas position.
 - **Structural validation runs at every write.** Every document that arrives
   from outside enters storage through `graphDocumentSchema`; the two writes the
   application makes on its own — a new Journey's Draft and migration 0002's

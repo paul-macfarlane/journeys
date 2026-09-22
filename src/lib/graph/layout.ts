@@ -1,7 +1,11 @@
 import dagre from "@dagrejs/dagre";
 
 import type { Point } from "@/lib/graph/crossings";
-import type { GraphDocument, Step } from "@/lib/graph/document";
+import type {
+  GraphDocument,
+  LayoutDirection,
+  Step,
+} from "@/lib/graph/document";
 import { hasStep, isEnding, stepName } from "@/lib/graph/document";
 import type { PublishProblem } from "@/lib/graph/validate";
 
@@ -25,9 +29,10 @@ import type { PublishProblem } from "@/lib/graph/validate";
  * routed `points` dagre produced for that Choice, read back with
  * `graph.edge({ v, w, name })`, in the same coordinate space as the node
  * positions. Each Step `CanvasNode` carries `sourceAnchors`: its Choice ids
- * ordered by the x position of the box each Choice leads to, so the canvas
- * can spread the anchors along the bottom of the box in the direction the
- * arrows actually travel, cutting down on crossing arrows.
+ * ordered by the centre of the box each Choice leads to along the cross axis
+ * — x in `"TB"`, y in `"LR"` — so the canvas can spread the anchors along the
+ * side of the box that faces the direction the arrows actually travel,
+ * cutting down on crossing arrows.
  *
  * dagre's own multigraph order phase throws ("Not possible to find
  * intersection inside of the rectangle") when three or more parallel edges
@@ -63,11 +68,11 @@ export type CanvasNode = {
   outcomeId: string | null;
   outcomeIndex: number | null;
   /**
-   * For a `step` node, its Choice ids ordered by the x position (center) of
-   * the box each Choice targets — the Step itself, or the `missing:`
-   * placeholder when the target Step no longer exists — ties broken by
-   * Choice order. A self-loop Choice sorts by the node's own center x.
-   * Always `[]` for a `missing` node.
+   * For a `step` node, its Choice ids ordered by the centre of the box each
+   * Choice targets along the cross axis — x in `"TB"`, y in `"LR"` — the Step
+   * itself, or the `missing:` placeholder when the target Step no longer
+   * exists — ties broken by Choice order. A self-loop Choice sorts by the
+   * node's own centre on that axis. Always `[]` for a `missing` node.
    */
   sourceAnchors: string[];
 };
@@ -87,10 +92,19 @@ export type CanvasEdge = {
   points: Point[];
 };
 
-/** Everything one document lays out to: the boxes and the arrows between them. */
+/**
+ * Everything one document lays out to: the boxes, the arrows between them,
+ * and which way round they were laid out.
+ */
 export type GraphLayout = {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
+  /**
+   * The document's own `layoutDirection`, carried through so the canvas draws
+   * every handle and every loop from the layout it was handed rather than
+   * reading the document a second time and risking a different answer.
+   */
+  direction: LayoutDirection;
 };
 
 function missingNodeId(targetStepId: string): string {
@@ -233,7 +247,7 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
 
   const graph = new dagre.graphlib.Graph({ multigraph: true });
   graph.setGraph({
-    rankdir: "TB",
+    rankdir: document.layoutDirection,
     nodesep: 32,
     ranksep: 96,
     marginx: 16,
@@ -269,8 +283,16 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
     };
   });
 
-  const centerXById = new Map<string, number>(
-    positioned.map((node) => [node.id, node.x + node.width / 2]),
+  // The cross axis `sourceAnchors` orders targets along: x in "TB" (arrows
+  // travel top to bottom, spread left to right), y in "LR" (arrows travel
+  // left to right, spread top to bottom).
+  const crossAxisCenterById = new Map<string, number>(
+    positioned.map((node) => [
+      node.id,
+      document.layoutDirection === "LR"
+        ? node.y + node.height / 2
+        : node.x + node.width / 2,
+    ]),
   );
 
   const lastRoutedPointsByPair = new Map<string, Point[]>();
@@ -309,15 +331,21 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
         return {
           choiceId: choiceEntry.id,
           index,
-          targetX: centerXById.get(targetId) ?? 0,
+          targetCrossAxis: crossAxisCenterById.get(targetId) ?? 0,
         };
       })
-      .sort((a, b) => a.targetX - b.targetX || a.index - b.index)
+      .sort(
+        (a, b) => a.targetCrossAxis - b.targetCrossAxis || a.index - b.index,
+      )
       .map((entry) => entry.choiceId);
     return { ...node, sourceAnchors };
   });
 
-  return { nodes: withAnchors, edges: routedEdges };
+  return {
+    nodes: withAnchors,
+    edges: routedEdges,
+    direction: document.layoutDirection,
+  };
 }
 
 /**

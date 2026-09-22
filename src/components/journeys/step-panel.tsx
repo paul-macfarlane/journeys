@@ -21,6 +21,11 @@ import { cn } from "@/lib/utils";
  * Ending, and the two moves that change the shape of the Journey around it —
  * making it the Start and deleting it. The title field is the Step's name on
  * this panel; there is no heading repeating it above.
+ *
+ * The panel can be put away, from the button above the title field, to give
+ * the map the whole width; the map itself brings it back. Whether it is away
+ * is the editor's to hold — the panel is simply not rendered while it is —
+ * and the browser's to remember, never the Journey's.
  */
 
 /**
@@ -87,6 +92,7 @@ export function StepPanel({
   onContentRefused,
   onDeleteStep,
   onDuplicateStep,
+  onHidePanel,
 }: {
   document: GraphDocument;
   step: Step;
@@ -108,6 +114,8 @@ export function StepPanel({
   onContentRefused: (error: string) => void;
   onDeleteStep: (stepId: string) => void;
   onDuplicateStep: (stepId: string) => void;
+  /** The panel put away, leaving the map the whole width. */
+  onHidePanel: () => void;
 }) {
   const isStart = document.startStepId === step.id;
 
@@ -116,6 +124,14 @@ export function StepPanel({
       aria-label="Step"
       className="flex flex-col gap-4 rounded-xl px-4 py-4 ring-1 ring-foreground/10"
     >
+      {/* Above the title field and out of the way at the panel's edge: a
+          thing done to the panel rather than to the Step it is showing. */}
+      <div className="flex justify-end">
+        <Button variant="ghost" size="sm" onClick={onHidePanel}>
+          Hide panel
+        </Button>
+      </div>
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="step-title">Step title</Label>
         {/* Keyed by Step so a just-created Step's field mounts fresh and
