@@ -96,8 +96,12 @@ Leave `ANTHROPIC_API_KEY` empty to hide the AI authoring features.
   they belong to and in a live count above the map, and the "Find step" field
   above the map — reached with Cmd/Ctrl+K from anywhere on the page — filters
   the steps by title as they are typed, lists every one of them in the map's
-  own order when nothing is, and centers the map on whichever is chosen. The
-  draft autosaves. Publish the draft as an immutable version (refused, with
+  own order when nothing is, and centers the map on whichever is chosen.
+  There is one undo and redo over the whole draft — a drawn choice, a
+  retarget, a delete, a direction switch, a step's typing — taken from the two
+  buttons beside "Add step" or with Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (Ctrl+Y)
+  from anywhere on the page, with typing undone a field at a time rather than
+  a letter at a time. The draft autosaves. Publish the draft as an immutable version (refused, with
   the problems listed, while the draft has any), unpublish to take it back
   from participants, preview it, and see every published version — number,
   when, and who published it — with the live one marked and any of them

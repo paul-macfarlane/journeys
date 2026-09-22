@@ -3,7 +3,11 @@ import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { ChoiceList } from "@/components/journeys/choice-list";
 import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
-import { counted, type SelectStep } from "@/components/journeys/editor-shared";
+import {
+  counted,
+  type ApplyEdit,
+  type SelectStep,
+} from "@/components/journeys/editor-shared";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +60,7 @@ function OutcomeField({
 }: {
   document: GraphDocument;
   step: Step;
-  onChange: (document: GraphDocument) => void;
+  onChange: ApplyEdit;
 }) {
   const labelFieldId = useId();
 
@@ -141,7 +145,11 @@ function OutcomeField({
     setRenaming(null);
     if (label.length === 0) return;
 
-    onChange(renameOutcome(document, outcome.id, label));
+    // Named as the Outcome's own field: a rename committed, thought better
+    // of, and committed again within the moment is one thing to undo.
+    onChange(renameOutcome(document, outcome.id, label), {
+      field: `outcome-label:${outcome.id}`,
+    });
   }
 
   if (renaming !== null && outcome !== null) {
@@ -239,7 +247,7 @@ export function StepPanel({
   focusTitle: boolean;
   /** A Choice on this Step that is the one in hand on the map, if any. */
   markedChoiceId: string | null;
-  onChange: (document: GraphDocument) => void;
+  onChange: ApplyEdit;
   onSelectStep: SelectStep;
   onContentChange: (stepId: string, content: Content) => void;
   onContentRefused: (error: string) => void;
@@ -274,9 +282,12 @@ export function StepPanel({
           autoFocus={focusTitle}
           maxLength={200}
           value={step.title}
+          // Named as the field it is, so a title typed in one go comes back
+          // in one undo rather than a letter at a time.
           onChange={(event) =>
             onChange(
               updateStep(document, step.id, { title: event.target.value }),
+              { field: `title:${step.id}` },
             )
           }
         />
@@ -302,9 +313,12 @@ export function StepPanel({
         </section>
       ) : null}
 
+      {/* No undo of its own: the Draft keeps one over the whole document,
+          and Cmd/Ctrl+Z in here belongs to that one. */}
       <RichTextEditor
         resetKey={`${step.id}:${revision}`}
         content={step.content}
+        history={false}
         onChange={(content) => onContentChange(step.id, content)}
         onRefused={onContentRefused}
       />

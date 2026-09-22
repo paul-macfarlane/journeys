@@ -98,3 +98,20 @@ export const editorExtensions = [
   StarterKit.configure({ ...sharedStarterKitOptions }),
   CaptionedImage,
 ];
+
+/**
+ * What the Draft editor's own surface produces rich text with (ticket 23):
+ * `editorExtensions` with Tiptap's undo/redo switched off, because the Draft
+ * keeps one history over the whole document and a surface holding a second
+ * one would take back its own last keystroke while the rest of the Draft
+ * stood still. With it off, Cmd/Ctrl+Z inside the surface reaches the page's
+ * listener like any other press.
+ *
+ * The Project description (ticket 07) keeps `editorExtensions`: its page has
+ * no document history for the surface to join, so Tiptap's own is the undo
+ * there is.
+ */
+export const draftEditorExtensions = [
+  StarterKit.configure({ ...sharedStarterKitOptions, undoRedo: false }),
+  CaptionedImage,
+];
