@@ -107,6 +107,7 @@ function ThemeChoices() {
 
   return (
     <DropdownMenuRadioGroup
+      aria-label="Theme"
       value={theme ?? "system"}
       onValueChange={(value) => {
         if (typeof value === "string") setTheme(value);
