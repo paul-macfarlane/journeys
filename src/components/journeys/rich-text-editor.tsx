@@ -214,9 +214,20 @@ export function RichTextEditor({
 
   // Only a change of `resetKey` replaces what is in the editor, and it does
   // so without reporting an update: this is the Draft speaking, not the
-  // Author.
+  // Author. The editor is created with `content` already in it, so the run
+  // of this effect that its creation triggers has nothing to feed — and a
+  // `setContent` there would replace the document and drop whatever the
+  // Author had already selected in the moments after the page loaded.
+  const creationResetKey = useRef(resetKey);
+  const appliedResetKey = useRef<string | null>(null);
   useEffect(() => {
-    editor?.commands.setContent(contentRef.current, { emitUpdate: false });
+    if (!editor) return;
+    if (appliedResetKey.current === null) {
+      appliedResetKey.current = creationResetKey.current;
+    }
+    if (appliedResetKey.current === resetKey) return;
+    appliedResetKey.current = resetKey;
+    editor.commands.setContent(contentRef.current, { emitUpdate: false });
   }, [editor, resetKey]);
 
   const active = useEditorState({
