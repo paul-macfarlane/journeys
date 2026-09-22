@@ -2,7 +2,7 @@
 // through its Drizzle adapter — column names and types are the adapter's
 // contract, not ours, so nothing there is extended. Journeys' own domain
 // tables follow, each landing with its ticket; Project, Member, Journey,
-// Draft, Published Version, and Run are here, and Response follows later.
+// Draft, Published Version, Run, and Response are here.
 
 import {
   boolean,
@@ -288,4 +288,37 @@ export const run = pgTable(
   },
   // Ticket 10's per-version analytics read every Run of a version.
   (table) => [index("run_version_id_idx").on(table.versionId)],
+);
+
+// A Response: one Participant's answer to a Step's Prompt within one Run.
+// Keyed by Run and Step (spec: "stored in its own table keyed by Run and
+// step id"), so a Participant who backtracks to a Step and answers again
+// replaces what they wrote rather than leaving two answers to one question,
+// and a revisit can show them their own words. `step_id` names a Step inside
+// the Run's pinned Published Version, not a foreign key — Steps live inside
+// the document (see ADR-0001). A Run's Prompt-less Steps have no row here:
+// skipping an optional Prompt writes nothing.
+//
+// Rides on the Run for authorization the way the Run rides on its cookie:
+// the runner's action writes a Response only for the Run its cookie names,
+// and Members read Responses through the Journey their Project owns. There is
+// no participant column — the Run already carries the pseudonymous id, and a
+// Response list for Members must never show one. Cascades with the Run, so
+// deleting a Journey or a Project takes every Response with it.
+export const response = pgTable(
+  "response",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => run.id, { onDelete: "cascade" }),
+    stepId: text("step_id").notNull(),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.runId, table.stepId] })],
 );

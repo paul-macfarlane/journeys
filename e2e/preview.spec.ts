@@ -98,7 +98,8 @@ test("preview", async ({ page, context }) => {
   // both are checked, and either would fail the moment Preview recorded a
   // walk. (Counting `run` rows would prove nothing here: with no Published
   // Version this Journey cannot own a Run, and the suite runs in parallel.)
-  // Responses are ticket 12's and have no table yet.
+  // Responses (ticket 12) hang off Runs, so a Journey with no Run can
+  // have none; the join below proves it against the rows, not the table.
   const versionRows = await queryE2eDatabase(
     'SELECT id FROM "published_version" WHERE journey_id = $1',
     [journeyId],
@@ -110,10 +111,14 @@ test("preview", async ({ page, context }) => {
   );
   expect(runCookies).toHaveLength(0);
 
-  const responseTable = await queryE2eDatabase(
-    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'response'",
+  const responseRows = await queryE2eDatabase(
+    `SELECT r.run_id FROM "response" r
+     JOIN "run" ON "run".id = r.run_id
+     JOIN "published_version" v ON v.id = "run".version_id
+     WHERE v.journey_id = $1`,
+    [journeyId],
   );
-  expect(responseTable).toHaveLength(0);
+  expect(responseRows).toHaveLength(0);
 });
 
 test("preview-non-member", async ({ page, context, browser }) => {

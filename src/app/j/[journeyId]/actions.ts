@@ -3,9 +3,17 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { createRun, getPublicJourney } from "@/db/runs";
+import { deleteResponse, saveResponse } from "@/db/responses";
+import {
+  createRun,
+  getPublicJourney,
+  getRunForJourney,
+  saveRunState,
+} from "@/db/runs";
 import { beginRun } from "@/lib/graph/begin";
-import { currentStepId } from "@/lib/graph/run";
+import { hasStep } from "@/lib/graph/document";
+import { readResponse, refusalNotice } from "@/lib/graph/prompt";
+import { currentStepId, navigateTo } from "@/lib/graph/run";
 import {
   PARTICIPANT_COOKIE,
   participantCookieOptions,
@@ -15,13 +23,19 @@ import {
 } from "@/lib/run-cookies";
 
 /**
- * The two server actions the participant runner has, and the only place in
- * the app that writes a cookie: a page render may read one, never set one.
+ * The participant runner's server actions, and the only place in the app
+ * that writes a cookie: a page render may read one, never set one.
  *
  * A Run is created when a Participant takes their first Choice (ticket 27),
  * not when they open the Journey — a Run created on page load would count
  * every prefetch and crawler as a start. So `/j/{journey-id}` shows the
  * Start Step, and its Choices post here.
+ *
+ * A Step with a Prompt (ticket 12) posts here too, from any Step: the answer
+ * travels in the form's `response` field beside the chosen Step's `to`, and
+ * is read by `readResponse` — the one rule about when an answer is required
+ * — before anything is written. A refused answer sends the Participant back
+ * to the Step with a `?notice=` naming why, and moves nothing.
  */
 
 /**
@@ -52,6 +66,14 @@ export async function chooseFromStartAction(
   // stay: nothing is recorded, and the Start is shown again.
   if (begun.kind === "refused") redirect(`/j/${journeyId}`);
 
+  // The Start Step's Prompt, answered with this first Choice. The browser's
+  // own `required` check has already asked once; this is for a request that
+  // did not go through it.
+  const startStep = journey.document.steps[journey.document.startStepId];
+  const reading = readResponse(startStep, formData.get("response"));
+  const refused = refusalNotice(reading);
+  if (refused) redirect(`/j/${journeyId}?notice=${refused}`);
+
   const cookieStore = await cookies();
 
   // Pseudonymous and shared across the Journeys this browser walks, so the
@@ -71,6 +93,10 @@ export async function chooseFromStartAction(
     versionId: journey.versionId,
     participantId,
     state: begun.state,
+    response:
+      reading.kind === "answered"
+        ? { stepId: startStep.id, text: reading.text }
+        : undefined,
   });
 
   // The new Run's id replaces whatever this Journey's cookie held.
@@ -98,4 +124,76 @@ export async function startOverAction(journeyId: string): Promise<void> {
   });
 
   redirect(`/j/${journeyId}`);
+}
+
+/**
+ * A Choice taken from a Step with a Prompt, or a Response saved on an Ending
+ * with one: the form on `/j/{journey-id}/{step-id}` posts here with the
+ * answer in `response` and, on a Step with Choices, the chosen Step in `to`.
+ * Without a Run cookie, or with one naming another Journey's Run, there is
+ * nothing to answer for and the Participant goes to the Start.
+ *
+ * The answer is read first and refused first: a required Prompt left blank
+ * moves nothing, and neither does an answer over the cap. An answer is saved
+ * against `stepId` — the Step the form was on — before the move, so a move
+ * the reducer refuses still keeps what was written; an optional Prompt left
+ * blank on a Step already answered takes that answer back, since the box
+ * showed it and the Participant emptied it. The move itself is the same
+ * `navigateTo` the step page applies to a link, without the path index a
+ * Back carries: a form is a Choice, never a Back, and the page it was on has
+ * already been read as current by the time it renders. Landing is a redirect
+ * to the chosen Step's own URL, which the step page reads as a stay: nothing
+ * is recorded twice.
+ */
+export async function respondAndChooseAction(
+  journeyId: string,
+  stepId: string,
+  formData: FormData,
+): Promise<void> {
+  const cookieStore = await cookies();
+  const runId = cookieStore.get(runCookieName(journeyId))?.value;
+  if (!runId) redirect(`/j/${journeyId}`);
+
+  const found = await getRunForJourney(runId, journeyId);
+  if (!found) redirect(`/j/${journeyId}`);
+
+  const { run, version } = found;
+  // A Step this version does not have: a stale form. Back to where the Run
+  // stands, which is where the step page would send a link to it too.
+  if (!hasStep(version.document, stepId)) {
+    redirect(`/j/${journeyId}/${currentStepId(run)}`);
+  }
+
+  const here = `/j/${journeyId}/${stepId}`;
+  const step = version.document.steps[stepId];
+  const reading = readResponse(step, formData.get("response"));
+  const refused = refusalNotice(reading);
+  if (refused) redirect(`${here}?notice=${refused}`);
+  if (reading.kind === "answered") {
+    await saveResponse(run.id, stepId, reading.text);
+  } else if (step.prompt !== null) {
+    await deleteResponse(run.id, stepId);
+  }
+
+  const to = formData.get("to");
+  if (typeof to !== "string") {
+    // An Ending's "Save response": there is nothing to move to, and the
+    // Participant is told what happened where they stand.
+    redirect(
+      `${here}?notice=${reading.kind === "answered" ? "response-saved" : "response-cleared"}`,
+    );
+  }
+
+  const moved = navigateTo(version.document, run, to, new Date());
+  if (moved.kind === "refused") {
+    const where = `/j/${journeyId}/${moved.currentStepId}`;
+    redirect(
+      moved.reason === "path-full" ? `${where}?notice=path-full` : where,
+    );
+  }
+  if (moved.kind === "moved") {
+    await saveRunState(run.id, moved.state);
+  }
+
+  redirect(`/j/${journeyId}/${to}`);
 }

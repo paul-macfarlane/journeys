@@ -20,16 +20,17 @@ import {
   renameOutcome,
   setEndingOutcome,
   setStart,
+  setStepPrompt,
   updateStep,
 } from "@/lib/graph/edit";
 import type { PublishProblem } from "@/lib/graph/validate";
 
 /**
- * One Step, opened for editing: its title, its rich text, its Choices, the
- * Outcome it carries once it is an Ending, and the two moves that change the
- * shape of the Journey around it — making it the Start and deleting it. The
- * title field is the Step's name on this panel; there is no heading repeating
- * it above.
+ * One Step, opened for editing: its title, its rich text, its Prompt, its
+ * Choices, the Outcome it carries once it is an Ending, and the two moves
+ * that change the shape of the Journey around it — making it the Start and
+ * deleting it. The title field is the Step's name on this panel; there is no
+ * heading repeating it above.
  *
  * The panel can be put away, from the button above the title field, to give
  * the map the whole width; the map itself brings it back. Whether it is away
@@ -216,6 +217,78 @@ function OutcomeField({
   );
 }
 
+/**
+ * The Prompt a Step asks before its Choices, edited where it sits between
+ * the rich text and the Choices — the order a Participant meets them in.
+ * The one field is the question: writing one attaches a Prompt, and
+ * blanking it takes the Prompt away, so there is no "Add prompt" to find.
+ * "Required" is offered only while there is a Prompt to require. The notice
+ * is always there, because it is about the Author's question, not the
+ * Participant's answer: Responses are anonymous, and an Author who asks for
+ * a name has collected something the app promised never to hold.
+ */
+function PromptField({
+  document,
+  step,
+  onChange,
+}: {
+  document: GraphDocument;
+  step: Step;
+  onChange: ApplyEdit;
+}) {
+  const labelFieldId = useId();
+  const requiredFieldId = useId();
+  const required = step.prompt?.required ?? false;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={labelFieldId}>Prompt</Label>
+      <Input
+        id={labelFieldId}
+        autoComplete="off"
+        placeholder="Something participants respond to before choosing"
+        value={step.prompt?.label ?? ""}
+        // Named as the field it is, like the title: a question typed in one
+        // go comes back in one undo.
+        onChange={(event) =>
+          onChange(
+            setStepPrompt(document, step.id, {
+              label: event.target.value,
+              required,
+            }),
+            { field: `prompt-label:${step.id}` },
+          )
+        }
+      />
+      <p className="text-muted-foreground text-xs">
+        Responses are anonymous. Don&apos;t ask for a name or anything else that
+        could identify a participant.
+      </p>
+      {step.prompt !== null ? (
+        <div className="flex items-center gap-2">
+          <input
+            id={requiredFieldId}
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={required}
+            onChange={(event) =>
+              onChange(
+                setStepPrompt(document, step.id, {
+                  label: step.prompt?.label ?? "",
+                  required: event.target.checked,
+                }),
+              )
+            }
+          />
+          <Label htmlFor={requiredFieldId} className="font-normal">
+            Required — participants must answer before choosing
+          </Label>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function StepPanel({
   document,
   step,
@@ -322,6 +395,9 @@ export function StepPanel({
         onChange={(content) => onContentChange(step.id, content)}
         onRefused={onContentRefused}
       />
+
+      {/* Between the text and the Choices, where a Participant meets it. */}
+      <PromptField document={document} step={step} onChange={onChange} />
 
       {/* Keyed by Step: the half-typed Choice and the open confirmation
           belong to the Step they were started on, not to the next one. The

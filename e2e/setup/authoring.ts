@@ -126,7 +126,8 @@ export async function tagWithOutcome(page: Page, label: string): Promise<void> {
  */
 export async function openTab(
   page: Page,
-  name: "Editor" | "Versions" | "Journeys" | "Members" | "Settings",
+  name:
+    "Editor" | "Versions" | "Responses" | "Journeys" | "Members" | "Settings",
 ): Promise<void> {
   const tab = page.getByRole("tab", { name, exact: true });
   await tab.click();

@@ -101,6 +101,21 @@ async function startJourney(
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
 
+  // Chrome's scroll anchoring, off for every page this context opens. A
+  // full-page screenshot resizes the viewport to the page's whole height and
+  // back, and Chrome keeps the anchor it chose while the viewport was tall;
+  // the next layout change on the map — a box's peek mounting as the pointer
+  // reaches it — then makes Chrome "restore" that stale offset, and the page
+  // scrolls out from under a click that had already been aimed. No Author's
+  // viewport is ever resized like that, so this is the screenshot's artifact
+  // to remove, not the app's to guard against. (Found by ticket 12, whose
+  // taller panel moved this page's anchor into the live problems list.)
+  await context.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      document.documentElement.style.overflowAnchor = "none";
+    });
+  });
+
   const suffix = uniqueSuffix();
   await page.goto("/projects");
   const projectId = await createProject(page, `Refugee Health ${suffix}`);
