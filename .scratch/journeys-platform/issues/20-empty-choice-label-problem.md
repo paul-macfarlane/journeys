@@ -37,3 +37,11 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 
 **Risk noted up front:** every existing canvas spec that draws a Choice types its label before asserting "No problems", so the new rule breaks none of them; confirmed by reading each `connectByDragging` and "Add next step" call site.
 
+### [AI CODE REVIEW] 2026-09-22 — two-axis review of `eb0c258..db62b63`, fixes in `c3f2793`
+
+Two fresh readers (opus, `/code-review`: standards and spec) read the whole diff against the ticket, `CLAUDE.md`, `CONTEXT.md`, `docs/agents/testing.md`, and the code the "no further change" claim rests on (`problemsByAddress`, `draft-editor.tsx`, `choice-list.tsx`, `journey-canvas.tsx`, `versions.ts`, the runner's Step view). **No blocking finding on either axis.**
+
+**Standards** (1 hard, 4 judgement calls): evidence not yet committed at review time (expected; committed at closeout) — resolved; the single-arrow assertion read through the plural helper — **resolved (`c3f2793`)**, read by Choice id and checked cleared as well as set; the refusal block repeats `publish.spec.ts`'s shape — left, the repo keeps helpers per spec; the separate rule loop repeats the dangling loop's shape — correct by the file's own grouped-by-rule contract; `toHaveText` stricter than siblings' `toContainText` — left, tighter is intended after `toHaveCount(1)`. Vocabulary and helper reuse confirmed.
+
+**Spec** (2 partial, 0 wrong, 0 creep): evidence and checklist pending closeout — resolved here; the `[SCOPE CHANGE]` under-reported its own edit to the testing bullet — **resolved (`c3f2793`)**. Confirmed: code and message verbatim; grouping after `dangling-choice-target`, before `unreachable-step`, locked by a test; whitespace handled by `trim()`; the seeded documents covered by the existing "is publishable" cases; every Seam B clause proved; README lists no rules, so it stands.
+
