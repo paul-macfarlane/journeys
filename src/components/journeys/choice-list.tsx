@@ -41,6 +41,13 @@ import { cn } from "@/lib/utils";
 /** The sentinel a target field uses for "make me one". */
 const NEW_STEP = "__new__";
 
+/**
+ * The offer every row's target field carries, whatever is typed into it.
+ * One function for every row and every render: a new one each time would be
+ * a new set of options to the field each time.
+ */
+const newStepOption = () => ({ id: NEW_STEP, name: "New step…" });
+
 export function ChoiceList({
   document,
   step,
@@ -170,7 +177,7 @@ export function ChoiceList({
                       ? "Missing step"
                       : stepName(document.steps[choice.targetStepId])
                   }
-                  action={() => ({ id: NEW_STEP, name: "New step…" })}
+                  action={newStepOption}
                   onChoose={(targetStepId) => retarget(choice.id, targetStepId)}
                 />
                 {/* Where this Choice goes, one click away. */}

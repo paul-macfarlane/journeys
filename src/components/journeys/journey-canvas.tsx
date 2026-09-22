@@ -510,6 +510,8 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const peekId = useId();
+  /** What "Step actions" expands, named so the button can say so. */
+  const movesId = useId();
   const peek = [
     ...data.problems,
     data.preview.length > 0 ? data.preview : NOTHING_WRITTEN,
@@ -573,13 +575,16 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
           size="icon-sm"
           aria-label="Step actions"
           aria-expanded={data.toolbar === "expanded"}
+          // The moves are rendered only while they are folded out, so the id
+          // is only named while there is something for it to name.
+          aria-controls={data.toolbar === "expanded" ? movesId : undefined}
           onClick={() => actions.onToggleToolbar(data.opens)}
         >
           <Ellipsis aria-hidden="true" />
         </Button>
 
         {data.toolbar === "expanded" ? (
-          <>
+          <div id={movesId} className="flex flex-wrap items-center gap-1">
             <Button
               variant="outline"
               size="sm"
@@ -621,7 +626,7 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
               isStart={data.isStart}
               onDeleteStep={actions.onDeleteStep}
             />
-          </>
+          </div>
         ) : null}
       </NodeToolbar>
 
@@ -1249,13 +1254,18 @@ function CanvasFlow({
    * Author asked to be taken to is not a reason to give away the reading they
    * had set up.
    *
+   * How far in the map was is handed in rather than read here, because the
+   * move is made again on every width the sliding columns pass through: a
+   * ceiling read each time would be read off a fit that had just lowered the
+   * zoom, and each replay would hold the next one further out than the last.
+   *
    * A box made a moment ago has not been measured yet, and `fitView` on a box
    * with no dimensions does nothing at all, so the move waits a frame at a
    * time for React Flow to report the box's size and is made once it has.
    */
   const zoomFrame = useRef<number | null>(null);
   const zoomToStep = useCallback(
-    (nodeId: string) => {
+    (nodeId: string, maxZoom: number) => {
       if (paneWidth === 0 || paneHeight === 0) return;
       if (zoomFrame.current !== null) {
         cancelAnimationFrame(zoomFrame.current);
@@ -1277,16 +1287,12 @@ function CanvasFlow({
           return;
         }
 
-        void fitView({
-          nodes: [{ id: nodeId }],
-          maxZoom: Math.max(1, getViewport().zoom),
-          duration: 200,
-        });
+        void fitView({ nodes: [{ id: nodeId }], maxZoom, duration: 200 });
       }
 
       attempt();
     },
-    [fitView, getInternalNode, getViewport, paneHeight, paneWidth],
+    [fitView, getInternalNode, paneHeight, paneWidth],
   );
 
   // Nothing is left waiting on a frame that would land after the map is gone.
@@ -1419,8 +1425,15 @@ function CanvasFlow({
    * through from a ResizeObserver that runs after the layout producing it —
    * so what is noted here is the moment, and the move is made again on each
    * resize that follows it.
+   *
+   * A request for one box carries the zoom the Author was reading at when
+   * they asked, so every replay of it is held to the same ceiling.
    */
-  const viewRequest = useRef<{ at: number; box: string | null } | null>(null);
+  const viewRequest = useRef<
+    | { at: number; box: null }
+    | { at: number; box: string; maxZoom: number }
+    | null
+  >(null);
 
   // Every opening of a Step is answered, the Step already in the panel
   // included — the editor bumps `locate.request` each time it opens one — so
@@ -1444,7 +1457,13 @@ function CanvasFlow({
     ) {
       return;
     }
-    if (locate.view === "keep") return;
+    if (locate.view === "keep") {
+      // An opening that asks for nothing — the Step opened after a delete —
+      // must not be answered by a move asked for before it: a request still
+      // waiting on a resize is let go of rather than left to be replayed.
+      viewRequest.current = null;
+      return;
+    }
     if (paneWidth === 0 || paneHeight === 0) return;
     if (!nodes.some((node) => node.id === selectedStepId)) return;
 
@@ -1453,10 +1472,18 @@ function CanvasFlow({
       return;
     }
 
-    viewRequest.current = { at: performance.now(), box: selectedStepId };
-    zoomToStep(selectedStepId);
+    // The ceiling is the reading the Author had when they asked, taken once
+    // here and held to by every replay of this request.
+    const maxZoom = Math.max(1, getViewport().zoom);
+    viewRequest.current = {
+      at: performance.now(),
+      box: selectedStepId,
+      maxZoom,
+    };
+    zoomToStep(selectedStepId, maxZoom);
   }, [
     bringOntoMap,
+    getViewport,
     locate.request,
     locate.view,
     nodes,
@@ -1501,13 +1528,18 @@ function CanvasFlow({
   useEffect(() => {
     const request = viewRequest.current;
     if (request === null) return;
-    if (performance.now() - request.at > FIT_AFTER_TOGGLE_MS) return;
+    if (performance.now() - request.at > FIT_AFTER_TOGGLE_MS) {
+      // Whatever this resize is, it is not the columns answering that
+      // request: it is let go of rather than left to answer the next one.
+      viewRequest.current = null;
+      return;
+    }
 
     if (request.box === null) {
       void fitView({ duration: 200 });
       return;
     }
-    zoomToStep(request.box);
+    zoomToStep(request.box, request.maxZoom);
   }, [fitView, paneHeight, paneWidth, zoomToStep]);
 
   // next-themes reads the browser's stored choice, which the server render
@@ -1595,12 +1627,16 @@ function CanvasFlow({
           const arrow = arrows.get(edge.id);
           if (arrow === undefined) return;
 
-          // The keyboard is left on the map the Author is working on. An
-          // arrow is not something a browser can give focus to, so the click
-          // drops the keyboard on the page behind it; the map takes it back,
-          // where Escape, the Delete key, and the arrow keys all are.
-          // Nothing is scrolled to do it: the arrow was clicked, so it is
-          // already in front of them.
+          // The keyboard is left on the map the Author is working on, always
+          // — not only when it is about to be lost, because where it is by
+          // the time this runs says nothing about where it is a frame later.
+          // React Flow's arrows are focusable, so the click has already taken
+          // the keyboard off whatever held it and given it to the arrow's own
+          // group, and the group gives it up again as the arrow is redrawn as
+          // the selected one, dropping it on the page behind the map. So the
+          // map takes it, where Escape, the Delete key, and the arrow keys
+          // all are. Nothing is scrolled to do it: the arrow was clicked, so
+          // it is already in front of them.
           canvasRef.current?.focus({ preventScroll: true });
           onSelectStep(arrow.stepId, { markChoiceId: arrow.choiceId });
         }}

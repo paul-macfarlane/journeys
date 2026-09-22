@@ -18,11 +18,13 @@ import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import case3 from "../scripts/seed/journey-stories/case-3.json";
 
 import {
+  arrowLabelled,
   chooseStep,
   createJourney,
   createProject,
   findStepByName,
   openFindStep,
+  tagWithOutcome,
   uniqueSuffix,
 } from "./setup/authoring";
 import { dimmingDocument, writeDraftDocument } from "./setup/documents";
@@ -247,11 +249,9 @@ async function addChoiceToStep(
 }
 
 /**
- * The Outcome an Ending is grouped by, set from the Ending itself: the Ending
- * opened by name, the label typed into its Outcome field, and the Outcome
- * taken either from the ones the Journey already has or from the
- * "Create outcome" the field offers for a label it has none for. Which of the
- * two is offered is the field's own rule, so this takes whichever is there.
+ * The Outcome an Ending is grouped by, for an Ending this spec has not opened
+ * yet: found by name first, and then tagged the way the panel tags whichever
+ * Ending it is showing.
  */
 async function tagEndingWithOutcome(
   page: Page,
@@ -259,21 +259,7 @@ async function tagEndingWithOutcome(
   label: string,
 ): Promise<void> {
   await chooseStep(page, endingTitle);
-
-  const field = page.getByRole("combobox", { name: "Outcome", exact: true });
-  await field.fill(label);
-
-  const list = page.getByRole("listbox", { name: "Outcomes" });
-  const option = list.getByRole("option", { name: label, exact: true }).or(
-    list.getByRole("option", {
-      name: `Create outcome “${label}”`,
-      exact: true,
-    }),
-  );
-  await expect(option).toHaveCount(1);
-  await option.click();
-
-  await expect(field).toHaveValue(label);
+  await tagWithOutcome(page, label);
 }
 
 /** Every arrow's rendered path, sampled every 4 units into a polyline in flow coordinates. */
@@ -385,7 +371,7 @@ async function mapFaults(page: Page, expected: number): Promise<string[]> {
  * Where each box sits relative to the Canvas frame right now: whether the
  * whole box is inside it, whether any of it shows at all, and whether a click
  * on its middle would reach the box rather than an overlay (the Controls, the
- * minimap, the legend) sitting on top of it.
+ * minimap) sitting on top of it.
  */
 type NodeView = {
   title: string;
@@ -1104,17 +1090,15 @@ test("canvas-keyboard-navigation", async ({ page, context }) => {
   await renameStep(page, "Border post");
 
   // A Start with two children: the shape the arrow keys are for.
-  await (
-    await expandStepActions(page, "Border post")
-  )
+  const firstChild = await expandStepActions(page, "Border post");
+  await firstChild
     .getByRole("button", { name: "Add next step", exact: true })
     .click();
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
   await renameStep(page, "Waved through");
 
-  await (
-    await expandStepActions(page, "Border post")
-  )
+  const secondChild = await expandStepActions(page, "Border post");
+  await secondChild
     .getByRole("button", { name: "Add next step", exact: true })
     .click();
   await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
@@ -1898,6 +1882,12 @@ test.describe("the seeded map", () => {
     // many boxes around it as the map has, so there is still another box
     // beside it to click once this one has been zoomed to. Titles the
     // seeded document uses twice are left out — a box is reached by name.
+    //
+    // How far apart two boxes can be laid out and still count as neighbours:
+    // near enough, in the map's own units, that zooming to one leaves the
+    // other on the map with something else to click.
+    const NEIGHBOUR_REACH = 400;
+
     const positions = await boxPositions(page);
     const unique = (title: string) =>
       positions.filter((entry) => entry.title === title).length === 1;
@@ -1907,7 +1897,8 @@ test.describe("the seeded map", () => {
       return positions.filter(
         (other) =>
           other.title !== title &&
-          Math.hypot(other.left - box.left, other.top - box.top) / zoomed < 400,
+          Math.hypot(other.left - box.left, other.top - box.top) / zoomed <
+            NEIGHBOUR_REACH,
       ).length;
     };
     const busiest = (await nodeViews(page))
@@ -1929,9 +1920,8 @@ test.describe("the seeded map", () => {
 
     // Zoomed to from the box's own moves: the reading the rest of this test
     // is measured against.
-    await (
-      await expandStepActions(page, first)
-    )
+    const firstToolbar = await expandStepActions(page, first);
+    await firstToolbar
       .getByRole("button", { name: "Zoom to step", exact: true })
       .click();
     await expectBoxOnMap(page, first);
@@ -1960,9 +1950,8 @@ test.describe("the seeded map", () => {
     // "Add next step" from that box: the Step opens with its title waiting,
     // the map goes to the box it landed on rather than out to all of them,
     // and the zoom is still no lower than the Author set it.
-    await (
-      await expandStepActions(page, second)
-    )
+    const secondToolbar = await expandStepActions(page, second);
+    await secondToolbar
       .getByRole("button", { name: "Add next step", exact: true })
       .click();
 
@@ -1993,7 +1982,7 @@ test.describe("the seeded map", () => {
     expect(await settledTransform(page)).toBe(settled);
   });
 
-  test("canvas-endings-uncoloured", async ({ page, context }) => {
+  test("canvas-endings-uncolored", async ({ page, context }) => {
     const { journeyId } = await startJourney(page, context);
 
     const seeded = graphDocumentSchema.parse(case3);
@@ -2035,7 +2024,7 @@ test.describe("the seeded map", () => {
     await expect(canvasNodeBox(page, ending?.title ?? "")).toContainText(label);
 
     await page.screenshot({
-      path: "test-results/canvas-endings-uncoloured/canvas-endings-uncoloured.png",
+      path: "test-results/canvas-endings-uncolored/canvas-endings-uncolored.png",
       fullPage: true,
     });
   });
@@ -2241,15 +2230,6 @@ test("canvas-problems-readable", async ({ page, context }) => {
 /** One arrow on the map, named by the Choice it draws. */
 function canvasEdge(page: Page, choiceId: string) {
   return canvas(page).locator(`[data-choice-id="${choiceId}"]`);
-}
-
-/**
- * One arrow on the map, named by the Choice's label instead of its id — for a
- * Journey built through the browser, where the ids are the app's to invent.
- * The arrow's accessible name is `"<label>: <from> → <to>"`.
- */
-function arrowLabelled(page: Page, label: string) {
-  return canvas(page).locator(`[data-choice-id][aria-label^="${label}:"]`);
 }
 
 /**
@@ -2819,6 +2799,21 @@ test.describe("authoring from the map", () => {
     await expect(fromTheClinic.locator(head)).toHaveCount(1);
     await expect(fromTheBorder.locator(head)).toHaveCount(0);
 
+    // And it is drawn over the arrows it stacks with, so the head is the one
+    // the pointer reaches: React Flow draws each arrow in an `svg` layer of
+    // its own and puts the arrow's `zIndex` on that layer.
+    const layerZ = (arrow: Locator) =>
+      arrow.evaluate((element) => {
+        const layer = element.closest("svg");
+        if (layer === null) return null;
+        return Number(window.getComputedStyle(layer).zIndex || "0");
+      });
+    const selectedZ = await layerZ(fromTheClinic);
+    const unselectedZ = await layerZ(fromTheBorder);
+    expect(selectedZ, "the selected arrow is in no layer").not.toBeNull();
+    expect(unselectedZ, "the unselected arrow is in no layer").not.toBeNull();
+    expect(selectedZ!).toBeGreaterThan(unselectedZ!);
+
     await dragTo(
       page,
       fromTheClinic.locator(head),
@@ -3120,9 +3115,8 @@ test.describe("authoring from the map", () => {
       await findStepByName(page, "prefa", "Preface");
 
       // Duplicated from its own box on the map.
-      await (
-        await expandStepActions(page, "Preface")
-      )
+      const prefaceToolbar = await expandStepActions(page, "Preface");
+      await prefaceToolbar
         .getByRole("button", { name: "Duplicate", exact: true })
         .click();
       await expect(page.getByLabel("Step title")).toHaveValue("Preface copy");

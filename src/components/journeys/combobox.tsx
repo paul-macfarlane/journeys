@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -18,6 +25,28 @@ export type ComboboxOption = {
   name: string;
   render?: ReactNode;
 };
+
+/**
+ * How tall the open list can be — `max-h-80` in pixels — which is the room a
+ * field needs beneath it before the list is opened downwards.
+ */
+const LIST_MAX_HEIGHT = 320;
+
+/**
+ * The first thing above the field that would cut the list off: the panel's
+ * own column clips what overflows it, so a field low in a tall panel has
+ * less room beneath it than the window suggests. `null` when nothing clips.
+ */
+function clippingAncestor(field: HTMLElement): HTMLElement | null {
+  for (
+    let parent = field.parentElement;
+    parent !== null;
+    parent = parent.parentElement
+  ) {
+    if (window.getComputedStyle(parent).overflowY !== "visible") return parent;
+  }
+  return null;
+}
 
 /**
  * The editor's one combobox: a field on the app's own `Input`, not a new
@@ -90,6 +119,8 @@ export function Combobox({
   const [typed, setTyped] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  /** Whether the list is drawn above the field rather than below it. */
+  const [above, setAbove] = useState(false);
 
   const fieldRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -129,6 +160,31 @@ export function Combobox({
     field.focus();
     field.select();
   }, [focusRequest]);
+
+  /**
+   * Which side of the field the list opens on, settled as it opens and not
+   * after: the panel's column clips what overflows it, so a list opened
+   * downwards from a field near the foot of a tall panel is cut off with
+   * nothing an Author can do to reach the rest of it. It opens upwards when
+   * there is not the room for it below and there is more of it above.
+   */
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const field = fieldRef.current;
+    if (field === null) return;
+
+    const bounds = field.getBoundingClientRect();
+    const clip = clippingAncestor(field)?.getBoundingClientRect() ?? null;
+    // The window cuts the list off as surely as a column does, so the nearer
+    // of the two edges is the one the room is measured to.
+    const floor = Math.min(window.innerHeight, clip?.bottom ?? Infinity);
+    const ceiling = Math.max(0, clip?.top ?? 0);
+
+    const below = floor - bounds.bottom;
+    const room = bounds.top - ceiling;
+    setAbove(below < LIST_MAX_HEIGHT && room > below);
+  }, [open]);
 
   // Arrowing down a long list has to move the list, not just the highlight.
   useEffect(() => {
@@ -231,7 +287,12 @@ export function Combobox({
       {open ? (
         // Over whatever is beneath rather than pushing it down: what is being
         // chosen is about the thing the field sits on.
-        <div className="absolute top-full left-0 z-20 mt-1 flex max-h-80 w-full min-w-56 flex-col overflow-y-auto rounded-xl bg-background p-1 ring-1 ring-foreground/10">
+        <div
+          className={cn(
+            "absolute left-0 z-20 flex max-h-80 w-full min-w-56 flex-col overflow-y-auto rounded-xl bg-background p-1 ring-1 ring-foreground/10",
+            above ? "bottom-full mb-1" : "top-full mt-1",
+          )}
+        >
           <ul
             ref={listRef}
             id={listboxId}

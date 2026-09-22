@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * The authoring moves every spec needs before it can test anything else:
@@ -79,6 +79,41 @@ export async function findStepByName(
   await option.click();
 
   await expect(page.getByLabel("Step title")).toHaveValue(title);
+}
+
+/**
+ * One arrow on the map, named by the Choice's label rather than by its id —
+ * for a Journey built through the browser, where the ids are the app's to
+ * invent. The arrow's accessible name is `"<label>: <from> → <to>"`.
+ */
+export function arrowLabelled(page: Page, label: string): Locator {
+  return page
+    .getByRole("region", { name: "Canvas" })
+    .locator(`[data-choice-id][aria-label^="${label}:"]`);
+}
+
+/**
+ * The Outcome an Ending is grouped by, set from the Ending the panel already
+ * has open: the label typed into the field, and the Outcome taken either from
+ * the ones the Journey already has or from the "Create outcome" the field
+ * offers for a label it has none for. Which of the two is offered is the
+ * field's own rule, so this takes whichever is there.
+ */
+export async function tagWithOutcome(page: Page, label: string): Promise<void> {
+  const field = page.getByRole("combobox", { name: "Outcome", exact: true });
+  await field.fill(label);
+
+  const list = page.getByRole("listbox", { name: "Outcomes" });
+  const option = list.getByRole("option", { name: label, exact: true }).or(
+    list.getByRole("option", {
+      name: `Create outcome “${label}”`,
+      exact: true,
+    }),
+  );
+  await expect(option).toHaveCount(1);
+  await option.click();
+
+  await expect(field).toHaveValue(label);
 }
 
 export async function createProject(

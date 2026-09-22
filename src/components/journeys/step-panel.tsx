@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 
 import { ChoiceList } from "@/components/journeys/choice-list";
 import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
@@ -72,32 +72,49 @@ function OutcomeField({
       ? document.outcomes[step.outcomeId]
       : null;
 
-  const counts = endingCountsByOutcome(document);
-  const options: ComboboxOption[] = [
-    { id: NO_OUTCOME, name: "No outcome" },
-    ...Object.values(document.outcomes).map((entry) => ({
-      id: entry.id,
-      name: entry.label,
-      render: (
-        <>
-          <span className="text-sm font-medium">{entry.label}</span>
-          <span className="text-muted-foreground text-sm">
-            {counted(counts[entry.id] ?? 0, "ending")}
-          </span>
-        </>
-      ),
-    })),
-  ];
+  // Held still across renders, both of them: the field re-reads its options
+  // whenever this array or this function is a new one, and the Draft changes
+  // under the panel on every keystroke elsewhere in it.
+  const options = useMemo<ComboboxOption[]>(() => {
+    const counts = endingCountsByOutcome(document);
+    return [
+      { id: NO_OUTCOME, name: "No outcome" },
+      ...Object.values(document.outcomes).map((entry) => ({
+        id: entry.id,
+        name: entry.label,
+        render: (
+          <>
+            <span className="text-sm font-medium">{entry.label}</span>
+            <span className="text-muted-foreground text-sm">
+              {counted(counts[entry.id] ?? 0, "ending")}
+            </span>
+          </>
+        ),
+      })),
+    ];
+  }, [document]);
 
-  /** Offered for a label the Journey has no Outcome for, and only then. */
-  function createOption(query: string): ComboboxOption | null {
-    const label = query.trim();
-    if (label.length === 0) return null;
-    if (Object.values(document.outcomes).some((entry) => entry.label === label))
-      return null;
+  /**
+   * Offered for a label the Journey has no Outcome for, and only then: two
+   * labels differing in their spacing or their case are the same label to an
+   * Author, so neither is a reason to offer them a second Outcome.
+   */
+  const createOption = useCallback(
+    (query: string): ComboboxOption | null => {
+      const label = query.trim();
+      if (label.length === 0) return null;
+      if (
+        Object.values(document.outcomes).some(
+          (entry) => entry.label.trim().toLowerCase() === label.toLowerCase(),
+        )
+      ) {
+        return null;
+      }
 
-    return { id: CREATE_OUTCOME, name: `Create outcome “${label}”` };
-  }
+      return { id: CREATE_OUTCOME, name: `Create outcome “${label}”` };
+    },
+    [document],
+  );
 
   function choose(outcomeId: string, query: string) {
     if (outcomeId === CREATE_OUTCOME) {
@@ -117,8 +134,14 @@ function OutcomeField({
   function commitRename() {
     if (outcome === null || renaming === null) return;
 
-    onChange(renameOutcome(document, outcome.id, renaming));
+    // An Outcome with nothing for a label is no Outcome an Author can read
+    // off an Ending, so a field cleared and committed is a rename let go of
+    // rather than a label taken away: the Outcome keeps the one it had.
+    const label = renaming.trim();
     setRenaming(null);
+    if (label.length === 0) return;
+
+    onChange(renameOutcome(document, outcome.id, label));
   }
 
   if (renaming !== null && outcome !== null) {

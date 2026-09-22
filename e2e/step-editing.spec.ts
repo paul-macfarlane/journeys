@@ -9,10 +9,12 @@ import {
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
 import {
+  arrowLabelled,
   chooseStep,
   createJourney,
   createProject,
   openFindStep,
+  tagWithOutcome,
   uniqueSuffix,
 } from "./setup/authoring";
 import {
@@ -112,30 +114,6 @@ function outcomeField(page: Page) {
   return page.getByRole("combobox", { name: "Outcome", exact: true });
 }
 
-/**
- * The Outcome an Ending is grouped by, set from the Ending itself: the label
- * typed into the field, and taken either from the Outcomes the Journey
- * already has or from the "Create outcome" offered for a label it has none
- * for. Which of the two is offered is the field's own rule, so this takes
- * whichever is there rather than saying which it expects.
- */
-async function tagWithOutcome(page: Page, label: string): Promise<void> {
-  const field = outcomeField(page);
-  await field.fill(label);
-
-  const list = page.getByRole("listbox", { name: "Outcomes" });
-  const option = list.getByRole("option", { name: label, exact: true }).or(
-    list.getByRole("option", {
-      name: `Create outcome “${label}”`,
-      exact: true,
-    }),
-  );
-  await expect(option).toHaveCount(1);
-  await option.click();
-
-  await expect(field).toHaveValue(label);
-}
-
 /** One Outcome taken from the list the field offers, by name. */
 async function chooseOutcome(page: Page, name: string): Promise<void> {
   await outcomeField(page).click();
@@ -165,13 +143,6 @@ async function retargetChoice(
   await option.click();
 
   await expect(field).toHaveValue(title);
-}
-
-/** One arrow on the map, whose accessible name is `"<label>: <from> → <to>"`. */
-function arrowLabelled(page: Page, label: string) {
-  return page
-    .getByRole("region", { name: "Canvas" })
-    .locator(`[data-choice-id][aria-label^="${label}:"]`);
 }
 
 /** "Add choice" pointed at a Step that does not exist yet — the same motion. */
@@ -633,6 +604,63 @@ test("panel-choice-target-search", async ({ page, context }) => {
   await chooseStep(page, "Waved through");
   await expect(leadsHereFrom).toHaveCount(0);
 
+  // A Start with Choices enough to fill the panel: the last row's target
+  // field sits at the foot of a tall panel, where a list opened downwards
+  // would run off the page with no way to reach the rest of it. The column
+  // the panel is in clips what overflows it, so the list opens upwards
+  // instead, whole and reachable to the last option it offers.
+  await chooseStep(page, "Border post");
+  const built: [string, string][] = [
+    ["Turn back", "Turned back"],
+    ["Wait longer", "Waiting room"],
+    ["Ask again", "Asked again"],
+    ["Walk on", "Walked on"],
+    ["Sit down", "Sat down"],
+    ["Head north", "Headed north"],
+  ];
+  for (const [label, title] of built) {
+    await addChoiceToNewStep(page, label, title);
+    await chooseStep(page, "Border post");
+  }
+  await expect(rows).toHaveCount(8);
+
+  const lastRow = rows.last();
+  await lastRow.getByLabel("Choice target").click();
+  const steps = lastRow.getByRole("listbox", { name: "Steps" });
+  await expect(steps).toBeVisible();
+
+  const viewport = page.viewportSize();
+  expect(viewport, "the browser reports no viewport").not.toBeNull();
+
+  // The box the list is drawn in, and the column that clips it: the column
+  // never scrolls, so anything of the list outside it is gone for good.
+  const drawnIn = await steps.evaluate((list) => {
+    const { top, bottom } = list.parentElement!.getBoundingClientRect();
+    return { top, bottom };
+  });
+  const column = await page
+    .getByRole("region", { name: "Step", exact: true })
+    .evaluate((panel) => {
+      const { top, bottom } = panel.parentElement!.getBoundingClientRect();
+      return { top, bottom };
+    });
+
+  expect(drawnIn.top).toBeGreaterThanOrEqual(column.top);
+  expect(drawnIn.bottom).toBeLessThanOrEqual(column.bottom);
+  expect(drawnIn.top).toBeGreaterThanOrEqual(0);
+  expect(drawnIn.bottom).toBeLessThanOrEqual(viewport!.height);
+
+  // Including the offer at its foot, which is the one furthest from the field.
+  const newStep = lastRow.getByRole("option", {
+    name: "New step…",
+    exact: true,
+  });
+  await expect(newStep).toBeVisible();
+  const offerBox = await newStep.boundingBox();
+  expect(offerBox, "the last option has no box").not.toBeNull();
+  expect(offerBox!.y).toBeGreaterThanOrEqual(0);
+  expect(offerBox!.y + offerBox!.height).toBeLessThanOrEqual(viewport!.height);
+
   await page.screenshot({
     path: "test-results/panel-choice-target-search/panel-choice-target-search.png",
     fullPage: true,
@@ -699,6 +727,28 @@ test("panel-outcomes-from-the-ending", async ({ page, context }) => {
   expect(renamed.steps[stepIdByTitle(renamed, "Turned back")].outcomeId).toBe(
     outcomeId,
   );
+
+  // A rename committed on an emptied field is a rename let go of: an Outcome
+  // is never left with nothing for a label.
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  const emptied = page.getByLabel("Outcome label", { exact: true });
+  await emptied.fill("");
+  await emptied.press("Enter");
+  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+
+  // And the same label in another case is the same label: the field offers
+  // the Outcome the Journey has rather than a second one to create.
+  await outcomeField(page).fill("reached the clinic");
+  const offered = page.getByRole("listbox", { name: "Outcomes" });
+  await expect(
+    offered.getByRole("option", { name: "Reached the clinic", exact: true }),
+  ).toHaveCount(1);
+  await expect(offered.getByRole("option")).toHaveCount(1);
+
+  // The list put away, and then what was typed, leaving the Ending as it was.
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
 
   // An Outcome the last Ending drops goes with it: there is nothing to
   // remove by hand.
