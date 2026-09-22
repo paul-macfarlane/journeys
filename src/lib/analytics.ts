@@ -103,10 +103,11 @@ function pairKey(from: string, to: string): string {
  * Every number the Analytics tab shows for `versionId`, from `document` (the
  * version's own, so every Step, Choice, and Outcome is as it was published)
  * and `runs`. Runs pinned to any other version are ignored here as well as
- * by the query that fetched them, so the rule has one testable home. A path
- * entry naming a Step the document does not have — which no reducer writes,
- * but a row is a row — is counted as a start and an abandonment and nothing
- * else.
+ * by the query that fetched them, so the rule has one testable home. A Run
+ * with an empty path is not a start (no reducer writes one; a row is a row).
+ * A Run whose last entry names a Step the document does not have counts as
+ * a start and in the Abandoned total, and on no Step's own figure — there
+ * is no box to put it on.
  */
 export function analyticsForVersion(
   versionId: string,

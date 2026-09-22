@@ -333,10 +333,8 @@ function ChoiceEdge({
     data?.direction ?? "TB",
     source === target,
     data?.points,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
+    { x: sourceX, y: sourceY },
+    { x: targetX, y: targetY },
   );
   const middle = midwayAlong(points);
 

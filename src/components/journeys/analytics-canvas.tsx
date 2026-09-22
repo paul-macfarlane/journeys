@@ -63,8 +63,6 @@ type AnalyticsNodeData = {
   figure: string;
   sourceAnchors: string[];
   direction: LayoutDirection;
-  stepId: string;
-  kind: "step" | "missing";
 };
 
 type AnalyticsFlowNode = Node<AnalyticsNodeData, "step">;
@@ -114,10 +112,8 @@ function AnalyticsEdge({
     data?.direction ?? "TB",
     source === target,
     data?.points,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
+    { x: sourceX, y: sourceY },
+    { x: targetX, y: targetY },
   );
   const middle = midwayAlong(points);
   const share = data?.share ?? null;
@@ -153,36 +149,12 @@ function AnalyticsEdge({
   );
 }
 
+/**
+ * A Published Version passed publish validation, so every Choice of it
+ * leads to a Step that exists: the layout never holds the editor's
+ * "missing step" placeholder here, and there is one kind of box.
+ */
 function AnalyticsNode({ data }: NodeProps<AnalyticsFlowNode>) {
-  if (data.kind === "missing") {
-    // A Published Version passed publish validation, so no Choice of it
-    // dangles; the placeholder is only here so a layout that somehow held
-    // one still draws. It is a box like any other to look at.
-    return (
-      <>
-        <Handle
-          id="in"
-          type="target"
-          position={targetSide(data.direction)}
-          isConnectable={false}
-        />
-        <div
-          role="group"
-          aria-label="Missing step"
-          data-kind="missing"
-          className={cn(
-            NODE_BOX_CLASS,
-            "items-center border-2 border-dashed border-destructive",
-          )}
-        >
-          <p className="truncate text-sm font-medium text-destructive">
-            Missing step
-          </p>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
       <Handle
@@ -198,8 +170,6 @@ function AnalyticsNode({ data }: NodeProps<AnalyticsFlowNode>) {
       <div
         role="group"
         aria-label={data.title}
-        data-kind={data.isStart ? "start" : data.isEnding ? "ending" : "step"}
-        data-step-id={data.stepId}
         className={cn(
           NODE_BOX_CLASS,
           data.isStart ? "ring-2 ring-primary" : "ring-2 ring-foreground/15",
@@ -293,8 +263,6 @@ function AnalyticsFlow({
         figure: figureFor(node.isEnding, analytics.steps[node.stepId]),
         sourceAnchors: node.sourceAnchors,
         direction: layout.direction,
-        stepId: node.stepId,
-        kind: node.kind,
       },
     }));
 

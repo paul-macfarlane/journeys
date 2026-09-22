@@ -101,6 +101,11 @@ function box(page: Page, title: string): Locator {
     .getByRole("group", { name: title, exact: true });
 }
 
+/** The figure a box carries — "1 run", "1 abandoned" — by the Step's title. */
+function boxFigure(page: Page, title: string): Locator {
+  return box(page, title).locator("[data-step-figure]");
+}
+
 /** The figure an arrow carries, by the Choice's id. */
 function arrowFigure(page: Page, choiceId: string): Locator {
   return page
@@ -187,8 +192,8 @@ test("analytics-two-runs-to-different-endings", async ({
     abandoned: 0,
     rate: "—",
   });
-  await expect(box(page, "Waved through")).toContainText("0 runs");
-  await expect(box(page, QUEUE_STEP_TITLE)).toContainText("0 abandoned");
+  await expect(boxFigure(page, "Waved through")).toHaveText("0 runs");
+  await expect(boxFigure(page, QUEUE_STEP_TITLE)).toHaveText("0 abandoned");
   await expect(arrowFigure(page, "choice-wait")).toHaveText("— · 0 times");
   await expect(page.getByText("No runs yet.")).toBeVisible();
 
@@ -210,10 +215,10 @@ test("analytics-two-runs-to-different-endings", async ({
 
   // Every Step: the Runs that ended on an Ending, the Runs that stopped
   // short anywhere else.
-  await expect(box(page, START_STEP_TITLE)).toContainText("0 abandoned");
-  await expect(box(page, QUEUE_STEP_TITLE)).toContainText("1 abandoned");
-  await expect(box(page, "Waved through")).toContainText("1 run");
-  await expect(box(page, "Turned back")).toContainText("1 run");
+  await expect(boxFigure(page, START_STEP_TITLE)).toHaveText("0 abandoned");
+  await expect(boxFigure(page, QUEUE_STEP_TITLE)).toHaveText("1 abandoned");
+  await expect(boxFigure(page, "Waved through")).toHaveText("1 run");
+  await expect(boxFigure(page, "Turned back")).toHaveText("1 run");
 
   // Every Choice: its share of the visits to its Step, and how many times
   // it was walked. Three visited the Start; two waited, one walked away.
@@ -306,8 +311,8 @@ test("analytics-scoped-to-a-version", async ({ page, context, browser }) => {
     abandoned: 0,
     rate: "100%",
   });
-  await expect(box(page, "Turned back")).toContainText("1 run");
-  await expect(box(page, "Waved through")).toContainText("0 runs");
+  await expect(boxFigure(page, "Turned back")).toHaveText("1 run");
+  await expect(boxFigure(page, "Waved through")).toHaveText("0 runs");
   await expectOutcomeRow(page, "ending:turned-back", "Turned back", 1, "100%");
   await expectOutcomeRow(page, "outcome:reached-care", "Reached care", 0, "0%");
   await expect(outcomeRow(page, "outcome:turned-away")).toHaveCount(0);
@@ -325,8 +330,8 @@ test("analytics-scoped-to-a-version", async ({ page, context, browser }) => {
     abandoned: 0,
     rate: "100%",
   });
-  await expect(box(page, "Waved through")).toContainText("1 run");
-  await expect(box(page, "Turned back")).toContainText("0 runs");
+  await expect(boxFigure(page, "Waved through")).toHaveText("1 run");
+  await expect(boxFigure(page, "Turned back")).toHaveText("0 runs");
   await expect(arrowFigure(page, "choice-papers")).toHaveText("100% · 1 time");
   await expectOutcomeRow(
     page,
@@ -349,12 +354,12 @@ test("analytics-scoped-to-a-version", async ({ page, context, browser }) => {
   // A reload keeps the version the address names.
   await page.reload();
   await expect(page.getByLabel("Version")).toHaveValue(firstVersionId);
-  await expect(box(page, "Waved through")).toContainText("1 run");
+  await expect(boxFigure(page, "Waved through")).toHaveText("1 run");
 
   // An id that is not one of this Journey's versions is no version at all:
   // the tab falls back to the live one.
   await page.goto(`${analyticsUrl}&version=not-a-version-of-this-journey`);
   await openTab(page, "Analytics");
   await expect(page.getByLabel("Version")).toHaveValue(secondVersionId);
-  await expect(box(page, "Turned back")).toContainText("1 run");
+  await expect(boxFigure(page, "Turned back")).toHaveText("1 run");
 });

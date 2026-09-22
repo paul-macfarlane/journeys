@@ -92,11 +92,12 @@ const LOOP_SIDE_CLEARANCE = 16;
  */
 export function selfLoopRoute(
   direction: LayoutDirection,
-  sourceX: number,
-  sourceY: number,
-  targetX: number,
-  targetY: number,
+  source: Point,
+  target: Point,
 ): Point[] {
+  const { x: sourceX, y: sourceY } = source;
+  const { x: targetX, y: targetY } = target;
+
   if (direction === "LR") {
     // Running left to right an arrow ends at the handle in the middle of the
     // box's left edge, so the box's bottom edge is half a box below where this
@@ -137,18 +138,12 @@ export function arrowPoints(
   direction: LayoutDirection,
   isLoop: boolean,
   routed: Point[] | undefined,
-  sourceX: number,
-  sourceY: number,
-  targetX: number,
-  targetY: number,
+  source: Point,
+  target: Point,
 ): Point[] {
   return isLoop
-    ? selfLoopRoute(direction, sourceX, sourceY, targetX, targetY)
-    : [
-        { x: sourceX, y: sourceY },
-        ...(routed ?? []).slice(1, -1),
-        { x: targetX, y: targetY },
-      ];
+    ? selfLoopRoute(direction, source, target)
+    : [source, ...(routed ?? []).slice(1, -1), target];
 }
 
 /** How tall the label on an arrow is drawn, in flow units. */

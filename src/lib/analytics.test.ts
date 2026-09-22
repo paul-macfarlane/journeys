@@ -268,6 +268,35 @@ describe("analyticsForVersion", () => {
     expect(result.outcomes.every((group) => group.share === null)).toBe(true);
   });
 
+  it("reads zero for a Journey whose Start is an Ending, which records no Run", () => {
+    // Ticket 27: a Run is created by the first Choice, and such a Journey
+    // offers none — so however many people open it, there is nothing here.
+    const endingOnly = document(
+      [step("start", "The end", [], "reached-care")],
+      [{ id: "reached-care", label: "Reached care" }],
+    );
+
+    const result = analyticsForVersion(VERSION, endingOnly, []);
+
+    expect(result).toMatchObject({
+      starts: 0,
+      completions: 0,
+      abandoned: 0,
+      completionRate: null,
+    });
+    expect(result.steps.start).toEqual({
+      stepId: "start",
+      visits: 0,
+      abandoned: 0,
+      ended: 0,
+    });
+    expect(result.choices).toEqual({});
+    expect(result.outcomes.map((group) => [group.label, group.runs])).toEqual([
+      ["Reached care", 0],
+      ["Abandoned", 0],
+    ]);
+  });
+
   it("reads every Run as abandoned when none reached an Ending", () => {
     const result = analyticsForVersion(VERSION, runnerDocument(), [
       run(["start", "queue"]),
