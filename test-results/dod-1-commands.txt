@@ -1,18 +1,18 @@
-# DoD-1 command chain — ticket 30 (Rich text: image caption, alt text, editing, tooltips)
-# head ea0ff4b, captured 2026-09-22T17:45:19Z, Route: contract
-# E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone
+# DoD-1 command chain — ticket 31 (Branding, app theme, and legal pages)
+# head 2e589f5, captured 2026-09-22T18:25:07Z, Route: polish
+# E2E_EVIDENCE=landing,sign-in,legal-pages,theme-light-and-dark
 # pnpm test:e2e builds the app (next build) before the suite; its full list output is in dod-1-e2e.txt, only the tail is repeated here.
 
 === pnpm lint
 
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 lint .
 > eslint
 
 exit=0
 
 === pnpm format:check
 
-> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 format:check .
 > prettier --check .
 
 Checking formatting...
@@ -21,34 +21,34 @@ exit=0
 
 === pnpm typecheck
 
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 typecheck .
 > tsc --noEmit
 
 exit=0
 
 === pnpm test
 
-> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 test .
 > vitest run
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+ RUN  v4.1.11 .
 
 
  Test Files  19 passed (19)
       Tests  297 passed (297)
-   Start at  13:45:27
-   Duration  712ms (transform 900ms, setup 0ms, import 2.24s, tests 534ms, environment 1ms)
+   Start at  14:25:16
+   Duration  762ms (transform 1.06s, setup 0ms, import 2.47s, tests 537ms, environment 1ms)
 
 exit=0
 
-=== E2E_EVIDENCE=step-editing-image-caption-alt-and-preview,runner-case-3-on-a-phone pnpm test:e2e
-  ✓  69 [chromium] › e2e/step-editing.spec.ts:801:5 › panel-outcomes-from-the-ending (5.3s)
-  ✓  71 [chromium] › e2e/step-editing.spec.ts:679:5 › panel-choice-target-search (4.5s)
-  ✓  72 [chromium] › e2e/step-editing.spec.ts:530:5 › step-editing-choices-reorder-retarget (4.3s)
-
-  72 passed (1.3m)
+=== E2E_EVIDENCE=landing,sign-in,legal-pages,theme-light-and-dark pnpm test:e2e
+  ✓  71 [chromium] › e2e/canvas.spec.ts:2866:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (10.6s)
+  ✓  72 [chromium] › e2e/canvas.spec.ts:3325:7 › authoring from the map › canvas-build-branch-and-publish (4.9s)
+  ✓  73 [chromium] › e2e/canvas.spec.ts:3034:7 › authoring from the map › canvas-retarget-selected-arrow (6.7s)
+  ✓  74 [chromium] › e2e/canvas.spec.ts:3388:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (7.3s)
+  74 passed (1.7m)
 exit=0
