@@ -4,12 +4,17 @@ import { redirect } from "next/navigation";
 import { RunHistoryScript } from "@/components/runner/run-history-script";
 import { RunHistory } from "@/components/runner/run-history";
 import { RunnerFrame } from "@/components/runner/runner-frame";
-import { choiceLinkClassName, StepView } from "@/components/runner/step-view";
+import {
+  choiceLinkClassName,
+  ResponseNotice,
+  StepView,
+} from "@/components/runner/step-view";
+import { getResponse } from "@/db/responses";
 import { getRunForJourney, saveRunState } from "@/db/runs";
 import { navigateTo, parsePathIndex } from "@/lib/graph/run";
 import { runCookieName } from "@/lib/run-cookies";
 
-import { startOverAction } from "../actions";
+import { respondAndChooseAction, startOverAction } from "../actions";
 
 /**
  * One Step of a Run. Every Step has a URL of its own so the browser's back
@@ -28,10 +33,15 @@ import { startOverAction } from "../actions";
  * Two query parameters travel with a navigation and are read here, never
  * kept: `at` is the path index the browser came back to, which is what tells
  * a Back on a loop-closing Step from a Choice to that same Step, and `notice`
- * carries the one refusal a Participant is told about. `RunHistoryScript` and
- * `RunHistory` between them write the index into `history.state` for the next
- * Back, correct a Back the server read as a Choice, and strip both parameters
- * from the address bar.
+ * carries the refusals and confirmations a Participant is told about — the
+ * path being full, and since ticket 12 what became of an answer to a Prompt.
+ * `RunHistoryScript` and `RunHistory` between them write the index into
+ * `history.state` for the next Back, correct a Back the server read as a
+ * Choice, and strip both parameters from the address bar.
+ *
+ * A Step with a Prompt offers its Choices as a form posting to
+ * `respondAndChooseAction` rather than as links, so the answer travels with
+ * the Choice; the form shows back whatever this Run already answered here.
  */
 export default async function RunStepPage({
   params,
@@ -79,6 +89,10 @@ export default async function RunStepPage({
   const path = moved.kind === "moved" ? moved.state.path : run.path;
   const previousStepId = path.length > 1 ? path[path.length - 2] : null;
   const step = version.document.steps[stepId];
+
+  // Only a Step with a Prompt has anything to show back.
+  const response =
+    step.prompt !== null ? await getResponse(run.id, stepId) : null;
 
   // A native button rather than the shared Button, for the same reason as on
   // the first screen: the page stays a Server Component. An Ending offers it
@@ -133,14 +147,23 @@ export default async function RunStepPage({
           {startOver}
         </div>
       ) : null}
+      <ResponseNotice notice={notice} />
 
       <StepView
         step={step}
         document={version.document}
-        choices={{
-          kind: "links",
-          href: (targetStepId) => `/j/${journeyId}/${targetStepId}`,
-        }}
+        choices={
+          step.prompt !== null
+            ? {
+                kind: "form",
+                action: respondAndChooseAction.bind(null, journeyId, stepId),
+                response,
+              }
+            : {
+                kind: "links",
+                href: (targetStepId) => `/j/${journeyId}/${targetStepId}`,
+              }
+        }
         startOver={startOver}
       />
     </RunnerFrame>

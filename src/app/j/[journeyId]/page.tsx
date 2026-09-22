@@ -2,7 +2,11 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
-import { choiceLinkClassName, StepView } from "@/components/runner/step-view";
+import {
+  choiceLinkClassName,
+  ResponseNotice,
+  StepView,
+} from "@/components/runner/step-view";
 import { getPublicJourney, getRunForJourney } from "@/db/runs";
 import { currentStepId } from "@/lib/graph/run";
 import { runCookieName } from "@/lib/run-cookies";
@@ -27,10 +31,12 @@ import { chooseFromStartAction, startOverAction } from "./actions";
  */
 export default async function JourneyStartPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ journeyId: string }>;
+  searchParams: Promise<{ notice?: string | string[] }>;
 }) {
-  const { journeyId } = await params;
+  const [{ journeyId }, { notice }] = await Promise.all([params, searchParams]);
 
   const journey = await getPublicJourney(journeyId);
   // No such Journey at all: a 404, the same answer an unknown id gets
@@ -95,16 +101,29 @@ export default async function JourneyStartPage({
         </div>
       ) : null}
 
+      {/* The one refusal this screen can be sent back with: a required
+          Prompt on the Start left blank by a request the browser's own
+          check did not see. Read by the action's redirect; the address is
+          not rewritten here, since no Run exists to keep in step with. */}
+      <ResponseNotice notice={notice} />
+
       {/* No "Start over" on an Ending here: with no Run begun there is
           nothing to start over from, and the Choices — when the Start has
-          any — are the way in. */}
+          any — are the way in. A Start that is itself an Ending offers no
+          Prompt either: a Run begins with a Choice, and without one there
+          is no Run to record an answer against — links, then, which offer
+          nothing on an Ending and say so. */}
       <StepView
         step={startStep}
         document={document}
-        choices={{
-          kind: "form",
-          action: chooseFromStartAction.bind(null, journeyId),
-        }}
+        choices={
+          startStep.choices.length === 0
+            ? { kind: "links", href: (stepId) => `/j/${journeyId}/${stepId}` }
+            : {
+                kind: "form",
+                action: chooseFromStartAction.bind(null, journeyId),
+              }
+        }
         startOver={null}
       />
     </RunnerFrame>

@@ -10,19 +10,22 @@ import {
   PublishButton,
   UnpublishButton,
 } from "@/components/journeys/publish-controls";
+import { ResponseList } from "@/components/journeys/response-list";
 import { VersionList } from "@/components/journeys/version-list";
 import { buttonVariants } from "@/components/ui/button";
 import { UrlTabs } from "@/components/url-tabs";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
+import { listResponsesForMember } from "@/db/responses";
 import { getLiveVersion, listVersionsForMember } from "@/db/versions";
 import { documentsEqual } from "@/lib/graph/document";
+import { groupResponsesByStep } from "@/lib/response-list";
 import { requireSession } from "@/lib/session";
 import { readTab } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
 
 /** The page's sections, the first being what the plain address opens on. */
-const JOURNEY_TABS = ["editor", "versions"] as const;
+const JOURNEY_TABS = ["editor", "versions", "responses"] as const;
 
 export default async function JourneyPage({
   params,
@@ -60,6 +63,16 @@ export default async function JourneyPage({
     session.user.id,
   );
   if (!versions) notFound();
+
+  // Null only for a non-Member, already answered above; the rows are every
+  // Response any version of this Journey has recorded, arranged per Step.
+  const responses = await listResponsesForMember(
+    projectId,
+    journeyId,
+    session.user.id,
+  );
+  if (!responses) notFound();
+  const responseGroups = groupResponsesByStep(draft, responses);
 
   // Publish has nothing to do while participants already see exactly this:
   // the Draft, the title, and the description. An unpublished or
@@ -154,6 +167,11 @@ export default async function JourneyPage({
                 versions={versions}
               />
             ),
+          },
+          {
+            value: "responses",
+            label: "Responses",
+            content: <ResponseList groups={responseGroups} />,
           },
         ]}
       />

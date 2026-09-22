@@ -6,7 +6,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { journey, publishedVersion, run } from "@/db/schema";
+import { journey, publishedVersion, response, run } from "@/db/schema";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import type { RunState } from "@/lib/graph/run";
 
@@ -87,30 +87,43 @@ export async function getPublicJourney(
 
 /**
  * Starts a Run: one row pinned to the Published Version the Participant is
- * about to walk, recording the reducer's own starting state.
+ * about to walk, recording the reducer's own starting state. A Run begins
+ * with a Choice (ticket 27), and the Start Step may carry a Prompt, so the
+ * answer given with that first Choice is written in the same transaction:
+ * a Run that exists without the Response posted with it would be a Response
+ * lost.
  */
 export async function createRun({
   versionId,
   participantId,
   state,
+  response: firstResponse,
 }: {
   versionId: string;
   participantId: string;
   state: RunState;
+  /** The Start Step's answer, when its Prompt was answered. */
+  response?: { stepId: string; text: string };
 }): Promise<{ id: string }> {
-  const [created] = await db
-    .insert(run)
-    .values({
-      versionId,
-      participantId,
-      path: state.path,
-      backtrackCount: state.backtrackCount,
-      endedAt: state.endedAt,
-      outcomeId: state.outcomeId,
-    })
-    .returning({ id: run.id });
+  return db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(run)
+      .values({
+        versionId,
+        participantId,
+        path: state.path,
+        backtrackCount: state.backtrackCount,
+        endedAt: state.endedAt,
+        outcomeId: state.outcomeId,
+      })
+      .returning({ id: run.id });
 
-  return created;
+    if (firstResponse) {
+      await tx.insert(response).values({ runId: created.id, ...firstResponse });
+    }
+
+    return created;
+  });
 }
 
 export type RunForJourney = {
