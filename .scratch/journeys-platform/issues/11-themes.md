@@ -47,7 +47,7 @@ Two fresh readers (opus, `/code-review`: standards and spec) read the whole diff
 
 ### [CLOSEOUT] 2026-09-22 — /implement (Claude Fable 5.1)
 
-**Delivery:** repository `journeys`, branch `feat/11-themes` from `staging` at `2f61ab0`, in the worktree `.claude/worktrees/11-themes/journeys`; implemented by the orchestrator (Claude Fable 5.1) with no delegated workers; reviewed by two opus readers. Commits: `e2ccf70` (feature), `97e204a` (review fixes), `b6c7390` (assertion fix), `9411e34` (evidence), then this closeout. PR: see the comment below this record.
+**Delivery:** repository `journeys`, branch `feat/11-themes` from `staging` at `2f61ab0`, in the worktree `.claude/worktrees/11-themes/journeys`; implemented by the orchestrator (Claude Fable 5.1) with no delegated workers; reviewed by two opus readers. Commits: `e2ccf70` (feature), `97e204a` (review fixes), `b6c7390` (assertion fix), `9411e34` (evidence), then this closeout. PR: https://github.com/paul-macfarlane/journeys/pull/42 (to `staging`; CI red until Paul commits the lockfile).
 
 **Verified run command** (`test-results/dod-1-commands.txt`, at `b6c7390`, from the worktree with `E2E_PORT=3111 E2E_DATABASE_NAME=journeys_e2e_t11`):
 
