@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { Content } from "@/lib/graph/content";
-import type { Choice, GraphDocument, Step } from "@/lib/graph/document";
+import type { Choice, GraphDocument, Prompt, Step } from "@/lib/graph/document";
 
 import { queryE2eDatabase } from "./session";
 
@@ -161,6 +161,30 @@ export function runnerDocument(): GraphDocument {
     outcomes: Object.fromEntries(outcomes.map((item) => [item.id, item])),
     layoutDirection: "TB",
   };
+}
+
+/** The three Prompts `promptDocument()` asks, by the Step that asks each. */
+export const START_PROMPT = "How are you feeling as you arrive?";
+export const QUEUE_PROMPT = "What is going through your mind while you wait?";
+export const ENDING_PROMPT = "What would you do differently?";
+
+function prompt(label: string, required: boolean): Prompt {
+  return { type: "free_text", label, required };
+}
+
+/**
+ * `runnerDocument()` with a Prompt on three of its Steps: an optional one on
+ * the Start, a required one on the middle Step, and an optional one on the
+ * "Waved through" Ending — the three places a Prompt behaves differently in
+ * the runner. "Turned back" asks nothing, so a walk that way records no
+ * Response at all.
+ */
+export function promptDocument(): GraphDocument {
+  const document = runnerDocument();
+  document.steps[START_STEP_ID].prompt = prompt(START_PROMPT, false);
+  document.steps[QUEUE_STEP_ID].prompt = prompt(QUEUE_PROMPT, true);
+  document.steps["waved-through"].prompt = prompt(ENDING_PROMPT, false);
+  return document;
 }
 
 /**
@@ -328,6 +352,24 @@ export type RunRow = {
 export function readRuns(versionId: string): Promise<RunRow[]> {
   return queryE2eDatabase<RunRow>(
     'SELECT id, participant_id, path, backtrack_count, ended_at, outcome_id FROM "run" WHERE version_id = $1 ORDER BY started_at',
+    [versionId],
+  );
+}
+
+/** A `response` row as the specs read it back: the Step, the words, the Run. */
+export type ResponseRow = { run_id: string; step_id: string; text: string };
+
+/**
+ * Every Response recorded against any Run of one Published Version, oldest
+ * first. Like a Run, a Response is invisible from the Participant's side by
+ * design, so the row is where a spec proves what was and was not written.
+ */
+export function readResponses(versionId: string): Promise<ResponseRow[]> {
+  return queryE2eDatabase<ResponseRow>(
+    `SELECT r.run_id, r.step_id, r.text
+     FROM "response" r JOIN "run" ON "run".id = r.run_id
+     WHERE "run".version_id = $1
+     ORDER BY r.created_at, r.step_id`,
     [versionId],
   );
 }
