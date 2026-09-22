@@ -8,12 +8,23 @@ import { groupResponsesByStep, type ResponseRow } from "@/lib/response-list";
  * arranged per Step the way a Member reads them.
  */
 
-function step(id: string, title: string, prompt: Step["prompt"]): Step {
+function step(
+  id: string,
+  title: string,
+  prompt: Step["prompt"],
+  leadsTo: string[] = [],
+): Step {
   return {
     id,
     title,
     content: { type: "doc", content: [{ type: "paragraph" }] },
-    choices: [],
+    choices: leadsTo.map((targetStepId) => ({
+      id: `${id}-to-${targetStepId}`,
+      label: targetStepId,
+      targetStepId,
+      condition: null,
+      effect: null,
+    })),
     prompt,
     outcomeId: null,
     position: null,
@@ -24,14 +35,16 @@ function prompt(label: string): Step["prompt"] {
   return { type: "free_text", label, required: false };
 }
 
+// Keyed out of walk order on purpose — Postgres reorders jsonb keys, so the
+// order a document's Steps come back in means nothing.
 const document: GraphDocument = {
   schemaVersion: 1,
   startStepId: "start",
   allowBack: true,
   steps: {
-    start: step("start", "Border post", null),
-    queue: step("queue", "Still waiting", prompt("How do you feel?")),
     end: step("end", "", prompt("What would you change?")),
+    queue: step("queue", "Still waiting", prompt("How do you feel?"), ["end"]),
+    start: step("start", "Border post", null, ["queue"]),
   },
   outcomes: {},
   layoutDirection: "TB",
@@ -42,7 +55,7 @@ function row(stepId: string, text: string, at: number): ResponseRow {
 }
 
 describe("groupResponsesByStep", () => {
-  it("lists every Step with a Prompt in document order, empty or not", () => {
+  it("lists every Step with a Prompt in walk order from the Start, empty or not", () => {
     expect(groupResponsesByStep(document, [])).toEqual([
       {
         stepId: "queue",
@@ -74,6 +87,19 @@ describe("groupResponsesByStep", () => {
     expect(grouped[1].responses).toEqual([
       { text: "Nothing", createdAt: new Date(3) },
     ]);
+  });
+
+  it("puts a prompted Step the Start cannot reach after the ones it can", () => {
+    const withIsland: GraphDocument = {
+      ...document,
+      steps: {
+        ...document.steps,
+        island: step("island", "Cut off", prompt("Still here?")),
+      },
+    };
+    expect(
+      groupResponsesByStep(withIsland, []).map((group) => group.stepId),
+    ).toEqual(["queue", "end", "island"]);
   });
 
   it("keeps rows for a Step that no longer has a Prompt, or no longer exists", () => {

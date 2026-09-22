@@ -1,4 +1,4 @@
-import { stepName, type GraphDocument } from "@/lib/graph/document";
+import { hasStep, stepName, type GraphDocument } from "@/lib/graph/document";
 
 /**
  * The Responses tab's arrangement of what a Journey has recorded: one group
@@ -24,11 +24,43 @@ export type StepResponses = {
 };
 
 /**
- * Every Step the Draft asks a Prompt on, in the Draft's order and whether or
- * not anything has been written yet, followed by any other Step a Response
- * was recorded against — a Prompt since removed, or a Step only an older
- * Published Version had — in the order their rows first appear. Nothing a
- * Participant wrote is dropped because the Author has moved on.
+ * The Draft's Steps in the order a Participant meets them: the Start, then
+ * breadth-first through each Step's Choices in their own order, then any
+ * Step the Start cannot reach. Not the map's order — the map is laid out
+ * on the client — and not the document's, which Postgres rewrites: jsonb
+ * keys come back sorted, so a document's own order means nothing.
+ */
+function walkOrder(document: GraphDocument): string[] {
+  const seen = new Set<string>();
+  const order: string[] = [];
+  const pending = hasStep(document, document.startStepId)
+    ? [document.startStepId]
+    : [];
+
+  while (pending.length > 0) {
+    const stepId = pending.shift();
+    if (stepId === undefined || seen.has(stepId)) continue;
+    if (!hasStep(document, stepId)) continue;
+    seen.add(stepId);
+    order.push(stepId);
+    for (const choice of document.steps[stepId].choices) {
+      pending.push(choice.targetStepId);
+    }
+  }
+
+  for (const stepId of Object.keys(document.steps)) {
+    if (!seen.has(stepId)) order.push(stepId);
+  }
+
+  return order;
+}
+
+/**
+ * Every Step the Draft asks a Prompt on, in walk order from the Start and
+ * whether or not anything has been written yet, followed by any other Step
+ * a Response was recorded against — a Prompt since removed, or a Step only
+ * an older Published Version had — in the order their rows first appear.
+ * Nothing a Participant wrote is dropped because the Author has moved on.
  */
 export function groupResponsesByStep(
   document: GraphDocument,
@@ -36,7 +68,8 @@ export function groupResponsesByStep(
 ): StepResponses[] {
   const groups = new Map<string, StepResponses>();
 
-  for (const step of Object.values(document.steps)) {
+  for (const stepId of walkOrder(document)) {
+    const step = document.steps[stepId];
     if (step.prompt === null) continue;
     groups.set(step.id, {
       stepId: step.id,
