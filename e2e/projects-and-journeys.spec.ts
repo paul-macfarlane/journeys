@@ -13,6 +13,7 @@ import {
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -61,7 +62,7 @@ test("project-create", async ({ page, context }) => {
 
   await page.goto("/projects");
   await page.screenshot({
-    path: "test-results/project-create/project-create.png",
+    path: evidencePath("project-create", "project-create.png"),
     fullPage: true,
   });
 });
@@ -103,7 +104,7 @@ test("project-non-member", async ({ page, context, browser }) => {
     await expect(strangerPage.getByText(journeyTitle)).toHaveCount(0);
 
     await strangerPage.screenshot({
-      path: "test-results/project-non-member/project-non-member.png",
+      path: evidencePath("project-non-member", "project-non-member.png"),
       fullPage: true,
     });
   } finally {
@@ -134,7 +135,7 @@ test("project-rename", async ({ page, context }) => {
   await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
 
   await page.screenshot({
-    path: "test-results/project-rename/project-rename.png",
+    path: evidencePath("project-rename", "project-rename.png"),
     fullPage: true,
   });
 
@@ -170,7 +171,7 @@ test("project-delete", async ({ page, context }) => {
   expect(response?.status()).toBe(404);
 
   await page.screenshot({
-    path: "test-results/project-delete/project-delete.png",
+    path: evidencePath("project-delete", "project-delete.png"),
     fullPage: true,
   });
 });
@@ -208,7 +209,7 @@ test("journey-create", async ({ page, context }) => {
   await expect(journeyItem.getByText("Never published")).toBeVisible();
 
   await page.screenshot({
-    path: "test-results/journey-create/journey-create.png",
+    path: evidencePath("journey-create", "journey-create.png"),
     fullPage: true,
   });
 });
@@ -255,7 +256,10 @@ test("journey-edit-and-delete", async ({ page, context }) => {
   await page.goto(journeyPath);
 
   await page.screenshot({
-    path: "test-results/journey-edit-and-delete/journey-edit-and-delete.png",
+    path: evidencePath(
+      "journey-edit-and-delete",
+      "journey-edit-and-delete.png",
+    ),
     fullPage: true,
   });
 
@@ -299,7 +303,7 @@ test("project-delete-cascade", async ({ page, context }) => {
   expect(projectResponse?.status()).toBe(404);
 
   await page.screenshot({
-    path: "test-results/project-delete-cascade/project-delete-cascade.png",
+    path: evidencePath("project-delete-cascade", "project-delete-cascade.png"),
     fullPage: true,
   });
 });
@@ -378,7 +382,7 @@ test("author-flow", async ({ page, context, browser }) => {
   await expect(page.getByText(projectTitle)).toHaveCount(0);
 
   await page.screenshot({
-    path: "test-results/author-flow/author-flow.png",
+    path: evidencePath("author-flow", "author-flow.png"),
     fullPage: true,
   });
 });

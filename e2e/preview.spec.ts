@@ -8,6 +8,7 @@ import {
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -75,7 +76,7 @@ test("preview", async ({ page, context }) => {
   await expect(page.getByText("Outcome: Reached care")).toBeVisible();
 
   await page.screenshot({
-    path: "test-results/preview/preview.png",
+    path: evidencePath("preview", "preview.png"),
     fullPage: true,
   });
 
@@ -137,7 +138,7 @@ test("preview-non-member", async ({ page, context, browser }) => {
     expect(stepResponse?.status()).toBe(404);
 
     await strangerPage.screenshot({
-      path: "test-results/preview-non-member/preview-non-member.png",
+      path: evidencePath("preview-non-member", "preview-non-member.png"),
       fullPage: true,
     });
   } finally {

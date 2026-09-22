@@ -19,6 +19,7 @@ import {
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -187,7 +188,10 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
     await expectNoSidewaysScroll(participant);
 
     await participant.screenshot({
-      path: "test-results/runner-case-3-on-a-phone/runner-case-3-on-a-phone.png",
+      path: evidencePath(
+        "runner-case-3-on-a-phone",
+        "runner-case-3-on-a-phone.png",
+      ),
       fullPage: true,
     });
 
@@ -336,7 +340,10 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     expect(afterSecondChoice[0].ended_at).not.toBeNull();
 
     await participant.screenshot({
-      path: "test-results/runner-back-and-choose-again/runner-back-and-choose-again.png",
+      path: evidencePath(
+        "runner-back-and-choose-again",
+        "runner-back-and-choose-again.png",
+      ),
       fullPage: true,
     });
 
@@ -470,7 +477,7 @@ test("runner-loop-and-back", async ({ page, context, browser }) => {
     await expect(participant.getByText("The end")).toBeVisible();
 
     await participant.screenshot({
-      path: "test-results/runner-loop-and-back/runner-loop-and-back.png",
+      path: evidencePath("runner-loop-and-back", "runner-loop-and-back.png"),
       fullPage: true,
     });
 
@@ -564,7 +571,7 @@ test("runner-path-cap", async ({ page, context, browser }) => {
     ).toBeVisible();
 
     await participant.screenshot({
-      path: "test-results/runner-path-cap/runner-path-cap.png",
+      path: evidencePath("runner-path-cap", "runner-path-cap.png"),
       fullPage: true,
     });
 
@@ -627,7 +634,10 @@ test("runner-case-2-restored-choice", async ({ page, context, browser }) => {
     ).toBeVisible();
 
     await participant.screenshot({
-      path: "test-results/runner-case-2-restored-choice/runner-case-2-restored-choice.png",
+      path: evidencePath(
+        "runner-case-2-restored-choice",
+        "runner-case-2-restored-choice.png",
+      ),
       fullPage: true,
     });
 
@@ -744,7 +754,10 @@ test("runner-run-cookie-and-refresh", async ({ page, context, browser }) => {
       participant.getByRole("link", { name: "Continue where you left off" }),
     ).toBeVisible();
     await participant.screenshot({
-      path: "test-results/runner-run-cookie-and-refresh/runner-run-cookie-and-refresh.png",
+      path: evidencePath(
+        "runner-run-cookie-and-refresh",
+        "runner-run-cookie-and-refresh.png",
+      ),
       fullPage: true,
     });
   } finally {
@@ -829,7 +842,7 @@ test("runner-pinned-version", async ({ page, context, browser }) => {
     expect(onVersionTwo[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
 
     await fresh.screenshot({
-      path: "test-results/runner-pinned-version/runner-pinned-version.png",
+      path: evidencePath("runner-pinned-version", "runner-pinned-version.png"),
       fullPage: true,
     });
   } finally {
@@ -866,7 +879,10 @@ test("runner-unavailable-and-unknown", async ({ page, context, browser }) => {
       participant.getByText("This journey isn't available"),
     ).toBeVisible();
     await participant.screenshot({
-      path: "test-results/runner-unavailable-and-unknown/runner-unavailable-and-unknown.png",
+      path: evidencePath(
+        "runner-unavailable-and-unknown",
+        "runner-unavailable-and-unknown.png",
+      ),
       fullPage: true,
     });
 

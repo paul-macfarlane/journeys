@@ -10,6 +10,7 @@ import {
   uniqueSuffix,
 } from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -116,7 +117,7 @@ test("journey-draft", async ({ page, context }) => {
   expect(stored[0].document).toEqual(largeJourney);
 
   await page.screenshot({
-    path: "test-results/journey-draft/journey-draft.png",
+    path: evidencePath("journey-draft", "journey-draft.png"),
     fullPage: true,
   });
 });

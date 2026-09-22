@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
 const mintedAuthorIds: string[] = [];
@@ -18,7 +19,10 @@ test("signed-out visit to /projects redirects to the landing page", async ({
   await expect(page).toHaveURL(`${E2E_BASE_URL}/`);
 
   await page.screenshot({
-    path: "test-results/projects-signed-out-redirect/projects-signed-out-redirect.png",
+    path: evidencePath(
+      "projects-signed-out-redirect",
+      "projects-signed-out-redirect.png",
+    ),
     fullPage: true,
   });
 });
@@ -42,7 +46,7 @@ test("signed-in visit to /projects shows the empty projects state", async ({
   await expect(page.getByRole("listitem")).toHaveCount(0);
 
   await page.screenshot({
-    path: "test-results/projects-empty/projects-empty.png",
+    path: evidencePath("projects-empty", "projects-empty.png"),
     fullPage: true,
   });
 });
@@ -63,7 +67,7 @@ test("signing out returns to the landing page, and /projects redirects again", a
   await expect(page).toHaveURL(`${E2E_BASE_URL}/`);
 
   await page.screenshot({
-    path: "test-results/sign-out/sign-out.png",
+    path: evidencePath("sign-out", "sign-out.png"),
     fullPage: true,
   });
 });

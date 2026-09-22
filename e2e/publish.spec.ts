@@ -16,6 +16,7 @@ import {
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
@@ -114,7 +115,7 @@ test("publish-invalid-draft", async ({ page, context }) => {
   );
 
   await page.screenshot({
-    path: "test-results/publish-invalid-draft/publish-invalid-draft.png",
+    path: evidencePath("publish-invalid-draft", "publish-invalid-draft.png"),
     fullPage: true,
   });
 
@@ -177,7 +178,10 @@ test("publish-untagged-ending", async ({ page, context, browser }) => {
     await expect(participant.getByText("Outcome:")).toHaveCount(0);
 
     await participant.screenshot({
-      path: "test-results/publish-untagged-ending/publish-untagged-ending.png",
+      path: evidencePath(
+        "publish-untagged-ending",
+        "publish-untagged-ending.png",
+      ),
       fullPage: true,
     });
   } finally {
@@ -213,7 +217,10 @@ test("publish-draft-with-loop", async ({ page, context }) => {
   expect(published[0].document).toEqual(document);
 
   await page.screenshot({
-    path: "test-results/publish-draft-with-loop/publish-draft-with-loop.png",
+    path: evidencePath(
+      "publish-draft-with-loop",
+      "publish-draft-with-loop.png",
+    ),
     fullPage: true,
   });
 });
@@ -404,7 +411,10 @@ test("publish-versions-and-restore", async ({ page, context }) => {
 
   await page.goto(journeyPath);
   await page.screenshot({
-    path: "test-results/publish-versions-and-restore/publish-versions-and-restore.png",
+    path: evidencePath(
+      "publish-versions-and-restore",
+      "publish-versions-and-restore.png",
+    ),
     fullPage: true,
   });
 });
@@ -446,7 +456,7 @@ test("journey-share-link", async ({ page, context }) => {
   );
 
   await page.screenshot({
-    path: "test-results/journey-share-link/journey-share-link.png",
+    path: evidencePath("journey-share-link", "journey-share-link.png"),
     fullPage: true,
   });
 
