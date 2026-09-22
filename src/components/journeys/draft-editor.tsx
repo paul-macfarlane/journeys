@@ -6,7 +6,6 @@ import type { FocusEvent } from "react";
 
 import {
   saveDraftAction,
-  validateDraftAction,
   type SaveDraftActionResult,
 } from "@/app/projects/[projectId]/journeys/actions";
 import { counted, type SelectStep } from "@/components/journeys/editor-shared";
@@ -16,7 +15,6 @@ import {
   type CanvasArrow,
 } from "@/components/journeys/journey-canvas";
 import { StepPanel } from "@/components/journeys/step-panel";
-import { Button } from "@/components/ui/button";
 import type { Content } from "@/lib/graph/content";
 import {
   documentsEqual,
@@ -85,9 +83,6 @@ export function DraftEditor({
   const [selectedStepId, setSelectedStepId] = useState(draft.startStepId);
   const [status, setStatus] = useState<SaveStatus>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [problems, setProblems] = useState<PublishProblem[] | null>(null);
-  const [validateError, setValidateError] = useState<string | null>(null);
-  const [validating, setValidating] = useState(false);
   // Whether the live "All problems" list is open. Left as the Author set it
   // across document changes — it is the count reaching zero, not a toggle,
   // that ever makes the section disappear on its own.
@@ -276,7 +271,18 @@ export function DraftEditor({
     );
   }, [draft]);
 
-  useEffect(() => () => clearTimer(), [clearTimer]);
+  // Unmounting with an edit still unsaved — the Author opened the Versions
+  // tab inside the debounce window — is the timer's save made now, through
+  // the same path: a save already running is asked to go round once more,
+  // and the refresh at the end is what hands the next mount of this editor
+  // the document as saved rather than the one the page was opened with.
+  useEffect(
+    () => () => {
+      clearTimer();
+      void save();
+    },
+    [clearTimer, save],
+  );
 
   // Leaving the page with an edit still in the debounce window: the write is
   // attempted, and the browser asks before the page goes, because neither the
@@ -644,30 +650,10 @@ export function DraftEditor({
     [applyEdit, selectStep],
   );
 
-  async function validate() {
-    setValidating(true);
-    setValidateError(null);
-    try {
-      // Validation reads the stored Draft, so what is on screen has to be
-      // what is stored before it is worth asking.
-      await flushSave();
-      const result = await validateDraftAction(projectId, journeyId);
-
-      if (!result.ok) {
-        setProblems(null);
-        setValidateError(result.error);
-        return;
-      }
-      setProblems(result.problems);
-    } finally {
-      setValidating(false);
-    }
-  }
-
   // What the canvas marks: the same rules the Publish button applies, run
   // here on what the Author is holding rather than on what was last stored,
-  // so a mark appears and clears as the document changes. The "Validate"
-  // button and its list stay a deliberate, server-side question.
+  // so a mark appears and clears as the document changes. Publishing is the
+  // only server-side question left; these and its refusal read the same.
   const liveProblems = useMemo(() => validateForPublish(document), [document]);
 
   // The document laid out once: the map draws from it, and "Find step" above
@@ -744,13 +730,6 @@ export function DraftEditor({
             <p className="text-muted-foreground text-sm">No problems</p>
           )}
           {/* "Add step" lives on the canvas, beside the map it adds to. */}
-          <Button
-            variant="outline"
-            disabled={validating}
-            onClick={() => void validate()}
-          >
-            Validate
-          </Button>
         </div>
       </div>
 
@@ -808,57 +787,6 @@ export function DraftEditor({
         >
           {contentNotice.message}
         </p>
-      ) : null}
-
-      {problems !== null || validateError !== null ? (
-        <section
-          aria-label="Validation"
-          className="flex flex-col gap-2 rounded-xl px-4 py-3 ring-1 ring-foreground/10"
-        >
-          <h3 className="text-sm font-medium">Validation</h3>
-
-          {validateError !== null ? (
-            <p role="alert" className="text-sm text-destructive">
-              {validateError}
-            </p>
-          ) : null}
-
-          {problems !== null && problems.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No problems found.</p>
-          ) : null}
-
-          {problems !== null && problems.length > 0 ? (
-            // role="list" is explicit for consistency with the app's other
-            // lists. One rule can name the same Step more than once (one
-            // entry per dangling Choice), so the Choice id is part of the key.
-            <ul
-              role="list"
-              aria-label="Validation problems"
-              className="flex list-disc flex-col gap-1 pl-5 text-sm"
-            >
-              {problems.map((problem, index) => {
-                const { stepId } = problem;
-                return (
-                  <li
-                    key={`${problem.code}-${stepId ?? ""}-${problem.choiceId ?? index}`}
-                  >
-                    {stepId !== undefined ? (
-                      <button
-                        type="button"
-                        className="text-left underline underline-offset-4"
-                        onClick={() => selectStep(stepId)}
-                      >
-                        {problem.message}
-                      </button>
-                    ) : (
-                      problem.message
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-        </section>
       ) : null}
 
       {/* The panel's column closes to nothing when it is put away and the map

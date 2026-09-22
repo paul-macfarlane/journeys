@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { firstIssue, type ActionResult } from "@/lib/action-result";
-import { saveDraft, validateDraft } from "@/db/drafts";
+import { saveDraft } from "@/db/drafts";
 import { createJourney, deleteJourney, updateJourney } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
 import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
@@ -115,28 +115,6 @@ export async function saveDraftAction(
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId };
-}
-
-export type ValidateDraftActionResult =
-  { ok: true; problems: PublishProblem[] } | { ok: false; error: string };
-
-/**
- * Publish-time validation of a Journey's Draft as it stands, as something a
- * caller can ask for: an empty problem list means the Draft could be
- * published. The Draft editor's "Validate" button calls this to show the
- * problems as an Author works, while `publishJourneyAction` below is what
- * refuses on them.
- */
-export async function validateDraftAction(
-  projectId: string,
-  journeyId: string,
-): Promise<ValidateDraftActionResult> {
-  const session = await requireSession();
-
-  const problems = await validateDraft(projectId, journeyId, session.user.id);
-  if (!problems) return { ok: false, error: "That journey no longer exists" };
-
-  return { ok: true, problems };
 }
 
 /**

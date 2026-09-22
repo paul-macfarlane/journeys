@@ -29,9 +29,7 @@ export function VersionList({
   versions: VersionSummary[];
 }) {
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-lg font-medium tracking-tight">Versions</h2>
-
+    <section aria-label="Versions" className="flex flex-col gap-4">
       {versions.length === 0 ? (
         <p className="text-muted-foreground text-sm">Not published yet.</p>
       ) : (

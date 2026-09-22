@@ -13,7 +13,6 @@ import {
   prepareDocumentForWrite,
   type GraphDocument,
 } from "@/lib/graph/document";
-import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
 /**
  * Data access for Drafts, mirroring `@/db/journeys`.
@@ -102,20 +101,4 @@ export async function saveDraft(
     .onConflictDoUpdate({ target: draft.journeyId, set: saved });
 
   return { ok: true, document: prepared.document };
-}
-
-/**
- * The publish-time problems with a Journey's Draft as it stands, or null when
- * the Author is not a Member. An empty list means the Draft could be
- * published; `publishDraft` in `@/db/versions` is what refuses on them.
- */
-export async function validateDraft(
-  projectId: string,
-  journeyId: string,
-  userId: string,
-): Promise<PublishProblem[] | null> {
-  const document = await getDraftForMember(projectId, journeyId, userId);
-  if (!document) return null;
-
-  return validateForPublish(document);
 }

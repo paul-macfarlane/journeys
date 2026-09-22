@@ -432,6 +432,22 @@ const SETTLED_POLLS = 2;
 const SETTLE_INTERVAL_MS = 250;
 
 /**
+ * The whole map frame inside the window, scrolled the least that gets it
+ * there. The page above the map is taller than a 720px window leaves room
+ * for, so a box low on the map can lie below the fold: a pointer cannot
+ * reach one there, and Playwright's own scroll-into-view is undone by React
+ * Flow, which scrolls its pane straight back. Every helper that settles the
+ * map before touching it passes through here, so no move below depends on
+ * where the window was left, or on whether a reload restored its scroll in
+ * time.
+ */
+async function mapInView(page: Page): Promise<void> {
+  await canvas(page).evaluate((element) =>
+    element.scrollIntoView({ block: "nearest" }),
+  );
+}
+
+/**
  * The map's transform once it has stopped moving. `fitView` animates, so
  * "the viewport did not move" is only worth asserting against a reading taken
  * after the last animation finished rather than before or during one.
@@ -442,6 +458,7 @@ const SETTLE_INTERVAL_MS = 250;
  * is the same empty nothing and any two of them agree.
  */
 async function settledTransform(page: Page): Promise<string> {
+  await mapInView(page);
   const viewport = canvas(page).locator(".react-flow__viewport");
   let last: string | null = null;
   let still = 0;
@@ -495,14 +512,12 @@ async function fitWholeMap(page: Page, boxes: number): Promise<void> {
   await settledTransform(page);
 
   // Reaching for the Controls at the foot of the map scrolls the page down to
-  // them, which can leave the top of the map above the window; the page is put
-  // back where it was, so every move after this is made where the Author,
-  // looking at the map, would make it.
-  const scrolled = await page.evaluate(() => window.scrollY);
+  // them, which can leave the top of the map above the window; the whole
+  // frame is put back in it before the drags that follow.
   await canvas(page)
     .getByRole("button", { name: /fit view/i })
     .click();
-  await page.evaluate((top) => window.scrollTo(0, top), scrolled);
+  await mapInView(page);
 
   await expect
     .poll(() => mapFaults(page, boxes), { timeout: 20_000 })
@@ -681,6 +696,28 @@ function connectHandle(page: Page, title: string) {
   return canvasNodeBox(page, title).locator('[data-handleid="connect"]');
 }
 
+/**
+ * One box clicked, the way an Author clicks one: once the map has stopped
+ * moving. Adding a Step, opening the problems list above the map, or a
+ * fit-to-view can all still be moving the box when the next line runs, and
+ * a click made while it moves lands where the box was.
+ */
+async function clickBox(page: Page, title: string): Promise<void> {
+  await settledTransform(page);
+  // Said outright when the box's middle — where the click lands — is not on
+  // the map or on screen: Playwright would scroll the pane to reach it,
+  // React Flow scrolls the pane straight back, and the click retries until
+  // the test times out with no word about why.
+  await expect
+    .poll(
+      async () =>
+        (await nodeViews(page)).find((view) => view.title === title)?.clickable,
+      { timeout: 10_000, message: `the box "${title}" is not clickable` },
+    )
+    .toBe(true);
+  await canvasNode(page, title).click();
+}
+
 /** The group of moves a box carries, once the Author has clicked that box. */
 function boxToolbar(page: Page, title: string) {
   return canvas(page).getByRole("group", { name: `${title} actions` });
@@ -692,8 +729,7 @@ function boxToolbar(page: Page, title: string) {
  * into until it is pressed.
  */
 async function stepActions(page: Page, title: string): Promise<Locator> {
-  await settledTransform(page);
-  await canvasNode(page, title).click();
+  await clickBox(page, title);
 
   const opener = boxToolbar(page, title).getByRole("button", {
     name: "Step actions",
@@ -891,8 +927,7 @@ async function tagEndingsPublishAndWalk(
     );
   }
 
-  await page.getByRole("button", { name: "Validate", exact: true }).click();
-  await expect(page.getByText("No problems found.")).toBeVisible();
+  await expect(page.getByText("No problems", { exact: true })).toBeVisible();
 
   await expectSaved(page);
   const publish = page.getByRole("button", { name: "Publish", exact: true });
@@ -1299,7 +1334,7 @@ test("canvas-hide-and-show-panel", async ({ page, context }) => {
   // edits with never changes for the panel being away. It brings it back for
   // this page only — what the browser remembers is the choice the Author
   // made, and clicking a box is not that choice.
-  await canvasNode(page, "Clinic tent").click();
+  await clickBox(page, "Clinic tent");
   await expect(stepPanel(page)).toBeVisible();
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   // The frame narrows around the box that was clicked rather than the whole
@@ -1338,7 +1373,7 @@ test("canvas-hide-and-show-panel", async ({ page, context }) => {
 
   // Escape off a box lands the keyboard on the map; a second Escape, with the
   // map itself holding it, puts the panel away.
-  await canvasNode(page, "Border post").click();
+  await clickBox(page, "Border post");
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await canvasNode(page, "Border post").focus();
   await page.keyboard.press("Escape");
@@ -1472,7 +1507,11 @@ test("canvas-step-actions", async ({ page, context }) => {
   await expect(canvas(page).locator(".react-flow__minimap")).toHaveCount(0);
 
   // While another Step's box still offers the delete, and so does the panel
-  // once that Step is open.
+  // once that Step is open. Zooming in with the view on the Start pushed the
+  // other boxes toward the frame's edge — past it on a machine whose fonts
+  // make the boxes taller — and a box outside the frame cannot be clicked,
+  // so the whole map is asked for first.
+  await fitWholeMap(page, 3);
   const clinicToolbar = await expandStepActions(page, "Clinic tent");
   await expect(
     clinicToolbar.getByRole("button", { name: "Delete step", exact: true }),
@@ -2238,7 +2277,7 @@ test("canvas-validation-marks", async ({ page, context }) => {
   );
 
   // A Choice from the Start reaches it, and the mark goes with the problem.
-  await canvasNode(page, "Border post").click();
+  await clickBox(page, "Border post");
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await addChoiceToStep(page, "Find the clinic", "Clinic tent");
 
@@ -2254,7 +2293,10 @@ test("canvas-validation-marks", async ({ page, context }) => {
 
   // A Choice back to the Start closes a loop, and a loop is allowed since
   // ticket 18: it leaves no mark on either Step or either arrow.
-  await canvasNode(page, "Clinic tent").click();
+  // The Choice just added gave its target a rank of its own, which moved the
+  // boxes; the whole map is asked for before the next one is clicked.
+  await fitWholeMap(page, 2);
+  await clickBox(page, "Clinic tent");
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await addChoiceToStep(page, "Go back", "Border post");
   await expect(canvasEdges(page)).toHaveCount(2);
@@ -2370,7 +2412,7 @@ test("canvas-problems-readable", async ({ page, context }) => {
   });
 
   // A Choice that reaches it clears the problem everywhere it was shown.
-  await canvasNode(page, "Border post").click();
+  await clickBox(page, "Border post");
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await addChoiceToStep(page, "Find the clinic", "Clinic tent");
 
@@ -2382,7 +2424,10 @@ test("canvas-problems-readable", async ({ page, context }) => {
 
   // A dangling Choice: read the same live message on the Choice row that
   // dangles and in that Step's own Problems section.
-  await canvasNode(page, "Clinic tent").click();
+  // The Choice just added gave its target a rank of its own, which moved the
+  // boxes; the whole map is asked for before the next one is clicked.
+  await fitWholeMap(page, 2);
+  await clickBox(page, "Clinic tent");
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await page
     .getByRole("region", { name: "Step" })
@@ -2493,7 +2538,7 @@ test("canvas-selection-dims-arrows", async ({ page, context }) => {
   });
 
   // A Step in the middle: the arrow into it and the arrow out of it.
-  await canvasNode(page, "Clinic tent").click();
+  await clickBox(page, "Clinic tent");
   await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
   await expectEmphasis({
     "to-clinic": "attached",
@@ -2512,7 +2557,7 @@ test("canvas-selection-dims-arrows", async ({ page, context }) => {
   });
 
   // An Ending: both arrows that reach it, and neither of the Start's others.
-  await canvasNode(page, "Waved through").click();
+  await clickBox(page, "Waved through");
   await expect(page.getByLabel("Step title")).toHaveValue("Waved through");
   await expectEmphasis({
     "to-ward": "attached",
@@ -2529,7 +2574,7 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
   await expectBoxOnMap(page, "Clinic tent");
   await fitWholeMap(page, 2);
 
-  await canvasNode(page, "Border post").click();
+  await clickBox(page, "Border post");
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await addChoiceToStep(page, "Find the clinic", "Clinic tent");
   await expect(canvasEdges(page)).toHaveCount(1);
@@ -2602,7 +2647,7 @@ test("canvas-arrow-select-second-arrow", async ({ page, context }) => {
   await expectBoxOnMap(page, "Turned back");
   await fitWholeMap(page, 3);
 
-  await canvasNode(page, "Border post").click();
+  await clickBox(page, "Border post");
   await expect(page.getByLabel("Step title")).toHaveValue("Border post");
   await addChoiceToStep(page, "Find the clinic", "Clinic tent");
   await addChoiceToStep(page, "Walk away", "Turned back");
@@ -2673,7 +2718,7 @@ test.describe("a map read down the page", () => {
     await expectBoxOnMap(page, "Clinic tent");
     await fitWholeMap(page, 2);
 
-    await canvasNode(page, "Border post").click();
+    await clickBox(page, "Border post");
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
     await addChoiceToStep(page, "Cross", "Clinic tent");
     await expect(canvasEdges(page)).toHaveCount(1);
@@ -2759,7 +2804,7 @@ test.describe("authoring from the map", () => {
     await fitWholeMap(page, 2);
 
     // Clicking a node is how a Step is opened for editing.
-    await canvasNode(page, "Border post").click();
+    await clickBox(page, "Border post");
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
 
     // The Choice added in the panel draws its arrow with no reload.
@@ -2961,11 +3006,11 @@ test.describe("authoring from the map", () => {
     await expectBoxOnMap(page, "Waved through");
     await fitWholeMap(page, 4);
 
-    await canvasNode(page, "Border post").click();
+    await clickBox(page, "Border post");
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
     await addChoiceToStep(page, "From the border", "Ward round");
 
-    await canvasNode(page, "Clinic tent").click();
+    await clickBox(page, "Clinic tent");
     await expect(page.getByLabel("Step title")).toHaveValue("Clinic tent");
     await addChoiceToStep(page, "From the clinic", "Ward round");
     await expect(canvasEdges(page)).toHaveCount(2);
@@ -3142,7 +3187,7 @@ test.describe("authoring from the map", () => {
 
     // What the drops left to say: what each Choice is called, written on the
     // rows the Start now carries.
-    await canvasNode(page, "Border post").click();
+    await clickBox(page, "Border post");
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
     const rows = page
       .getByRole("list", { name: "Choices" })
@@ -3246,7 +3291,7 @@ test.describe("authoring from the map", () => {
     await expectBoxOnMap(page, "Turned back");
     await fitWholeMap(page, 3);
 
-    await canvasNode(page, "Border post").click();
+    await clickBox(page, "Border post");
     await expect(page.getByLabel("Step title")).toHaveValue("Border post");
     await addChoiceToStep(page, "Wait your turn", "Waved through");
     await addChoiceToStep(page, "Walk away", "Turned back");
@@ -3271,8 +3316,7 @@ test.describe("authoring from the map", () => {
       await expect(canvasNodeBox(page, ending)).toContainText("Reached care");
     }
 
-    await page.getByRole("button", { name: "Validate", exact: true }).click();
-    await expect(page.getByText("No problems found.")).toBeVisible();
+    await expect(page.getByText("No problems", { exact: true })).toBeVisible();
 
     await expectSaved(page);
     const publish = page.getByRole("button", { name: "Publish", exact: true });
