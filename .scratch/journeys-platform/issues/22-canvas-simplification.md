@@ -1,6 +1,6 @@
 # 22: Canvas simplification — feedback round 1
 
-Status: ai-review
+Status: done
 Blocked by: 21
 Owner: Atlas orchestrator (Claude Fable 5.1), session of Paul Macfarlane, claimed 2026-09-21
 Parent: `.scratch/journeys-platform/spec.md`
@@ -126,3 +126,40 @@ Two fresh reviewers (one per axis, opus) read the whole diff against the ticket,
 | S10 "Step actions" said `aria-expanded` with no `aria-controls` | `journey-canvas.tsx` | resolved in D4: the moves wrapped in an identified `div`, named while expanded |
 
 **Remaining risks:** (1) the 250 ms post-drag click window is a timing heuristic about a browser-generated click — invisible to an Author, but a constant; (2) the toolbar's `opening === locate.request + 1` prediction holds only while `selectStep` is the sole writer of `locate` and bumps it by one; (3) a Controls "fit view" click inside the 500 ms window after a reveal is answered by the reveal's own zoom; (4) an Outcome orphaned by a deleted Ending or by an Ending that gained a Choice stays in the document and in the "m outcomes" count until an Ending picks it up and drops it (reading (d)); (5) the list's above/below placement is measured once as it opens, not again if the panel grows while it is open; (6) an arrow click always moves the keyboard to the Canvas section, so a following Escape hides the panel (ticket 21's rule) — consistent, but a behaviour the ticket did not name; (7) the Zoom-to-step ceiling is read at the moment of the request, so a click landing mid-animation of a Hide fit takes the intermediate zoom as "before"; (8) `panel-choice-target-search` builds eight Steps to reach the list's cap and is ~8 s longer; (9) the `Combobox` itself is not `React.memo`'d, so what S3 stabilises is its internal memo, not its render.
+
+### [CLOSEOUT] 2026-09-21 — Atlas orchestrator
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/26 (`feat/22-canvas-simplification` → `staging`). Per the tracker rule Paul set on 2026-09-21, this closeout commit carries `Status: done`; merging the PR is the acceptance that lands it on `staging`. Status log: `ready-for-agent` → `in-progress` → `ai-review` → `done`.
+
+**Repository delivery:** `journeys`, base `staging` at `c8c48cb`, direct checkout, no worktrees, seven commits: `677f8fc` claim and execution plan (orchestrator), `2645751` D1 the panel (opus), `67a150b` D2 the view and the box (opus), `db38f0a` D3 the arrows and Seam B (opus), `a9e516d` D4 review fixes (opus), `a8dbbff` evidence and records (orchestrator; also carries the proof-root clear), and this closeout. Closeout re-check of the isolation record against the real diffs: D2 and D3 both changed `journey-canvas.tsx` (27 and 9 hunks), `draft-editor.tsx` (8 and 6, D3's `selectStep` and create-and-open hunks inside D2's regions), `editor-shared.ts` (1 and 2), and `e2e/canvas.spec.ts` (22 and 17); D1 and D3 both changed `step-panel.tsx` (7 and 3) and `choice-list.tsx` (5 and 6); the shared e2e port and database held. The predicted overlaps materialized, so the sequential structure stands as written.
+
+**Exact verified run command** (local; docker Postgres on 5436; evidence captured at `a9e516d`, committed in `a8dbbff`):
+
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys pnpm test:e2e
+```
+
+Every command exits 0; Vitest 237 passed in 11 files; Playwright 68 passed (production build on port 3100, `retries` 0, nothing flaky; the dotenvx tip lines are filtered out of the committed log). No deployed-target check (Paul's 2026-09-20 decision); no migration and no dependency change, so no lockfile gate.
+
+**Criterion verdicts (evidence under `test-results/`):**
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| AC-1 on case-3 zoomed in with the panel hidden, clicking another box shows the panel and leaves the zoom no lower with the box on the map; "Add next step" the same; a delete leaves the transform unchanged | PASS | `canvas-view-stays-put/canvas-view-stays-put.png`, `dod-1-e2e.txt` ✓ (the zoom read off the settled transform before and after; `expectBoxOnMap` on the clicked and the new box; the transform string identical across the delete) |
+| AC-2 no toolbar on load; "Step actions" on a clicked box; the five moves on expand; Escape collapses; a Step from "Find step" shows none | PASS | `canvas-step-actions/….png`, `dod-1-e2e.txt` ✓ |
+| AC-3 no `[data-outcome-bar]`, no `data-outcome-index`, no "Legend" on case-3 with its three Outcomes | PASS | `canvas-endings-uncolored/….png`, `ac-3-layout.txt` (22 passed; the layout no longer carries an index), `dod-1-e2e.txt` ✓ |
+| AC-4 typing part of another Step's title lists it; choosing retargets; the `draft` row holds the new target; the arrow's name names it | PASS | `panel-choice-target-search/….png`, `dod-1-e2e.txt` ✓ (also proves the list stays inside the panel column on an eight-Choice Step) |
+| AC-5 two Choices into one box; the second arrow selected and its head dragged onto a third box retargets it and leaves the first unchanged | PASS | `canvas-retarget-selected-arrow/….png` + `.webm`, `dod-1-e2e.txt` ✓ (the `draft` row read back; the unselected arrow has no reconnect anchor; the selected arrow's layer has the greater `z-index`) |
+| AC-6 no "Leads here from" group | PASS | `panel-choice-target-search/….png`, `dod-1-e2e.txt` ✓ (count 0 on the Start, on a Step with incoming Choices, and on one without) |
+| AC-7 a drag from the connect dot onto empty map makes a Step and a Choice; the panel opens on it with the title focused; the box is on the map; the `draft` row holds both | PASS | `canvas-drop-choice-on-empty-map/….png` + `.webm`, `dod-1-e2e.txt` ✓ |
+| AC-8 clicking an arrow opens its Step with the row `aria-current`; the active element stays inside the Canvas; `window.scrollY` unchanged | PASS | `canvas-arrow-click-stays-on-canvas/….png`, `dod-1-e2e.txt` ✓ (1280×640, the page scrolled to the map first) |
+| AC-9 no "Outcomes" section; "Create outcome" tags and the summary reads "1 outcome"; a second Ending picks it; "Rename" renames both; clearing both removes it and reads "0 outcomes" | PASS | `panel-outcomes-from-the-ending/….png`, `ac-9-outcome-edits.txt` (60 passed: tag, prune on drop, keep while shared, the refusals as identity), `dod-1-e2e.txt` ✓ (the `draft` row's single Outcome keeps its id across the rename; `outcomes` is `{}` at the end; an empty rename is refused; a lower-case query offers no second Outcome) |
+| AC-10 Seam B: a three-Step branch built by two drops on empty map, both Endings tagged with one Outcome from the panel, published, walked in the runner; screenshots and a recording | PASS | `canvas-build-by-dropping-and-walk/….png`, `…-runner.png`, `….webm`, `dod-1-e2e.txt` ✓ |
+| DoD-1 verified run command green; every existing canvas, draft, step-editing, and publish spec passes | PASS | `dod-1-commands.txt`, `dod-1-e2e.txt` |
+| DoD-2 every PASS artifact committed; fixture journeys only, no participant data | PASS | `a8dbbff`; minted `Test Author` accounts, invented Border-post Journeys, the committed case-3 seed; nothing from a Participant |
+
+**Deviations (approved by the orchestrator under the plan):** the Zoom-to-step move's ceiling is the greater of 1 and the zoom the Author was at (reading (b)), read once per request; the box toolbar's own "Zoom to step" keeps `maxZoom: 1.5`; the toolbar's visibility is derived from `locate.request` rather than cleared in an effect; only the Author's Hide/Show/Escape fit the whole map; `onConnectEnd` requires a drag that began on the connect dot (React Flow also calls it at the end of a reconnect); an arrow click hands the keyboard to the Canvas section (measured: React Flow focuses the clicked edge and then drops focus to the page); a 250 ms window keeps the browser's post-drag click on a self-loop from re-opening the Step; the combobox list opens above a field that has no room below it inside the panel column; the "Add choice" form's target stays a native `<select>` (reading (e)); an Outcome orphaned by a deleted Step or a Step that gained a Choice stays until an Ending picks it up and drops it (reading (d)); `canvas-legend-outcomes` became `canvas-endings-uncolored`; worker trailers name the worker's own model; accepted commits not rewritten (the PR asks for a squash merge).
+
+**Questions for Paul (queued, non-blocking):** (1) should an Outcome that no Ending carries after a Step is deleted, or after an Ending gains a Choice, be removed too? Today it stays (and counts in "m outcomes") until an Ending picks it up and drops it; pruning on every edit would also prune unused Outcomes in the seed documents on first edit. (2) After an arrow click the keyboard is on the Canvas section, so a following Escape hides the panel — is that the behaviour you want, or should Escape after an arrow click only let go of the arrow?
+
+**Human follow-ups:** (1) review and **squash-merge** PR #26 — it carries `Status: done`; (2) after the merge, 23 (undo/redo) becomes available, then 17 (manual layout, now also blocked only on 22); 20 (empty Choice label as a publish problem) is available at any time.
