@@ -77,8 +77,10 @@ test("publish-invalid-draft", async ({ page, context }) => {
   const journeyId = await createJourney(page, projectId, journeyTitle);
 
   // A Draft whose Start offers a Choice leading nowhere: the Step that
-  // Choice named is not in the document at all. Written into the `draft` row
-  // so this stays a spec about publishing rather than about the editor.
+  // Choice named is not in the document at all, and the Step it used to lead
+  // to ("Waved through") is now reached by nothing, so the refusal names two
+  // problems. Written into the `draft` row so this stays a spec about
+  // publishing rather than about the editor.
   const publishable = publishableDocument();
   const start = publishable.steps[START_STEP_ID];
   await writeDraftDocument(journeyId, {
@@ -104,6 +106,9 @@ test("publish-invalid-draft", async ({ page, context }) => {
   await expect(refusal).toContainText("This journey can't be published yet");
   await expect(refusal).toContainText(
     `Step "${START_STEP_TITLE}" has a choice pointing at a step that no longer exists`,
+  );
+  await expect(refusal).toContainText(
+    'Step "Waved through" cannot be reached from the start',
   );
 
   // Refused means nothing was written, and the Journey is where it was.

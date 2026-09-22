@@ -97,12 +97,9 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
   }
 
   for (const [stepId, step] of entries) {
-    // An Ending needs no Outcome — an Ending is an outcome in itself, and an
-    // Outcome only groups Endings for analysis — so an untagged Ending is
-    // nothing to report. What is still broken data is a tag naming an Outcome
-    // the document no longer defines. Only an Ending carries one at all; an
-    // outcome id left on a Step that still has Choices is ignored rather than
-    // reported.
+    // An Ending needs no Outcome; a tag naming an Outcome the document no
+    // longer defines is still broken data. Only an Ending carries one at all:
+    // an outcome id left on a Step that still has Choices is ignored.
     if (!isEnding(step) || step.outcomeId === null) {
       continue;
     }

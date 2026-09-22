@@ -71,8 +71,9 @@ function stepSchemaWith<C extends z.ZodType>(content: C) {
 }
 
 /**
- * One screen a participant reads. A Step with no Choices is an Ending and
- * carries the id of an Outcome. `position` is reserved for the canvas.
+ * One screen a participant reads. A Step with no Choices is an Ending, and
+ * may carry the id of an Outcome that groups it. `position` is reserved for
+ * the canvas.
  */
 export const stepSchema = stepSchemaWith(contentSchema);
 

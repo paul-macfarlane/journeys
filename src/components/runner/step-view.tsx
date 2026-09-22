@@ -49,10 +49,8 @@ function EndingView({
     <div className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold tracking-tight">The end</h2>
       {/*
-       * Only an Ending the Author grouped says what it was grouped by. An
-       * Ending needs no Outcome, and nothing stands in for the one it does not
-       * carry: what an Author has or has not tagged is authoring state, and a
-       * Participant is not being shown it.
+       * An untagged Ending says nothing here: what an Author has or has not
+       * grouped is authoring state, not a Participant's.
        */}
       {outcome === null ? null : <p>Outcome: {outcome.label}</p>}
       {startOver}

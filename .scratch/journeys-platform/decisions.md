@@ -51,10 +51,14 @@ Vocabulary is defined in `/CONTEXT.md` — use those terms.
   columns; build nothing for them.
 - One Start per journey. Steps have rich-text content and 0+ Choices.
 - Ending = step with no choices; every ending has exactly one Outcome.
+  **Amended 2026-09-22 (Paul):** an ending may carry an outcome or not; an
+  outcome is a grouping for analytics, never a requirement. Ticket 24.
 - Outcome: journey-scoped, author-defined, stable id + free text label
   (renameable without breaking analytics).
 - Validation at publish: exactly one start; every choice resolves to an
   existing step; every step reachable from start; every ending has an outcome.
+  **Amended 2026-09-22 (Paul):** the last rule is withdrawn; an ending tagged
+  with an outcome the document no longer defines is still refused. Ticket 24.
 - Step content: Tiptap JSON, rendered server-side to sanitized HTML with
   Tiptap's renderer (do not round-trip through a Markdown pipeline).
   Allowed marks: headings, bold/italic, lists, links, image-by-URL as a Tiptap

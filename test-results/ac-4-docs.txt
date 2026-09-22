@@ -1,0 +1,18 @@
+# AC-4 docs (2026-09-22T04:35:46Z, head 9cf6bf8)
+## CONTEXT.md must not say "exactly one outcome"
+exit=1 (1 = absent, as required)
+## CONTEXT.md Ending entry
+37:**Ending**:
+38-A step with no choices. It may carry an outcome that groups it for analysis; one without is an ending on its own.
+## spec.md scope change
+286:### [SCOPE CHANGE] 2026-09-22 — an Ending needs no Outcome (ticket 24)
+62:26. ~~As an Author, I want every Ending to require exactly one Outcome, so that analytics can always say what happened.~~ _Withdrawn by ticket 24 (2026-09-22); see the `[SCOPE CHANGE]` below._
+72:33. As an Author, I want validation problems highlighted on the canvas (unreachable Steps, broken Choices), so that I fix problems where they are.
+79:37. As an Author, I want validation to check: exactly one Start; every Choice targets an existing Step; every Step is reachable from Start; so that a published journey can never dead-end unexpectedly.
+## 10-analytics.md untagged-Ending note
+8:groups untagged Endings each by its own Step title, so "40% reached 'Turned back'" still reads (from ticket 24, 2026-09-22)
+## README
+116:  records its outcome, if it has one; starting over begins a new run and
+## README editor paragraph (phrase wraps across two lines)
+54:  start, delete a step and see which choices break, tag an ending with an
+55-  outcome if you want endings grouped and rename that outcome from the ending

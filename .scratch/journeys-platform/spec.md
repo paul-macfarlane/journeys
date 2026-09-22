@@ -59,7 +59,7 @@ A platform where signed-in Authors build Journeys as a visible graph of Steps an
 ### Outcomes
 
 25. As an Author, I want to define Outcomes for a Journey as short free-text labels (e.g. "Reached care", "Death", "Deported"), so that endings can be grouped by meaning.
-26. ~~As an Author, I want every Ending to require exactly one Outcome, so that analytics can always say what happened.~~ _Withdrawn by ticket 24 (2026-09-22); see the [SCOPE CHANGE] below._
+26. ~~As an Author, I want every Ending to require exactly one Outcome, so that analytics can always say what happened.~~ _Withdrawn by ticket 24 (2026-09-22); see the `[SCOPE CHANGE]` below._
 27. As an Author, I want to rename an Outcome without losing its history, so that wording can improve after runs exist.
 28. As an Author, I want to see how many Endings map to each Outcome, so that I notice an Outcome nothing reaches.
 
@@ -171,7 +171,7 @@ Next.js 16 App Router, React 19, TypeScript, pnpm. Drizzle ORM on Neon Postgres 
 
 The graph document is the contract everything else depends on (priority 2). It contains: a schema version; the Start step id; a map of Steps by stable id, each with title, Tiptap-JSON content, ordered Choices, and an optional Prompt; a map of Outcomes by stable id; and for Endings (steps with no Choices) an outcome id. Each Choice has a stable id, label, and target step id, plus reserved nullable `condition` and `effect` fields that nothing reads. Each Prompt has a `type` discriminator that accepts only `free_text` in MVP, a label, and a required flag. Step positions on the canvas are not stored; nullable position fields are reserved for a future manual-layout mode.
 
-The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Choice target exists; every Step is reachable from Start; an Ending that carries an Outcome names one the document defines (amended 2026-09-22 by ticket 24; see the [SCOPE CHANGE] below). Cycles are allowed (amended 2026-09-21; see the `[SCOPE CHANGE]` below and ADR-0002). Validation returns a structured list of problems with step or choice ids so the canvas can highlight them.
+The document is validated with a zod schema at every write and again at publish. Publish-time validation additionally enforces: exactly one Start; every Choice target exists; every Step is reachable from Start; an Ending that carries an Outcome names one the document defines (amended 2026-09-22 by ticket 24; see the `[SCOPE CHANGE]` below). Cycles are allowed (amended 2026-09-21; see the `[SCOPE CHANGE]` below and ADR-0002). Validation returns a structured list of problems with step or choice ids so the canvas can highlight them.
 
 Content is stored as Tiptap JSON and rendered to sanitized HTML on the server with Tiptap's renderer. The allowed node and mark set is fixed: paragraph, headings, bold, italic, bullet and ordered lists, links, and an image node whose attributes are a URL and a required `credit`. Link `href` and image `src` values must be absolute `http:` or `https:` URLs; anything else (including `javascript:` and `data:`) is stripped, and rendered links carry `rel="noopener noreferrer"`. Sanitization runs on the server at every write, not only in the editor, so a document submitted straight to the API is held to the same rules. Nothing is round-tripped through Markdown.
 

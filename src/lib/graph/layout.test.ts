@@ -644,8 +644,8 @@ describe("problemsByAddress", () => {
       steps: byId([
         step("start", [choice("choice-dangling", "Go nowhere", "ghost")]),
         // Tagged with an Outcome the document does not define, so this Step
-        // carries two problems of its own: an Ending needs no Outcome, but a
-        // tag naming one that is gone is still broken data.
+        // carries two problems of its own: nothing reaches it, and its tag
+        // names an Outcome that is gone.
         step("orphan", [], {
           title: "Orphan ending",
           outcomeId: "outcome-renamed-away",
