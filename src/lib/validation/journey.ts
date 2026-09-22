@@ -35,5 +35,10 @@ export const updateJourneySchema = z.object({
   description: journeyDescriptionSchema,
 });
 
+/** Which way "Move up" and "Move down" send a Journey in its Project's list. */
+export const moveDirectionSchema = z.enum(["up", "down"], {
+  error: "Choose up or down",
+});
+
 export type CreateJourneyInput = z.infer<typeof createJourneySchema>;
 export type UpdateJourneyInput = z.infer<typeof updateJourneySchema>;

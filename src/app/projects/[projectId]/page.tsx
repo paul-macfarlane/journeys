@@ -66,12 +66,12 @@ export default async function ProjectPage({
             value: "journeys",
             label: "Journeys",
             content: (
-              <section aria-label="Journeys" className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4">
                 <div className="flex justify-end">
                   <NewJourneyDialog projectId={project.id} />
                 </div>
                 <JourneyList projectId={project.id} journeys={journeys} />
-              </section>
+              </div>
             ),
           },
           {

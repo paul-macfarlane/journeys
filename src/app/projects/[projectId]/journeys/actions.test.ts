@@ -73,7 +73,7 @@ describe("moveJourneyAction", () => {
   it("refuses a direction that is neither up nor down without touching the database", async () => {
     const result = await moveJourneyAction("project-1", "journey-1", "left");
 
-    expect(result.ok).toBe(false);
+    expect(result).toEqual({ ok: false, error: "Choose up or down" });
     expect(doubles.journeys.moveJourney).not.toHaveBeenCalled();
   });
 });

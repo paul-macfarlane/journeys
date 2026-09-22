@@ -1,11 +1,10 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, type KeyboardEvent } from "react";
-import { useForm } from "react-hook-form";
+import { useMemo } from "react";
 
 import { editProjectAction } from "@/app/projects/actions";
+import { useBlurSavedForm } from "@/components/blur-saved-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,16 +13,10 @@ import {
   type EditProjectInput,
 } from "@/lib/validation/project";
 
-type Field = keyof EditProjectInput;
-
 /**
- * A Project's title and description, edited in place on the Settings tab:
- * the same react-hook-form and zod pairing as the dialogs, submitted from
- * each field's blur (the title's Enter too) instead of a Save button, so a
- * save that fails says so under the field that asked for it and keeps what
- * was typed. Mirrors `JourneyTitleFields` on the Journey page.
- *
- * The Project is addressed by its id, so a rename never moves the page.
+ * A Project's title and description, edited in place on the Settings tab
+ * and saved when a field is left (see `useBlurSavedForm`). The Project is
+ * addressed by its id, so a rename never moves the page.
  */
 export function ProjectSettingsFields({
   projectId,
@@ -35,58 +28,19 @@ export function ProjectSettingsFields({
   description: string;
 }) {
   const router = useRouter();
-  const form = useForm<EditProjectInput>({
-    resolver: zodResolver(editProjectSchema),
-    defaultValues: { title, description },
+  const values = useMemo<EditProjectInput>(
+    () => ({ title, description }),
+    [title, description],
+  );
+  const { form, save, handleEnterKeyDown } = useBlurSavedForm({
+    schema: editProjectSchema,
+    values,
+    submit: (next) => editProjectAction(projectId, next),
+    // The header above the tabs and the Delete confirmation read the title
+    // off the page's own props.
+    onSaved: () => router.refresh(),
   });
   const { errors } = form.formState;
-
-  // A refresh carrying a value this form did not save is another Member's
-  // edit: adopted into a field the Author has not touched, and left for the
-  // Author's own blur to overwrite in one they are mid-edit in, as last
-  // write wins.
-  useEffect(() => {
-    form.reset({ title, description }, { keepDirtyValues: true });
-  }, [form, title, description]);
-
-  /** The whole record, as the edit action takes it, from one field's blur. */
-  function save(field: Field) {
-    return form.handleSubmit(async (values) => {
-      const saved = form.formState.defaultValues;
-      if (
-        values.title === saved?.title &&
-        values.description === saved?.description
-      ) {
-        return;
-      }
-
-      const result = await editProjectAction(projectId, values).catch(() => ({
-        ok: false as const,
-        error: "the server could not be reached",
-      }));
-
-      if (!result.ok) {
-        form.setError(field, {
-          type: "server",
-          message: `Couldn't save: ${result.error}`,
-        });
-        return;
-      }
-
-      // The schema trims, so what stays on screen is what was stored.
-      form.reset(values);
-      // The header above the tabs and the Delete confirmation read the
-      // title off the page's own props.
-      router.refresh();
-    })();
-  }
-
-  function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    // Blurring is the save; Enter only decides when.
-    event.currentTarget.blur();
-  }
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
@@ -97,7 +51,7 @@ export function ProjectSettingsFields({
           aria-invalid={errors.title ? true : undefined}
           autoComplete="off"
           {...form.register("title", { onBlur: () => void save("title") })}
-          onKeyDown={handleTitleKeyDown}
+          onKeyDown={handleEnterKeyDown}
         />
         {errors.title ? (
           <p role="alert" className="text-sm text-destructive">

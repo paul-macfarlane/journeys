@@ -399,6 +399,7 @@ test("journeys-reorder", async ({ page, context }) => {
 
   // Stored, not only shown.
   await page.reload();
+  await expect(rowTitles()).toHaveCount(3);
   await expect(rowTitles()).toContainText([titles[2], titles[0], titles[1]]);
 
   await page.screenshot({

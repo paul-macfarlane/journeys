@@ -92,6 +92,23 @@ function toSummary(
 /** The Author's order: `position` first, `created_at` breaking any tie. */
 const listOrder = [asc(journey.position), asc(journey.createdAt)];
 
+/**
+ * Serializes the writes that number a Project's Journeys. Two creates, or
+ * a create and a move, running at once under READ COMMITTED would both read
+ * the same positions and write the same number twice; holding the Project
+ * row makes the second wait for the first and read what it wrote.
+ */
+async function lockProject(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  projectId: string,
+): Promise<void> {
+  await tx
+    .select({ id: project.id })
+    .from(project)
+    .where(eq(project.id, projectId))
+    .for("update");
+}
+
 /** Every Journey in the Project, in the Author's order. */
 export async function listJourneysForProject(
   projectId: string,
@@ -122,6 +139,8 @@ export async function createJourney(
   input: { title: string; description: string },
 ): Promise<JourneySummary> {
   return db.transaction(async (tx) => {
+    await lockProject(tx, projectId);
+
     const [{ last }] = await tx
       .select({ last: max(journey.position) })
       .from(journey)
@@ -231,12 +250,13 @@ export async function moveJourney(
   if (!existing) return false;
 
   await db.transaction(async (tx) => {
+    await lockProject(tx, projectId);
+
     const rows = await tx
       .select({ id: journey.id, position: journey.position })
       .from(journey)
       .where(eq(journey.projectId, projectId))
-      .orderBy(...listOrder)
-      .for("update");
+      .orderBy(...listOrder);
 
     const next = moveInOrder(
       rows.map((row) => row.id),
