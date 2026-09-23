@@ -1,8 +1,8 @@
 # 43: Free text as the decision, judged by jev
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude Fable 5.1 (`/atlas-implement`, claimed 2026-09-23)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 3 (Paul, 2026-09-22, grilled the same day): sweep 1 (hackathon) 33 → 34 → 35 → 36 → 37; sweep 2 (nice to have before the judges) 38 → 39 → 40 → **43**; sweep 3 (post-hackathon) 41 → 42 → 44 → 45. 14 stays available; 17 is post-hackathon. Paul, Q22: "nice to have for hackathon, but not required."
 Route: contract
@@ -35,5 +35,14 @@ Acceptance criteria:
 - [ ] `pnpm test:e2e` passes once in full at the end.
 
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `contract`): commit only the screenshot directories of the specs this ticket names plus `ac-3-real-model.txt`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-22, item 11, grilled the same day.
+
+### [EXECUTION PLAN] 2026-09-23 — Claude Fable 5.1 (`/atlas-implement`, Route: contract)
+
+Worktree `.claude/worktrees/43-ai-decided-choices/journeys` on `feat/43-ai-decided-choices` (off `origin/staging` at `14382c5`), dummy env exported inline (no `.env.local`), e2e on port 3143 against `journeys_e2e_t43`. Two sequential deliverables, one worker each, same branch, no integration worktree (D2 builds on D1's contract, and both touch `step-view.tsx`, `prompt.ts`, and `documents.ts`, so parallel work would collide there):
+
+- **D1 — contract, decision module, editor.** `prompt.decides` (zod default `false`; `readResponse` treats a deciding Prompt as required; `setStepPrompt` forces `required: true` when `decides`), the `ai` package (`package.json` only — the lockfile commit is Paul's), `src/lib/ai/decide.ts` (pure `buildDecision`/`decideChoice(step, response, judge)` with `DECISION_THRESHOLD = 0.5`, plus `gatewayJudge` around `experimental_evaluate`, `model: "typesafe-ai/jev"`, gateway tag `feature:decide`, null on any failure or an answer naming no Choice of the Step), the Step panel's "Let the response decide the next step" checkbox (two or more Choices only), the "(optional)" label rule, and unit tests at those seams.
+- **D2 — runner, Preview, publish warning, spec, amendments.** The deciding form (textbox and one "Continue" button, no Choice buttons) in `StepView`; `respondAndChooseAction` and `chooseFromStartAction` judge when the form carries no `to`, advance on a confident answer exactly as a pressed Choice, else redirect with `?decide=<choiceId|none>` (the Start also carries `response=` since no Run holds it yet) and the page shows the Choices, jev's pick marked, under "Choose for yourself"; per-Run rate limit of one decision per second (fallback, never an error); Preview always comes back with the pick and its probability and records nothing; `publishJourneyAction` returns a non-blocking warning when a deciding Prompt is published with no key; `playwright.config.ts` blanks `AI_GATEWAY_API_KEY` for the e2e server; `runner-deciding-prompt` in `runner.spec.ts` over a `decidingDocument()` fixture; `[SCOPE CHANGE]` on the spec and the `decisions.md` amendment.
+
+Verification map (`local + deployed`; commands run inside the worktree with the dummy env): AC-1 — `pnpm test` over `decide.test.ts` and `actions.test.ts` (confident path records the Choice and the Response) plus `runner-deciding-prompt` (deciding form, no buttons, advance from a button) and one manual real-model run captured as `test-results/ac-3-real-model.txt`; AC-2 — the same unit files (weak → preselected, error/none/no key → none) plus the spec's fallback screen with the key blank; AC-3 — `ac-3-existing-documents.txt` (every fixture and the three legacy documents parse unchanged), the blank key in `playwright.config.ts`, and the unit test that `gatewayJudge` is never reached without a key; AC-4 — `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=runner-deciding-prompt pnpm test:e2e` captured as `dod-1-commands.txt` and `dod-1-e2e.txt`. Human gates: (H1) the `pnpm-lock.yaml` commit after D1 adds `ai` — PR CI is red until Paul pushes it; (H2) the real-model run needs the gateway key at hand in the worktree, which only Paul can place. Review: two frontier readers (spec conformity, standards) over `14382c5...HEAD`.
 
 ## Comments
