@@ -188,15 +188,28 @@ const isServer = () => false;
 
 /**
  * Which color mode React Flow draws the map in. next-themes reads the
- * browser's stored choice, which the server render cannot know: asking
- * before hydration is done would put a different color mode on the first
- * client render than the server sent. Until then the map follows the system,
- * exactly as the server assumed.
+ * browser's stored choice, which the server render cannot know, so until
+ * the page is the browser's the answer is the one the server gave: "light",
+ * as a definite mode rather than "system".
+ *
+ * Not "system", because of what React Flow makes of it while hydrating. Its
+ * own hook answers "system" by asking `matchMedia` on the spot, which the
+ * server cannot and the hydrating render can: with the OS dark the two
+ * renders disagree about the class on the map, and React leaves the server's
+ * attribute standing on a hydration mismatch rather than patching it. Every
+ * later render then computes the same class as the hydrating one did and so
+ * changes nothing, and the map stays stamped `light` for the life of the
+ * page — which is how the dark theme's controls came up in the light
+ * colours on a full load with the OS dark (ticket 35). A definite mode
+ * gives the two renders the same answer, and the change to the real theme
+ * afterwards is an ordinary update the DOM follows.
+ *
+ * The colours are the tokens' the whole time (`globals.css`), so the moment
+ * before hydration is not a light map on a dark page; this class only
+ * governs what React Flow's own dark rules still cover.
  */
 export function useCanvasColorMode(): ColorMode {
   const { resolvedTheme } = useTheme();
   const hydrated = useSyncExternalStore(subscribeToNothing, isClient, isServer);
-  return hydrated && (resolvedTheme === "dark" || resolvedTheme === "light")
-    ? resolvedTheme
-    : "system";
+  return hydrated && resolvedTheme === "dark" ? "dark" : "light";
 }

@@ -4024,3 +4024,130 @@ test.describe("undo and redo", () => {
     });
   });
 });
+
+/**
+ * The 8-bit sRGB Chromium paints one colour as, read the way
+ * `themes.spec.ts` reads luminance: painted onto a one-pixel canvas, so a
+ * token written in oklch and a button's computed colour compare as the same
+ * pixel. `source` is either a CSS custom property read off `<html>` (`--card`)
+ * or a selector and the property to read off the first element it matches.
+ */
+async function paintedRgb(
+  page: Page,
+  source:
+    | { token: `--${string}` }
+    | { selector: string; property: "background-color" | "color" },
+): Promise<string> {
+  const value = await page.evaluate((source) => {
+    const style =
+      "token" in source
+        ? window
+            .getComputedStyle(window.document.documentElement)
+            .getPropertyValue(source.token)
+        : (() => {
+            const element = window.document.querySelector(source.selector);
+            return element === null
+              ? null
+              : window
+                  .getComputedStyle(element)
+                  .getPropertyValue(source.property);
+          })();
+    if (style === null || style.trim() === "") return null;
+
+    const canvas = window.document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext("2d");
+    if (context === null) return null;
+    context.fillStyle = style.trim();
+    context.fillRect(0, 0, 1, 1);
+    const [r, g, b] = Array.from(context.getImageData(0, 0, 1, 1).data);
+    return `${r},${g},${b}`;
+  }, source);
+  expect(value, `${JSON.stringify(source)} painted`).not.toBeNull();
+  return value as string;
+}
+
+/**
+ * The zoom and fit-view buttons beside the map, read against the theme's
+ * own tokens: their background is the card and their glyphs the foreground,
+ * whichever theme the page is in. The tokens are read off `<html>`, where
+ * the theme class puts them, so the check follows the theme rather than
+ * naming a colour.
+ */
+async function expectControlsThemed(page: Page, where: string): Promise<void> {
+  const button = '[aria-label="Canvas"] .react-flow__controls-button';
+  await expect(
+    canvas(page).locator(".react-flow__controls-button").first(),
+  ).toBeVisible();
+  // The map itself is told which theme it is in: the class React Flow
+  // stamps for its own dark rules is the dark one, whichever way the page
+  // was reached.
+  expect
+    .soft(
+      await canvas(page).locator(".react-flow").getAttribute("class"),
+      `${where}: the map carries React Flow's dark class`,
+    )
+    .toMatch(/\bdark\b/);
+  expect
+    .soft(
+      await paintedRgb(page, {
+        selector: button,
+        property: "background-color",
+      }),
+      `${where}: the controls' background is the card`,
+    )
+    .toBe(await paintedRgb(page, { token: "--card" }));
+  expect
+    .soft(
+      await paintedRgb(page, { selector: button, property: "color" }),
+      `${where}: the controls' glyphs are the foreground`,
+    )
+    .toBe(await paintedRgb(page, { token: "--foreground" }));
+}
+
+/**
+ * Ticket 35, item 19: in the dark theme the zoom and fit-view controls
+ * sometimes came up white. Reproduced the way Paul met it — the dark theme
+ * chosen from the user menu, then the Journey page reached by a full load and
+ * again by clicking through from the Projects list, with the OS light and
+ * with it dark — and read against the theme's tokens on every one of those
+ * four arrivals.
+ */
+test("canvas-dark-controls", async ({ page, context }) => {
+  const { projectId, journeyId } = await startJourney(page, context);
+  const journeyUrl = `/projects/${projectId}/journeys/${journeyId}`;
+
+  // The dark theme, chosen as an Author chooses it.
+  await page.getByRole("button", { name: "Account: Test Author" }).click();
+  await page.getByRole("menuitemradio", { name: "Dark" }).click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+
+    // By a full load.
+    await page.goto(journeyUrl);
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(canvasNodes(page)).toHaveCount(1);
+    await expectControlsThemed(page, `OS ${colorScheme}, full load`);
+
+    // By client-side navigation from the Projects list: the list, the
+    // Project, the Journey, each a link rather than a load.
+    await page.goto("/projects");
+    await page.locator(`a[href="/projects/${projectId}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`/projects/${projectId}$`));
+    await page.locator(`a[href="${journeyUrl}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`${journeyUrl}$`));
+    await expect(canvasNodes(page)).toHaveCount(1);
+    await expectControlsThemed(page, `OS ${colorScheme}, client navigation`);
+
+    if (colorScheme === "dark") {
+      await page.screenshot({
+        path: evidencePath("canvas-dark-controls", "canvas-dark-controls.png"),
+        fullPage: true,
+      });
+    }
+  }
+});

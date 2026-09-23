@@ -14,8 +14,9 @@ import {
   type Node,
   type NodeProps,
   type NodeTypes,
+  useReactFlow,
 } from "@xyflow/react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import {
   arrowPoints,
@@ -233,12 +234,18 @@ function figureFor(
 function AnalyticsFlow({
   document,
   analytics,
+  direction,
 }: {
   document: GraphDocument;
   analytics: VersionAnalytics;
+  direction: LayoutDirection;
 }) {
   const { nodes, edges } = useMemo(() => {
-    const layout = layoutGraph(document);
+    // Laid out the way this browser reads it, not the way the version was
+    // published: the direction is the one thing about the document the map
+    // does not take from the document. Nothing is written back — a Published
+    // Version is immutable, and this is a copy laid out and let go of.
+    const layout = layoutGraph({ ...document, layoutDirection: direction });
     const titleById = new Map(
       layout.nodes.map((node) => [node.id, node.title]),
     );
@@ -302,7 +309,18 @@ function AnalyticsFlow({
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [analytics, document]);
+  }, [analytics, direction, document]);
+
+  // Turning the map a quarter puts every box somewhere else, so wherever the
+  // Author had panned and zoomed to is about a map that no longer exists:
+  // the whole of the new one is shown instead, as the editor's map does.
+  const { fitView } = useReactFlow();
+  const lastDirection = useRef(direction);
+  useEffect(() => {
+    if (lastDirection.current === direction) return;
+    lastDirection.current = direction;
+    void fitView({ duration: 200 });
+  }, [direction, fitView]);
 
   const colorMode = useCanvasColorMode();
 
@@ -331,9 +349,12 @@ function AnalyticsFlow({
 export function AnalyticsCanvas({
   document,
   analytics,
+  direction,
 }: {
   document: GraphDocument;
   analytics: VersionAnalytics;
+  /** Which way to draw it: the reader's choice, the version's by default. */
+  direction: LayoutDirection;
 }) {
   return (
     <section
@@ -341,7 +362,11 @@ export function AnalyticsCanvas({
       className="relative h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10"
     >
       <ReactFlowProvider>
-        <AnalyticsFlow document={document} analytics={analytics} />
+        <AnalyticsFlow
+          document={document}
+          analytics={analytics}
+          direction={direction}
+        />
       </ReactFlowProvider>
     </section>
   );

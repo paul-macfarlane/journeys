@@ -19,6 +19,11 @@ import {
   type CanvasArrow,
 } from "@/components/journeys/journey-canvas";
 import { StepPanel } from "@/components/journeys/step-panel";
+import {
+  PANEL_STORAGE_KEY,
+  readPreference,
+  writePreference,
+} from "@/lib/browser-preferences";
 import type { Content } from "@/lib/graph/content";
 import {
   documentsEqual,
@@ -65,14 +70,6 @@ import { cn } from "@/lib/utils";
 
 /** Long enough that a sentence is one save, short enough to feel immediate. */
 const SAVE_DEBOUNCE_MS = 600;
-
-/**
- * Where the browser remembers whether the panel is put away. Reading the map
- * with the panel out of the way is how one Author is looking at the Journey
- * right now, not something about the Journey: it belongs here rather than in
- * the document, where it would follow every other Member around.
- */
-const PANEL_STORAGE_KEY = "journeys:step-panel";
 
 /**
  * Whether anything on the page has the keyboard to itself. Both of the page's
@@ -481,16 +478,11 @@ export function DraftEditor({
       setPanelShown(shown);
       if (!remember) return true;
 
-      try {
-        window.localStorage.setItem(
-          PANEL_STORAGE_KEY,
-          shown ? "shown" : "hidden",
-        );
-      } catch {
-        // A browser that refuses storage — a private window, storage blocked
-        // — is one where the choice lasts as long as the page. That is no
-        // reason to refuse the click.
-      }
+      // Reading the map with the panel out of the way is how one Author is
+      // looking at the Journey right now, not something about the Journey:
+      // the browser keeps it, never the document, where it would follow
+      // every other Member around.
+      writePreference(PANEL_STORAGE_KEY, shown ? "shown" : "hidden");
       return true;
     },
     [],
@@ -529,13 +521,9 @@ export function DraftEditor({
   // the render the server sent. Nothing is written back — this is what is
   // already stored.
   useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = window.localStorage.getItem(PANEL_STORAGE_KEY);
-    } catch {
-      // As above: unreadable storage is a browser with nothing to remember.
+    if (readPreference(PANEL_STORAGE_KEY) === "hidden") {
+      applyPanelShown(false, { remember: false });
     }
-    if (stored === "hidden") applyPanelShown(false, { remember: false });
   }, [applyPanelShown]);
 
   const selectStep: SelectStep = useCallback(

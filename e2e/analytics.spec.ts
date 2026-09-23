@@ -23,7 +23,12 @@ import {
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
-import { cleanup, closePools, signInAs } from "./setup/session";
+import {
+  cleanup,
+  closePools,
+  queryE2eDatabase,
+  signInAs,
+} from "./setup/session";
 
 /**
  * Seam B for ticket 10: Participants walk a Published Version to different
@@ -362,4 +367,181 @@ test("analytics-scoped-to-a-version", async ({ page, context, browser }) => {
   await openTab(page, "Analytics");
   await expect(page.getByLabel("Version")).toHaveValue(secondVersionId);
   await expect(boxFigure(page, "Turned back")).toHaveText("1 run");
+});
+
+/** One box's place on the screen, by the Step's title. */
+async function boxRect(
+  page: Page,
+  title: string,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  const rect = await box(page, title).boundingBox();
+  expect(rect, `"${title}" is on the map`).not.toBeNull();
+  return rect as NonNullable<typeof rect>;
+}
+
+/**
+ * Which edge of the Start's box the Step its first Choice leads to stands
+ * past: `"bottom"` on a map running top to bottom, `"right"` on one running
+ * left to right. Read until it holds, because turning the map animates the
+ * fit that follows.
+ */
+async function expectMapRuns(
+  page: Page,
+  edge: "bottom" | "right",
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const start = await boxRect(page, START_STEP_TITLE);
+      const queue = await boxRect(page, QUEUE_STEP_TITLE);
+      return edge === "right"
+        ? queue.x > start.x + start.width
+        : queue.y > start.y + start.height;
+    })
+    .toBe(true);
+}
+
+/**
+ * The side of the box every arrow leaves from and the side every arrow
+ * arrives at, read off React Flow's own marks on the anchors: the bottom and
+ * the top running top to bottom, the right and the left running left to
+ * right.
+ */
+async function expectAnchorsOn(
+  page: Page,
+  sides: { source: "bottom" | "right"; target: "top" | "left" },
+): Promise<void> {
+  const map = page.getByRole("region", { name: "Analytics map" });
+  await expect(
+    map.locator(
+      `.react-flow__handle.source.react-flow__handle-${sides.source}`,
+    ),
+  ).toHaveCount(4);
+  await expect(
+    map.locator(
+      `.react-flow__handle.target.react-flow__handle-${sides.target}`,
+    ),
+  ).toHaveCount(4);
+  await expect(map.locator(".react-flow__handle")).toHaveCount(8);
+}
+
+/** Every box on the map lies inside the map's own frame: the fit held. */
+async function expectMapFitted(page: Page): Promise<void> {
+  const frame = await page
+    .getByRole("region", { name: "Analytics map" })
+    .boundingBox();
+  expect(frame).not.toBeNull();
+  if (frame === null) return;
+
+  await expect
+    .poll(async () => {
+      const boxes = await page
+        .getByRole("region", { name: "Analytics map" })
+        .locator(".react-flow__node")
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getBoundingClientRect()),
+        );
+      return boxes.every(
+        (rect) =>
+          rect.left >= frame.x &&
+          rect.top >= frame.y &&
+          rect.right <= frame.x + frame.width &&
+          rect.bottom <= frame.y + frame.height,
+      );
+    })
+    .toBe(true);
+}
+
+/** The control beside the version, by the direction it names. */
+function directionRadio(page: Page, name: "Top to bottom" | "Left to right") {
+  return page
+    .getByRole("region", { name: "Analytics" })
+    .getByRole("radiogroup", { name: "Layout direction" })
+    .getByRole("radio", { name, exact: true });
+}
+
+/**
+ * Ticket 35, item 15: the Analytics map can be turned. A Published Version is
+ * immutable, so which way it is read is the browser's to remember and
+ * nothing the version document is touched by: a Member turns the map, the
+ * boxes and anchors move, the whole map is fitted again, a reload finds it
+ * turned, the stored version still says top to bottom — and a second browser
+ * of the same Member's opens it the way it was published.
+ */
+test("analytics-direction-toggle", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const { projectId, journeyId } = await startJourney(page);
+  const versionId = await publishDocument(journeyId, runnerDocument());
+  const analyticsUrl = `/projects/${projectId}/journeys/${journeyId}?tab=analytics`;
+
+  // Published top to bottom, and read that way until the Member says
+  // otherwise.
+  await page.goto(analyticsUrl);
+  await openTab(page, "Analytics");
+  await expect(directionRadio(page, "Top to bottom")).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expectMapRuns(page, "bottom");
+  await expectAnchorsOn(page, { source: "bottom", target: "top" });
+
+  // Turned a quarter: every anchor moves to the sides, the Step the Start's
+  // first Choice leads to stands past its right edge, and the whole map is
+  // fitted into the frame again.
+  await directionRadio(page, "Left to right").click();
+  await expect(directionRadio(page, "Left to right")).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expectMapRuns(page, "right");
+  await expectAnchorsOn(page, { source: "right", target: "left" });
+  await expectMapFitted(page);
+
+  await page.screenshot({
+    path: evidencePath(
+      "analytics-direction-toggle",
+      "analytics-direction-toggle.png",
+    ),
+    fullPage: true,
+  });
+
+  // A reload finds it turned, in this browser.
+  await page.reload();
+  await expect(directionRadio(page, "Left to right")).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expectMapRuns(page, "right");
+  await expectAnchorsOn(page, { source: "right", target: "left" });
+
+  // The version document itself says what it said when it was published.
+  const [row] = await queryE2eDatabase<{ document: GraphDocument }>(
+    'SELECT document FROM "published_version" WHERE id = $1',
+    [versionId],
+  );
+  expect(row.document.layoutDirection).toBe("TB");
+
+  // Another browser of the same Member's — the session carried over, the
+  // storage not — opens the map the way the version was published.
+  const other = await browser.newContext({ baseURL: E2E_BASE_URL });
+  try {
+    await other.addCookies(await context.cookies());
+    const otherPage = await other.newPage();
+    await otherPage.goto(analyticsUrl);
+    await openTab(otherPage, "Analytics");
+    await expect(directionRadio(otherPage, "Top to bottom")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await expectMapRuns(otherPage, "bottom");
+  } finally {
+    await other.close();
+  }
+
+  // And turned back, from the same control.
+  await directionRadio(page, "Top to bottom").click();
+  await expectMapRuns(page, "bottom");
+  await expectAnchorsOn(page, { source: "bottom", target: "top" });
+  await expectMapFitted(page);
 });
