@@ -62,3 +62,8 @@ PR: https://github.com/paul-macfarlane/journeys/pull/47 (base `staging`, compari
 ### [SCOPE CHANGE] 2026-09-23 — Paul, on reviewing PR #47
 
 The direction control moves from the header row beside the version select into the Analytics map's own "Map controls" row across the top of its frame, where the editor's Canvas keeps the same control (Paul: "the direction controls might belong closer to the canvas, like we have for the main builder canvas"). The preference moves with it into `AnalyticsCanvas`, so `AnalyticsTab` is a server component again and only the map is client-side; the frame keeps the editor's 70vh with the row taking its share. `analytics-direction-toggle` reads the control from the "Analytics map" region's "Map controls" group; evidence re-captured. Commit on the PR.
+
+### [CLOSEOUT] addendum 2026-09-23 — merges and the CI flake
+
+`staging` merged twice (tickets 37 and 36); only the two `dod-1-*.txt` captures conflicted, this ticket's kept. CI on the PR then failed `members-add-and-edit` twice, the renamed title stored as the old title with the new one appended, which ticket 36's CI had also hit once at 8e9c923: React Hook Form writes the stored value into the title field when its ref attaches during hydration, over a `fill` that landed before it. Fixed at the cause in `e2e/setup/authoring.ts`'s `editJourneyField`, which now makes the edit until it takes (typed, read back off the field, saved, read back off the row); every caller passes locally, PR CI is the proof.
+
