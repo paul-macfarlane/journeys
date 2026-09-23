@@ -1,33 +1,40 @@
-# DoD-1 command chain for ticket 34 (sticky shell and footer), polish route
-# Commit: f022ea0
-# Run: 2026-09-23T13:27:35Z from the direct checkout; e2e on port 3100 against journeys_e2e (docker Postgres :5436, production build, Chromium)
-# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=navbar-sticky-and-phone-menu,navbar-switch-project-and-theme,landing,legal-pages pnpm test:e2e
+# DoD-1 command chain for ticket 35 (analytics direction and dark controls), polish route
+# Commit: f530d23
+# Run: 2026-09-23T14:11:01Z from the worktree .claude/worktrees/35-analytics-direction-dark-controls/journeys; e2e on port 3135 against journeys_e2e_t35 (docker Postgres :5436, production build, Chromium)
+# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=canvas-dark-controls,analytics-direction-toggle pnpm test:e2e
 # Filter: terminal control sequences removed; the repository's absolute path shortened to '.'
 
 $ pnpm lint
 
+
 > journeys@0.1.0 lint .
 > eslint
+
 
 exit=0
 
 $ pnpm format:check
+
 
 > journeys@0.1.0 format:check .
 > prettier --check .
 
 Checking formatting...
 All matched files use Prettier code style!
+
 exit=0
 
 $ pnpm typecheck
 
+
 > journeys@0.1.0 typecheck .
 > tsc --noEmit
+
 
 exit=0
 
 $ pnpm test
+
 
 > journeys@0.1.0 test .
 > vitest run
@@ -39,10 +46,17 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 .
 
 
- Test Files  25 passed (25)
-      Tests  386 passed (386)
-   Start at  09:27:44
-   Duration  902ms (transform 1.30s, setup 0ms, import 3.51s, tests 769ms, environment 6ms)
+ Test Files  26 passed (26)
+      Tests  396 passed (396)
+   Start at  10:11:11
+   Duration  877ms (transform 1.18s, setup 0ms, import 3.42s, tests 695ms, environment 2ms)
+
 
 exit=0
 
+$ E2E_EVIDENCE=canvas-dark-controls,analytics-direction-toggle pnpm test:e2e
+
+(full Playwright output in test-results/dod-1-e2e.txt)
+  92 passed (3.3m)
+
+exit=0
