@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -10,6 +11,7 @@ import {
 } from "@/components/runner/step-view";
 import { getPublicJourney, getRunForJourney } from "@/db/runs";
 import { currentStepId } from "@/lib/graph/run";
+import { journeyLinkMetadata } from "@/lib/link-preview";
 import { runCookieName } from "@/lib/run-cookies";
 
 import { chooseFromStartAction, startOverAction } from "./actions";
@@ -30,6 +32,22 @@ import { chooseFromStartAction, startOverAction } from "./actions";
  * Version, never the `journey` row, so renaming a Journey after publishing
  * never changes what a Participant is looking at until the next publish.
  */
+/**
+ * What a link to this page previews as (ticket 37): the live Published
+ * Version's title and description, with the card `opengraph-image.tsx`
+ * beside this file renders; a Journey that is not live reads as the site
+ * root does. `getPublicJourney` is cached per request, so the page below
+ * pays for no second query.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ journeyId: string }>;
+}): Promise<Metadata> {
+  const { journeyId } = await params;
+  return journeyLinkMetadata(await getPublicJourney(journeyId), journeyId);
+}
+
 export default async function JourneyStartPage({
   params,
   searchParams,
