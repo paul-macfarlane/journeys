@@ -75,11 +75,12 @@ dragged are `--primary`, boxes are `--card` on `--border`.
 Heading weights stay whatever each heading sets (`font-semibold` on most
 page titles, `font-medium` on the landing page and the legal pages).
 
-The Open Graph image (`src/app/opengraph-image.tsx`) fetches a Literata TTF
-from Google Fonts at build time for the name. If that fetch fails the image
-still builds, in the renderer's default serif, so an outage never fails a
-build; the trade is that a build made offline renders the name in a different
-face.
+The Open Graph cards (`src/lib/og.tsx`) fetch a Literata TTF from Google
+Fonts for the name and the titles — at build time for the site's own card,
+on the first request for a Journey's or a Project's, and then once per
+process. If that fetch fails the card still renders, in the renderer's
+default serif, so an outage never fails a build or a preview; the trade is
+that a build made offline renders the name in a different face.
 
 ## Radius
 
@@ -187,6 +188,13 @@ them without a component knowing:
 | `apple-icon.png`      | `/apple-icon.png`       | 180 px, the tile full-bleed (iOS rounds the corners itself), same script                                |
 | `manifest.ts`         | `/manifest.webmanifest` | name, tagline, colours, the two icons                                                                   |
 | `opengraph-image.tsx` | `/opengraph-image`      | 1200×630, the tile, the name and tagline in Literata (the only face the renderer is given)              |
+
+Two more cards are served per public page rather than per site (ticket 37):
+`j/[journeyId]/opengraph-image.tsx` at `/j/<id>/opengraph-image` and
+`p/[projectId]/opengraph-image.tsx` at `/p/<id>/opengraph-image`, each the
+live title and description in the Theme's light-scheme colours (the sRGB
+copies in `src/lib/link-preview.ts`, which a unit test checks against
+`globals.css`), or the site's card when there is nothing public to show.
 
 Regenerating the two raster files after a change to `icon.svg`:
 

@@ -1,6 +1,8 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
+import { linkPreviewPalette } from "@/lib/link-preview";
 
 import { MAX_PATH_LENGTH } from "@/lib/graph/run";
 
@@ -21,7 +23,13 @@ import {
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
-import { evidencePath } from "./setup/evidence";
+import { capturePath, evidencePath } from "./setup/evidence";
+import {
+  metaContent,
+  pixelsAt,
+  readPng,
+  saveBytes,
+} from "./setup/link-preview";
 import {
   cleanup,
   closePools,
@@ -1072,6 +1080,169 @@ test("runner-unavailable-and-unknown", async ({ page, context, browser }) => {
       "/j/00000000-0000-4000-8000-000000000000",
     );
     expect(unknown?.status()).toBe(404);
+  } finally {
+    await participantContext.close();
+  }
+});
+
+/** An id no Journey has: every real one is a `crypto.randomUUID()`. */
+const UNKNOWN_JOURNEY_ID = "00000000-0000-4000-8000-000000000000";
+
+test("journey-link-preview", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeyDescription = "Goal: cross the border.";
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    journeyTitle,
+    journeyDescription,
+  );
+
+  // The Project's Theme and the Journey's override, as the Settings tabs
+  // store them: the preview must take the override, not the Project's.
+  await queryE2eDatabase(
+    'UPDATE "project" SET theme_preset = $1 WHERE id = $2',
+    ["tide", projectId],
+  );
+  await queryE2eDatabase(
+    'UPDATE "journey" SET theme_preset = $1 WHERE id = $2',
+    ["dusk", journeyId],
+  );
+  await publishDocument(journeyId, runnerDocument());
+  const dusk = linkPreviewPalette({ preset: "dusk", accent: null });
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    // A live Journey: what a chat would read off the page.
+    await participant.goto(`/j/${journeyId}`);
+    await expect(participant).toHaveTitle(`${journeyTitle} · ${APP_NAME}`);
+    expect(await metaContent(participant, "og:title")).toBe(journeyTitle);
+    expect(await metaContent(participant, "og:description")).toBe(
+      journeyDescription,
+    );
+    expect(await metaContent(participant, "og:url")).toBe(
+      `${E2E_BASE_URL}/j/${journeyId}`,
+    );
+    expect(await metaContent(participant, "og:site_name")).toBe(APP_NAME);
+    expect(await metaContent(participant, "og:type")).toBe("article");
+    expect(await metaContent(participant, "twitter:card")).toBe(
+      "summary_large_image",
+    );
+    const liveImageUrl = await metaContent(participant, "og:image");
+    expect(liveImageUrl).toMatch(
+      new RegExp(`^${E2E_BASE_URL}/j/${journeyId}/opengraph-image`),
+    );
+
+    // The card itself: a PNG at the Open Graph size, cached briefly, in
+    // the Journey's Theme — the dusk paper and the dusk primary stripe.
+    const live = await readPng(await participant.request.get(liveImageUrl!));
+    expect(live.status).toBe(200);
+    expect(live.contentType).toContain("image/png");
+    expect(live.cacheControl).toContain("max-age=300");
+    expect([live.width, live.height]).toEqual([1200, 630]);
+    saveBytes(
+      evidencePath("journey-link-preview", "journey-card.png"),
+      live.bytes,
+    );
+    expect(
+      await pixelsAt(participant, liveImageUrl!, [
+        { x: 40, y: 600 },
+        { x: 600, y: 8 },
+      ]),
+    ).toEqual([dusk.background, dusk.primary]);
+    await participant.screenshot({
+      path: evidencePath("journey-link-preview", "journey-link-preview.png"),
+    });
+
+    // A Step URL previews as the Journey, never as the Step.
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    await expect(participant).toHaveURL(
+      `${E2E_BASE_URL}/j/${journeyId}/${QUEUE_STEP_ID}`,
+    );
+    // Loaded afresh, as a crawler would load it, so the tags read are the
+    // Step page's own and not the Start page's left behind.
+    await participant.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    expect(await metaContent(participant, "og:title")).toBe(journeyTitle);
+    expect(await metaContent(participant, "og:url")).toBe(
+      `${E2E_BASE_URL}/j/${journeyId}`,
+    );
+
+    // Taken down: the page and its card read exactly as the site root does,
+    // and exactly as an id that names no Journey at all.
+    await queryE2eDatabase(
+      'UPDATE "journey" SET live_version_id = NULL WHERE id = $1',
+      [journeyId],
+    );
+    const unavailablePage = await participant.goto(`/j/${journeyId}`);
+    await expect(participant).toHaveTitle(APP_NAME);
+    const unavailableTitle = await participant.title();
+    const unavailableOgTitle = await metaContent(participant, "og:title");
+    const unavailableOgDescription = await metaContent(
+      participant,
+      "og:description",
+    );
+    expect(unavailableOgTitle).toBe(APP_NAME);
+    expect(unavailableOgDescription).toBe(APP_TAGLINE);
+    const unavailableImageUrl = await metaContent(participant, "og:image");
+    const unavailable = await readPng(
+      await participant.request.get(unavailableImageUrl!),
+    );
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.contentType).toContain("image/png");
+    expect([unavailable.width, unavailable.height]).toEqual([1200, 630]);
+    expect(unavailable.bytes.equals(live.bytes)).toBe(false);
+    saveBytes(
+      evidencePath("journey-link-preview", "unavailable-card.png"),
+      unavailable.bytes,
+    );
+
+    const unknownPage = await participant.goto(`/j/${UNKNOWN_JOURNEY_ID}`);
+    expect(unknownPage?.status()).toBe(404);
+    const unknown = await readPng(
+      await participant.request.get(`/j/${UNKNOWN_JOURNEY_ID}/opengraph-image`),
+    );
+    expect(unknown.status).toBe(200);
+    expect(unknown.bytes.equals(unavailable.bytes)).toBe(true);
+
+    saveBytes(
+      capturePath("journey-link-preview", "ac-2-unavailable-journey.txt"),
+      Buffer.from(
+        [
+          `# Ticket 37, criterion 2: an unavailable or unknown Journey previews as the site root does.`,
+          `GET /j/<unpublished> -> ${unavailablePage?.status()}`,
+          `  <title>: ${unavailableTitle}`,
+          `  og:title: ${unavailableOgTitle}`,
+          `  og:description: ${unavailableOgDescription}`,
+          `  og:image: ${unavailableImageUrl!.replace(journeyId, "<unpublished>")}`,
+          `GET /j/<unpublished>/opengraph-image -> ${unavailable.status} ${unavailable.contentType} ${unavailable.width}x${unavailable.height} cache-control: ${unavailable.cacheControl}`,
+          `  differs from the live card: ${!unavailable.bytes.equals(live.bytes)}`,
+          `GET /j/${UNKNOWN_JOURNEY_ID} -> ${unknownPage?.status()}`,
+          `GET /j/${UNKNOWN_JOURNEY_ID}/opengraph-image -> ${unknown.status} ${unknown.contentType} ${unknown.width}x${unknown.height}`,
+          `  byte-identical to the unpublished card: ${unknown.bytes.equals(unavailable.bytes)}`,
+          "",
+        ].join("\n"),
+      ),
+    );
   } finally {
     await participantContext.close();
   }
