@@ -29,11 +29,21 @@ import {
   targetSide,
   useCanvasColorMode,
 } from "@/components/journeys/canvas-shared";
+import { DirectionControl } from "@/components/journeys/direction-control";
 import { choiceLabel, counted } from "@/components/journeys/editor-shared";
 import { Badge } from "@/components/ui/badge";
 import { formatShare, type VersionAnalytics } from "@/lib/analytics";
+import {
+  ANALYTICS_DIRECTION_STORAGE_KEY,
+  usePreference,
+  writePreference,
+} from "@/lib/browser-preferences";
 import type { Point } from "@/lib/graph/crossings";
-import type { GraphDocument, LayoutDirection } from "@/lib/graph/document";
+import {
+  layoutDirectionSchema,
+  type GraphDocument,
+  type LayoutDirection,
+} from "@/lib/graph/document";
 import { EDGE_LABEL_MAX_WIDTH, layoutGraph } from "@/lib/graph/layout";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +62,13 @@ import "@xyflow/react/dist/style.css";
  * every other box carries how many Runs stopped on it and went no further.
  *
  * Read-only: nothing here opens, drags, connects, or selects. It pans, zooms,
- * and fits to view like the editor's map, and that is all it does.
+ * and fits to view like the editor's map, and that is all it does — except
+ * turn. Which way it runs is the reader's to choose, from the same control
+ * the editor's map has in the same place, the row across the top of the
+ * frame: a Published Version is immutable, so turning the map is a way of
+ * reading it and not an edit, and the browser keeps the choice for every
+ * version and every Journey it reads — as it keeps whether the editor's
+ * panel is put away — with the version's own direction until it has chosen.
  */
 
 type AnalyticsNodeData = {
@@ -349,25 +365,52 @@ function AnalyticsFlow({
 export function AnalyticsCanvas({
   document,
   analytics,
-  direction,
 }: {
   document: GraphDocument;
   analytics: VersionAnalytics;
-  /** Which way to draw it: the reader's choice, the version's by default. */
-  direction: LayoutDirection;
 }) {
+  // Which way this browser has turned the map, if it has. Until it has
+  // chosen — and, on the render the server sent, until the page is the
+  // browser's — the map runs the way the version was published.
+  const stored = layoutDirectionSchema.safeParse(
+    usePreference(ANALYTICS_DIRECTION_STORAGE_KEY),
+  );
+  const direction = stored.success ? stored.data : document.layoutDirection;
+
   return (
     <section
       aria-label="Analytics map"
-      className="relative h-[70vh] min-h-[36rem] overflow-hidden rounded-xl ring-1 ring-foreground/10"
+      // The editor's frame, and its reason: most of the viewport on a tall
+      // screen, never less than a map's worth. The row of controls takes
+      // its share and the map's height is what is left.
+      className="flex h-[70vh] min-h-[36rem] flex-col rounded-xl ring-1 ring-foreground/10"
     >
-      <ReactFlowProvider>
-        <AnalyticsFlow
-          document={document}
-          analytics={analytics}
+      {/* Where the editor's map keeps its controls: a row of its own above
+          the map, in normal flow, so it stays put however the map is
+          panned or zoomed. `role="group"` as there, for the same reason —
+          these are ordinary tab stops, not a toolbar's roving one. */}
+      <div
+        role="group"
+        aria-label="Map controls"
+        className="flex flex-wrap items-center gap-2 border-b border-foreground/10 px-3 py-2"
+      >
+        <DirectionControl
           direction={direction}
+          onSetLayoutDirection={(next) =>
+            writePreference(ANALYTICS_DIRECTION_STORAGE_KEY, next)
+          }
         />
-      </ReactFlowProvider>
+      </div>
+
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl">
+        <ReactFlowProvider>
+          <AnalyticsFlow
+            document={document}
+            analytics={analytics}
+            direction={direction}
+          />
+        </ReactFlowProvider>
+      </div>
     </section>
   );
 }

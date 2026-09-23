@@ -1,24 +1,12 @@
-"use client";
-
 import { AnalyticsCanvas } from "@/components/journeys/analytics-canvas";
 import { AnalyticsVersionSelect } from "@/components/journeys/analytics-version-select";
-import { DirectionControl } from "@/components/journeys/direction-control";
 import type { VersionSummary } from "@/db/versions";
 import {
   formatShare,
   type OutcomeGroup,
   type VersionAnalytics,
 } from "@/lib/analytics";
-import {
-  ANALYTICS_DIRECTION_STORAGE_KEY,
-  usePreference,
-  writePreference,
-} from "@/lib/browser-preferences";
-import {
-  layoutDirectionSchema,
-  type GraphDocument,
-  type LayoutDirection,
-} from "@/lib/graph/document";
+import type { GraphDocument } from "@/lib/graph/document";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,13 +17,8 @@ import { cn } from "@/lib/utils";
  * in the Author's own words — "40% reached care" — with an untagged Ending
  * standing under its own title and the Runs that stopped short as a bar of
  * their own, so every start is in exactly one bar. Member-only by way of
- * the page that renders it; never a Run id or a Participant.
- *
- * Which way the map runs is the reader's to choose, beside the version: a
- * Published Version is immutable, so turning the map is a way of reading it
- * and not an edit, and the browser keeps the choice for every version and
- * every Journey it reads — as it keeps whether the editor's panel is put
- * away — with the version's own direction until it has chosen.
+ * the page that renders it; never a Run id or a Participant. Which way
+ * the map runs is the map's own control to offer (`AnalyticsCanvas`).
  */
 
 export type SelectedVersionAnalytics = {
@@ -64,49 +47,15 @@ export function AnalyticsTab({
     );
   }
 
-  return <AnalyticsReading versions={versions} selected={selected} />;
-}
-
-/**
- * The tab with a version to read: the row of controls, the totals, the map,
- * and the chart. Apart from `AnalyticsTab` only so the empty tab above has
- * no state to carry.
- */
-function AnalyticsReading({
-  versions,
-  selected,
-}: {
-  versions: VersionSummary[];
-  selected: SelectedVersionAnalytics;
-}) {
-  const { analytics, document } = selected;
-
-  // Which way this browser has turned the map, if it has. Until it has
-  // chosen — and, on the render the server sent, until the page is the
-  // browser's — the map runs the way the version was published.
-  const stored = layoutDirectionSchema.safeParse(
-    usePreference(ANALYTICS_DIRECTION_STORAGE_KEY),
-  );
-  const preference = stored.success ? stored.data : null;
-
-  const chooseDirection = (direction: LayoutDirection) =>
-    writePreference(ANALYTICS_DIRECTION_STORAGE_KEY, direction);
-
-  const direction = preference ?? document.layoutDirection;
+  const { analytics } = selected;
 
   return (
     <section aria-label="Analytics" className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <AnalyticsVersionSelect
-            versions={versions}
-            selectedId={selected.versionId}
-          />
-          <DirectionControl
-            direction={direction}
-            onSetLayoutDirection={chooseDirection}
-          />
-        </div>
+        <AnalyticsVersionSelect
+          versions={versions}
+          selectedId={selected.versionId}
+        />
         <p className="text-muted-foreground text-sm">
           Every number is computed from runs of this version alone. Runs are
           anonymous.
@@ -118,9 +67,8 @@ function AnalyticsReading({
       {/* Remounted per version, so the map fits the version it now shows. */}
       <AnalyticsCanvas
         key={selected.versionId}
-        document={document}
+        document={selected.document}
         analytics={analytics}
-        direction={direction}
       />
 
       <OutcomeChart groups={analytics.outcomes} starts={analytics.starts} />

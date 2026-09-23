@@ -451,11 +451,11 @@ async function expectMapFitted(page: Page): Promise<void> {
     .toBe(true);
 }
 
-/** The control beside the version, by the direction it names. */
+/** The control in the map's own row, by the direction it names. */
 function directionRadio(page: Page, name: "Top to bottom" | "Left to right") {
   return page
-    .getByRole("region", { name: "Analytics" })
-    .getByRole("radiogroup", { name: "Layout direction" })
+    .getByRole("region", { name: "Analytics map" })
+    .getByRole("group", { name: "Map controls" })
     .getByRole("radio", { name, exact: true });
 }
 
