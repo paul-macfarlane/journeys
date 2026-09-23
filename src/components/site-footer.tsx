@@ -1,5 +1,6 @@
 import { LegalLinks, Wordmark } from "@/components/brand";
 import { COPYRIGHT_HOLDER, COPYRIGHT_YEAR, REPOSITORY_URL } from "@/lib/brand";
+import { cn } from "@/lib/utils";
 
 /**
  * The one footer, rendered everywhere: the landing page, the sign-in page,
@@ -20,10 +21,10 @@ export function SiteFooter({
   return (
     <footer className="border-t">
       <div
-        className={
-          "mx-auto flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-4 text-sm text-muted-foreground sm:px-6 " +
-          (width === "prose" ? "max-w-prose" : "max-w-7xl")
-        }
+        className={cn(
+          "mx-auto flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-4 text-sm text-muted-foreground sm:px-6",
+          width === "prose" ? "max-w-prose" : "max-w-7xl",
+        )}
       >
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a
             plain anchor on purpose: this component renders inside
@@ -36,7 +37,6 @@ export function SiteFooter({
         </span>
         <a
           href={REPOSITORY_URL}
-          rel="noreferrer"
           className="hover:text-foreground underline-offset-4 hover:underline"
         >
           GitHub

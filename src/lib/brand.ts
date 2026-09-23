@@ -26,11 +26,15 @@ export const REPOSITORY_URL = "https://github.com/paul-macfarlane/journeys";
 export const COPYRIGHT_HOLDER = "Paul Macfarlane";
 
 /**
- * The year the site footer's copyright line shows. Read once at module
- * load — the server's build/boot clock, never a Participant's or an
- * Author's own browser clock — so every render of the footer agrees.
+ * The year the site footer's copyright line shows: the year the app was
+ * built, inlined by `next.config.ts` as `BUILD_YEAR`, never a Participant's
+ * or an Author's own browser clock and never a server instance's boot
+ * clock either — so a statically built legal page and a dynamically
+ * rendered Author page cannot disagree over New Year until the next deploy.
+ * The fallback is for tools that import this module outside a Next build.
  */
-export const COPYRIGHT_YEAR = new Date().getFullYear();
+export const COPYRIGHT_YEAR =
+  process.env.BUILD_YEAR ?? String(new Date().getFullYear());
 
 /**
  * The palette's anchors as sRGB hex, for the surfaces that cannot read a

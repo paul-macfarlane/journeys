@@ -307,6 +307,23 @@ test("navbar-sticky-and-phone-menu: the navbar and tab row stick while the heade
     path: evidencePath("navbar-sticky-and-phone-menu", "sticky-tabs.png"),
   });
 
+  // The one site footer, on an Author page too: the wordmark home, the
+  // copyright line, the GitHub link, and the legal links.
+  const footer = page.getByRole("contentinfo");
+  await expect(footer).toHaveCount(1);
+  await expect(footer.getByRole("link", { name: "Journeys" })).toHaveAttribute(
+    "href",
+    "/",
+  );
+  await expect(footer).toContainText("Paul Macfarlane");
+  await expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute(
+    "href",
+    "https://github.com/paul-macfarlane/journeys",
+  );
+  await expect(
+    footer.getByRole("navigation", { name: "Legal" }).getByRole("link"),
+  ).toHaveCount(2);
+
   // At phone width nothing but the navbar sticks: scrolling carries the tab
   // row away with the page.
   await page.setViewportSize({ width: 375, height: 667 });

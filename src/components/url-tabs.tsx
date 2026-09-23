@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { withTab } from "@/lib/tabs";
-import { cn } from "@/lib/utils";
 
 export type UrlTab = {
   value: string;
@@ -24,11 +23,12 @@ export type UrlTab = {
  * reads off the page's own props.
  *
  * `sticky` pins the row of tabs under the sticky navbar (`top-14`, the
- * bar's height) from tablet width up, on a full-width band of page
- * background with a bottom border, so the page header scrolls away and the
- * tabs stay. At phone width nothing but the navbar sticks. The tab content
- * keeps a scroll margin the height of both rows, so an anchored jump lands
- * below them rather than under them.
+ * bar's height) from tablet width up, on a band of page background across
+ * the content column with a bottom border, so the page header scrolls away
+ * and the tabs stay. At phone width nothing but the navbar sticks. The
+ * band's `data-slot` is what `globals.css` keys the document's scroll
+ * padding off, so a focus move or an anchored jump lands below both rows
+ * rather than under them.
  */
 export function UrlTabs({
   label,
@@ -85,7 +85,7 @@ export function UrlTabs({
         <TabsContent
           key={entry.value}
           value={entry.value}
-          className={cn("text-base", sticky && "sm:scroll-mt-28")}
+          className="text-base"
         >
           {entry.content}
         </TabsContent>

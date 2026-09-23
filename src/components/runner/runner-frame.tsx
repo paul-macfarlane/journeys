@@ -23,9 +23,10 @@ import { themeStyle, type Theme } from "@/lib/theme";
  *
  * The footer is `SiteFooter`, the same one every other page renders (ticket
  * 34: "consistent throughout") — the wordmark, the copyright line, the
- * GitHub link, and the two legal pages — kept small and in the muted tone
- * so it never competes with the Step, and painted inside this frame so it
- * takes the Theme's colours rather than the page's.
+ * GitHub link, and the two legal pages — in small muted text under a
+ * border, and painted inside this frame so the mark's tile and the text
+ * take the Theme's colours rather than the page's. The Preview pages that
+ * wrap this frame in an Author layout get their footer from here alone.
  *
  * The frame is also where a Theme (ticket 11) is painted, and the only
  * place: `data-theme` names the preset, which `globals.css` turns into the
