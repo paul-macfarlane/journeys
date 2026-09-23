@@ -34,7 +34,7 @@ Verification and evidence follow `docs/agents/testing.md` ("Proportional verific
 
 PR: https://github.com/paul-macfarlane/journeys/pull/47 (base `staging`, comparison SHA `cf3d781`). Status set to `done` in this commit; merging the PR is Paul's acceptance. Delivered from the worktree `.claude/worktrees/35-analytics-direction-dark-controls/journeys` on port 3135 / `journeys_e2e_t35`, with a dummy env exported from the scratchpad (no `.env.local`), so Paul's checkout stayed free.
 
-**Commits.** 6048ea6 — the direction toggle on the Analytics tab (`DirectionControl` extracted from the editor's Canvas into `direction-control.tsx`; `AnalyticsTab` a client component holding the preference; `AnalyticsCanvas` takes `direction` and refits on a change), the browser-preference module (`src/lib/browser-preferences.ts`: `PANEL_STORAGE_KEY`, `ANALYTICS_DIRECTION_STORAGE_KEY`, guarded `readPreference`/`writePreference`, `usePreference` over `useSyncExternalStore`; the editor's panel preference routed through it), both controls fixes, and the two specs. f530d23 — review fixes. aa0ab75 — evidence.
+**Commits.** 6048ea6 — the direction toggle on the Analytics tab (`DirectionControl` extracted from the editor's Canvas into `direction-control.tsx`; `AnalyticsCanvas` lays out with the chosen direction and refits on a change), the browser-preference module (`src/lib/browser-preferences.ts`: `PANEL_STORAGE_KEY`, `ANALYTICS_DIRECTION_STORAGE_KEY`, guarded `readPreference`/`writePreference`, `usePreference` over `useSyncExternalStore`; the editor's panel preference routed through it), both controls fixes, and the two specs. f530d23 — review fixes. aa0ab75 — evidence.
 
 **The confirmed causes (both reproduced on the untouched build by `canvas-dark-controls` before the fix).**
 
@@ -58,3 +58,7 @@ PR: https://github.com/paul-macfarlane/journeys/pull/47 (base `staging`, compari
 **Queued for Paul (non-blocking, also in the PR).** The single per-browser direction key with no "follow the version again" state; the prompts spec's hydration race.
 
 **Next in Paul's order:** 36 → 37 (sweep 1), then 38 → 39 → 40 → 43.
+
+### [SCOPE CHANGE] 2026-09-23 — Paul, on reviewing PR #47
+
+The direction control moves from the header row beside the version select into the Analytics map's own "Map controls" row across the top of its frame, where the editor's Canvas keeps the same control (Paul: "the direction controls might belong closer to the canvas, like we have for the main builder canvas"). The preference moves with it into `AnalyticsCanvas`, so `AnalyticsTab` is a server component again and only the map is client-side; the frame keeps the editor's 70vh with the row taking its share. `analytics-direction-toggle` reads the control from the "Analytics map" region's "Map controls" group; evidence re-captured. Commit on the PR.
