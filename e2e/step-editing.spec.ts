@@ -570,8 +570,12 @@ test("rich-text-underline-strike-quote", async ({ page, context }) => {
   await page.keyboard.type("Keep the light burning.");
   await expectSaved(page);
 
-  // The tooltip names the shortcut the editor answered to.
+  // The tooltip names the shortcut the editor answered to. The pointer is
+  // still over Strikethrough from the click that took the mark off, so it
+  // leaves first: a hover where it already is opens nothing.
   const tooltip = page.locator('[data-slot="tooltip-content"]');
+  await surface.hover();
+  await expect(tooltip).toHaveCount(0);
   await page
     .getByRole("button", { name: "Strikethrough", exact: true })
     .hover();
