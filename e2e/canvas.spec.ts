@@ -1153,7 +1153,7 @@ test("canvas-duplicate-step", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toHaveValue("Border post copy");
   await expect(page.getByLabel("Step title")).toBeFocused();
   await expect(page.getByLabel("Step content")).toContainText(sentence);
-  await expect(page.getByLabel("Outcome", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Outcome", { exact: true })).toHaveText(
     "Reached care",
   );
   await expect(canvasNodes(page)).toHaveCount(2);

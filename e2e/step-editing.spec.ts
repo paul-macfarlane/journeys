@@ -111,9 +111,17 @@ async function renameStep(page: Page, title: string): Promise<void> {
   await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
-/** The Ending's own Outcome field, which is where an Outcome is made now. */
+/**
+ * The Ending's own Outcome field, which is where an Outcome is made now: a
+ * button that reads as a select and opens the list of Outcomes.
+ */
 function outcomeField(page: Page) {
   return page.getByRole("combobox", { name: "Outcome", exact: true });
+}
+
+/** The filter at the top of the open Outcome list. */
+function outcomeFilter(page: Page) {
+  return page.getByRole("textbox", { name: "Filter outcomes", exact: true });
 }
 
 /** One Outcome taken from the list the field offers, by name. */
@@ -124,7 +132,7 @@ async function chooseOutcome(page: Page, name: string): Promise<void> {
     .getByRole("option", { name, exact: true })
     .click();
 
-  await expect(outcomeField(page)).toHaveValue(name);
+  await expect(outcomeField(page)).toHaveText(name);
 }
 
 /**
@@ -654,7 +662,7 @@ test("step-editing-outcome-rename", async ({ page, context }) => {
   await expect(labelField).toBeFocused();
   await labelField.fill("Reached the clinic");
   await labelField.press("Enter");
-  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+  await expect(outcomeField(page)).toHaveText("Reached the clinic");
   await expectSaved(page);
 
   const after = await readDraft(journeyId);
@@ -811,14 +819,33 @@ test("panel-outcomes-from-the-ending", async ({ page, context }) => {
   await expect(page.getByRole("region", { name: "Outcomes" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Outcomes" })).toHaveCount(0);
 
-  // An Outcome made from the Ending that needs it, in one motion.
+  // Closed, the field reads as a select: what the Ending carries, which is
+  // nothing yet, on a button that says it opens a list.
   await chooseStep(page, "Waved through");
-  await outcomeField(page).fill("Reached care");
+  const field = outcomeField(page);
+  await expect(field).toHaveText("No outcome");
+  await expect(field).toHaveAttribute("aria-haspopup", "listbox");
+  await expect(field).toHaveAttribute("aria-expanded", "false");
+
+  // Its label sits a clear gap above it, like every other field in the panel.
+  const fieldId = await field.getAttribute("id");
+  const labelBox = await page.locator(`label[for="${fieldId}"]`).boundingBox();
+  const fieldBox = await field.boundingBox();
+  expect(labelBox).not.toBeNull();
+  expect(fieldBox).not.toBeNull();
+  expect(labelBox!.y + labelBox!.height).toBeLessThanOrEqual(fieldBox!.y - 4);
+
+  // An Outcome made from the Ending that needs it, in one motion: opened,
+  // typed into the filter at the top of the list, and created.
+  await field.click();
+  await expect(field).toHaveAttribute("aria-expanded", "true");
+  await expect(outcomeFilter(page)).toBeFocused();
+  await outcomeFilter(page).fill("Reached care");
   await page
     .getByRole("listbox", { name: "Outcomes" })
     .getByRole("option", { name: "Create outcome “Reached care”", exact: true })
     .click();
-  await expect(outcomeField(page)).toHaveValue("Reached care");
+  await expect(field).toHaveText("Reached care");
   await expect(page.getByText("3 steps · 1 outcome")).toBeVisible();
 
   // The second Ending takes it from the list, and the list says how many
@@ -831,7 +858,16 @@ test("panel-outcomes-from-the-ending", async ({ page, context }) => {
       .getByRole("listbox", { name: "Outcomes" })
       .getByRole("option", { name: "Reached care", exact: true }),
   ).toContainText("2 endings");
+  await page.screenshot({
+    path: evidencePath("panel-outcomes-from-the-ending", "outcome-open.png"),
+    fullPage: true,
+  });
+
+  // Escape puts the list away and hands the focus back to the field.
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox", { name: "Outcomes" })).toHaveCount(0);
+  await expect(outcomeField(page)).toHaveAttribute("aria-expanded", "false");
+  await expect(outcomeField(page)).toBeFocused();
   await expectSaved(page);
 
   const tagged = await readDraft(journeyId);
@@ -844,9 +880,9 @@ test("panel-outcomes-from-the-ending", async ({ page, context }) => {
   await expect(labelField).toBeFocused();
   await labelField.fill("Reached the clinic");
   await labelField.press("Enter");
-  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+  await expect(outcomeField(page)).toHaveText("Reached the clinic");
   await chooseStep(page, "Waved through");
-  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+  await expect(outcomeField(page)).toHaveText("Reached the clinic");
   await expectSaved(page);
 
   const renamed = await readDraft(journeyId);
@@ -865,25 +901,37 @@ test("panel-outcomes-from-the-ending", async ({ page, context }) => {
   const emptied = page.getByLabel("Outcome label", { exact: true });
   await emptied.fill("");
   await emptied.press("Enter");
-  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+  await expect(outcomeField(page)).toHaveText("Reached the clinic");
 
   // And the same label in another case is the same label: the field offers
   // the Outcome the Journey has rather than a second one to create.
-  await outcomeField(page).fill("reached the clinic");
+  await outcomeField(page).click();
+  await outcomeFilter(page).fill("reached the clinic");
   const offered = page.getByRole("listbox", { name: "Outcomes" });
   await expect(
     offered.getByRole("option", { name: "Reached the clinic", exact: true }),
   ).toHaveCount(1);
   await expect(offered.getByRole("option")).toHaveCount(1);
 
-  // The list put away, and then what was typed, leaving the Ending as it was.
+  // The list put away, leaving the Ending as it was.
   await page.keyboard.press("Escape");
-  await page.keyboard.press("Escape");
-  await expect(outcomeField(page)).toHaveValue("Reached the clinic");
+  await expect(offered).toHaveCount(0);
+  await expect(outcomeField(page)).toHaveText("Reached the clinic");
 
   // An Outcome the last Ending drops goes with it: there is nothing to
-  // remove by hand.
-  await chooseOutcome(page, "No outcome");
+  // remove by hand. The first Ending lets go of it from the keyboard alone:
+  // the arrow opens the list with its first option in hand, the next arrow
+  // moves to "No outcome", and Enter takes it.
+  await outcomeField(page).press("ArrowDown");
+  await expect(outcomeFilter(page)).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(
+    offered.getByRole("option", { name: "No outcome", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Enter");
+  await expect(offered).toHaveCount(0);
+  await expect(outcomeField(page)).toHaveText("No outcome");
+  await expect(outcomeField(page)).toBeFocused();
   await chooseStep(page, "Turned back");
   await chooseOutcome(page, "No outcome");
   await expect(page.getByText("3 steps · 0 outcomes")).toBeVisible();
