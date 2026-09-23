@@ -121,7 +121,7 @@ function outcomeField(page: Page) {
 
 /** The filter at the top of the open Outcome list. */
 function outcomeFilter(page: Page) {
-  return page.getByRole("textbox", { name: "Filter outcomes", exact: true });
+  return page.getByRole("combobox", { name: "Filter outcomes", exact: true });
 }
 
 /** One Outcome taken from the list the field offers, by name. */

@@ -106,7 +106,7 @@ export async function tagWithOutcome(page: Page, label: string): Promise<void> {
   const field = page.getByRole("combobox", { name: "Outcome", exact: true });
   await field.click();
   await page
-    .getByRole("textbox", { name: "Filter outcomes", exact: true })
+    .getByRole("combobox", { name: "Filter outcomes", exact: true })
     .fill(label);
 
   const list = page.getByRole("listbox", { name: "Outcomes" });

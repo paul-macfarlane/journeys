@@ -177,6 +177,12 @@ function OptionList({
 }) {
   return (
     <div
+      // A pointer going down on the list's own padding, the gap between
+      // options, or the "nothing matched" line must not take the focus off
+      // the field either — only the header's own field may have it.
+      onMouseDown={(event) => {
+        if (!(event.target instanceof HTMLInputElement)) event.preventDefault();
+      }}
       className={cn(
         "absolute left-0 z-20 flex max-h-80 w-full min-w-56 flex-col overflow-y-auto rounded-xl bg-background p-1 ring-1 ring-foreground/10",
         above ? "bottom-full mb-1" : "top-full mt-1",
@@ -565,6 +571,13 @@ export function SelectCombobox({
         // is only named while there is something for it to name.
         aria-controls={open ? listboxId : undefined}
         onClick={() => (open ? hide(false) : show())}
+        // Safari and Firefox do not focus a button on click, so the filter's
+        // blur would arrive with no `relatedTarget`, close the list, and the
+        // click would then open it again; keeping the pointer from moving
+        // focus leaves the click as the one toggle it is.
+        onMouseDown={(event) => {
+          if (open) event.preventDefault();
+        }}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
@@ -588,9 +601,12 @@ export function SelectCombobox({
               <Input
                 ref={filterRef}
                 type="text"
+                role="combobox"
                 aria-label={filterLabel}
                 autoComplete="off"
                 placeholder={filterPlaceholder}
+                aria-autocomplete="list"
+                aria-expanded
                 aria-controls={listboxId}
                 aria-activedescendant={
                   active >= 0 ? `${optionIdPrefix}-${active}` : undefined

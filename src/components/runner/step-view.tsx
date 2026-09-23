@@ -97,11 +97,15 @@ const RESPONSE_NOTICES: Record<string, { text: string; refusal: boolean }> = {
 export function responseRefusal(
   notice: string | string[] | undefined,
 ): string | null {
-  const known =
-    typeof notice === "string" && Object.hasOwn(RESPONSE_NOTICES, notice)
-      ? RESPONSE_NOTICES[notice]
-      : null;
+  const known = knownNotice(notice);
   return known !== null && known.refusal ? known.text : null;
+}
+
+/** The notice the address names, when it is one of the Prompt's at all. */
+function knownNotice(notice: string | string[] | undefined) {
+  return typeof notice === "string" && Object.hasOwn(RESPONSE_NOTICES, notice)
+    ? RESPONSE_NOTICES[notice]
+    : null;
 }
 
 /**
@@ -114,10 +118,7 @@ export function ResponseNotice({
 }: {
   notice: string | string[] | undefined;
 }) {
-  const known =
-    typeof notice === "string" && Object.hasOwn(RESPONSE_NOTICES, notice)
-      ? RESPONSE_NOTICES[notice]
-      : null;
+  const known = knownNotice(notice);
   if (known === null || known.refusal) return null;
 
   return (

@@ -294,16 +294,16 @@ test("runner-required-prompt-refusal", async ({ page, context, browser }) => {
 
     await participant.getByRole("button", { name: "Show your papers" }).click();
 
-    await expect(participant).toHaveURL(
-      new RegExp(`/j/${journeyId}/${QUEUE_STEP_ID}(\\?|$)`),
-    );
+    // The refused page is the signal the server has answered; only then is
+    // the Run's path worth reading, or the read could land before the
+    // action does and pass whatever it did.
+    await expect(queueBox).toHaveAttribute("aria-invalid", "true");
     expect((await readRuns(versionId))[0].path).toEqual([
       START_STEP_ID,
       QUEUE_STEP_ID,
     ]);
 
     await expect(queueBox).toHaveAttribute("aria-required", "true");
-    await expect(queueBox).toHaveAttribute("aria-invalid", "true");
     await expect(queueBox).toHaveAttribute(
       "aria-describedby",
       `response-${QUEUE_STEP_ID}-refusal`,
