@@ -3,8 +3,9 @@
  * shared link lands on the same one. The first tab is the default and is
  * never written into the address: the plain URL is the page as it opens.
  *
- * Pure and database-free so the server page that reads the parameter and
- * the client component that writes it share one rule.
+ * Pure and database-free: `UrlTabs` reads the parameter with one and
+ * writes it with the other, so the rule lives in one place and is tested
+ * without a browser.
  */
 
 /** The tab a request names, or the first when it names none or an unknown one. */

@@ -278,18 +278,20 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await expect(versionOne.locator("time")).toHaveCount(1);
 
   // Nothing to publish while the live version matches the Draft, the title,
-  // and the description.
+  // and the description. The page header's button: once there is something
+  // to publish, the Versions tab's Draft row carries a Publish of its own.
+  const header = page.locator("main header");
   await expect(
-    page.getByRole("button", { name: "Publish", exact: true }),
+    header.getByRole("button", { name: "Publish", exact: true }),
   ).toBeDisabled();
 
   // A description edit is something participants have not seen, so it is
   // enough on its own to make Publish available again, and to say so.
   await editJourneyField(page, journeyId, "description", editedDescription);
   await expect(
-    page.getByRole("button", { name: "Publish", exact: true }),
+    header.getByRole("button", { name: "Publish", exact: true }),
   ).toBeEnabled();
-  await expect(page.getByText("Unpublished changes")).toBeVisible();
+  await expect(header.getByText("Unpublished changes")).toBeVisible();
 
   // The badge is the derived state, on the Journey page and in the Project's
   // list alike.
@@ -478,4 +480,141 @@ test("journey-share-link", async ({ page, context }) => {
   await expect(page.getByRole("alertdialog")).toBeHidden();
   await expect(page.getByText("Unpublished", { exact: true })).toBeVisible();
   await expect(copyLink).toHaveCount(0);
+});
+
+test("versions-tab-shows-draft", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  const original = publishableDocument();
+  await writeDraftDocument(journeyId, original);
+
+  const versions = page
+    .getByRole("list", { name: "Versions" })
+    .getByRole("listitem");
+  const draftRow = versions.filter({
+    has: page.getByText("Draft", { exact: true }),
+  });
+
+  // Never published: the Draft is the one row, and beneath it the tab says
+  // there is nothing published yet.
+  await page.goto(`${journeyPath}?tab=versions`);
+  await expect(versions).toHaveCount(1);
+  await expect(
+    draftRow.getByText("Unpublished changes", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Not published yet.", { exact: true }),
+  ).toBeVisible();
+
+  // The row's time is the Draft's own last edit, as stored.
+  const [draftRecord] = await queryE2eDatabase<{ updated_at: string | Date }>(
+    'SELECT updated_at FROM "draft" WHERE journey_id = $1',
+    [journeyId],
+  );
+  await expect(draftRow.locator("time")).toHaveAttribute(
+    "datetime",
+    new Date(draftRecord.updated_at).toISOString(),
+  );
+
+  // "Open editor" is the way from the row to the Editor tab, which is the
+  // plain address.
+  await draftRow.getByRole("link", { name: "Open editor" }).click();
+  await expect(
+    page.getByRole("tab", { name: "Editor", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Step title")).toHaveValue(START_STEP_TITLE);
+  await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);
+
+  // Version 1.
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  // The live version is the Draft exactly, so the list is the versions alone.
+  await openTab(page, "Versions");
+  await expect(versions).toHaveCount(1);
+  await expect(draftRow).toHaveCount(0);
+  await expect(versions.first()).toContainText("Version 1");
+
+  // An Author edits a Step's title afterwards, straight into the row so this
+  // stays a spec about versions rather than about the editor.
+  await writeDraftDocument(journeyId, {
+    ...original,
+    steps: {
+      ...original.steps,
+      [START_STEP_ID]: {
+        ...original.steps[START_STEP_ID],
+        title: "Border post at night",
+      },
+    },
+  });
+
+  // The Draft is back, first, above the live version.
+  await page.goto(`${journeyPath}?tab=versions`);
+  await expect(versions).toHaveCount(2);
+  await expect(
+    versions.nth(0).getByText("Draft", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    versions.nth(0).getByText("Unpublished changes", { exact: true }),
+  ).toBeVisible();
+  await expect(versions.nth(1)).toContainText("Version 1");
+  await expect(
+    versions.nth(1).getByText("Live", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Not published yet.")).toHaveCount(0);
+
+  await page.screenshot({
+    path: evidencePath(
+      "versions-tab-shows-draft",
+      "versions-tab-shows-draft.png",
+    ),
+    fullPage: true,
+  });
+
+  // Publishing from the row makes version 2 the live one and takes the
+  // Draft row with it: nothing is unpublished any more.
+  await draftRow.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(draftRow).toHaveCount(0);
+  await expect(versions).toHaveCount(2);
+  await expect(versions.nth(0)).toContainText("Version 2");
+  await expect(
+    versions.nth(0).getByText("Live", { exact: true }),
+  ).toBeVisible();
+  expect(await readVersionRows(journeyId)).toHaveLength(2);
+
+  // A description edit alone is an unpublished change too, so the Draft
+  // row is back — and its time is that edit's, not the document's older
+  // save.
+  await editJourneyField(
+    page,
+    journeyId,
+    "description",
+    "A family waits for the night crossing.",
+  );
+  await expect(draftRow).toHaveCount(1);
+  const [journeyRecord] = await queryE2eDatabase<{
+    updated_at: string | Date;
+  }>('SELECT updated_at FROM "journey" WHERE id = $1', [journeyId]);
+  const [draftAfter] = await queryE2eDatabase<{ updated_at: string | Date }>(
+    'SELECT updated_at FROM "draft" WHERE journey_id = $1',
+    [journeyId],
+  );
+  expect(new Date(journeyRecord.updated_at).getTime()).toBeGreaterThan(
+    new Date(draftAfter.updated_at).getTime(),
+  );
+  await expect(draftRow.locator("time")).toHaveAttribute(
+    "datetime",
+    new Date(journeyRecord.updated_at).toISOString(),
+  );
 });

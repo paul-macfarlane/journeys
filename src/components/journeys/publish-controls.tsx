@@ -36,6 +36,7 @@ export function PublishButton({
   projectId,
   journeyId,
   hasUnpublishedChanges,
+  size = "default",
 }: {
   projectId: string;
   journeyId: string;
@@ -44,6 +45,8 @@ export function PublishButton({
    * document and the Journey's title and description.
    */
   hasUnpublishedChanges: boolean;
+  /** `sm` beside the Versions tab's row actions; the page header's is full size. */
+  size?: "default" | "sm";
 }) {
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
@@ -68,7 +71,11 @@ export function PublishButton({
   return (
     <>
       {/* Nothing to publish while participants already see this Draft. */}
-      <Button disabled={pending || !hasUnpublishedChanges} onClick={publish}>
+      <Button
+        size={size}
+        disabled={pending || !hasUnpublishedChanges}
+        onClick={publish}
+      >
         Publish
       </Button>
 

@@ -30,17 +30,7 @@ import { analyticsForVersion, chooseVersionId } from "@/lib/analytics";
 import { documentsEqual } from "@/lib/graph/document";
 import { groupResponsesByStep } from "@/lib/response-list";
 import { requireSession } from "@/lib/session";
-import { readTab } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
-
-/** The page's sections, the first being what the plain address opens on. */
-const JOURNEY_TABS = [
-  "editor",
-  "versions",
-  "analytics",
-  "responses",
-  "settings",
-] as const;
 
 export default async function JourneyPage({
   params,
@@ -48,13 +38,13 @@ export default async function JourneyPage({
 }: {
   params: Promise<{ projectId: string; journeyId: string }>;
   searchParams: Promise<{
-    tab?: string | string[];
+    // The open tab is `?tab=<name>` too, read by `UrlTabs` itself.
     /** The Published Version the Analytics tab reads; see `chooseVersionId`. */
     version?: string | string[];
   }>;
 }) {
   const session = await requireSession();
-  const [{ projectId, journeyId }, { tab, version }] = await Promise.all([
+  const [{ projectId, journeyId }, { version }] = await Promise.all([
     params,
     searchParams,
   ]);
@@ -76,8 +66,9 @@ export default async function JourneyPage({
   // Every Journey has a Draft, created with it — a missing one is a Journey
   // that cannot be authored, so it gets the same 404 rather than a page with
   // a hole in it.
-  const draft = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!draft) notFound();
+  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  if (!stored) notFound();
+  const draft = stored.document;
 
   // Null only for a non-Member, which the check above already answered; an
   // empty list is a Journey that has never been published.
@@ -128,11 +119,22 @@ export default async function JourneyPage({
   // the Draft, the title, and the description. An unpublished or
   // never-published Journey always has something to publish.
   const live = await getLiveVersion(projectId, journeyId, session.user.id);
-  const hasUnpublishedChanges =
+  const titleOrDescriptionPending =
     live === null ||
     live.title !== journey.title ||
-    live.description !== journey.description ||
-    !documentsEqual(draft, live.document);
+    live.description !== journey.description;
+  const hasUnpublishedChanges =
+    titleOrDescriptionPending || !documentsEqual(draft, live.document);
+
+  // When the Draft was last edited, for its row on the Versions tab: the
+  // document's own save, or the title's and description's when they are
+  // what is pending and were edited later. The Journey row's timestamp
+  // also moves on publish, unpublish, and a Theme change, so it counts
+  // only while the title or description differs from the live version.
+  const draftEditedAt =
+    titleOrDescriptionPending && journey.updatedAt > stored.updatedAt
+      ? journey.updatedAt
+      : stored.updatedAt;
 
   return (
     <>
@@ -199,7 +201,6 @@ export default async function JourneyPage({
         <UrlTabs
           label="Journey"
           sticky
-          initialTab={readTab(JOURNEY_TABS, tab)}
           tabs={[
             {
               value: "editor",
@@ -220,6 +221,8 @@ export default async function JourneyPage({
                   projectId={projectId}
                   journeyId={journey.id}
                   versions={versions}
+                  hasUnpublishedChanges={hasUnpublishedChanges}
+                  draftUpdatedAt={draftEditedAt}
                 />
               ),
             },
