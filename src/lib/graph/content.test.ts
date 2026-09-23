@@ -6,6 +6,7 @@ import {
   isBlankContent,
   PREVIEW_LIMIT,
   sanitizeContent,
+  textPreview,
   type Content,
 } from "@/lib/graph/content";
 
@@ -672,6 +673,24 @@ describe("contentPreview", () => {
     expect(contentPreview(sentence("The lamp room is dark"), 10)).toBe(
       "The lamp r…",
     );
+  });
+});
+
+describe("textPreview", () => {
+  it("collapses whitespace and leaves text within the limit whole", () => {
+    expect(textPreview("  Goal:\n cross   the border. ", 160)).toBe(
+      "Goal: cross the border.",
+    );
+  });
+
+  it("cuts text past the limit and marks the cut, as contentPreview does", () => {
+    expect(textPreview("The lamp room is dark", 10)).toBe("The lamp r…");
+    expect(textPreview("x".repeat(160), 160)).toHaveLength(160);
+    expect(textPreview("x".repeat(161), 160)).toBe(`${"x".repeat(160)}…`);
+  });
+
+  it("is empty for blank text", () => {
+    expect(textPreview("   \n", 160)).toBe("");
   });
 });
 

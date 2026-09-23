@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+import { APP_NAME } from "@/lib/brand";
 import type { Content } from "@/lib/graph/content";
+import { linkPreviewPalette } from "@/lib/link-preview";
 
 import {
   createJourney,
@@ -15,6 +17,12 @@ import {
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
+import {
+  metaContent,
+  pixelsAt,
+  readPng,
+  saveBytes,
+} from "./setup/link-preview";
 import {
   cleanup,
   closePools,
@@ -265,4 +273,96 @@ test("public-project-page", async ({ page, context, browser }) => {
     [draftOnlyId],
   );
   expect(draftRow.live_version_id).toBeNull();
+});
+
+test("project-link-preview", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+
+  // The description, Theme, and accent as the Settings tab stores them.
+  const description: Content = {
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 2 },
+        content: [{ type: "text", text: "About these journeys" }],
+      },
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Three cases from the northern route." },
+        ],
+      },
+    ],
+  };
+  const accent = "#ffcc00";
+  await queryE2eDatabase(
+    'UPDATE "project" SET description_content = $1::jsonb, theme_preset = $2, theme_accent = $3 WHERE id = $4',
+    [JSON.stringify(description), "ember", accent, projectId],
+  );
+  const palette = linkPreviewPalette({ preset: "ember", accent });
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+    await participant.goto(`/p/${projectId}`);
+
+    await expect(participant).toHaveTitle(`${projectTitle} · ${APP_NAME}`);
+    expect(await metaContent(participant, "og:title")).toBe(projectTitle);
+    expect(await metaContent(participant, "og:description")).toBe(
+      "About these journeys Three cases from the northern route.",
+    );
+    expect(await metaContent(participant, "og:url")).toBe(
+      `${E2E_BASE_URL}/p/${projectId}`,
+    );
+    expect(await metaContent(participant, "og:site_name")).toBe(APP_NAME);
+    expect(await metaContent(participant, "twitter:card")).toBe(
+      "summary_large_image",
+    );
+    const imageUrl = await metaContent(participant, "og:image");
+    expect(imageUrl).toMatch(
+      new RegExp(`^${E2E_BASE_URL}/p/${projectId}/opengraph-image`),
+    );
+
+    // The card: ember paper, and the Author's accent for the stripe.
+    const card = await readPng(await participant.request.get(imageUrl!));
+    expect(card.status).toBe(200);
+    expect(card.contentType).toContain("image/png");
+    expect(card.cacheControl).toContain("max-age=300");
+    expect([card.width, card.height]).toEqual([1200, 630]);
+    saveBytes(
+      evidencePath("project-link-preview", "project-card.png"),
+      card.bytes,
+    );
+    expect(
+      await pixelsAt(participant, imageUrl!, [
+        { x: 40, y: 600 },
+        { x: 600, y: 8 },
+      ]),
+    ).toEqual([palette.background, accent]);
+    await participant.screenshot({
+      path: evidencePath("project-link-preview", "project-link-preview.png"),
+    });
+
+    // An unknown id: a 404 page, and the site's own card.
+    const unknownPage = await participant.goto(`/p/${UNKNOWN_PROJECT_ID}`);
+    expect(unknownPage?.status()).toBe(404);
+    const unknown = await readPng(
+      await participant.request.get(`/p/${UNKNOWN_PROJECT_ID}/opengraph-image`),
+    );
+    expect(unknown.status).toBe(200);
+    expect(unknown.contentType).toContain("image/png");
+    expect(unknown.bytes.equals(card.bytes)).toBe(false);
+  } finally {
+    await participantContext.close();
+  }
 });
