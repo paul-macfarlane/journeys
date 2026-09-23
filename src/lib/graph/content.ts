@@ -450,7 +450,18 @@ export function contentPreview(
 ): string {
   const pieces: string[] = [];
   collectText(content.content, pieces);
+  return textPreview(pieces.join(" "), limit);
+}
 
-  const text = pieces.join(" ").replace(/\s+/g, " ").trim();
-  return text.length > limit ? `${text.slice(0, limit)}${ELLIPSIS}` : text;
+/**
+ * The same cut for text that is already plain — a Journey's description,
+ * which is one line of text rather than rich content — so a link preview
+ * of a Journey and one of a Project are cut alike: whitespace collapsed,
+ * anything past `limit` cut there and marked with an ellipsis.
+ */
+export function textPreview(text: string, limit: number): string {
+  const collapsed = text.replace(/\s+/g, " ").trim();
+  return collapsed.length > limit
+    ? `${collapsed.slice(0, limit)}${ELLIPSIS}`
+    : collapsed;
 }

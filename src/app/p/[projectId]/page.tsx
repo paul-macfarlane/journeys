@@ -6,7 +6,8 @@ import { RunnerFrame } from "@/components/runner/runner-frame";
 import { choiceLinkClassName } from "@/components/runner/step-view";
 import { listPublicJourneysForProject } from "@/db/journeys";
 import { getPublicProject } from "@/db/projects";
-import { contentPreview, isBlankContent } from "@/lib/graph/content";
+import { isBlankContent } from "@/lib/graph/content";
+import { projectLinkMetadata } from "@/lib/link-preview";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,28 +30,19 @@ import { cn } from "@/lib/utils";
 // unpublished after the first visit would stay listed until the next deploy.
 export const dynamic = "force-dynamic";
 
-/** How much of the description a link preview gets. */
-const METADATA_DESCRIPTION_LIMIT = 160;
-
+/**
+ * What a link to this page previews as (ticket 37): the Project's title
+ * and the opening of its description, with the card `opengraph-image.tsx`
+ * beside this file renders in the Project's Theme. The page answers an
+ * unknown id with a 404, and its metadata reads as the site root does.
+ */
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }): Promise<Metadata> {
   const { projectId } = await params;
-  const project = await getPublicProject(projectId);
-  // The page itself answers an unknown id with a 404; there is no title to
-  // give it here.
-  if (!project) return {};
-
-  const description = contentPreview(
-    project.description,
-    METADATA_DESCRIPTION_LIMIT,
-  );
-  return {
-    title: project.title,
-    description: description.length > 0 ? description : undefined,
-  };
+  return projectLinkMetadata(await getPublicProject(projectId), projectId);
 }
 
 export default async function PublicProjectPage({

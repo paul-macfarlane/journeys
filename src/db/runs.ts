@@ -4,6 +4,7 @@
 import "server-only";
 
 import { and, eq } from "drizzle-orm";
+import { cache } from "react";
 
 import { db } from "@/db";
 import { journey, project, publishedVersion, response, run } from "@/db/schema";
@@ -70,6 +71,8 @@ export type PublicJourney =
       description: string;
       document: GraphDocument;
       theme: Theme;
+      /** The Project's title, which a link preview names above the Journey's. */
+      projectTitle: string;
     }
   // The unavailable screen sits in the same frame, so it carries the Theme
   // too: a Journey taken down still belongs to a Project with a look.
@@ -83,8 +86,11 @@ export type PublicJourney =
  * the two read the same to a Participant. Title and description come from
  * the Published Version, never the Journey row, so a rename after publish
  * never changes what a live or in-progress Run shows.
+ *
+ * Wrapped in React's `cache` so a page and its `generateMetadata` share one
+ * query on a request, as `getPublicProject` does.
  */
-export async function getPublicJourney(
+export const getPublicJourney = cache(async function getPublicJourney(
   journeyId: string,
 ): Promise<PublicJourney | null> {
   const [row] = await db
@@ -93,6 +99,7 @@ export async function getPublicJourney(
       title: publishedVersion.title,
       description: publishedVersion.description,
       document: publishedVersion.document,
+      projectTitle: project.title,
       theme: themeColumns,
     })
     .from(journey)
@@ -127,8 +134,9 @@ export async function getPublicJourney(
     description,
     document: graphDocumentSchema.parse(document),
     theme,
+    projectTitle: row.projectTitle,
   };
-}
+});
 
 /**
  * Starts a Run: one row pinned to the Published Version the Participant is

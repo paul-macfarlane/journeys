@@ -1,0 +1,11 @@
+# Ticket 37, criterion 2: an unavailable or unknown Journey previews as the site root does.
+GET /j/<unpublished> -> 200
+  <title>: Journeys
+  og:title: Journeys
+  og:description: Branching, text-based experiences you can write, publish, and share.
+  og:image: http://localhost:3137/j/<unpublished>/opengraph-image?744bdad3e6ccd605
+GET /j/<unpublished>/opengraph-image -> 200 image/png 1200x630 cache-control: public, max-age=300, s-maxage=300, stale-while-revalidate=60
+  differs from the live card: true
+GET /j/00000000-0000-4000-8000-000000000000 -> 404
+GET /j/00000000-0000-4000-8000-000000000000/opengraph-image -> 200 image/png 1200x630
+  byte-identical to the unpublished card: true
