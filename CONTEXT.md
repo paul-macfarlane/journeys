@@ -30,19 +30,31 @@ _Avoid_: Node, passage, page, scene
 One option shown on a step that leads the participant to another step.
 _Avoid_: Decision, link, edge, option
 
+**Caption**:
+The visible line under an image in a step's content. Optional; a credit or attribution is simply written into it. Stored as the image's `caption` (documents written before ticket 30 named it `credit`, which is read as the caption).
+_Avoid_: Credit, subtitle, figcaption
+
+**Alt text**:
+The description of an image for people who cannot see it, read by assistive technology and never displayed. Required by the image dialog; a stored image without it is kept and can be edited into shape.
+_Avoid_: Caption, title, description
+
 **Start**:
 The single step a journey begins on. Every journey has exactly one.
 _Avoid_: Root, entry node
 
 **Ending**:
-A step with no choices. Every ending is tagged with exactly one outcome.
+A step with no choices. It may carry an outcome that groups it for analysis; one without is an ending on its own.
 _Avoid_: Terminal, leaf, end node, dead end
 
 **Outcome**:
-An author-defined, journey-scoped label that groups endings for analysis (e.g. "Reached care", "Death"). Identified by a stable id so its text can be renamed.
+An author-defined, journey-scoped label that groups endings for analysis (e.g. "Reached care", "Death"). Identified by a stable id so its text can be renamed. Made, chosen, and renamed from an ending's panel, and removed from the journey when the last ending drops it.
 _Avoid_: Result, ending type, category
 
 ## Publishing
+
+**Canvas**:
+The editor's map of a draft: every step drawn as a box, every choice as an arrow between boxes, laid out automatically and never by hand, top to bottom or left to right — a choice stored on the draft and shared by the project's members. Clicking a box opens that step in the panel, which can be hidden to give the map the whole width; hiding it is remembered per browser, never on the journey. The view is the author's and moves only when they ask for it, and the box they click carries "Step actions", which opens onto the moves that shape the journey around that step. The journey is built here as well as read here: a choice dragged onto bare map makes the step it leads to along with it, only the arrow in hand has a head to take hold of and move, and clicking an arrow opens its step with that choice's row marked. The Analytics tab draws a published version the same way, read-only, with the numbers of its runs on every box and arrow.
+_Avoid_: Graph view, diagram, board, flowchart
 
 **Draft**:
 The single mutable working copy of a journey that authors edit. Never visible to participants.
@@ -53,7 +65,7 @@ An immutable snapshot of a journey's draft created by publishing. At most one is
 _Avoid_: Release, revision, snapshot
 
 **Run**:
-One participant's walk through one published version, from start to an ending or abandonment. Pinned to the version it began on; its path is the participant's current route, not every detour.
+One participant's walk through one published version, from start to an ending or abandonment. Created when a participant takes their first choice, never by merely opening the journey; pinned to the version it began on; its path is the participant's current route, not every detour.
 _Avoid_: Session, playthrough, attempt
 
 **Backtrack**:

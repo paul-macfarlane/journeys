@@ -1,0 +1,41 @@
+# AC-1 — migration 0006 applied to the local dev database holding existing Projects and Journeys;
+# every Journey's position equals its created_at rank (0-based) within its Project. Head c04cd01, 2026-09-22T14:58:49Z.
+
+## Before: row counts and the columns the migration adds (absent)
+projects=2
+journeys=4
+columns present: 0
+
+## Journeys before, by Project and created_at (ids abbreviated)
+ project  | journey  |       title        |          created_at           
+----------+----------+--------------------+-------------------------------
+ 00000000 | 00000000 | Case 1             | 2026-09-20 14:59:27.618777+00
+ 00000000 | 00000000 | Case 2             | 2026-09-20 14:59:27.618777+00
+ 00000000 | 00000000 | Case 3             | 2026-09-20 14:59:27.618777+00
+ c01e9026 | 85128fd7 | Test Small Journey | 2026-09-22 03:29:01.288879+00
+(4 rows)
+
+
+=== pnpm db:migrate
+
+> journeys@0.1.0 db:migrate .
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file './drizzle.config.ts'
+◇ injected env (8) from .env.local // tip: ⌘ enable debugging { debug: true }
+Using 'pg' driver for database querying
+[⣷] applying migrations... [✓] migrations applied successfully!exit=0
+
+## After: positions against the created_at rank
+ project  | journey  |       title        | position | expected 
+----------+----------+--------------------+----------+----------
+ 00000000 | 00000000 | Case 1             |        0 |        0
+ 00000000 | 00000000 | Case 2             |        1 |        1
+ 00000000 | 00000000 | Case 3             |        2 |        2
+ c01e9026 | 85128fd7 | Test Small Journey |        0 |        0
+(4 rows)
+
+mismatches=0
+project.description default: ''::text not null: NO
+journey.position default: 0 not null: NO

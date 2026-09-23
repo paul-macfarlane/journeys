@@ -1,0 +1,2503 @@
+{
+  "schemaVersion": 1,
+  "startStepId": "step-42",
+  "allowBack": true,
+  "steps": {
+    "step-1": {
+      "id": "step-1",
+      "title": "Moments of Peace in Honduras",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You and your family live in Honduras. Every day, you look forward to gathering around the table to share breakfast together. It is one of your favorite moments of peace. You and your husband have two children, a girl and a boy, who you love very much. A few weeks ago, you found out you had a third child on the way. Each evening, after the children come home from school, your husband joins the neighborhood watch team. There have been rumors of gang activity close by, and he wants to play his role in keeping your spot of peace safe. You are nervous for his safety, but you know that you cannot stop him from going, so you pray that he will be okay. Plus, his father and brother are part of the neighborhood watch as well, so you tell yourself that it will all be okay."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/7319/16278777167_5cd18daea8_b.jpg",
+              "caption": "Photo - Image by Karen, retrieved from: https://www.flickr.com/photos/26686573@N00/16278777167 on March 17, 2024. Creative Commons License associated: CC BY-NC-ND 2.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-1-choice-1",
+          "label": "Next",
+          "targetStepId": "step-2",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-2": {
+      "id": "step-2",
+      "title": "Violence Breeds",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Then one day, things take a turn for the worse. Your husband comes home bloody and bruised. He said that they had been threatened by the gang, and that he's not sure how much longer the neighborhood will be safe. Your family's safety comes above everything else, but you are not ready to leave your home."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-2-choice-1",
+          "label": "Stay",
+          "targetStepId": "step-3",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-2-choice-2",
+          "label": "Leave",
+          "targetStepId": "step-6",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-3": {
+      "id": "step-3",
+      "title": "Things Intensify",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You decide to stay in your home and wait it out. But the threats of violence get more and more real. The gang burns one of the homes in your neighborhood to the ground to send a message."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-3-choice-1",
+          "label": "Stay",
+          "targetStepId": "step-4",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-3-choice-2",
+          "label": "Leave",
+          "targetStepId": "step-6",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-4": {
+      "id": "step-4",
+      "title": "Things Intensify 3",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next week, your husband's brother is killed on his way to work."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You and your husband begin to fight every night about whether or not you should leave. He tells you that he is next. You don't want to believe him. You have no idea what leaving your home would mean for your family. And, you don't know how practical it is to travel while pregnant. You have started to have morning sickness regularly, are incredibly tired, and your baby bump has started to show."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-4-choice-1",
+          "label": "Stay",
+          "targetStepId": "step-5",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-4-choice-2",
+          "label": "Leave",
+          "targetStepId": "step-6",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-5": {
+      "id": "step-5",
+      "title": "Things Intensify 4",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One night, your husband's warnings come true. While you are all eating dinner, members of the gang come into your house. They throw you to the ground, beat you, and stamp on your belly. They stab your husband and beat him with baseball bats. Luckily, your son and daughter manage to hide in their room and get away unscathed."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, you visit a doctor who patches up your husband, and tells you that you have lost your baby. You cry uncontrollably for hours on end."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do, now?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-5-choice-1",
+          "label": "Leave",
+          "targetStepId": "step-44",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-6": {
+      "id": "step-6",
+      "title": "A Remote Village",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You and your family leave your beloved home with few possessions (phone, photos, some old jewelry), taking a bus to the western part of Honduras, and then begin walking for a few hours. Eventually, you find a very run-down, remote village. You stop and ask a local if there is a possibility that you and your family could live there, explaining the situation that you have been thrown into. She points you to an old, abandoned house, and tells you that you could stay there while you figure things out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-6-choice-1",
+          "label": "Settle for the house",
+          "targetStepId": "step-7",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-6-choice-2",
+          "label": "Keep moving",
+          "targetStepId": "step-10",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-7": {
+      "id": "step-7",
+      "title": "A Few Weeks Pass By",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A few weeks pass by, and you and your family have settled into your new home. The structure is old and rickety, but you are thankful to be safe again. Your children start to attend the local schools, but your husband is struggling to find work. Each day, he goes out into the town looking for any business that needs an extra worker, but he always comes back dejected and disappointed. He tells you that he heard there is better opportunity in the United States, and that because you have experienced violence, that you could seek asylum there. He wants to go to America, the land of opportunity. But you just found a new peace, and you are not ready to let go."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-7-choice-1",
+          "label": "Stay",
+          "targetStepId": "step-8",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-7-choice-2",
+          "label": "Let your husband go to find work, and join him when he's settled",
+          "targetStepId": "step-11",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-7-choice-3",
+          "label": "Leave together for the U.S.",
+          "targetStepId": "step-10",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-8": {
+      "id": "step-8",
+      "title": "Weeks Turn to Months",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A few months pass by, and your kids start to make friends at school. Your husband finds a job as a dish-washer downtown. He is not making a lot of money, but it is enough for food, and that is really all you need. You also start to have morning sickness again, and after another pregnancy test, confirm you are expecting. You are thankful that God has given you another child, and you are happy to be at peace for the time being. However, your husband keeps insisting that you should try and move to America. There would be better schools there for your kids, he says. And better jobs there. He says that there, you would never have to live in an old, rickety home like this one. Though the black mold on the bathroom ceiling has started to bother you, you still don't want to go."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-8-choice-1",
+          "label": "Stay",
+          "targetStepId": "step-9",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-8-choice-2",
+          "label": "Let your husband go to find work, and join him when he's settled",
+          "targetStepId": "step-11",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-8-choice-3",
+          "label": "Leave together for the U.S.",
+          "targetStepId": "step-10",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-9": {
+      "id": "step-9",
+      "title": "The Car",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "One day, while you at your old, rickety home, you see an expensive, slick-looking car drive through your village. You are confused. It's been months since you've seen a vehicle like that."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A few hours later, your neighbor comes knocking on your door. She tells you that she was out in her yard when the car stopped her. It was filled with big, tall men, she said. And then she said something that made your heart stop: They asked for your husband."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When your husband comes home, you tell him what happened. He says that he has made up his mind, and that he and your son will leave for the US the next morning. You want to go with him, but you are worried about traveling while pregnant."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-9-choice-1",
+          "label": "Go with your husband",
+          "targetStepId": "step-10",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-9-choice-2",
+          "label": "Stay at home & join him after you've given birth",
+          "targetStepId": "step-11",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-10": {
+      "id": "step-10",
+      "title": "Head to the US Together",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Together, the four (soon to be five) of you decide to leave for America. Yet, you have to decide how you will make your way to the U.S./Mexican border. Your husband wants to pay a "
+              },
+              {
+                "type": "text",
+                "text": "coyote",
+                "marks": [
+                  {
+                    "type": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": ", but you don't have enough money to pay him. They could cost up to 2,000 pesos, but your husband says that he can make a deal with the coyote if you cannot pay right away. You have heard stories of people who are taken advantage of by coyotes and end up killed. You've also heard that there are freight trains that go to the U.S. that you could hop aboard, but you are not sure how safe it would be to ride on top of a fast-moving train for days at a time. Of course, you could always walk and hitchhike, but you are not sure how practical that is with your pregnancy."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-10-choice-1",
+          "label": "Use a coyote",
+          "targetStepId": "step-13",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-10-choice-2",
+          "label": "Hop on a freight train",
+          "targetStepId": "step-14",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-10-choice-3",
+          "label": "Walk/Hitch-hike",
+          "targetStepId": "step-15",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-11": {
+      "id": "step-11",
+      "title": "Head to the US Separately",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next morning, your husband says that he will take all of the cash he has earned to pay for a "
+              },
+              {
+                "type": "text",
+                "text": "coyote",
+                "marks": [
+                  {
+                    "type": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " to take him and your son to the U.S. It might not be enough, but he says that the coyote he knows is willing to make a deal with him."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Nervous for the dangers of his travels, you beg him not to go. He tells you that he doesn't want to leave you either, but if he doesn't go now, then you all could end up dead. Though it pains you, you know he is right."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You bid him farewell, promising that you, your daughter, and the new baby will join them in a few months."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-11-choice-1",
+          "label": "Next",
+          "targetStepId": "step-12",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-12": {
+      "id": "step-12",
+      "title": "Baby is Born",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A few months later, you give birth to a beautiful baby boy. Your daughter helps care for you during the first few weeks after you've given birth. The last months have been really hard on you both. You ran out of money, and have been relying on your neighbors to bring you food. Your daughter has missed a lot of school."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you recover, you have to decide how to get to the U.S. You could take a coyote, but you don't have any money to pay him. You've also heard that there are freight trains that go to the U.S. that you could hop aboard, but you are not sure how safe it would be to ride on top of a fast-moving train with a little baby. Of course, you could always walk and hitch-hike, but you are not sure how practical that is."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-12-choice-1",
+          "label": "Stay and try to earn money to use a coyote",
+          "targetStepId": "step-29",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-12-choice-2",
+          "label": "Hop on a freight train",
+          "targetStepId": "step-30",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-12-choice-3",
+          "label": "Walk & hitch-hike",
+          "targetStepId": "step-31",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-13": {
+      "id": "step-13",
+      "title": "Coyote",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You've decided to pay a coyote. He demands every cent that you have in exchange for taking you to the U.S. He's also demanded all of your husband's earnings from his first year of work in the United States. If he fails to provide it to him, then he says he will find you and kill you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You ride in a car with him for days, your children get antsy. Days turn to weeks. You hold your breath each time you pass a border check-point, but your coyote has connections with the agents at each border. They must get a cut of the pay."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "As you cross into Mexico, though, the people manning the border checkpoint keep staring at your husband through the window. They seem to recognize him. One of the agents opens the car door and points a gun to your husband's head. He threatens to kill all of you, but your husband begs for mercy, saying that he will come with them if they let you go."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You scream and cry, but it's no use. Before you know it, he is dragged out of the car, and the coyote is driving away. Just like that, he's gone."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Finally, you make it to Juarez, Mexico, just outside of the US border. Your coyote drops you off at the bridge leading to the U.S., and says that he cannot take you any further. There are new regulations, he says. You'll have to do the rest on your own."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://www.migrationpolicy.org/sites/default/files/source_images/Source-Smugglers-2020.jpg",
+              "caption": "Photo - Image by Customs and Border Protection, retrieved from: https://flickr.com/photos/54593278@N03/26832862983 on March 17, 2024. Image is in the public domain.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-13-choice-1",
+          "label": "Next",
+          "targetStepId": "step-34",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-14": {
+      "id": "step-14",
+      "title": "Freight Train",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You and your family have decided to hop aboard a moving freight train. When you arrive at the tracks, you wait for a few hours for the train to arrive. When it finally comes, it is moving quickly. You have to get a running start to jump on board. Your daughter does not get proper footing when she jumps onto the train, and she almost falls off, but your husband pushes her up in the nick of time. He loses his footing in the process, though, and gets caught on the tracks just as the train is passing. You scream for him, but it's too late. He is gone."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You and your children spend the next few hours in absolute agony, wondering if your husband is still alive or if the unthinkable happened. Your children beg to get down and go back and look, but you have to keep going."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Eventually, your family settles on top of one of the cars with other migrants, and you remain like that for a few weeks, enduring the full force of the weather around you. You are scared to move around too much because you do not want to fall. You did not pack enough food to last you the journey, and you feel the pain of hunger in your stomach growing. Your children cry frequently. You feel your tears coming too, but you try and hold them in."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Finally, you arrive in Juarez, Mexico, and you and your family jump off the moving train."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://birdinflight.com/wp-content/uploads/2016/05/dannermiller_31.jpg",
+              "caption": "Photo - Image retrieved from: https://birdinflight.com/en/inspiration/project/20160519-keith-dannemiller-mexico.html on March 17, 2024. Permission received from Keith Dannemiller.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-14-choice-1",
+          "label": "Next",
+          "targetStepId": "step-34",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-15": {
+      "id": "step-15",
+      "title": "Walk & Hitch Hike",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You and your family walk and hitch-hike your way to the border, spending many of your nights under trees or in abandoned buildings if you're lucky enough to find one."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You find other people who are walking towards the border, too, and together you form a clan of sorts to help eachother out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "On your final stretch, though, the heat of the desert becomes unbearable. You quickly run out of water, though no amount seems like it's ever enough. You trudge along for what seems like hours, only to find yourself back at what seems like the same place you started. You hold your children's hands tight. One more step. One more step."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Eventually, though, you all grow so tired that you have to sit down. You tell yourself that you'll all nap for a little bit and then keep going when you wake up. After an hour or so, you wake up to your children screaming. \"Daddy's not breathing! Daddy's not breathing!\" You shake and shake and shake him, but he does not move. He is heavy and his skin is so hot that it burns to the touch. You have to keep moving. You take your kids and go, trying not to cry as you leave."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "In total, it takes almost a full year to get to Juarez, and when you finally reach the city, you are astounded that you even made it. Your children have lost their father, and halted their education for your journey, and you're hoping that once you get to the United States, you can finally focus on providing them with a good future."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://d1ldvf68ux039x.cloudfront.net/thumbs/photos/1909/5786490/1000w_q95.jpg",
+              "caption": "Photo - Image by Mani Albrecht, retrieved from: https://nara.getarchive.net/media/us-border-patrol-agents-render-medical-aid-to-a-migrant-1f077d on March 17, 2024. Image is in the public domain.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-15-choice-1",
+          "label": "Next",
+          "targetStepId": "step-34",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-16": {
+      "id": "step-16",
+      "title": "Camp Outside the Bridge",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You and your family try to make the most of homeless-life outside of the bridge. Food is scarce, and the harsh heat of the desert makes living in your make-shift tent unbearable."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "At night, gruff men always pass through, and you begin to get worried that one of them will take advantage of you or your daughter. The other migrants camping out tell you that it's risky to stay here. They say that some of their friends have been kidnapped and forced to sell drugs."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You're tired of waiting. You want to go to the U.S., to finally have a peaceful, stable life again."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/65535/50992152086_673bc2e9d2_4k.jpg",
+              "caption": "Photo - Image by C. Palma, retrieved from: https://www.flickr.com/photos/eu_echo/50992152086 on March 17, 2024. Creative Commons License associated: CC BY-NC-ND 2.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-16-choice-1",
+          "label": "Cross the Border Illegally",
+          "targetStepId": "step-20",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-16-choice-2",
+          "label": "Find Shelter Elsewhere",
+          "targetStepId": "step-17",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-17": {
+      "id": "step-17",
+      "title": "Find Shelter Elsewhere",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The other migrants tell you that there is a large camp where you can stay until your court case is processed. You make your way there with your family, and when you arrive, you are given two beds. You settle in, making your new space a home with the few possessions you still have with you. You wish that you had something to remind you of home."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a few days, you begin to understand what life at the camp is like. There is very little privacy. Nothing is sanitary. Your son grows extremely ill, and there is no doctor to bring him too. You begin to get worried that staying here will only make everything worse."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://juarez.gob.mx/docs/624db89223901__624db89223903.jpeg",
+              "caption": "Photo - Image by Mexican Govt. Ciudad Juarez, retrieved from: https://www.juarez.gob.mx/noticia/4052/a-un-ao-de-su-creacin-el-albergue-kiki-romero-ha-recibido-a-ms-de-siete-mil-migrantes on March 17, 2024. Image is in the public domain.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-17-choice-1",
+          "label": "Stay",
+          "targetStepId": "step-21",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-17-choice-2",
+          "label": "Cross the Border Illegally",
+          "targetStepId": "step-20",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-18": {
+      "id": "step-18",
+      "title": "Seeking Asylum Together",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You are told that in order to enter the US, you have to plant both feet on US soil at the port of entry on the bridge, and ask for asylum. The ICE officials will have to process your case if you do this."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "But, when you get to the port of entry, there are ICE officials lined up all the way across the bridge (a practice called "
+              },
+              {
+                "type": "text",
+                "text": "metering",
+                "marks": [
+                  {
+                    "type": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": "). They do not let you plant both your feet on American soil, so you cannot ask to seek asylum legally."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They say that they have too many pending cases, and that instead of going through the asylum process that would permit you to wait in the US, they will take your name down, and add it to a list. They tell you to check back at the bridge everyday at 4am, and when it's your turn, they will process your case."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/4810/45139943425_687208240a_b.jpg",
+              "caption": "Photo - Image by Daniel Arauz, retrieved from: https://www.flickr.com/photos/danielarauz/451399434\u00325/in/album-72157703950209394/ on March 17, 2024. Creative Commons License associated: CC BY 2.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-18-choice-1",
+          "label": "Camp outside the port of entry to wait for your court date",
+          "targetStepId": "step-16",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-18-choice-2",
+          "label": "Find shelter elsewhere",
+          "targetStepId": "step-17",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-19": {
+      "id": "step-19",
+      "title": "Seeking Asylum Separately",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your husband calls you and tells you that he's made it with the coyote to the United States. They traveled to Kansas, where he has settled into a run-down apartment, will wait for you there. You tell him that you have just reached Juarez, and that you cannot wait to join him soon."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "However, when you go to the port of entry to seek asylum, the ICE officials tell you that there is a new policy in place called the Migrant Protection Program (MPP). Because you are seeking asylum from Honduras, and not Mexico, you must wait on the Mexican side of the border for your court date to be processed. You don't know anybody in Juarez, and have no place to stay."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/65535/53602975892_5e1c7b30a6_h.jpg",
+              "caption": "Photo - Image is author owned.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-19-choice-1",
+          "label": "Camp outside the port of entry to wait for your court date",
+          "targetStepId": "step-16",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-19-choice-2",
+          "label": "Find shelter elsewhere",
+          "targetStepId": "step-17",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-20": {
+      "id": "step-20",
+      "title": "Cross the Border Illegally",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You've decided to cross the border illegally. You weigh your options of how to do so, carefully. You don't want to get caught, because you heard that if you did, you would be put in detention and your children will be ripped away from you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You can climb the eight-foot border wall, and create a pulley system to get your kids across, but you are worried that you might not be agile enough. You can hike Mount Cristel Rey, which did not have a border wall, but you've heard that many others have died of dehydration in the dry desert heat trying to make that journey. Or, you could cross El Rio Grande, but you and your kids cannot swim."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-20-choice-1",
+          "label": "Climb the Wall",
+          "targetStepId": "step-23",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-20-choice-2",
+          "label": "Hike the Mountain",
+          "targetStepId": "step-24",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-20-choice-3",
+          "label": "Cross the River",
+          "targetStepId": "step-25",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-21": {
+      "id": "step-21",
+      "title": "Purgatory 1",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You decide to wait for your court case to be processed. This takes weeks, then months, then years. You start to work at a restaurant to earn some extra money. Your kids go to school at the camp, but they only have classes for up to fifth grade. You're growing tired of life in Juarez. There is no privacy, and the poverty around you makes you feel sick."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/65535/53604269289_2aefcdec71_k.jpg",
+              "caption": "Photo - Image is author owned.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-21-choice-1",
+          "label": "Continue to Wait",
+          "targetStepId": "step-22",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-21-choice-2",
+          "label": "Cross the Border Illegally",
+          "targetStepId": "step-20",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-22": {
+      "id": "step-22",
+      "title": "Purgatory 2",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your case begins to be processed, and you go to court many times, meeting the ICE officials at the bridge at 4am. Each time, they take you to a detention center, and stick you and your family in a "
+              },
+              {
+                "type": "text",
+                "text": "Hielera",
+                "marks": [
+                  {
+                    "type": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " with other migrants. It is so cold that on one of these court dates, your son develops pneumonia. They strip you of your clothes and your belongings, making you wear these ugly, orange jumpsuits. They keep the lights on all day, with the TV loudly blaring something about the Migrant Protection Program over and over again. You have no idea how much time has passed, but at the end of it, they let you go with nothing but a new court date. You dread going through this process again and again."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://static01.nyt.com/images/2023/02/15/multimedia\u002f00childlabor-border-klzc/00childlabor-border-klzc-superJumbo.jpg?quality=75&auto=webp",
+              "caption": "Photo - Image retrieved from: https://www.nytimes.com/2023/02/25/us/unaccompanied-migrant-child-workers-exploitation.html on March 17, 2024. Permission recieved from Kristen Luce.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-22-choice-1",
+          "label": "Continue to Wait",
+          "targetStepId": "step-28",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-22-choice-2",
+          "label": "Cross the Border Illegally",
+          "targetStepId": "step-20",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-23": {
+      "id": "step-23",
+      "title": "Wall",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You climb the border wall, but when you get to the top, you lose balance, and fall eight feet to the other side. You are in agonizing pain. There is blood seeping through your pants. You are sure that your leg is broken, and you cannot move well, if at all. Luckily, your children manage to make their way across unharmed."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://arkansasworker.com/wp-content/uploads/2022/03/imperialism_and_weaponization_of_empathy_arkansasworker.jpg",
+              "caption": "Photo - Image by Peg Hunter, retrieved from: https://www.flickr.com/photos/43005015@N06/38414076002/in/album-72157689622709735/ on March 17, 2024. Creative Commons License associated: CC BY-NC 2.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-23-choice-1",
+          "label": "Wait for Help",
+          "targetStepId": "step-26",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-23-choice-2",
+          "label": "Move Along",
+          "targetStepId": "step-27",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-24": {
+      "id": "step-24",
+      "title": "Mountain",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You hike Mount Cristel Rey, but just as you are making your way up the hill, a Customs and Border Patrol Car comes out of nowhere. They arrest you and your family and bring you to a detention center. They stick you and your family in a "
+              },
+              {
+                "type": "text",
+                "text": "Hielera",
+                "marks": [
+                  {
+                    "type": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " with other migrants. It is so cold that your son falls sick. They strip you of your clothes and your belongings, making you wear these ugly, orange jumpsuits. They keep the lights on all day, and the TV blaring something about the Migrant Protection Program. They only bring you one meal a day. You have no idea how much time has passed."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://cdn.kpbs.org/img/photos/2012/01/16/ALISA2.JPG",
+              "caption": "Photo - Image retrieved from: https://www.kpbs.org/news/border-immigration/2012/01/17/editors-notebook-exploring-day-ciudad-juarez on March 17, 2024. Permission received from Alisa Barba.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-24-choice-1",
+          "label": "Next",
+          "targetStepId": "step-46",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-25": {
+      "id": "step-25",
+      "title": "River",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You decide to try the river, but the strong current pushes you. You get stuck in the overpass of the canal, the water thrashing against your body. As you struggle to breathe, and your sight goes black, you hear the screams of your children. \"Mama! Mama!\""
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 4:23PM."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vi\u00632l0ZS8yMDIzLTAzL2ZsNDgwOTIwMzA4\u004ezgtaW1hZ2UuanBn.jpg",
+              "caption": "Photo - Image by Kris Grogan, retrieved from: https://www.rawpixel.com/image/8741513/photo-image-plant-public-domain-people on March 17, 2024. Image is in the public domain.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-crossing",
+      "position": null
+    },
+    "step-26": {
+      "id": "step-26",
+      "title": "Wait w/ Broken Leg",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You wait for help. Soon, a Customs and Border Patrol Car pulls up. They handcuff you and your family and bring you to the Emergency Room. In transport, though, you begin to lose sensation in your leg. There is so much blood seeping through your clothes, the sight of it makes you dizzy. You lose consciousness."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 3:22PM."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78\u002fPatient_with_external_fixator_in_the_leg.jpg/1599px-Patient_with_external_fixator_in_the_leg.jpg?20200321044627",
+              "caption": "Photo - Image by Wikemedia Commons, retrieved from: https://commons.wikimedia.org/wiki/File:Patient_with_external_fixator_in_the_leg.jpg on March 17, 2024. Creative Commons License associated: CC BY-SA 4.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-crossing",
+      "position": null
+    },
+    "step-27": {
+      "id": "step-27",
+      "title": "Trudge Along",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You trudge along with the help of your children, but as you are crossing the interstate highway, you are hit by a car."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Time of death: 6:00PM."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-died-crossing",
+      "position": null
+    },
+    "step-28": {
+      "id": "step-28",
+      "title": "Wait in Juarez",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You continue to wait in Juarez, but camp life starts to gnaw at you. Luckily, your friend tells you about an organization called Annunciation House. They will provide you with free, good quality shelter while you wait out your court process, they tell you. You find out more information and get in contact with the director of the program. Just like that, you're set to move in to a new house next week."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The longer you wait in the little home, the more tired you become. You miss home, and want your children to be able to get an education. The volunteers at the home are so kind, but your heart aches for stability. You miss your husband more with each passing day."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-28-choice-1",
+          "label": "Next",
+          "targetStepId": "step-43",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-29": {
+      "id": "step-29",
+      "title": "Stay & Earn",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You stay and earn money as a cook at the restaurant for a few months, saving enough to pay for a coyote. He demands every cent that you have in exchange for taking you to the U.S., but he also warns that he cannot promise you will make it there."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You ride in a car with him for days, your children get antsy. Days turn to weeks. You hold your breath each time you pass a border check-point, but your coyote has connections with the agents at each border. They must get a cut of the pay."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Finally, you make it to Juarez, Mexico, just outside of the US border. Your coyote drops you off at the bridge leading to the U.S., and says that he cannot take you any further. There are new regulations, he says. You'll have to do the rest on your own."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://www.migrationpolicy.org/sites/default/files/source_images/Source-Smugglers-2020.jpg",
+              "caption": "Photo - Image by Customs and Border Protection, retrieved from: https://flickr.com/photos/54593278@N03/26832862983 on March 17, 2024. Image is in the public domain.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-29-choice-1",
+          "label": "Next",
+          "targetStepId": "step-19",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-30": {
+      "id": "step-30",
+      "title": "Freight Train 2",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You, your daughter, and your newborn baby have decided to hop aboard a moving freight train. When you arrive at the tracks, you wait for a few hours for the train to arrive. When it finally comes, it is moving quickly. You have to get a running start to jump on board. Your daughter does not get proper footing when she jumps onto the train, and she almost falls off, but you pull her up with all of your might. She sprains her ankle badly in the process and spends the next few hours in absolute agony. You wonder if it's broken."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your family settles on top of one of the cars with several other migrants, and you remain like that for a few weeks, enduring the full force of the weather around you. You are scared to move around too much because you do not want to fall. You did not pack enough food to last you the journey, and you feel the pain of hunger in your stomach growing over the last few days."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Finally, you arrive in Juarez, Mexico, and you and your family dismount the moving train."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://birdinflight.com/wp-content/uploads/2016/05/dannermiller_31.jpg",
+              "caption": "Photo - Image retrieved from: https://birdinflight.com/en/inspiration/project/20160519-keith-dannemiller-mexico.html on March 17, 2024. Permission received from Keith Dannemiller.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-30-choice-1",
+          "label": "Next",
+          "targetStepId": "step-19",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-31": {
+      "id": "step-31",
+      "title": "Walk & Hitch Hike 2",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You, your daughter, and your newborn baby walk and hitchhike your way to the border, spending many of your nights under trees or in abandoned buildings if you're lucky enough to find them. You go several days without food, and after a few weeks, you find that you are unable to breastfeed your son. The journey is extremely difficult with a newborn, and he looks severely malnourished with each passing day. It takes almost a full year to get to Juarez, but when you finally do, you count your blessings. Your daughter has halted her education for your journey, and you're hoping that once you get to the United States, she can finally focus on her future."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/65535/49044615882_66b195767b_b.jpg",
+              "caption": "Photo - Image by Chris Gold, retrieved from: https://www.flickr.com/photos/chrisgold/49044615882 on March 17, 2024. Creative Commons License associated: CC BY-NC 2.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-31-choice-1",
+          "label": "Next",
+          "targetStepId": "step-19",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-33": {
+      "id": "step-33",
+      "title": "You've Made it to the US!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Congratulations! By the luck of God, you've made it inside the U.S, either by waiting out the legal process, crossing the border illegally, or evading detention by ICE."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Of course, most of the conflict that your character is enduring has yet to be resolved. Now it's time for reflection and discussion."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "During our next case, we will discuss the challenges of seeking healthcare once a migrant has made it into the United States."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-reached-us",
+      "position": null
+    },
+    "step-34": {
+      "id": "step-34",
+      "title": "Pre-Seeking Asylum Together",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you make it to the border, your pregnancy becomes your number 1 concern. Now that you're on your own with two kids, you need a place where you can safely deliver your child."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "There is a hospital nearby, but you've heard stories about them reporting migrants to the Mexican government or to cartels for money."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You also can't help but think that if your baby is born in the U.S., then he will be a citizen, which would mean greater hope and opportunity for all of you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-34-choice-1",
+          "label": "Go to the Hospital in Juarez to Deliver Your Baby",
+          "targetStepId": "step-35",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-34-choice-2",
+          "label": "Deliver Your Baby on the Street",
+          "targetStepId": "step-36",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-34-choice-3",
+          "label": "Seek Asylum Before delivering the Baby",
+          "targetStepId": "step-37",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-35": {
+      "id": "step-35",
+      "title": "The Baby! Hospital",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You arrive at the hospital shortly after you start having contractions. The wait times are long, and the whole building is crowded. You keep your daughter and son close to you, and are fearful for your safety in a completely new place."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Eventually, though, you are seen and your baby is safely delivered by one of the emergency room physicians."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you're finally holding your new son in your hands, everything changes. You are happy that he is here, and you see your husband in his eyes and his smile. It's almost like he is right there with you."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-35-choice-1",
+          "label": "Next",
+          "targetStepId": "step-39",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-36": {
+      "id": "step-36",
+      "title": "The Baby! Street",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "As you wander around the city of Juarez, you meet many other migrants, who tell you they are all \"waiting in line\" to cross the border. You're not exactly sure what that means, but you ask them if there's a safe place where you can deliver your child."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You feel that the baby is coming any day now."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Luckily, one of the migrants trying to seek asylum in the United States was a doctor back in his homeland of El Salvador. He tells you that he knows how to deliver babies, and that if you camp out on the street next to the border for a few days, he can take care of you."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/4886/45796818221_bfe6463453_b.jpg",
+              "caption": "Photo - Image by UNICEF, retrieved from: https://www.flickr.com/photos/unicefecu/45796818221 on March 17, 2024. Creative Commons License associated: CC BY 2.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-36-choice-1",
+          "label": "Next",
+          "targetStepId": "step-38",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-37": {
+      "id": "step-37",
+      "title": "The Baby! ICE",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "When you get to the port of entry, the ICE officials say that they have too many pending cases, and that instead of going through the asylum process that would permit you to wait in the US, they will take your name down, and add it to a list. They tell you to check back at the bridge everyday at 4am, and when it's your turn, they will process your case. But, they don't know how long that will take."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You know that your baby will be delivered any day now, and cannot afford for your case to take time to process before you deliver your new child."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-37-choice-1",
+          "label": "Deliver Your Baby on the Street",
+          "targetStepId": "step-36",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-37-choice-2",
+          "label": "Cross the Border Illegally",
+          "targetStepId": "step-20",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-38": {
+      "id": "step-38",
+      "title": "Baby! - Street Ctd.",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The other migrants at the border help set up a \"shelter\" for you and your children out of pieces of trash that you find on the street."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "It's not the best hut you've ever lived in, but you're stripped for options, and you and your children can squeeze into it comfortably enough."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You spend two nights there, and barely sleep. You're worried that your children will get kidnapped or hurt in the middle of the night, and turn your head at every sound."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The only thing that's really scarce is water. You feel dehydrated constantly, and the heat does not help."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Finally, your water breaks. The doctor from El Salvador helps deliver your baby, and when he is finally born, you feel a new sense of hope holding him. You see your husband's features in his face, and find a new strength to keep moving."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a few days of rest, you are ready to try and enter the US."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://live.staticflickr.com/4817/46002073372_1d6046047d_b.jpg",
+              "caption": "Photo - Image by Daniel Arauz, retrieved from: https://www.flickr.com/photos/danielarauz/460020733\u00372/in/album-72157703950209394/ on March 17, 2024. Creative Commons License associated: CC BY 2.0",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-38-choice-1",
+          "label": "Next",
+          "targetStepId": "step-18",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-39": {
+      "id": "step-39",
+      "title": "The Baby! Hospital - Ctd.",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The next day, as you are resting and awaiting your discharge, a few men in green suits come into your room."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They say they are from \"La Guarda National\" of Mexico, and that the hospital was required to report you and your children as illegal entrants into the country."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "They demand a bribe to keep quiet about your presence in the country, but you don't have any money. They say that's okay, and that they'll take your phone as a bribe, or that you could cut a deal with them and put your son to work for a few days."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Horrified, you hold your son close to you."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-39-choice-1",
+          "label": "Give up your phone",
+          "targetStepId": "step-40",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-39-choice-2",
+          "label": "Give up your son",
+          "targetStepId": "step-41",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-40": {
+      "id": "step-40",
+      "title": "Phone",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "La Guarda National settles for your phone, and leave you and your children alone. Finally, you are ready to cross the border."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-40-choice-1",
+          "label": "Next",
+          "targetStepId": "step-18",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-41": {
+      "id": "step-41",
+      "title": "Nope",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You let your son go with the men from the Mexican National Guard. You never see him again."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-lost-son",
+      "position": null
+    },
+    "step-42": {
+      "id": "step-42",
+      "title": "Preface",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Welcome. This is an activity meant to cultivate empathy for the situations that our patients may endure as they seek to cross the U.S./Mexican Border. As you work your way through this exercise, there will be parts of the story that may be triggering. Please take the time to care for your own mental and emotional health as needed, and step away when you need to. We will reflect on this exercise together as a group."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your GOAL as you put yourself in the character's shoes, is to cross the border."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The PURPOSE of this exercise for us as healthcare providers is to understand that coming here, no matter what route our patients may take, is often not a choice."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-42-choice-1",
+          "label": "Next",
+          "targetStepId": "step-1",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-43": {
+      "id": "step-43",
+      "title": "Years go by",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Two full years go by, and your time in Juarez feels more and more like purgatory. The day of the U.S. Presidential election, the volunteers in the house tell you that the outcome could determine the fate of the Migrant Protection Program."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You jump with joy when a different Presidential candidate is elected. Maybe you could make it to the United States after all. Two months later, MPP is lifted, and you cross the border into the United States."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://sienaamcvoices.files.wordpress.com/2021/01/screen-shot-2021-01-21-at-4.42.47-pm.png?w=730&h=730&crop=1",
+              "caption": "Photo - Image is author owned.",
+              "alt": ""
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-43-choice-1",
+          "label": "Next",
+          "targetStepId": "step-33",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-44": {
+      "id": "step-44",
+      "title": "Baby again!",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a week of recovery, you and your family leave your beloved home with few possessions (phone, photos, some old jewelry), taking a bus to the western part of Honduras, and then begin walking for a few hours."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Eventually, you find a very run-down, remote village. You stop and ask a local if there is a possibility that you and your family could live there, explaining the situation that you have been thrown into. She points you to an old, abandoned house, and tells you that you could stay there while you figure things out."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-44-choice-1",
+          "label": "Settle for the house",
+          "targetStepId": "step-8",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-44-choice-2",
+          "label": "Sleep in the street",
+          "targetStepId": "step-45",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-45": {
+      "id": "step-45",
+      "title": "Street Sleep",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After few days pass of homelessness, your kids start to become sick. Your husband finds a job as a dish-washer downtown. He is not making a lot of money, but it is enough for food, and that is really all you need. You also start to have morning sickness again, and after another pregnancy test, confirm you are expecting. You are thankful that God has given you another child, and you are happy to be at peace for the time being. However the toll of homelessness is insurmountable."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Your husband keeps insisting that you should try and move to America. There would be good schools there for your kids, he says. And better jobs there. He says that there, you would never have to live on the street."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What do you do?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-45-choice-1",
+          "label": "Occupy the abandoned house",
+          "targetStepId": "step-9",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-45-choice-2",
+          "label": "Let your husband go to find work, and join him when he's settled",
+          "targetStepId": "step-11",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-45-choice-3",
+          "label": "Leave together for the U.S.",
+          "targetStepId": "step-10",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-46": {
+      "id": "step-46",
+      "title": "Detention 1",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "After a few days in detention, you and your children are deported back to Honduras."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Do you start your journey again?"
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "step-46-choice-1",
+          "label": "Yes",
+          "targetStepId": "step-1",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "step-46-choice-2",
+          "label": "No",
+          "targetStepId": "step-47",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "step-47": {
+      "id": "step-47",
+      "title": "No",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You've reached the end of this module. Now, it is time to reflect and discuss together."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-deported",
+      "position": null
+    }
+  },
+  "outcomes": {
+    "outcome-died-crossing": {
+      "id": "outcome-died-crossing",
+      "label": "Died on the crossing"
+    },
+    "outcome-reached-us": {
+      "id": "outcome-reached-us",
+      "label": "Reached the United States"
+    },
+    "outcome-lost-son": {
+      "id": "outcome-lost-son",
+      "label": "Gave up your son"
+    },
+    "outcome-deported": {
+      "id": "outcome-deported",
+      "label": "Deported and did not try again"
+    }
+  }
+}

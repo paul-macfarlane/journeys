@@ -1,0 +1,54 @@
+# ticket 20 AC-A (Seam A) — tree c3f2793
+$ pnpm exec vitest run src/lib/graph/validate.test.ts --reporter=verbose
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > finds nothing wrong with the large journey fixture 1ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > finds nothing wrong with a small, complete journey 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Start that names no Step 1ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > does not call every Step unreachable when the Start is missing 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Choice pointing at a Step that no longer exists 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Choice whose label is only whitespace 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Choice whose label is empty 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > files an unlabelled Choice after dangling targets and before unreachable Steps 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Step that cannot be reached from the Start 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts an Ending with no Outcome 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports an Ending tagged with an Outcome that does not exist 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > ignores an outcome id on a Step that is not an Ending 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts a two-step loop 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts a Choice that points at its own Step 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts branches that merge back together 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > does not mistake a prototype method for a Step or an Outcome 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > still finds a Step or Outcome whose id happens to be a method name 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > carries the ids the canvas needs on every problem 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports problems grouped by rule and then in Step order, so the list is stable 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > gives every problem a message an Author can read 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' parses as a graph document 7ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' parses as a graph document 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' parses as a graph document 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' is publishable 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' is publishable 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' is publishable 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' starts at the Preface 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' starts at the Preface 3ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' starts at the Preface 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' holds every Step and Choice the legacy case has 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' holds every Step and Choice the legacy case has 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' holds every Step and Choice the legacy case has 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > case 1 and case 2 carry the legacy looping Choices, with their labels and targets 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' tags every Ending with an Outcome it defines 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' tags every Ending with an Outcome it defines 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' tags every Ending with an Outcome it defines 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' captions every image and links it over http(s) 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' captions every image and links it over http(s) 2ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' captions every image and links it over http(s) 1ms
+
+ Test Files  1 passed (1)
+      Tests  39 passed (39)
+   Start at  16:38:18
+   Duration  396ms (transform 169ms, setup 0ms, import 247ms, tests 30ms, environment 0ms)
+
+exit=0

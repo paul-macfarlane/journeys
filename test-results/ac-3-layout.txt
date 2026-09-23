@@ -1,0 +1,19 @@
+# AC-3 — layout carries no Outcome index (Seam A), HEAD a9e516d
+$ pnpm test src/lib/graph/layout.test.ts
+
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> vitest run src/lib/graph/layout.test.ts
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  23:20:35
+   Duration  439ms (transform 59ms, setup 0ms, import 113ms, tests 235ms, environment 0ms)
+
+exit=0

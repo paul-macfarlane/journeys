@@ -8,6 +8,69 @@
       "when": 1789840167187,
       "tag": "0000_outgoing_excalibur",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789868229363,
+      "tag": "0001_tiny_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789875349522,
+      "tag": "0002_ambiguous_doctor_spectrum",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789930980630,
+      "tag": "0003_loose_energizer",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789945631599,
+      "tag": "0004_massive_khan",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789959593232,
+      "tag": "0005_stormy_leo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790089084712,
+      "tag": "0006_late_jasper_sitwell",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790102745583,
+      "tag": "0007_daily_lady_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790110227067,
+      "tag": "0008_nervous_changeling",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790115916664,
+      "tag": "0009_themes",
+      "breakpoints": true
     }
   ]
 }

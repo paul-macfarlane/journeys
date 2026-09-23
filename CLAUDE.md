@@ -40,10 +40,11 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `.scratch/<feature-slug>/` — Committed specs, decisions, and ticket files (local markdown tracker)
 - `src/app/` — Next.js 16 App Router routes, layouts, and the better-auth route handler
 - `src/components/` — shadcn/ui primitives and app components
-- `src/db/` — Drizzle schema and database client (Neon in deployments, `pg` locally)
-- `src/lib/` — Shared server and client helpers, including startup env validation
+- `src/db/` — Drizzle schema, database client (Neon in deployments, `pg` locally), and per-table data access (`projects.ts`, `journeys.ts`); every file here except `schema.ts` is `server-only`
+- `src/lib/` — Pure, database-free helpers shared by server and client (zod schemas, action results) plus startup env validation
 - `drizzle/` — Committed Drizzle migrations; applied by CI and the Migrate workflow, never by Vercel builds
 - `e2e/` — Playwright specs plus setup that provisions the dedicated `journeys_e2e` database and server on port 3100
+- `scripts/` — Development-only commands run with `tsx` (`seed/journey-stories.ts` plus the three committed legacy graph documents beside it); imports `@/db/schema` and `src/lib/graph` only, never a `server-only` module
 - `test-results/` — Committed proof artifacts: one directory per e2e test name plus captured command output
 - `.github/workflows/` — CI (lint, format, typecheck, migrate, unit, build, e2e) and Migrate (per-branch Drizzle migrations)
 
@@ -54,8 +55,8 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - Vercel builds never run migrations. The `Migrate` GitHub Action applies Drizzle migrations on push to `staging` and `main`, and it starts alongside the Vercel build with no ordering guarantee, so every migration must stay compatible with the previously deployed code.
 - There are no pull-request preview deployments: Vercel's Ignored Build Step skips every branch except `staging` and `main`. Deployed verification happens on the staging domain after a PR merges.
 - `pnpm test:e2e` provisions its own `journeys_e2e` database and starts its own Next server on port 3100; it never reuses `pnpm dev` or the dev database. Specs sign in by minting a real better-auth session, never by driving OAuth or mocking better-auth.
-- Never commit `pnpm-lock.yaml` from an agent session; lockfile commits are human-only.
-- The legacy `paul-macfarlane/journey` repository is a private read-only reference; seed real content by scraping the live site, not by importing Twine.
+- Agents may run `pnpm add`, but the Atlas plugin's commit-time secret scrub refuses any agent `git commit` whose staged diff holds a 40+ character token, which every `pnpm-lock.yaml` integrity hash is; the lockfile commit is therefore Paul's, from his own terminal, until that hook gains a lockfile allowlist.
+- The legacy `paul-macfarlane/journey` repository is a private read-only reference (a local clone lives at `~/Code/journey`). Its three cases were converted once from `src/data/cases/*.json` into the committed documents under `scripts/seed/journey-stories/`, which are now the source of truth; seed with `pnpm seed:journey-stories <email>`. Do not scrape the live site and do not import Twine.
 - Never place participant Responses or real run data in proof artifacts; use seeded or fixture journeys.
 
 ## Atlas repository workflow
@@ -63,6 +64,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 Use the lightest route that fits:
 
 - Small, clear change: `/implement <description-or-spec>` then verify.
+- Ticket marked `Route: polish` (see `docs/agents/testing.md`, "Proportional verification"): `/implement <ticket-path>`, one full `pnpm test:e2e` at the end, one AI reviewer, evidence only for the specs the ticket names, a `[CLOSEOUT]` record, then a PR to `staging`. No red team, no execution plan.
 - Normal feature: `/grill-with-docs` → optional prototype → `/to-spec` → optional `/to-tickets` → `/atlas-red-team` when required → optional `/atlas-plan <ticket-epic-or-spec>` → `/atlas-implement`.
 - Huge or unclear effort: `/wayfinder`, then rejoin at the spec route.
 - Existing ticket, epic, or stable spec: optional `/atlas-plan <work-package>` → `/atlas-implement <work-package>`.

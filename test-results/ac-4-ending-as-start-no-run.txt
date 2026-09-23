@@ -1,0 +1,16 @@
+# AC-4 — a one-Step live Journey shows The end on /j/<id> with no Run recorded; ticket 10 carries the note.
+# Head f7ee3ed, 2026-09-22T14:41:17Z.
+
+## The assertions (e2e/publish.spec.ts, publish-untagged-ending)
+195-  }
+196-
+197-  const [version] = await readVersionRows(journeyId);
+198:  expect(await readRuns(version.id)).toHaveLength(0);
+199-});
+
+## The note
+8:A Journey whose Start Step is an Ending records no Run at all — a Run is created by the Participant's first Choice, and such a Journey offers none — so its starts, completions, and Ending counts read zero however many people open it (from ticket 27, 2026-09-22).
+
+## Passing run (from the DoD-1 chain above)
+# E2E_EVIDENCE=runner-case-3-on-a-phone,runner-back-and-choose-again,runner-loop-and-back,runner-path-cap,runner-case-2-restored-choice,runner-run-cookie-and-refresh,runner-pinned-version,runner-unavailable-and-unknown,preview,preview-non-member,author-flow,publish-untagged-ending,canvas-build-by-dragging-and-walk,canvas-build-by-dropping-and-walk,canvas-build-left-to-right-and-walk,step-editing-image-credit-and-preview,step-editing-outcome-rename
+  ✓  50 [chromium] › e2e/publish.spec.ts:133:5 › publish-untagged-ending (2.0s)

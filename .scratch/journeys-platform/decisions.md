@@ -51,10 +51,14 @@ Vocabulary is defined in `/CONTEXT.md` — use those terms.
   columns; build nothing for them.
 - One Start per journey. Steps have rich-text content and 0+ Choices.
 - Ending = step with no choices; every ending has exactly one Outcome.
+  **Amended 2026-09-22 (Paul):** an ending may carry an outcome or not; an
+  outcome is a grouping for analytics, never a requirement. Ticket 24.
 - Outcome: journey-scoped, author-defined, stable id + free text label
   (renameable without breaking analytics).
 - Validation at publish: exactly one start; every choice resolves to an
   existing step; every step reachable from start; every ending has an outcome.
+  **Amended 2026-09-22 (Paul):** the last rule is withdrawn; an ending tagged
+  with an outcome the document no longer defines is still refused. Ticket 24.
 - Step content: Tiptap JSON, rendered server-side to sanitized HTML with
   Tiptap's renderer (do not round-trip through a Markdown pipeline).
   Allowed marks: headings, bold/italic, lists, links, image-by-URL as a Tiptap
@@ -94,7 +98,8 @@ Vocabulary is defined in `/CONTEXT.md` — use those terms.
 - Delete Journey: supported, hard delete with confirm, cascades runs/responses.
   No soft delete.
 - Back navigation: allowed. URL per step; path = current linear route (back
-  truncates, backtrack counter stored); reserved `allow_back` flag for later.
+  truncates, backtrack counter stored); reserved `allow_back` flag for later
+  (amended 2026-09-21 — see the Back-navigation bullet below).
 - Journey gets a short description; runner has a start screen.
 - Playwright auth: mint a real better-auth session via the internal adapter
   and a hand-signed `better-auth.session_token` cookie (picksleagues pattern),
@@ -185,8 +190,37 @@ public URLs, custom theme editor, manual canvas layout.
   never creates user rows.
 - Back navigation stays; publish-time validation rejects cycles so "go back"
   and "take a Choice" are never ambiguous. `allow_back` stays reserved.
+  **Amended 2026-09-21 (Paul):** cycles are allowed; the path keeps repeats
+  and a history-state index disambiguates Back. Ticket 18; ADR-0002.
 - Sanitization constrains link/image URLs to http(s); Preview is Member-only;
   Published Versions record `publishedBy`; Run cookies are per-journey.
 - Publish-immutability is proven in Seam B (database), not Seam A.
 - AI structured output uses an array-shaped projection of the graph schema.
 - Priority order: publish (4) before runner (5), matching ticket dependencies.
+
+## Amendment after PR #10 review (2026-09-19, decided by Paul)
+
+- Slugs dropped. Projects and Journeys are addressed by id everywhere:
+  `/projects/{project-id}`, `/projects/{project-id}/journeys/{journey-id}`,
+  public `/j/{journey-id}` and `/p/{project-id}`. Authors edit a title (and
+  a Journey description), never an address. Supersedes every "slug" line
+  above and the "slug frozen at first publish" rule.
+
+## Amendment after PR #13 review (2026-09-20, decided by Paul)
+
+- Seeding: no scraper. The local clone of the legacy repo (`~/Code/journey`,
+  `src/data/cases/case-{1,2,3}.json`) is converted once into three graph
+  documents committed as static JSON; a small idempotent seed command inserts
+  all three cases into one `Journey Stories` Project. No e2e coverage for the
+  seed; one pure validation test over the committed documents. Supersedes
+  "Seeding real content" above and the "Seed scraper" wording in the priority
+  order.
+
+## Amendment for ticket 30 (2026-09-22, decided by Paul on 2026-09-21)
+
+- Image contract: `credit` is renamed `caption` (the visible, optional line
+  under the picture; a credit is written into it) and `alt` becomes a
+  required-by-the-dialog string for assistive technology, `""` until written.
+  Stored documents are read with `credit` as `caption`; Published Versions
+  are never rewritten. The sanitizer no longer refuses an image for anything.
+  Supersedes "image node with a required `credit` attribute" above.

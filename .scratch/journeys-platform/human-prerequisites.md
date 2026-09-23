@@ -21,7 +21,7 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 - [x] Create a Neon project `journeys` (any region near you).
 - [x] Copy the pooled connection string into Vercel env `DATABASE_URL` for **Production** and **Preview**.
 - [x] Recommended: create a Neon branch `staging` and use *its* pooled connection string for the **Preview** environment instead, so staging and PR previews never touch production data.
-- [x] Local dev uses docker-compose Postgres on host port 5434, so no Neon string is needed in `.env.local` unless you want to point local at Neon.
+- [x] Local dev uses docker-compose Postgres on host port 5436, so no Neon string is needed in `.env.local` unless you want to point local at Neon.
 
 ## 3. Google OAuth (better-auth)
 

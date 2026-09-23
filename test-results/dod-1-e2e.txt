@@ -1,0 +1,165 @@
+# Playwright list output — ticket 23, captured 2026-09-22T20:14:02Z (E2E_EVIDENCE=canvas-undo-drawn-choice,canvas-undo-title-typing,canvas-undo-rich-text,canvas-undo-delete-direction-retarget,canvas-undo-build-branch-and-walk) over the tree committed as 8a383bb (D3; HEAD was 36b51f7 at capture, the fixes uncommitted and identical)
+
+
+> journeys@0.1.0 test:e2e .
+> next build && playwright test
+
+▲ Next.js 16.2.10 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./
+Failed to find font override values for font `Atkinson Hyperlegible Next`
+Skipping generating a fallback font.
+
+
+✓ Compiled successfully in 5.2s
+  Running TypeScript ...
+  Finished TypeScript in 5.0s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/12) ...
+  Generating static pages using 9 workers (3/12) 
+  Generating static pages using 9 workers (6/12) 
+  Generating static pages using 9 workers (9/12) 
+✓ Generating static pages using 9 workers (12/12) in 225ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth/[...all]
+├ ○ /apple-icon.png
+├ ○ /icon.svg
+├ ƒ /j/[journeyId]
+├ ƒ /j/[journeyId]/[stepId]
+├ ○ /manifest.webmanifest
+├ ○ /opengraph-image
+├ ƒ /p/[projectId]
+├ ○ /privacy
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+├ ƒ /sign-in
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+[e2e] database: journeys_e2e on localhost:5436
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+Running 80 tests using 5 workers
+
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✓   1 [chromium] › e2e/landing.spec.ts:5:5 › landing page explains the product and offers a single sign-in link while signed out (524ms)
+contrast sign-in light: body 16.02:1, muted 6.74:1
+contrast sign-in dark: body 15.64:1, muted 7.9:1
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+contrast projects light: body 16.02:1, muted 6.74:1
+contrast projects dark: body 15.64:1, muted 7.9:1
+contrast journey light: body 16.02:1, muted 6.74:1
+  ✓   2 [chromium] › e2e/branding.spec.ts:57:5 › legal-pages: /privacy and /terms render and are linked from the sign-in page and the runner footer (3.5s)
+contrast journey dark: body 15.64:1, muted 7.9:1
+  ✓   6 [chromium] › e2e/members.spec.ts:136:5 › members-add-refused (2.3s)
+contrast runner light: body 16.02:1, muted 6.74:1
+contrast runner dark: body 15.64:1, muted 7.9:1
+  ✓   4 [chromium] › e2e/branding.spec.ts:198:5 › theme-light-and-dark: the identity files are served and the palette holds on every surface in both schemes (4.2s)
+  ✓   5 [chromium] › e2e/draft.spec.ts:48:5 › journey-draft (4.3s)
+  ✓   3 [chromium] › e2e/members.spec.ts:34:5 › members-add-and-edit (5.0s)
+  ✓  11 [chromium] › e2e/projects-and-journeys.spec.ts:41:5 › project-create (1.3s)
+  ✓   7 [chromium] › e2e/members.spec.ts:185:5 › members-remove-and-last-refused (3.2s)
+  ✓   9 [chromium] › e2e/preview.spec.ts:31:5 › preview (2.5s)
+  ✓  10 [chromium] › e2e/preview.spec.ts:119:5 › preview-non-member (2.7s)
+  ✓  12 [chromium] › e2e/projects-and-journeys.spec.ts:72:5 › project-non-member (2.1s)
+  ✓  14 [chromium] › e2e/projects-and-journeys.spec.ts:237:5 › journey-create (1.6s)
+  ✓  13 [chromium] › e2e/projects-and-journeys.spec.ts:117:5 › project-rename (1.7s)
+  ✓  15 [chromium] › e2e/projects-and-journeys.spec.ts:336:5 › project-delete-cascade (3.2s)
+  ✓  18 [chromium] › e2e/projects-and-journeys.spec.ts:206:5 › project-delete (2.2s)
+  ✓  20 [chromium] › e2e/projects.spec.ts:14:5 › signed-out visit to /projects redirects to the landing page (271ms)
+  ✓  21 [chromium] › e2e/projects.spec.ts:30:5 › signed-in visit to /projects shows the empty projects state (544ms)
+  ✓  17 [chromium] › e2e/projects-and-journeys.spec.ts:275:5 › journey-edit-and-delete (3.6s)
+  ✓   8 [chromium] › e2e/navbar.spec.ts:50:5 › navbar-switch-project-and-theme: the switcher moves between Projects and the user menu sets the theme (9.2s)
+  ✓  22 [chromium] › e2e/projects.spec.ts:54:5 › signing out from the user menu lands on sign-in, and /projects redirects again (1.6s)
+  ✓  16 [chromium] › e2e/projects-and-journeys.spec.ts:449:5 › author-flow (5.5s)
+  ✓  19 [chromium] › e2e/projects-and-journeys.spec.ts:370:5 › journeys-reorder (4.5s)
+  ✓  24 [chromium] › e2e/publish.spec.ts:70:5 › publish-invalid-draft (3.9s)
+  ✓  25 [chromium] › e2e/publish.spec.ts:133:5 › publish-untagged-ending (4.7s)
+  ✓  26 [chromium] › e2e/publish.spec.ts:201:5 › publish-draft-with-loop (4.8s)
+  ✓  23 [chromium] › e2e/public-project.spec.ts:56:5 › public-project-page (8.8s)
+  ✓  29 [chromium] › e2e/runner.spec.ts:126:5 › runner-case-3-on-a-phone (3.2s)
+  ✓  30 [chromium] › e2e/runner.spec.ts:378:5 › runner-loop-and-back (3.8s)
+  ✓  27 [chromium] › e2e/publish.spec.ts:237:5 › publish-versions-and-restore (8.3s)
+  ✓  28 [chromium] › e2e/publish.spec.ts:431:5 › journey-share-link (6.7s)
+  ✓  35 [chromium] › e2e/sign-in.spec.ts:14:5 › sign-in page offers Google and Discord with their logos (1.0s)
+  ✓  36 [chromium] › e2e/sign-in.spec.ts:38:5 › a signed-in Author visiting /sign-in is sent to their projects (539ms)
+  ✓  31 [chromium] › e2e/runner.spec.ts:594:5 › runner-case-2-restored-choice (4.6s)
+  ✓  33 [chromium] › e2e/runner.spec.ts:509:5 › runner-path-cap (3.4s)
+  ✓  32 [chromium] › e2e/runner.spec.ts:245:5 › runner-back-and-choose-again (4.3s)
+  ✓  34 [chromium] › e2e/runner.spec.ts:829:5 › runner-pinned-version (4.0s)
+  ✓  41 [chromium] › e2e/runner.spec.ts:911:5 › runner-unavailable-and-unknown (2.0s)
+  ✓  37 [chromium] › e2e/runner.spec.ts:664:5 › runner-run-cookie-and-refresh (3.8s)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✓  40 [chromium] › e2e/step-editing.spec.ts:634:5 › step-editing-outcome-rename (4.2s)
+  ✓  38 [chromium] › e2e/step-editing.spec.ts:189:5 › step-editing-build-and-publish (4.9s)
+  ✓  39 [chromium] › e2e/step-editing.spec.ts:323:5 › step-editing-image-caption-alt-and-preview (6.9s)
+  ✓  44 [chromium] › e2e/step-editing.spec.ts:258:5 › step-editing-delete-and-validate (2.9s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✓  42 [chromium] › e2e/step-editing.spec.ts:801:5 › panel-outcomes-from-the-ending (5.2s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✓  43 [chromium] › e2e/step-editing.spec.ts:679:5 › panel-choice-target-search (5.3s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✓  45 [chromium] › e2e/canvas.spec.ts:1054:7 › canvas-add-next-step (5.4s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✓  46 [chromium] › e2e/step-editing.spec.ts:530:5 › step-editing-choices-reorder-retarget (4.9s)
+case-3 crossing pairs: f24a106 baseline=15 now=10
+  ✓  47 [chromium] › e2e/canvas.spec.ts:1573:7 › the seeded map › canvas-case-3-map (2.9s)
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✓  48 [chromium] › e2e/canvas.spec.ts:2311:5 › canvas-validation-marks (5.4s)
+  ✓  49 [chromium] › e2e/canvas.spec.ts:1054:7 › canvas-add-next-step-left-to-right (5.4s)
+  ✓  51 [chromium] › e2e/canvas.spec.ts:1647:7 › the seeded map › canvas-layout-direction (5.3s)
+  ✓  52 [chromium] › e2e/canvas.spec.ts:3362:7 › authoring from the map › canvas-build-branch-and-publish (5.6s)
+  ✓  53 [chromium] › e2e/canvas.spec.ts:2425:5 › canvas-problems-readable (4.9s)
+  ✓  50 [chromium] › e2e/canvas.spec.ts:2903:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (9.5s)
+  ✓  57 [chromium] › e2e/canvas.spec.ts:2564:5 › canvas-selection-dims-arrows (3.2s)
+  ✓  54 [chromium] › e2e/canvas.spec.ts:1118:5 › canvas-duplicate-step (7.9s)
+  ✓  56 [chromium] › e2e/canvas.spec.ts:3421:7 › authoring from the map › canvas-undo-drawn-choice (5.5s)
+  ✓  55 [chromium] › e2e/canvas.spec.ts:1761:7 › the seeded map › canvas-locate-on-map (7.3s)
+  ✓  59 [chromium] › e2e/canvas.spec.ts:2633:5 › canvas-arrow-select-and-delete (4.9s)
+  ✓  62 [chromium] › e2e/canvas.spec.ts:1971:7 › the seeded map › canvas-find-step (4.0s)
+  ✓  60 [chromium] › e2e/canvas.spec.ts:1190:5 › canvas-content-peek (5.3s)
+  ✓  64 [chromium] › e2e/canvas.spec.ts:2091:7 › the seeded map › canvas-find-step-lists-map-order (2.1s)
+  ✓  58 [chromium] › e2e/canvas.spec.ts:2903:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (10.9s)
+  ✓  61 [chromium] › e2e/canvas.spec.ts:3464:7 › authoring from the map › canvas-undo-build-branch-and-walk (9.1s)
+  ✓  63 [chromium] › e2e/canvas.spec.ts:2708:5 › canvas-arrow-select-second-arrow (5.9s)
+  ✓  65 [chromium] › e2e/canvas.spec.ts:1254:5 › canvas-keyboard-navigation (6.6s)
+  ✓  67 [chromium] › e2e/canvas.spec.ts:3071:7 › authoring from the map › canvas-retarget-selected-arrow (7.0s)
+  ✓  69 [chromium] › e2e/canvas.spec.ts:2783:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (5.0s)
+  ✓  68 [chromium] › e2e/canvas.spec.ts:3562:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (7.5s)
+  ✓  66 [chromium] › e2e/canvas.spec.ts:2131:7 › the seeded map › canvas-view-stays-put (11.0s)
+  ✓  70 [chromium] › e2e/canvas.spec.ts:1333:5 › canvas-hide-and-show-panel (7.4s)
+  ✓  71 [chromium] › e2e/canvas.spec.ts:3167:7 › authoring from the map › canvas-drop-choice-on-empty-map (4.3s)
+  ✓  72 [chromium] › e2e/canvas.spec.ts:2860:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (4.1s)
+  ✓  74 [chromium] › e2e/canvas.spec.ts:2260:7 › the seeded map › canvas-endings-uncolored (2.1s)
+  ✓  73 [chromium] › e2e/canvas.spec.ts:3662:7 › undo and redo › canvas-undo-title-typing (4.6s)
+  ✓  77 [chromium] › e2e/canvas.spec.ts:3715:7 › undo and redo › canvas-undo-rich-text (3.3s)
+  ✓  76 [chromium] › e2e/canvas.spec.ts:3208:7 › authoring from the map › canvas-build-by-dragging-and-walk (5.7s)
+  ✓  75 [chromium] › e2e/canvas.spec.ts:1434:5 › canvas-step-actions (7.0s)
+  ✓  79 [chromium] › e2e/canvas.spec.ts:3247:7 › authoring from the map › canvas-build-by-dropping-and-walk (8.9s)
+  ✓  78 [chromium] › e2e/canvas.spec.ts:3765:7 › undo and redo › canvas-undo-delete-direction-retarget (14.6s)
+  ✓  80 [chromium] › e2e/canvas.spec.ts:3285:7 › authoring from the map › canvas-build-left-to-right-and-walk (9.9s)
+
+  80 passed (1.6m)
+exit=0

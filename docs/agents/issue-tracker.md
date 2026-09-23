@@ -49,10 +49,10 @@ and planning-artifact publication.
 | `in-progress` | Implementation is underway in a worktree. |
 | `ai-review` | Implementation is complete and under automated review. |
 | `ready-for-human` | Awaiting human review or human implementation. |
-| `done` | Accepted and complete. |
+| `done` | Accepted and complete. Set in the work package's own closeout commit on its PR; it becomes true on `staging` only when the human merges. |
 | `wontfix` | Will not be actioned. |
 
-Human-only states: `ready-for-human`, `done`, `wontfix`.
+Human-only states: `ready-for-human`, `done`, `wontfix`. A human enters `done` by merging the PR that carries it (see below).
 
 Recommended lifecycle: `needs-triage` → `needs-info` → `planning` → `plan-review` → `in-progress` → `ai-review` → `ready-for-human` → `done` → `wontfix`.
 
@@ -62,7 +62,7 @@ Recommended lifecycle: `needs-triage` → `needs-info` → `planning` → `plan-
 - Check for available work before claiming. Available work is ready to
   implement, unclaimed, in an eligible state, has no active impediment or
   blocking decision, and every `blocked by` ticket is in
-  `done`. A dependency that is not a `blocked by` edge does
+  `done` on the current base branch (`staging`); read statuses there, never from an open PR's branch. A dependency that is not a `blocked by` edge does
   not make work unavailable.
 - Claim before starting work and use one active owner. Enter
   `needs-triage` only when starting any work.
@@ -77,7 +77,7 @@ Recommended lifecycle: `needs-triage` → `needs-info` → `planning` → `plan-
   ticket solely for this comparison. When both map to the same state, record
   the phase in its configured phase record or comment without requesting a
   same-status transition.
-- Never enter `done`; a human does that after reviewing the PR.
+- At closeout, after verification and PR creation succeed, set `Status: done` in the closeout commit on the work-package branch and push it as the PR head, with the `[CLOSEOUT]` record naming the PR. Merging that PR is the human's acceptance and is what lands `done` on `staging`; an unmerged or closed PR leaves the ticket at its base-branch status. No follow-up PR is ever opened just to change a status. `ready-for-human` therefore appears only in the state log, never as the resting status of a delivered ticket. (Paul, 2026-09-21: mark done pre-emptively in the original PR.)
 - When blocked, preserve work, record the exact reason and resume instructions,
   and follow the configured blocked-state behavior. On resume, reread the ticket
   and avoid duplicating claims, transitions, workers, commits, or comments.
@@ -120,3 +120,13 @@ Record every repository delivery, deliverable and worker/model, each DoD
 outcome and evidence, deviations, verified run command, deployed smoke when
 applicable, every PR URL, and the AI Code Review output.
 <!-- atlas-v3:tracker:end -->
+
+## Proportional records (team policy, Paul, 2026-09-21)
+
+Every ticket carries a `Route:` line, `polish` or `contract`, defined in
+`docs/agents/testing.md` ("Proportional verification"). The record ladder
+above is the `contract` ladder. A `polish` ticket writes only the
+`[CLOSEOUT]` record (PR URL, commands run, reviewer verdict, evidence paths)
+and skips `[EXECUTION PLAN]` and `[PROGRESS]`; `[SCOPE CHANGE]` and
+`[BLOCKED]` are still written whenever they happen. Both routes still set
+`Status: done` in the closeout commit on the PR.

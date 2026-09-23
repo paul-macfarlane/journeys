@@ -10,11 +10,18 @@
 
 import { config } from "dotenv";
 
-/** Distinct from `pnpm dev`'s 3000 so both stacks can run at once. */
-export const E2E_PORT = 3100;
+/**
+ * Distinct from `pnpm dev`'s 3000 so both stacks can run at once. `E2E_PORT`
+ * and `E2E_DATABASE_NAME` may be overridden from the environment so two
+ * checkouts (a worktree beside the main one, each on its own ticket) can
+ * run the suite at the same time without fighting over one port and one
+ * database; the defaults are what CI and a single checkout use.
+ */
+export const E2E_PORT = Number(process.env.E2E_PORT ?? 3100);
 export const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
 
-export const E2E_DATABASE_NAME = "journeys_e2e";
+export const E2E_DATABASE_NAME =
+  process.env.E2E_DATABASE_NAME ?? "journeys_e2e";
 
 /**
  * The dev `DATABASE_URL` with its database name swapped for the dedicated

@@ -1,0 +1,305 @@
+# DoD-1 command chain for ticket 11 (themes), contract route
+# Commit: a632fa1
+# Run: 2026-09-23T02:23:18Z from the ticket's worktree; e2e on E2E_PORT=3111 against E2E_DATABASE_NAME=journeys_e2e_t11 (both overrides added by this ticket) so the ticket 10 session's suite could run at the same time.
+# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm db:migrate && E2E_EVIDENCE=themes-settings,themes-contrast pnpm test:e2e
+# Filter: terminal control sequences removed; the worktree's absolute path shortened to '.'
+
+
+> journeys@0.1.0 lint .
+> eslint
+
+
+> journeys@0.1.0 format:check .
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> journeys@0.1.0 typecheck .
+> tsc --noEmit
+
+
+> journeys@0.1.0 test .
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 .
+
+
+ Test Files  25 passed (25)
+      Tests  386 passed (386)
+   Start at  22:23:28
+   Duration  834ms (transform 1.11s, setup 0ms, import 3.33s, tests 660ms, environment 2ms)
+
+
+> journeys@0.1.0 build .
+> next build
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of ./pnpm-workspace.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * ./pnpm-workspace.yaml
+
+▲ Next.js 16.2.10 (Turbopack)
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./.claude/worktrees/11-themes/journeys
+Failed to find font override values for font `Atkinson Hyperlegible Next`
+Skipping generating a fallback font.
+
+
+✓ Compiled successfully in 5.6s
+  Running TypeScript ...
+  Finished TypeScript in 5.5s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/12) ...
+  Generating static pages using 9 workers (3/12) 
+  Generating static pages using 9 workers (6/12) 
+  Generating static pages using 9 workers (9/12) 
+✓ Generating static pages using 9 workers (12/12) in 239ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth/[...all]
+├ ○ /apple-icon.png
+├ ○ /icon.svg
+├ ƒ /j/[journeyId]
+├ ƒ /j/[journeyId]/[stepId]
+├ ○ /manifest.webmanifest
+├ ○ /opengraph-image
+├ ƒ /p/[projectId]
+├ ○ /privacy
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+├ ƒ /sign-in
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> journeys@0.1.0 db:migrate .
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file './drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[✓] migrations applied successfully!
+> journeys@0.1.0 test:e2e .
+> next build && playwright test
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of ./pnpm-workspace.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * ./pnpm-workspace.yaml
+
+▲ Next.js 16.2.10 (Turbopack)
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./.claude/worktrees/11-themes/journeys
+Failed to find font override values for font `Atkinson Hyperlegible Next`
+Skipping generating a fallback font.
+
+
+✓ Compiled successfully in 5.4s
+  Running TypeScript ...
+  Finished TypeScript in 5.4s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/12) ...
+  Generating static pages using 9 workers (3/12) 
+  Generating static pages using 9 workers (6/12) 
+  Generating static pages using 9 workers (9/12) 
+✓ Generating static pages using 9 workers (12/12) in 223ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth/[...all]
+├ ○ /apple-icon.png
+├ ○ /icon.svg
+├ ƒ /j/[journeyId]
+├ ƒ /j/[journeyId]/[stepId]
+├ ○ /manifest.webmanifest
+├ ○ /opengraph-image
+├ ƒ /p/[projectId]
+├ ○ /privacy
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+├ ƒ /sign-in
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+[WebServer] ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[WebServer]  We detected multiple lockfiles and selected the directory of ./pnpm-workspace.yaml as the root directory.
+[WebServer]  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[WebServer]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+[WebServer]  Detected additional lockfiles: 
+[WebServer]    * ./pnpm-workspace.yaml
+[WebServer] 
+[e2e] database: journeys_e2e_t11 on localhost:5436
+
+Running 88 tests using 5 workers
+
+contrast sign-in light: body 16.02:1, muted 6.74:1
+contrast sign-in dark: body 15.64:1, muted 7.9:1
+contrast projects light: body 16.02:1, muted 6.74:1
+contrast projects dark: body 15.64:1, muted 7.9:1
+  ✓   5 [chromium] › e2e/draft.spec.ts:48:5 › journey-draft (4.3s)
+  ✓   3 [chromium] › e2e/branding.spec.ts:57:5 › legal-pages: /privacy and /terms render and are linked from the sign-in page and the runner footer (4.3s)
+contrast journey light: body 16.02:1, muted 6.74:1
+contrast journey dark: body 15.64:1, muted 7.9:1
+  ✓   6 [chromium] › e2e/landing.spec.ts:5:5 › landing page explains the product and offers a single sign-in link while signed out (267ms)
+contrast runner light: body 16.02:1, muted 6.74:1
+contrast runner dark: body 15.64:1, muted 7.9:1
+  ✓   4 [chromium] › e2e/branding.spec.ts:198:5 › theme-light-and-dark: the identity files are served and the palette holds on every surface in both schemes (5.3s)
+  ✓   2 [chromium] › e2e/analytics.spec.ts:280:5 › analytics-scoped-to-a-version (5.7s)
+  ✓   1 [chromium] › e2e/analytics.spec.ts:169:5 › analytics-two-runs-to-different-endings (6.3s)
+  ✓   8 [chromium] › e2e/members.spec.ts:136:5 › members-add-refused (1.8s)
+  ✓   7 [chromium] › e2e/members.spec.ts:34:5 › members-add-and-edit (4.7s)
+  ✓   9 [chromium] › e2e/members.spec.ts:185:5 › members-remove-and-last-refused (3.9s)
+  ✓  12 [chromium] › e2e/preview.spec.ts:124:5 › preview-non-member (2.9s)
+  ✓  11 [chromium] › e2e/preview.spec.ts:31:5 › preview (3.3s)
+  ✓  13 [chromium] › e2e/projects-and-journeys.spec.ts:41:5 › project-create (1.2s)
+  ✓  14 [chromium] › e2e/projects-and-journeys.spec.ts:117:5 › project-rename (2.1s)
+  ✓  15 [chromium] › e2e/projects-and-journeys.spec.ts:237:5 › journey-create (2.3s)
+  ✓  16 [chromium] › e2e/projects-and-journeys.spec.ts:336:5 › project-delete-cascade (2.3s)
+  ✓  17 [chromium] › e2e/projects-and-journeys.spec.ts:72:5 › project-non-member (2.1s)
+  ✓  18 [chromium] › e2e/projects-and-journeys.spec.ts:206:5 › project-delete (1.6s)
+  ✓  22 [chromium] › e2e/projects.spec.ts:14:5 › signed-out visit to /projects redirects to the landing page (210ms)
+  ✓  23 [chromium] › e2e/projects.spec.ts:30:5 › signed-in visit to /projects shows the empty projects state (504ms)
+  ✓  10 [chromium] › e2e/navbar.spec.ts:50:5 › navbar-switch-project-and-theme: the switcher moves between Projects and the user menu sets the theme (8.6s)
+  ✓  24 [chromium] › e2e/projects.spec.ts:54:5 › signing out from the user menu lands on sign-in, and /projects redirects again (611ms)
+  ✓  19 [chromium] › e2e/projects-and-journeys.spec.ts:275:5 › journey-edit-and-delete (3.0s)
+  ✓  20 [chromium] › e2e/projects-and-journeys.spec.ts:370:5 › journeys-reorder (3.7s)
+  ✓  21 [chromium] › e2e/projects-and-journeys.spec.ts:449:5 › author-flow (4.1s)
+  ✓  27 [chromium] › e2e/prompts.spec.ts:365:5 › prompts-preview-stores-nothing (2.7s)
+  ✓  29 [chromium] › e2e/publish.spec.ts:70:5 › publish-invalid-draft (2.2s)
+  ✓  26 [chromium] › e2e/prompts.spec.ts:157:5 › prompts-participant-answers-and-author-reads (4.4s)
+  ✓  25 [chromium] › e2e/prompts.spec.ts:89:5 › prompts-author-attaches-a-prompt (5.4s)
+  ✓  30 [chromium] › e2e/publish.spec.ts:133:5 › publish-untagged-ending (2.4s)
+  ✓  28 [chromium] › e2e/public-project.spec.ts:56:5 › public-project-page (4.9s)
+  ✓  31 [chromium] › e2e/publish.spec.ts:201:5 › publish-draft-with-loop (2.3s)
+  ✓  34 [chromium] › e2e/runner.spec.ts:126:5 › runner-case-3-on-a-phone (2.8s)
+  ✓  32 [chromium] › e2e/publish.spec.ts:237:5 › publish-versions-and-restore (4.7s)
+  ✓  35 [chromium] › e2e/runner.spec.ts:378:5 › runner-loop-and-back (2.8s)
+  ✓  36 [chromium] › e2e/runner.spec.ts:594:5 › runner-case-2-restored-choice (3.3s)
+  ✓  33 [chromium] › e2e/publish.spec.ts:431:5 › journey-share-link (5.7s)
+  ✓  41 [chromium] › e2e/sign-in.spec.ts:14:5 › sign-in page offers Google and Discord with their logos (635ms)
+  ✓  37 [chromium] › e2e/runner.spec.ts:245:5 › runner-back-and-choose-again (4.2s)
+  ✓  42 [chromium] › e2e/sign-in.spec.ts:38:5 › a signed-in Author visiting /sign-in is sent to their projects (635ms)
+  ✓  39 [chromium] › e2e/runner.spec.ts:509:5 › runner-path-cap (3.5s)
+  ✓  38 [chromium] › e2e/runner.spec.ts:829:5 › runner-pinned-version (4.7s)
+  ✓  40 [chromium] › e2e/runner.spec.ts:664:5 › runner-run-cookie-and-refresh (6.2s)
+  ✓  46 [chromium] › e2e/runner.spec.ts:911:5 › runner-unavailable-and-unknown (2.9s)
+  ✓  45 [chromium] › e2e/step-editing.spec.ts:634:5 › step-editing-outcome-rename (4.7s)
+  ✓  43 [chromium] › e2e/step-editing.spec.ts:189:5 › step-editing-build-and-publish (5.6s)
+  ✓  50 [chromium] › e2e/step-editing.spec.ts:258:5 › step-editing-delete-and-validate (2.8s)
+  ✓  48 [chromium] › e2e/themes.spec.ts:144:5 › themes-settings: a Project's preset and accent reach the runner and the Project page, and a Journey's own Theme wins (4.2s)
+  ✓  47 [chromium] › e2e/step-editing.spec.ts:801:5 › panel-outcomes-from-the-ending (5.5s)
+  ✓  49 [chromium] › e2e/step-editing.spec.ts:679:5 › panel-choice-target-search (5.2s)
+contrast trail light start: 9 elements pass, 0 fail
+contrast trail light step: 9 elements pass, 0 fail
+  ✓  44 [chromium] › e2e/step-editing.spec.ts:323:5 › step-editing-image-caption-alt-and-preview (10.5s)
+contrast trail light project: 7 elements pass, 0 fail
+contrast trail dark start: 9 elements pass, 0 fail
+contrast trail dark step: 9 elements pass, 0 fail
+contrast trail dark project: 7 elements pass, 0 fail
+contrast parchment light start: 9 elements pass, 0 fail
+contrast parchment light step: 9 elements pass, 0 fail
+contrast parchment light project: 7 elements pass, 0 fail
+contrast parchment dark start: 9 elements pass, 0 fail
+contrast parchment dark step: 9 elements pass, 0 fail
+contrast parchment dark project: 7 elements pass, 0 fail
+  ✓  53 [chromium] › e2e/step-editing.spec.ts:530:5 › step-editing-choices-reorder-retarget (4.7s)
+contrast tide light start: 9 elements pass, 0 fail
+  ✓  52 [chromium] › e2e/canvas.spec.ts:1069:7 › canvas-add-next-step (5.4s)
+  ✓  54 [chromium] › e2e/canvas.spec.ts:1662:7 › the seeded map › canvas-layout-direction (5.3s)
+contrast tide light step: 9 elements pass, 0 fail
+  ✓  55 [chromium] › e2e/canvas.spec.ts:2538:5 › canvas-empty-choice-label (4.4s)
+contrast tide light project: 7 elements pass, 0 fail
+contrast tide dark start: 9 elements pass, 0 fail
+contrast tide dark step: 9 elements pass, 0 fail
+contrast tide dark project: 7 elements pass, 0 fail
+contrast dusk light start: 9 elements pass, 0 fail
+contrast dusk light step: 9 elements pass, 0 fail
+contrast dusk light project: 7 elements pass, 0 fail
+  ✓  58 [chromium] › e2e/canvas.spec.ts:2658:5 › canvas-selection-dims-arrows (3.6s)
+contrast dusk dark start: 9 elements pass, 0 fail
+contrast dusk dark step: 9 elements pass, 0 fail
+contrast dusk dark project: 7 elements pass, 0 fail
+  ✓  56 [chromium] › e2e/canvas.spec.ts:1069:7 › canvas-add-next-step-left-to-right (5.3s)
+contrast ember light start: 9 elements pass, 0 fail
+contrast ember light step: 9 elements pass, 0 fail
+contrast ember light project: 7 elements pass, 0 fail
+contrast ember dark start: 9 elements pass, 0 fail
+  ✓  57 [chromium] › e2e/canvas.spec.ts:1776:7 › the seeded map › canvas-locate-on-map (7.3s)
+contrast ember dark step: 9 elements pass, 0 fail
+contrast ember dark project: 7 elements pass, 0 fail
+contrast slate light start: 9 elements pass, 0 fail
+  ✓  59 [chromium] › e2e/canvas.spec.ts:3165:7 › authoring from the map › canvas-retarget-selected-arrow (7.6s)
+contrast slate light step: 9 elements pass, 0 fail
+  ✓  60 [chromium] › e2e/canvas.spec.ts:2727:5 › canvas-arrow-select-and-delete (4.7s)
+contrast slate light project: 7 elements pass, 0 fail
+contrast slate dark start: 9 elements pass, 0 fail
+contrast slate dark step: 9 elements pass, 0 fail
+contrast slate dark project: 7 elements pass, 0 fail
+  ✓  51 [chromium] › e2e/themes.spec.ts:379:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark (18.4s)
+  ✓  62 [chromium] › e2e/canvas.spec.ts:1986:7 › the seeded map › canvas-find-step (4.3s)
+  ✓  63 [chromium] › e2e/canvas.spec.ts:3261:7 › authoring from the map › canvas-drop-choice-on-empty-map (4.6s)
+  ✓  61 [chromium] › e2e/canvas.spec.ts:1133:5 › canvas-duplicate-step (8.1s)
+  ✓  65 [chromium] › e2e/canvas.spec.ts:2106:7 › the seeded map › canvas-find-step-lists-map-order (2.4s)
+  ✓  64 [chromium] › e2e/canvas.spec.ts:2802:5 › canvas-arrow-select-second-arrow (6.7s)
+  ✓  68 [chromium] › e2e/canvas.spec.ts:1205:5 › canvas-content-peek (5.7s)
+  ✓  67 [chromium] › e2e/canvas.spec.ts:3302:7 › authoring from the map › canvas-build-by-dragging-and-walk (7.0s)
+  ✓  70 [chromium] › e2e/canvas.spec.ts:2877:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (5.4s)
+  ✓  66 [chromium] › e2e/canvas.spec.ts:3656:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (8.7s)
+  ✓  73 [chromium] › e2e/canvas.spec.ts:2954:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (4.9s)
+  ✓  71 [chromium] › e2e/canvas.spec.ts:1269:5 › canvas-keyboard-navigation (6.8s)
+  ✓  69 [chromium] › e2e/canvas.spec.ts:2146:7 › the seeded map › canvas-view-stays-put (12.1s)
+  ✓  74 [chromium] › e2e/canvas.spec.ts:3756:7 › undo and redo › canvas-undo-title-typing (5.6s)
+  ✓  77 [chromium] › e2e/canvas.spec.ts:2275:7 › the seeded map › canvas-endings-uncolored (2.5s)
+  ✓  72 [chromium] › e2e/canvas.spec.ts:3341:7 › authoring from the map › canvas-build-by-dropping-and-walk (10.4s)
+  ✓  78 [chromium] › e2e/canvas.spec.ts:3809:7 › undo and redo › canvas-undo-rich-text (4.2s)
+  ✓  79 [chromium] › e2e/canvas.spec.ts:2326:5 › canvas-validation-marks (5.1s)
+  ✓  76 [chromium] › e2e/canvas.spec.ts:1348:5 › canvas-hide-and-show-panel (8.0s)
+  ✓  75 [chromium] › e2e/canvas.spec.ts:2997:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (9.6s)
+  ✓  82 [chromium] › e2e/canvas.spec.ts:2440:5 › canvas-problems-readable (4.7s)
+  ✓  80 [chromium] › e2e/canvas.spec.ts:3379:7 › authoring from the map › canvas-build-left-to-right-and-walk (10.5s)
+  ✓  83 [chromium] › e2e/canvas.spec.ts:1449:5 › canvas-step-actions (7.2s)
+case-3 crossing pairs: f24a106 baseline=15 now=10
+  ✓  86 [chromium] › e2e/canvas.spec.ts:1588:7 › the seeded map › canvas-case-3-map (2.1s)
+  ✓  84 [chromium] › e2e/canvas.spec.ts:2997:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (10.3s)
+  ✓  81 [chromium] › e2e/canvas.spec.ts:3859:7 › undo and redo › canvas-undo-delete-direction-retarget (15.0s)
+  ✓  85 [chromium] › e2e/canvas.spec.ts:3456:7 › authoring from the map › canvas-build-branch-and-publish (5.1s)
+  ✓  87 [chromium] › e2e/canvas.spec.ts:3515:7 › authoring from the map › canvas-undo-drawn-choice (4.9s)
+  ✓  88 [chromium] › e2e/canvas.spec.ts:3558:7 › authoring from the map › canvas-undo-build-branch-and-walk (8.3s)
+
+  88 passed (1.8m)
+
+# exit status: 0
