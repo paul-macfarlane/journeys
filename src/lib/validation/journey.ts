@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { accentColorSchema, themePresetSchema } from "@/lib/theme";
+
 /**
  * Journey input shapes, shared by the client forms and the server actions
  * that back them (deliberately no `server-only`), mirroring
@@ -40,5 +42,21 @@ export const moveDirectionSchema = z.enum(["up", "down"], {
   error: "Choose up or down",
 });
 
+/**
+ * A Journey's Theme override (ticket 11). A null preset clears the override
+ * and takes any accent with it: an accent with no preset would have nothing
+ * to belong to, so the pair is normalized here rather than refused.
+ */
+export const journeyThemeSchema = z
+  .object({
+    preset: themePresetSchema.nullable(),
+    accent: accentColorSchema.nullable(),
+  })
+  .transform(({ preset, accent }) => ({
+    preset,
+    accent: preset === null ? null : accent,
+  }));
+
 export type CreateJourneyInput = z.infer<typeof createJourneySchema>;
 export type UpdateJourneyInput = z.infer<typeof updateJourneySchema>;
+export type JourneyThemeInput = z.infer<typeof journeyThemeSchema>;

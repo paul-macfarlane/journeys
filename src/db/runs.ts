@@ -6,9 +6,46 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { journey, publishedVersion, response, run } from "@/db/schema";
+import { journey, project, publishedVersion, response, run } from "@/db/schema";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import type { RunState } from "@/lib/graph/run";
+import {
+  effectiveTheme,
+  readThemeOverride,
+  toThemePreset,
+  type Theme,
+} from "@/lib/theme";
+
+/**
+ * The Theme a Participant sees a Journey in: the Journey's override when it
+ * has one, else its Project's (ticket 11). Read from the two rows on every
+ * request rather than snapshotted into the Published Version — a Theme is
+ * presentation, and setting one shows in the runner at once with no
+ * publish. The four columns are selected together wherever a runner read
+ * joins `journey` and `project`.
+ */
+// One level deep, which is as far as Drizzle nests a selection.
+const themeColumns = {
+  journeyPreset: journey.themePreset,
+  journeyAccent: journey.themeAccent,
+  projectPreset: project.themePreset,
+  projectAccent: project.themeAccent,
+};
+
+function toTheme(row: {
+  journeyPreset: string | null;
+  journeyAccent: string | null;
+  projectPreset: string;
+  projectAccent: string | null;
+}): Theme {
+  return effectiveTheme(
+    { preset: toThemePreset(row.projectPreset), accent: row.projectAccent },
+    readThemeOverride({
+      themePreset: row.journeyPreset,
+      themeAccent: row.journeyAccent,
+    }),
+  );
+}
 
 /**
  * Data access for the participant runner. Unlike every other module under
@@ -32,8 +69,11 @@ export type PublicJourney =
       title: string;
       description: string;
       document: GraphDocument;
+      theme: Theme;
     }
-  | { kind: "unavailable" };
+  // The unavailable screen sits in the same frame, so it carries the Theme
+  // too: a Journey taken down still belongs to a Project with a look.
+  | { kind: "unavailable"; theme: Theme };
 
 /**
  * What an anonymous Participant may see of a Journey by id: its live
@@ -53,8 +93,10 @@ export async function getPublicJourney(
       title: publishedVersion.title,
       description: publishedVersion.description,
       document: publishedVersion.document,
+      theme: themeColumns,
     })
     .from(journey)
+    .innerJoin(project, eq(project.id, journey.projectId))
     // Left, not inner: a Journey with no live version must still produce a
     // row, so it can be told apart from a Journey that does not exist.
     .leftJoin(publishedVersion, eq(publishedVersion.id, journey.liveVersionId))
@@ -62,6 +104,8 @@ export async function getPublicJourney(
     .limit(1);
 
   if (!row) return null;
+
+  const theme = toTheme(row.theme);
 
   // The left join fills every `published_version` column from one row or
   // none, so the four are null together; narrowing on all of them keeps the
@@ -73,7 +117,7 @@ export async function getPublicJourney(
     description === null ||
     document === null
   ) {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", theme };
   }
 
   return {
@@ -82,6 +126,7 @@ export async function getPublicJourney(
     title,
     description,
     document: graphDocumentSchema.parse(document),
+    theme,
   };
 }
 
@@ -138,6 +183,8 @@ export type RunForJourney = {
     outcomeId: string | null;
   };
   version: { title: string; description: string; document: GraphDocument };
+  /** The Theme the Step pages paint, read fresh on every request. */
+  theme: Theme;
 };
 
 /**
@@ -151,35 +198,44 @@ export async function getRunForJourney(
   runId: string,
   journeyId: string,
 ): Promise<RunForJourney | null> {
+  // Selected in the shape the result has: Drizzle nests a selection object
+  // as one, so the Run's columns, the version's, and the Theme's arrive
+  // already apart.
   const [row] = await db
     .select({
-      id: run.id,
-      versionId: run.versionId,
-      participantId: run.participantId,
-      path: run.path,
-      backtrackCount: run.backtrackCount,
-      startedAt: run.startedAt,
-      endedAt: run.endedAt,
-      outcomeId: run.outcomeId,
-      title: publishedVersion.title,
-      description: publishedVersion.description,
-      document: publishedVersion.document,
+      run: {
+        id: run.id,
+        versionId: run.versionId,
+        participantId: run.participantId,
+        path: run.path,
+        backtrackCount: run.backtrackCount,
+        startedAt: run.startedAt,
+        endedAt: run.endedAt,
+        outcomeId: run.outcomeId,
+      },
+      version: {
+        title: publishedVersion.title,
+        description: publishedVersion.description,
+        document: publishedVersion.document,
+      },
+      theme: themeColumns,
     })
     .from(run)
     .innerJoin(publishedVersion, eq(publishedVersion.id, run.versionId))
+    .innerJoin(journey, eq(journey.id, publishedVersion.journeyId))
+    .innerJoin(project, eq(project.id, journey.projectId))
     .where(and(eq(run.id, runId), eq(publishedVersion.journeyId, journeyId)))
     .limit(1);
 
   if (!row) return null;
 
-  const { title, description, document, ...runRow } = row;
   return {
-    run: runRow,
+    run: row.run,
     version: {
-      title,
-      description,
-      document: graphDocumentSchema.parse(document),
+      ...row.version,
+      document: graphDocumentSchema.parse(row.version.document),
     },
+    theme: toTheme(row.theme),
   };
 }
 

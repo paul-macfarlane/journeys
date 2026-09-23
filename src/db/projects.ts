@@ -9,6 +9,7 @@ import { cache } from "react";
 import { db } from "@/db";
 import { member, project } from "@/db/schema";
 import { contentSchema, type Content } from "@/lib/graph/content";
+import { toThemePreset, type Theme } from "@/lib/theme";
 
 /**
  * Data access for Projects. Their Members live in `@/db/members`; only the
@@ -26,29 +27,38 @@ export type ProjectSummary = {
   title: string;
   /** Rich text, the same closed shape a Step's content has (ticket 07). */
   description: Content;
+  /** The Theme the runner and the public page paint (ticket 11). */
+  theme: Theme;
 };
 
 const projectColumns = {
   id: project.id,
   title: project.title,
   descriptionContent: project.descriptionContent,
+  themePreset: project.themePreset,
+  themeAccent: project.themeAccent,
 };
 
 /**
  * The description is parsed with `contentSchema` on the way out, as
  * `@/db/versions` parses a document: what reached storage went through
  * `sanitizeContent` (or migration 0007's backfill), so a row that does not
- * parse is a bug worth failing loudly on rather than rendering.
+ * parse is a bug worth failing loudly on rather than rendering. The Theme's
+ * preset is read more gently (`toThemePreset`): a retired preset id would
+ * mean the app's palette, never a 404 on a public page.
  */
 function toSummary(row: {
   id: string;
   title: string;
   descriptionContent: unknown;
+  themePreset: string;
+  themeAccent: string | null;
 }): ProjectSummary {
   return {
     id: row.id,
     title: row.title,
     description: contentSchema.parse(row.descriptionContent),
+    theme: { preset: toThemePreset(row.themePreset), accent: row.themeAccent },
   };
 }
 
@@ -164,7 +174,12 @@ export const getPublicProject = cache(
 async function updateProjectForMember(
   projectId: string,
   userId: string,
-  changes: Partial<{ title: string; descriptionContent: Content }>,
+  changes: Partial<{
+    title: string;
+    descriptionContent: Content;
+    themePreset: string;
+    themeAccent: string | null;
+  }>,
 ): Promise<ProjectSummary | null> {
   const existing = await getProjectForMember(projectId, userId);
   if (!existing) return null;
@@ -198,6 +213,24 @@ export function editProjectDescription(
 ): Promise<ProjectSummary | null> {
   return updateProjectForMember(projectId, userId, {
     descriptionContent: description,
+  });
+}
+
+/**
+ * Sets a Project's Theme: the preset every Journey in it is painted in
+ * unless the Journey overrides it, and the optional accent. The caller has
+ * already parsed both through the Theme schemas; this stores what it was
+ * given. The runner and the public page read the row on every request, so
+ * the change shows the moment it is stored.
+ */
+export function setProjectTheme(
+  projectId: string,
+  theme: Theme,
+  userId: string,
+): Promise<ProjectSummary | null> {
+  return updateProjectForMember(projectId, userId, {
+    themePreset: theme.preset,
+    themeAccent: theme.accent,
   });
 }
 

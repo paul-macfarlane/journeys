@@ -17,6 +17,7 @@ const doubles = vi.hoisted(() => ({
     deleteProject: vi.fn(),
     editProjectDescription: vi.fn(),
     renameProject: vi.fn(),
+    setProjectTheme: vi.fn(),
   },
   revalidatePath: vi.fn(),
 }));
@@ -32,13 +33,85 @@ vi.mock("@/db/members", () => ({
   removeMember: vi.fn(),
 }));
 
-import { editProjectDescriptionAction, renameProjectAction } from "./actions";
+import {
+  editProjectDescriptionAction,
+  renameProjectAction,
+  setProjectThemeAction,
+} from "./actions";
 
 const summary = {
   id: "project-1",
   title: "Refugee Health",
   description: { type: "doc", content: [] } satisfies Content,
+  theme: { preset: "trail", accent: null },
 };
+
+describe("setProjectThemeAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doubles.projects.setProjectTheme.mockResolvedValue(summary);
+  });
+
+  it("stores the preset and accent for the signed-in Author and refreshes the Project page", async () => {
+    const result = await setProjectThemeAction("project-1", {
+      preset: "tide",
+      accent: "#095B41",
+    });
+
+    expect(result).toEqual({ ok: true, id: "project-1" });
+    // The accent is stored lowercased, as the schema normalizes it.
+    expect(doubles.projects.setProjectTheme).toHaveBeenCalledWith(
+      "project-1",
+      { preset: "tide", accent: "#095b41" },
+      "author-1",
+    );
+    expect(doubles.revalidatePath).toHaveBeenCalledWith(
+      "/projects/[projectId]",
+      "page",
+    );
+  });
+
+  it("stores a preset with no accent", async () => {
+    await setProjectThemeAction("project-1", { preset: "dusk", accent: null });
+
+    expect(doubles.projects.setProjectTheme).toHaveBeenCalledWith(
+      "project-1",
+      { preset: "dusk", accent: null },
+      "author-1",
+    );
+  });
+
+  it("refuses a preset that is not one of the six, and a malformed accent, without touching the database", async () => {
+    expect(
+      await setProjectThemeAction("project-1", {
+        preset: "neon",
+        accent: null,
+      }),
+    ).toEqual({ ok: false, error: "Choose one of the themes" });
+    expect(
+      await setProjectThemeAction("project-1", {
+        preset: "tide",
+        accent: "teal",
+      }),
+    ).toEqual({ ok: false, error: "Use a color like #095b41" });
+    expect(doubles.projects.setProjectTheme).not.toHaveBeenCalled();
+  });
+
+  it("answers a non-Member like a Project that is not there", async () => {
+    doubles.projects.setProjectTheme.mockResolvedValue(null);
+
+    const result = await setProjectThemeAction("project-1", {
+      preset: "tide",
+      accent: null,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "That project no longer exists",
+    });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+});
 
 describe("editProjectDescriptionAction", () => {
   beforeEach(() => {

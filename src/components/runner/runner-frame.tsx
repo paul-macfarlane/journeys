@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { JourneysMark, LegalLinks } from "@/components/brand";
+import { themeStyle, type Theme } from "@/lib/theme";
 
 /**
  * The shell every participant screen sits in — the Start Step, each later
@@ -22,13 +23,24 @@ import { JourneysMark, LegalLinks } from "@/components/brand";
  *
  * The footer is the one place the app names itself to a Participant — the
  * mark, the name, and the two legal pages — kept small and in the muted
- * tone so it never competes with the Step. A per-Project Theme (ticket 11)
- * colours the frame through the tokens above it; the footer stays.
+ * tone so it never competes with the Step.
+ *
+ * The frame is also where a Theme (ticket 11) is painted, and the only
+ * place: `data-theme` names the preset, which `globals.css` turns into the
+ * frame's own token set in both schemes, and an accent arrives as
+ * `data-accent` plus inline custom properties, which the same stylesheet
+ * maps onto the preset's primary and ring (lifted in the dark scheme). The
+ * frame paints its own background rather than inheriting the page's, so
+ * the Theme fills the viewport edge to edge; the stripe along the top is
+ * the accent's one guaranteed appearance. Nothing outside this frame — no
+ * Author page, no editor — ever carries `data-theme` except the picker's
+ * own swatches, so `data-slot="runner-frame"` is how a test finds the frame.
  */
 export function RunnerFrame({
   title,
   description,
   preview,
+  theme,
   children,
 }: {
   /** The Journey's title; absent only on the unavailable screen. */
@@ -37,10 +49,20 @@ export function RunnerFrame({
   description?: string;
   /** Present on Preview: the banner that says so, and the way back. */
   preview?: { editorHref: string };
+  /** The effective Theme: the Journey's override, else the Project's. */
+  theme: Theme;
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col">
+    <div
+      data-slot="runner-frame"
+      data-theme={theme.preset}
+      data-accent={theme.accent ?? undefined}
+      // Custom properties are not in React's CSSProperties; the cast is the
+      // usual way to set them inline.
+      style={themeStyle(theme) as CSSProperties}
+      className="bg-background text-foreground flex flex-1 flex-col border-t-4 border-t-primary"
+    >
       {preview ? (
         <div className="bg-muted text-muted-foreground text-sm">
           <div className="mx-auto flex w-full max-w-prose flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 sm:px-6">

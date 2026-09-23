@@ -40,11 +40,14 @@ import { cn } from "@/lib/utils";
 /**
  * A Choice: full width, wrapping, and tall enough to be a comfortable tap
  * target on a phone. Exported so the runner's own controls — "Start over",
- * "Continue where you left off" — match the Choices they sit beside.
+ * "Continue where you left off" — match the Choices they sit beside. The
+ * hover border takes the Theme's primary (ticket 11), which is where a
+ * Project's accent shows on the one thing a Participant touches; the focus
+ * border already takes the ring, which an accent replaces too.
  */
 export const choiceLinkClassName = cn(
   buttonVariants({ variant: "outline" }),
-  "h-auto min-h-11 w-full justify-start py-3 text-left whitespace-normal",
+  "h-auto min-h-11 w-full justify-start py-3 text-left whitespace-normal hover:border-primary dark:hover:border-primary",
 );
 
 /**

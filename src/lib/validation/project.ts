@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { accentColorSchema, themePresetSchema } from "@/lib/theme";
+
 /**
  * Project input shapes, shared by the client forms and the server actions
  * that back them (deliberately no `server-only`): one schema means the
@@ -26,5 +28,15 @@ export const renameProjectSchema = z.object({
   title: projectTitleSchema,
 });
 
+/**
+ * The Project's Theme (ticket 11): a preset and an optional accent, as the
+ * Settings tab's picker sends it and the runner paints it.
+ */
+export const projectThemeSchema = z.object({
+  preset: themePresetSchema,
+  accent: accentColorSchema.nullable(),
+});
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type RenameProjectInput = z.infer<typeof renameProjectSchema>;
+export type ProjectThemeInput = z.infer<typeof projectThemeSchema>;

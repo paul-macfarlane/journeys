@@ -119,6 +119,62 @@ numbers differ from the table only by Chromium's rounding to 8-bit sRGB):
 | Journey page (canvas box) | 16.02 / 6.74       | 15.64 / 7.90      |
 | Runner on a phone         | 16.02 / 6.74       | 15.64 / 7.90      |
 
+## Themes (ticket 11)
+
+A Theme is one of six presets plus an optional accent, set per Project with
+an optional override per Journey (`CONTEXT.md`), and painted only inside the
+runner frame: the runner, the public Project page, and Preview. The ids,
+labels, and rules are in `src/lib/theme.ts`; the tokens are the
+`[data-theme="<id>"]` and `.dark [data-theme="<id>"]` blocks in
+`globals.css`, one full token set per preset per scheme, so every component
+inside the frame recolours through the tokens it already reads. `trail` is
+the palette above and has no block of its own.
+
+| Preset      | Paper / ink                           | Accent (`--primary`)              | Note                                       |
+| ----------- | ------------------------------------- | --------------------------------- | ------------------------------------------ |
+| `trail`     | chalk / pine ink (the app's palette)  | spruce `oklch(0.42 0.085 165)`    | default for every Project                  |
+| `parchment` | warm cream `oklch(0.965 0.02 85)`     | terracotta `oklch(0.5 0.13 40)`   | body set in Literata, the only face change |
+| `tide`      | sea glass `oklch(0.975 0.012 200)`    | deep teal `oklch(0.42 0.09 200)`  |                                            |
+| `dusk`      | lavender grey `oklch(0.97 0.012 300)` | plum `oklch(0.45 0.14 320)`       |                                            |
+| `ember`     | warm stone `oklch(0.97 0.01 60)`      | burnt orange `oklch(0.5 0.15 45)` |                                            |
+| `slate`     | plain grey `oklch(0.975 0.003 250)`   | cobalt `oklch(0.45 0.16 262)`     |                                            |
+
+An Author's accent (`#rrggbb`) travels on the frame as `data-accent` plus
+two inline custom properties (`--theme-accent` and, chosen by luminance in
+`accentForeground`, `--theme-accent-foreground`); the
+`[data-theme][data-accent]` rules at the end of the themes block map them
+onto `--primary`, `--primary-foreground`, and `--ring` over whichever preset
+is set. In the light scheme the accent is used as given; in the dark scheme
+its oklch lightness is lifted to a floor of 0.75 first (relative color
+syntax), for the same reason the presets' own primaries are pale in the
+dark, and the text on it is then the dark ink. The accent is used only as a
+fill and a border — the stripe along the top of the frame, a Choice's hover
+and focus border, focus rings — never as text, so the accent never decides
+whether text is readable; the presets alone carry the guarantee below.
+
+### Contrast
+
+Every preset clears WCAG AA (4.5:1) on every token pair in both schemes.
+Computed from the tokens by `scripts/contrast.mjs` (the lowest of the nine
+pairs the script checks, per preset per scheme):
+
+| Preset      | Light (lowest pair)                      | Dark (lowest pair)                       |
+| ----------- | ---------------------------------------- | ---------------------------------------- |
+| `trail`     | 4.57 (`--destructive` on `--background`) | 6.14 (`--muted-foreground` on `--muted`) |
+| `parchment` | 5.52 (`--destructive` on `--background`) | 6.14 (`--muted-foreground` on `--muted`) |
+| `tide`      | 5.71 (`--destructive` on `--background`) | 6.38 (`--muted-foreground` on `--muted`) |
+| `dusk`      | 5.59 (`--destructive` on `--background`) | 6.34 (`--muted-foreground` on `--muted`) |
+| `ember`     | 5.59 (`--destructive` on `--background`) | 6.33 (`--muted-foreground` on `--muted`) |
+| `slate`     | 5.69 (`--destructive` on `--background`) | 6.13 (`--muted-foreground` on `--muted`) |
+
+The five new presets set `--destructive` to `oklch(0.52 0.2 27)` in light
+(the app's own red sits at 4.57 on chalk, too close to the line on tinted
+paper). As painted, the `themes-contrast` spec runs axe's `color-contrast`
+rule on the runner's start screen, a Step, and the Project page for every
+preset in both schemes (36 screens, screenshots under
+`test-results/themes-contrast/`), and fails on any violation or on a screen
+where the rule checked nothing.
+
 ## Identity files
 
 All under `src/app/`, by Next's metadata file conventions, so every page links

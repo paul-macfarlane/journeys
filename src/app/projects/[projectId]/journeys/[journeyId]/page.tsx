@@ -9,6 +9,7 @@ import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import { DeleteJourneyDialog } from "@/components/journeys/delete-journey-dialog";
 import { DraftEditor } from "@/components/journeys/draft-editor";
 import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
+import { JourneyThemeSettings } from "@/components/journeys/journey-theme-settings";
 import { JourneyTitleFields } from "@/components/journeys/journey-title-fields";
 import {
   PublishButton,
@@ -21,6 +22,7 @@ import { UrlTabs } from "@/components/url-tabs";
 import { getAnalyticsForMember } from "@/db/analytics";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
+import { getProjectForMember } from "@/db/projects";
 import { listResponsesForMember } from "@/db/responses";
 import { getLiveVersion, listVersionsForMember } from "@/db/versions";
 import { analyticsForVersion, chooseVersionId } from "@/lib/analytics";
@@ -31,7 +33,13 @@ import { readTab } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
 
 /** The page's sections, the first being what the plain address opens on. */
-const JOURNEY_TABS = ["editor", "versions", "analytics", "responses"] as const;
+const JOURNEY_TABS = [
+  "editor",
+  "versions",
+  "analytics",
+  "responses",
+  "settings",
+] as const;
 
 export default async function JourneyPage({
   params,
@@ -58,6 +66,11 @@ export default async function JourneyPage({
     session.user.id,
   );
   if (!journey) notFound();
+
+  // The Project, for the Theme the Journey inherits on its Settings tab —
+  // the request-cached read the layout already made for the navbar.
+  const project = await getProjectForMember(projectId, session.user.id);
+  if (!project) notFound();
 
   // Every Journey has a Draft, created with it — a missing one is a Journey
   // that cannot be authored, so it gets the same 404 rather than a page with
@@ -215,6 +228,20 @@ export default async function JourneyPage({
             value: "responses",
             label: "Responses",
             content: <ResponseList groups={responseGroups} />,
+          },
+          {
+            value: "settings",
+            label: "Settings",
+            content: (
+              <section aria-label="Settings" className="flex flex-col gap-8">
+                <JourneyThemeSettings
+                  projectId={projectId}
+                  journeyId={journey.id}
+                  projectTheme={project.theme}
+                  theme={journey.theme}
+                />
+              </section>
+            ),
           },
         ]}
       />

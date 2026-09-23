@@ -10,6 +10,7 @@ import { draft, journey, member, project, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
 import { moveInOrder, type MoveDirection } from "@/lib/journey-order";
 import { publishStateOf, type PublishState } from "@/lib/publish-state";
+import { readThemeOverride, type ThemeOverride } from "@/lib/theme";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
@@ -33,12 +34,16 @@ export type JourneySummary = {
   title: string;
   description: string;
   publishState: PublishState;
+  /** The Journey's Theme override (ticket 11); a null preset means none. */
+  theme: ThemeOverride;
 };
 
 const journeyColumns = {
   id: journey.id,
   title: journey.title,
   description: journey.description,
+  themePreset: journey.themePreset,
+  themeAccent: journey.themeAccent,
 };
 
 /** The Journey itself plus the live pointer publish state is derived from. */
@@ -73,20 +78,37 @@ async function countVersionsByJourney(
   return new Map(rows.map((row) => [row.journeyId, row.versionCount]));
 }
 
+/**
+ * A `journey` row as the app reads it, with the publish state the caller
+ * has already derived — from the live pointer and the version count on a
+ * read, or carried over from the membership check on a write that changes
+ * neither.
+ */
 function toSummary(
   row: {
     id: string;
     title: string;
     description: string;
-    liveVersionId: string | null;
+    themePreset: string | null;
+    themeAccent: string | null;
   },
-  versionCount: number,
+  publishState: PublishState,
 ): JourneySummary {
-  const { liveVersionId, ...rest } = row;
   return {
-    ...rest,
-    publishState: publishStateOf({ liveVersionId, versionCount }),
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    publishState,
+    theme: readThemeOverride(row),
   };
+}
+
+/** The publish state a read derives (see `@/lib/publish-state`). */
+function stateOf(
+  row: { liveVersionId: string | null },
+  versionCount: number,
+): PublishState {
+  return publishStateOf({ liveVersionId: row.liveVersionId, versionCount });
 }
 
 /** The Author's order: `position` first, `created_at` breaking any tie. */
@@ -121,7 +143,9 @@ export async function listJourneysForProject(
 
   const versionCounts = await countVersionsByJourney(rows.map((row) => row.id));
 
-  return rows.map((row) => toSummary(row, versionCounts.get(row.id) ?? 0));
+  return rows.map((row) =>
+    toSummary(row, stateOf(row, versionCounts.get(row.id) ?? 0)),
+  );
 }
 
 export type PublicJourneySummary = {
@@ -200,7 +224,7 @@ export async function createJourney(
 
     // A Journey that has just come into being has no Published Version and
     // no live pointer, so its state is not worth a second query.
-    return { ...created, publishState: "never-published" as const };
+    return toSummary(created, "never-published");
   });
 }
 
@@ -232,7 +256,7 @@ export async function getJourneyForMember(
   if (!row) return null;
 
   const versionCounts = await countVersionsByJourney([row.id]);
-  return toSummary(row, versionCounts.get(row.id) ?? 0);
+  return toSummary(row, stateOf(row, versionCounts.get(row.id) ?? 0));
 }
 
 /**
@@ -261,7 +285,36 @@ export async function updateJourney(
 
   // A title and a description are all this changes; publish state is
   // whatever the membership check already read.
-  return updated ? { ...updated, publishState: existing.publishState } : null;
+  return updated ? toSummary(updated, existing.publishState) : null;
+}
+
+/**
+ * Sets or clears a Journey's Theme override. A null preset clears it (the
+ * Journey goes back to its Project's Theme); a set preset is taken whole
+ * with `theme.accent` or none. The caller has already parsed the pair
+ * through the Journey Theme schema. Returns null when the Author is not a
+ * Member of the Journey's Project, or the Journey doesn't exist under it.
+ */
+export async function setJourneyTheme(
+  projectId: string,
+  journeyId: string,
+  theme: ThemeOverride,
+  userId: string,
+): Promise<JourneySummary | null> {
+  const existing = await getJourneyForMember(projectId, journeyId, userId);
+  if (!existing) return null;
+
+  const [updated] = await db
+    .update(journey)
+    .set({
+      themePreset: theme.preset,
+      themeAccent: theme.preset === null ? null : theme.accent,
+      updatedAt: new Date(),
+    })
+    .where(eq(journey.id, existing.id))
+    .returning(journeyColumns);
+
+  return updated ? toSummary(updated, existing.publishState) : null;
 }
 
 /**

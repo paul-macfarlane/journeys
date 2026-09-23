@@ -7,6 +7,7 @@ import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog
 import { JourneyList } from "@/components/projects/journey-list";
 import { MemberList } from "@/components/projects/member-list";
 import { ProjectSettingsFields } from "@/components/projects/project-settings-fields";
+import { ProjectThemeSettings } from "@/components/projects/project-theme-settings";
 import { UrlTabs } from "@/components/url-tabs";
 import { listJourneysForProject } from "@/db/journeys";
 import { listMembers } from "@/db/members";
@@ -110,6 +111,11 @@ export default async function ProjectPage({
                   projectId={project.id}
                   title={project.title}
                   description={project.description}
+                />
+
+                <ProjectThemeSettings
+                  projectId={project.id}
+                  theme={project.theme}
                 />
 
                 <section

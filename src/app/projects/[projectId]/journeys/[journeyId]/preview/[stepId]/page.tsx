@@ -8,7 +8,9 @@ import {
 } from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
+import { getProjectForMember } from "@/db/projects";
 import { requireSession } from "@/lib/session";
+import { effectiveTheme } from "@/lib/theme";
 
 import { previewChooseAction } from "../actions";
 
@@ -49,6 +51,11 @@ export default async function PreviewStepPage({
   if (!Object.hasOwn(draft.steps, stepId)) notFound();
   const step = draft.steps[stepId];
 
+  // The Theme a Participant will see, as on Preview's first screen.
+  const project = await getProjectForMember(projectId, session.user.id);
+  if (!project) notFound();
+  const theme = effectiveTheme(project.theme, journey.theme);
+
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
   return (
@@ -61,6 +68,7 @@ export default async function PreviewStepPage({
           : undefined
       }
       preview={{ editorHref: journeyHref }}
+      theme={theme}
     >
       <ResponseNotice notice={notice} />
 
