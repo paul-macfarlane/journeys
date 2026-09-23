@@ -5,9 +5,9 @@ Blocked by: 08
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 
-**What to build:** From an empty (or, after confirmation, non-empty) Draft, an Author describes a Journey in a paragraph and receives a generated Draft — Steps, Choices, Outcomes, Endings — that lands in the editor for review; nothing is published. Uses Anthropic `claude-opus-5` through the Vercel AI SDK's Anthropic provider with adaptive thinking and structured output. Anthropic structured outputs reject dictionary-shaped and recursive schemas, so the AI-facing schema is an array-shaped projection of the graph document (Steps and Outcomes as arrays with explicit ids, content as a restricted block list) derived in code beside the canonical zod schema; the output is mapped into a graph document and validated with the canonical schema before it replaces the Draft. AI entry points are hidden when `ANTHROPIC_API_KEY` is absent. Stretch: rewrite one Step's content from an instruction.
+**What to build:** From an empty (or, after confirmation, non-empty) Draft, an Author describes a Journey in a paragraph and receives a generated Draft — Steps, Choices, Outcomes, Endings — that lands in the editor for review; nothing is published. Uses an Opus-class Claude model through the Vercel AI Gateway — a plain `anthropic/claude-opus-…` model string chosen from `gateway.getAvailableModels()` when this ticket runs, never a hand-copied slug — with the AI SDK's structured output (`ai` package; the lockfile commit is Paul's). No provider package and no Anthropic key. Anthropic structured outputs reject dictionary-shaped and recursive schemas, so the AI-facing schema is an array-shaped projection of the graph document (Steps and Outcomes as arrays with explicit ids, content as a restricted block list) derived in code beside the canonical zod schema; the output is mapped into a graph document and validated with the canonical schema before it replaces the Draft. AI entry points are hidden when `AI_GATEWAY_API_KEY` is absent. Stretch: rewrite one Step's content from an instruction.
 
-Human prerequisite: `ANTHROPIC_API_KEY` set in `.env.local` and Vercel (`human-prerequisites.md` §6).
+Human prerequisite: AI Gateway enabled on the Vercel project and `AI_GATEWAY_API_KEY` set in `.env.local` and Vercel (`human-prerequisites.md` §6).
 
 - [ ] With no key, no AI controls render and nothing else changes.
 - [ ] Generation from a prompt yields a Draft that passes publish-time validation (retry once on failure, then show the problems).
@@ -18,3 +18,7 @@ Human prerequisite: `ANTHROPIC_API_KEY` set in `.env.local` and Vercel (`human-p
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`.
 
 ## Comments
+
+### [SCOPE CHANGE] 2026-09-22 — Claude Fable 5.1, decided by Paul in the round-3 grilling
+
+Provider wiring moves from the AI SDK's Anthropic provider to the Vercel AI Gateway (Paul, Q14: "I also think we should use the ai gateway for our other ai features"). Model strings are `provider/model` picked from the gateway's list at implementation time, Opus-class for whole-Draft generation (Q19). Authentication is a static `AI_GATEWAY_API_KEY` (Q18), which replaces `ANTHROPIC_API_KEY` in `src/lib/env.ts`, `.env.example`, `README.md`, and `human-prerequisites.md` §6 in the tickets PR; the "absent means hidden" rule is unchanged. Ticket 43 (jev) shares the key and the `ai` package; whichever ticket lands first adds the package. Tag gateway calls `feature:authoring` for cost attribution. Everything else in the ticket stands.
