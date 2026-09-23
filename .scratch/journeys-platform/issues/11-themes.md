@@ -49,7 +49,9 @@ Two fresh readers (opus, `/code-review`: standards and spec) read the whole diff
 
 **Delivery:** repository `journeys`, branch `feat/11-themes` from `staging` at `2f61ab0`, in the worktree `.claude/worktrees/11-themes/journeys`; implemented by the orchestrator (Claude Fable 5.1) with no delegated workers; reviewed by two opus readers. Commits: `e2ccf70` (feature), `97e204a` (review fixes), `b6c7390` (assertion fix), `9411e34` (evidence), then this closeout. PR: https://github.com/paul-macfarlane/journeys/pull/42 (to `staging`; CI red until Paul commits the lockfile).
 
-**Verified run command** (`test-results/dod-1-commands.txt`, at `b6c7390`, from the worktree with `E2E_PORT=3111 E2E_DATABASE_NAME=journeys_e2e_t11`):
+**Merge with ticket 10 (2026-09-22):** after PR #41 (analytics) landed on `staging`, `origin/staging` was merged into this branch (`a632fa1`). Two conflicts: `JOURNEY_TABS` takes both new tabs (`editor, versions, analytics, responses, settings`; the tab contents had auto-merged in that order), and the DoD capture below was re-run on the merged commit. The chain on `a632fa1`: exit 0, Vitest 386 passed in 25 files, Playwright 88 passed (analytics and themes specs together).
+
+**Verified run command** (`test-results/dod-1-commands.txt`, at `a632fa1` (first captured at `b6c7390`), from the worktree with `E2E_PORT=3111 E2E_DATABASE_NAME=journeys_e2e_t11`):
 
 ```
 pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm db:migrate && E2E_EVIDENCE=themes-settings,themes-contrast pnpm test:e2e
