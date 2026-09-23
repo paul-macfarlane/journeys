@@ -32,7 +32,7 @@ function step(
 }
 
 function prompt(label: string): Step["prompt"] {
-  return { type: "free_text", label, required: false };
+  return { type: "free_text", label, required: false, decides: false };
 }
 
 // Keyed out of walk order on purpose — Postgres reorders jsonb keys, so the

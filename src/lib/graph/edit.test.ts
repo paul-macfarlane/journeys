@@ -373,7 +373,12 @@ describe("duplicateStep", () => {
         ],
       },
       choices: [choice("choice-a", "Go", "prompted")],
-      prompt: { type: "free_text", label: "Name?", required: true },
+      prompt: {
+        type: "free_text",
+        label: "Name?",
+        required: true,
+        decides: false,
+      },
       outcomeId: "outcome-good",
       position: null,
     };
@@ -417,7 +422,12 @@ describe("duplicateStep", () => {
   it("does not share the copy's Prompt object identity with the original's", () => {
     const prompted: Step = {
       ...step("prompted", [], { title: "Prompted" }),
-      prompt: { type: "free_text", label: "Name?", required: true },
+      prompt: {
+        type: "free_text",
+        label: "Name?",
+        required: true,
+        decides: false,
+      },
     };
     const document: GraphDocument = {
       ...buildDocument(),
@@ -941,12 +951,14 @@ describe("setStepPrompt", () => {
     const next = setStepPrompt(base, "start", {
       label: "How do you feel?",
       required: true,
+      decides: false,
     });
 
     expect(next.steps.start.prompt).toEqual({
       type: "free_text",
       label: "How do you feel?",
       required: true,
+      decides: false,
     });
     expect(base).toEqual(before);
   });
@@ -955,6 +967,7 @@ describe("setStepPrompt", () => {
     const next = setStepPrompt(base, "start", {
       label: " How do you feel? ",
       required: false,
+      decides: false,
     });
     expect(next.steps.start.prompt?.label).toBe(" How do you feel? ");
   });
@@ -963,20 +976,46 @@ describe("setStepPrompt", () => {
     const prompted = setStepPrompt(base, "start", {
       label: "How do you feel?",
       required: true,
+      decides: false,
     });
     expect(
-      setStepPrompt(prompted, "start", { label: "", required: true }).steps
-        .start.prompt,
+      setStepPrompt(prompted, "start", {
+        label: "",
+        required: true,
+        decides: false,
+      }).steps.start.prompt,
     ).toBeNull();
     expect(
-      setStepPrompt(prompted, "start", { label: "  \n", required: true }).steps
-        .start.prompt,
+      setStepPrompt(prompted, "start", {
+        label: "  \n",
+        required: true,
+        decides: false,
+      }).steps.start.prompt,
     ).toBeNull();
   });
 
   it("returns the document unchanged for an unknown Step", () => {
     expect(
-      setStepPrompt(base, "missing", { label: "x", required: false }),
+      setStepPrompt(base, "missing", {
+        label: "x",
+        required: false,
+        decides: false,
+      }),
     ).toBe(base);
+  });
+
+  it("forces required when decides is true, whatever required was passed", () => {
+    const next = setStepPrompt(base, "start", {
+      label: "Which way?",
+      required: false,
+      decides: true,
+    });
+
+    expect(next.steps.start.prompt).toEqual({
+      type: "free_text",
+      label: "Which way?",
+      required: true,
+      decides: true,
+    });
   });
 });

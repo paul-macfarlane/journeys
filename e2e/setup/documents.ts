@@ -168,8 +168,8 @@ export const START_PROMPT = "How are you feeling as you arrive?";
 export const QUEUE_PROMPT = "What is going through your mind while you wait?";
 export const ENDING_PROMPT = "What would you do differently?";
 
-function prompt(label: string, required: boolean): Prompt {
-  return { type: "free_text", label, required };
+function prompt(label: string, required: boolean, decides = false): Prompt {
+  return { type: "free_text", label, required, decides };
 }
 
 /**

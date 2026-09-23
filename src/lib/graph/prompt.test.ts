@@ -38,11 +38,19 @@ const optional = stepWith({
   type: "free_text",
   label: "How do you feel?",
   required: false,
+  decides: false,
 });
 const required = stepWith({
   type: "free_text",
   label: "How do you feel?",
   required: true,
+  decides: false,
+});
+const deciding = stepWith({
+  type: "free_text",
+  label: "Which way?",
+  required: false,
+  decides: true,
 });
 const unprompted = stepWith(null);
 
@@ -72,6 +80,12 @@ describe("readResponse", () => {
     expect(readResponse(required, "")).toEqual({ kind: "missing" });
     expect(readResponse(required, " \n")).toEqual({ kind: "missing" });
     expect(readResponse(required, undefined)).toEqual({ kind: "missing" });
+  });
+
+  it("is missing for a blank answer to a deciding Prompt even when required is stored false", () => {
+    expect(readResponse(deciding, "")).toEqual({ kind: "missing" });
+    expect(readResponse(deciding, "   \n ")).toEqual({ kind: "missing" });
+    expect(readResponse(deciding, undefined)).toEqual({ kind: "missing" });
   });
 
   it("treats anything that is not a string as absent", () => {

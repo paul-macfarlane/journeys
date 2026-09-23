@@ -157,7 +157,7 @@ function ResponseField({
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-base font-medium">
         {prompt.label}
-        {prompt.required ? null : (
+        {prompt.required || prompt.decides ? null : (
           <span className="text-muted-foreground font-normal"> (optional)</span>
         )}
       </label>

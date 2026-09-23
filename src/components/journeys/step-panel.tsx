@@ -246,7 +246,12 @@ function PromptField({
 }) {
   const labelFieldId = useId();
   const requiredFieldId = useId();
+  const decidesFieldId = useId();
   const required = step.prompt?.required ?? false;
+  const decides = step.prompt?.decides ?? false;
+  // Deciding needs a Choice to land on, and a choice between them: one
+  // Choice is already where a Response leads without any judging.
+  const canDecide = step.choices.length >= 2;
 
   return (
     <div className="flex flex-col gap-2">
@@ -263,6 +268,7 @@ function PromptField({
             setStepPrompt(document, step.id, {
               label: event.target.value,
               required,
+              decides,
             }),
             { field: `prompt-label:${step.id}` },
           )
@@ -278,12 +284,14 @@ function PromptField({
             id={requiredFieldId}
             type="checkbox"
             className="size-4 accent-primary"
-            checked={required}
+            checked={decides || required}
+            disabled={decides}
             onChange={(event) =>
               onChange(
                 setStepPrompt(document, step.id, {
                   label: step.prompt?.label ?? "",
                   required: event.target.checked,
+                  decides,
                 }),
               )
             }
@@ -291,6 +299,35 @@ function PromptField({
           <Label htmlFor={requiredFieldId} className="font-normal">
             Required — participants must answer before choosing
           </Label>
+        </div>
+      ) : null}
+      {step.prompt !== null && canDecide ? (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <input
+              id={decidesFieldId}
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={decides}
+              onChange={(event) =>
+                onChange(
+                  setStepPrompt(document, step.id, {
+                    label: step.prompt?.label ?? "",
+                    required,
+                    decides: event.target.checked,
+                  }),
+                )
+              }
+            />
+            <Label htmlFor={decidesFieldId} className="font-normal">
+              Let the response decide the next step
+            </Label>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            An AI judge reads the response and picks the Choice it fits.
+            Participants choose for themselves when it&apos;s unsure or
+            unavailable.
+          </p>
         </div>
       ) : null}
     </div>

@@ -30,13 +30,23 @@ export type ResponseReading =
  * text a Participant typed — a repeated field or a file is not — and only the
  * ends are trimmed, so the lines of a longer answer stay as written. A Step
  * with no Prompt never stores anything, whatever travelled with the form.
+ *
+ * A deciding Prompt (`decides: true`, ticket 43) is read as required whatever
+ * its stored `required` flag says: a blank Response gives the judge nothing
+ * to decide from, so the Run cannot advance on it and the Participant is sent
+ * back exactly as for any other required Prompt left blank. `setStepPrompt`
+ * already forces `required: true` when `decides` is true; the `|| decides`
+ * here is the same rule read defensively, for a document that reached this
+ * function some other way.
  */
 export function readResponse(step: Step, raw: unknown): ResponseReading {
   if (step.prompt === null) return { kind: "skipped" };
 
   const text = typeof raw === "string" ? raw.trim() : "";
   if (text.length === 0) {
-    return step.prompt.required ? { kind: "missing" } : { kind: "skipped" };
+    return step.prompt.required || step.prompt.decides
+      ? { kind: "missing" }
+      : { kind: "skipped" };
   }
   if (text.length > MAX_RESPONSE_LENGTH) return { kind: "too-long" };
 
