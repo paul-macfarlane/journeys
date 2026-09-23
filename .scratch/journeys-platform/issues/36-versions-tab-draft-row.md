@@ -1,6 +1,6 @@
 # 36: The Draft on the Versions tab
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Claude (Fable 5.1), worktree `feat/36-versions-tab-draft-row`, 2026-09-23
 Parent: `.scratch/journeys-platform/spec.md`
@@ -20,10 +20,30 @@ Route: polish
 
 Acceptance criteria:
 
-- [ ] With unpublished changes the Versions tab lists the Draft first with its last-edited time, a way to the editor, and Publish; with none it lists only Published Versions.
-- [ ] A never-published Journey shows the Draft row and "Not published yet."
-- [ ] `pnpm test:e2e` passes once in full at the end.
+- [x] With unpublished changes the Versions tab lists the Draft first with its last-edited time, a way to the editor, and Publish; with none it lists only Published Versions.
+- [x] A never-published Journey shows the Draft row and "Not published yet."
+- [x] `pnpm test:e2e` passes once in full at the end.
 
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `polish`): commit only the screenshot directories of the specs this ticket names; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-22, item 13.
 
 ## Comments
+
+### [CLOSEOUT] 2026-09-23 — Claude Fable 5.1 (`/implement`, Route: polish)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/46 (base `staging`, comparison SHA `cf3d781`). Status set to `done` in this commit; merging the PR is Paul's acceptance.
+
+**Execution.** One session in the worktree `.claude/worktrees/feat+36-versions-tab-draft-row` (branch `feat/36-versions-tab-draft-row`, dummy env exported, e2e on port 3136 / `journeys_e2e_t36`). Spec first (`versions-tab-shows-draft`, watched fail on the missing row), then 6801d11 — `getDraftForMember` returns `{ document, updatedAt }`, `UrlTabs` reads the tab off the address (`useSearchParams`) so a link opens a tab in place, the Draft row in `VersionList`, `PublishButton` `size`, the restore spec's header assertions scoped; 707ade1 — review tidy-ups; 7dd93a7 — evidence.
+
+**Verified run command (final tree, head 707ade1):** `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=versions-tab-shows-draft pnpm test:e2e` — every block `exit=0`; unit 386/386; e2e 91 passed in 1.8m, 0 flaky, retries 0. Docker Postgres :5436, production build, Chromium.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| With unpublished changes the Draft is first with its last-edited time, a way to the editor, and Publish; with none only Published Versions | PASS | `versions-tab-shows-draft`: after a Step title edit the list is Draft (badge "Unpublished changes", `<time datetime>` equal to the `draft` row's `updated_at`) then "Version 1 · Live"; "Open editor" lands on the Editor tab at the plain address; Publish from the row leaves two version rows, Version 2 live, no Draft row; right after publishing, one row and no Draft; `test-results/versions-tab-shows-draft/versions-tab-shows-draft.png` (viewed) |
+| Never-published Journey shows the Draft row and "Not published yet." | PASS | same spec, first section: one list item (the Draft) and the paragraph beneath it |
+| `pnpm test:e2e` once in full at the end | PASS locally (91/91, 0 flaky); PR CI is the durable proof and is pending at this commit | `test-results/dod-1-commands.txt`, `test-results/dod-1-e2e.txt`; PR checks |
+
+**AI review (one pass, standards and spec axes, `origin/staging...HEAD`).** No correctness bugs. Fixed: stale header in `src/lib/tabs.ts`, README's Versions line, `Draft` type renamed `StoredDraft`, Suspense caveat on `UrlTabs`. Accepted: the five `getDraftForMember` callers repeat `stored.document`; `readTab` keeps its `string[]` input; `VersionList`'s `<ul>` guard is unreachable from the page's invariant but honest on its own props. Flagged for Paul: "Last edited" is the `draft` row's `updated_at`, which a title- or description-only change does not bump, so that Draft row can carry a time earlier than the live version's; two buttons on the Versions tab are named "Publish".
+
+**Deviations.** (1) "Open editor" links to the plain address rather than `?tab=editor`: `withTab` never writes the default tab, and `readTab` reads both. (2) The tab switch is the address, not an `initialTab` prop: `useState(initialTab)` could not follow a link whose server-rendered tab equalled the first render's, so `UrlTabs` reads `useSearchParams`, and the Project page dropped its unused `readTab` call. (3) The Step title edit in the spec is written into the `draft` row, as the sibling specs do, rather than typed in the editor. (4) `pnpm build` ran on its own once before the spec run; the chain's `pnpm test:e2e` builds again.
+
+**Next in Paul's order:** 37 (sweep 1), then 38 → 39 → 40 → 43.
