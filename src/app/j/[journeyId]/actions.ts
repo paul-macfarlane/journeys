@@ -10,8 +10,11 @@ import {
   getRunForJourney,
   saveRunState,
 } from "@/db/runs";
+import { decideChoice, gatewayJudge, type Decision } from "@/lib/ai/decide";
+import { decisionAllowed } from "@/lib/ai/rate-limit";
+import { env } from "@/lib/env";
 import { beginRun } from "@/lib/graph/begin";
-import { hasStep } from "@/lib/graph/document";
+import { hasStep, type Step } from "@/lib/graph/document";
 import { readResponse, refusalNotice } from "@/lib/graph/prompt";
 import { currentStepId, navigateTo } from "@/lib/graph/run";
 import {
@@ -39,6 +42,58 @@ import {
  */
 
 /**
+ * A deciding Prompt (ticket 43): a form posted from a Step whose Prompt
+ * decides, carrying no `to`, asks the judge which Choice the Response takes.
+ * A confident answer is taken exactly as if its button had been pressed;
+ * anything else comes back to the Step with `?decide=<choice-id|none>`, and
+ * the page offers the Choices — the pick marked — under "Choose for
+ * yourself". The judge is never an error: no key, a call inside the rate
+ * limit, a failed call, or an answer naming no Choice of the Step all read
+ * as "none", so a Run is never stuck.
+ */
+
+/** One decision per Run (or, on the Start, per Participant) per second. */
+const DECISION_WINDOW_MS = 1000;
+const lastDecisionAt = new Map<string, number>();
+
+/** True when this form asks the judge rather than naming a Choice. */
+function asksJudge(step: Step, formData: FormData): boolean {
+  return (
+    step.prompt?.decides === true &&
+    step.choices.length > 0 &&
+    formData.get("to") === null
+  );
+}
+
+async function judge(
+  step: Step,
+  response: string,
+  rateKey: string,
+): Promise<Decision> {
+  if (env.AI_GATEWAY_API_KEY === undefined) return { kind: "none" };
+  if (
+    !decisionAllowed(lastDecisionAt, rateKey, Date.now(), DECISION_WINDOW_MS)
+  ) {
+    return { kind: "none" };
+  }
+  return decideChoice(step, response, gatewayJudge);
+}
+
+/** The Step a confident answer leads to; null for any other decision. */
+function judgedTarget(step: Step, decision: Decision): string | null {
+  if (decision.kind !== "confident") return null;
+  return (
+    step.choices.find((choice) => choice.id === decision.choiceId)
+      ?.targetStepId ?? null
+  );
+}
+
+/** `?decide=` for an answer the Participant is asked to confirm. */
+function decideParam(decision: Decision): string {
+  return `decide=${encodeURIComponent(decision.kind === "none" ? "none" : decision.choiceId)}`;
+}
+
+/**
  * The first Choice of a walk: creates the Run, already holding the Start and
  * the chosen Step, sets the cookies, and lands on that Step in one round
  * trip. The chosen Step travels as the form's `to` field. A Run already in
@@ -56,7 +111,32 @@ export async function chooseFromStartAction(
   // its own, not something only that page can reach.
   if (!journey || journey.kind !== "live") redirect(`/j/${journeyId}`);
 
-  const to = formData.get("to");
+  const startStep = journey.document.steps[journey.document.startStepId];
+  const cookieStore = await cookies();
+
+  let to = formData.get("to");
+  if (asksJudge(startStep, formData)) {
+    // A deciding Prompt on the Start: the Response is read (and refused)
+    // before the judge sees it, and a Response that is not taken forward
+    // travels back in the address, since no Run exists yet to hold it.
+    const reading = readResponse(startStep, formData.get("response"));
+    const refused = refusalNotice(reading);
+    if (refused) redirect(`/j/${journeyId}?notice=${refused}`);
+    const text = reading.kind === "answered" ? reading.text : "";
+
+    const decision = await judge(
+      startStep,
+      text,
+      cookieStore.get(PARTICIPANT_COOKIE)?.value ?? journeyId,
+    );
+    to = judgedTarget(startStep, decision);
+    if (to === null) {
+      redirect(
+        `/j/${journeyId}?${decideParam(decision)}&response=${encodeURIComponent(text)}`,
+      );
+    }
+  }
+
   const begun =
     typeof to === "string"
       ? beginRun(journey.document, to, new Date())
@@ -69,12 +149,9 @@ export async function chooseFromStartAction(
   // The Start Step's Prompt, answered with this first Choice. Native
   // constraint validation is off across the app, so the server is the only
   // check a required Prompt left blank ever meets.
-  const startStep = journey.document.steps[journey.document.startStepId];
   const reading = readResponse(startStep, formData.get("response"));
   const refused = refusalNotice(reading);
   if (refused) redirect(`/j/${journeyId}?notice=${refused}`);
-
-  const cookieStore = await cookies();
 
   // Pseudonymous and shared across the Journeys this browser walks, so the
   // analytics in ticket 10 can tell one Participant's walks apart without
@@ -175,7 +252,15 @@ export async function respondAndChooseAction(
     await deleteResponse(run.id, stepId);
   }
 
-  const to = formData.get("to");
+  let to = formData.get("to");
+  if (asksJudge(step, formData) && reading.kind === "answered") {
+    // The Response is already saved; a confident answer is taken as the
+    // Choice it names, and anything else asks the Participant.
+    const decision = await judge(step, reading.text, run.id);
+    to = judgedTarget(step, decision);
+    if (to === null) redirect(`${here}?${decideParam(decision)}`);
+  }
+
   if (typeof to !== "string") {
     // An Ending's "Save response": there is nothing to move to, and the
     // Participant is told what happened where they stand.

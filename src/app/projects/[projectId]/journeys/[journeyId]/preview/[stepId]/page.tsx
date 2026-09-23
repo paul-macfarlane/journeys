@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
+  previewDecision,
   ResponseNotice,
   responseRefusal,
   StepView,
@@ -29,13 +30,18 @@ export default async function PreviewStepPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string; journeyId: string; stepId: string }>;
-  searchParams: Promise<{ notice?: string | string[] }>;
+  searchParams: Promise<{
+    notice?: string | string[];
+    decide?: string | string[];
+    confidence?: string | string[];
+    response?: string | string[];
+  }>;
 }) {
   const session = await requireSession();
-  const [{ projectId, journeyId, stepId }, { notice }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const [
+    { projectId, journeyId, stepId },
+    { notice, decide, confidence, response },
+  ] = await Promise.all([params, searchParams]);
 
   const journey = await getJourneyForMember(
     projectId,
@@ -88,6 +94,11 @@ export default async function PreviewStepPage({
                   stepId,
                 ),
                 refusal: responseRefusal(notice),
+                // Preview stores nothing, so a deciding Prompt's Response
+                // travels back in the address with the judge's pick and
+                // probability (ticket 43).
+                response: typeof response === "string" ? response : undefined,
+                decision: previewDecision(step, decide, confidence),
               }
             : {
                 kind: "links",

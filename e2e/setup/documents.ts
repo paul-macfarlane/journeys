@@ -187,6 +187,21 @@ export function promptDocument(): GraphDocument {
   return document;
 }
 
+/** The deciding Prompt `decidingDocument()` asks on the queue Step. */
+export const DECIDING_PROMPT = "What do you do when the officer looks up?";
+
+/**
+ * `runnerDocument()` with a deciding Prompt (ticket 43) on the queue Step:
+ * its Response, not a button, picks between "Show your papers" and "Leave
+ * the queue". The e2e server runs with no gateway key, so the judge never
+ * answers here and the runner always falls back to the Choices.
+ */
+export function decidingDocument(): GraphDocument {
+  const document = runnerDocument();
+  document.steps[QUEUE_STEP_ID].prompt = prompt(DECIDING_PROMPT, true, true);
+  return document;
+}
+
 /**
  * A Journey with a loop in it, which a Published Version is allowed to hold
  * since ticket 18: the queue Step leads back to the Start, so a Participant

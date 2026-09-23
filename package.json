@@ -21,6 +21,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed:journey-stories": "tsx scripts/seed/journey-stories.ts",
+    "decide:probe": "tsx scripts/decide-probe.ts",
     "prepare": "husky"
   },
   "lint-staged": {
