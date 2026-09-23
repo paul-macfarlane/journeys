@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import {
+  AnalyticsTab,
+  type SelectedVersionAnalytics,
+} from "@/components/journeys/analytics-tab";
 import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import { DeleteJourneyDialog } from "@/components/journeys/delete-journey-dialog";
 import { DraftEditor } from "@/components/journeys/draft-editor";
@@ -15,11 +19,13 @@ import { ResponseList } from "@/components/journeys/response-list";
 import { VersionList } from "@/components/journeys/version-list";
 import { buttonVariants } from "@/components/ui/button";
 import { UrlTabs } from "@/components/url-tabs";
+import { getAnalyticsForMember } from "@/db/analytics";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
 import { listResponsesForMember } from "@/db/responses";
 import { getLiveVersion, listVersionsForMember } from "@/db/versions";
+import { analyticsForVersion, chooseVersionId } from "@/lib/analytics";
 import { documentsEqual } from "@/lib/graph/document";
 import { groupResponsesByStep } from "@/lib/response-list";
 import { requireSession } from "@/lib/session";
@@ -27,17 +33,27 @@ import { readTab } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
 
 /** The page's sections, the first being what the plain address opens on. */
-const JOURNEY_TABS = ["editor", "versions", "responses", "settings"] as const;
+const JOURNEY_TABS = [
+  "editor",
+  "versions",
+  "analytics",
+  "responses",
+  "settings",
+] as const;
 
 export default async function JourneyPage({
   params,
   searchParams,
 }: {
   params: Promise<{ projectId: string; journeyId: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
+  searchParams: Promise<{
+    tab?: string | string[];
+    /** The Published Version the Analytics tab reads; see `chooseVersionId`. */
+    version?: string | string[];
+  }>;
 }) {
   const session = await requireSession();
-  const [{ projectId, journeyId }, { tab }] = await Promise.all([
+  const [{ projectId, journeyId }, { tab, version }] = await Promise.all([
     params,
     searchParams,
   ]);
@@ -80,6 +96,32 @@ export default async function JourneyPage({
   );
   if (!responses) notFound();
   const responseGroups = groupResponsesByStep(draft, responses);
+
+  // The Analytics tab reads one Published Version: the one the address
+  // names when it is this Journey's, else the live one, else the newest.
+  // Null only for a Journey never published; `getAnalyticsForMember` can
+  // otherwise only refuse a non-Member, already answered above.
+  const analyticsVersionId = chooseVersionId(versions, version);
+  const analyticsSource =
+    analyticsVersionId === null
+      ? null
+      : await getAnalyticsForMember(
+          projectId,
+          journeyId,
+          analyticsVersionId,
+          session.user.id,
+        );
+  const selectedAnalytics: SelectedVersionAnalytics | null = analyticsSource
+    ? {
+        versionId: analyticsSource.version.id,
+        document: analyticsSource.version.document,
+        analytics: analyticsForVersion(
+          analyticsSource.version.id,
+          analyticsSource.version.document,
+          analyticsSource.runs,
+        ),
+      }
+    : null;
 
   // Publish has nothing to do while participants already see exactly this:
   // the Draft, the title, and the description. An unpublished or
@@ -173,6 +215,13 @@ export default async function JourneyPage({
                 journeyId={journey.id}
                 versions={versions}
               />
+            ),
+          },
+          {
+            value: "analytics",
+            label: "Analytics",
+            content: (
+              <AnalyticsTab versions={versions} selected={selectedAnalytics} />
             ),
           },
           {

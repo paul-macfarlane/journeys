@@ -199,6 +199,8 @@ A Run whose last step is not an Ending and has no ended-at is an abandonment for
 
 All analytics are computed per Published Version from Run paths: choice take-rate (runs whose path contains step A followed by step B, over runs that visited A), ending counts, outcome distribution, abandonment per step (runs whose path ends at that step without ended-at), starts, and completions. The canvas overlay reuses the same graph rendering as the editor with numbers on edges and nodes. Responses are listed per step with no participant identifiers.
 
+_Amended by ticket 10 (2026-09-22), following ticket 18's cycles: a path may visit a Step more than once, so a Choice's take-rate is its traversals (each consecutive pair of path entries that is that Choice) over every visit to its Step, not over Runs — a Step's Choices and the Runs that stop on it then account for its visits exactly once. Completion and abandonment are read off the path alone (a Run is completed when its last entry is an Ending of the version's document), which is equivalent to `ended_at` under ADR-0002 and keeps the map and the totals from ever disagreeing. Two Choices of one Step to the same Step cannot be told apart in a path and share the pair's number._
+
 ### Members and auth
 
 Authors authenticate via better-auth. Any signed-in user can create a Project and becomes its first Member. A Member adds another by the email of an existing account; there are no invitation emails or pending states. Draft edits are last-write-wins with no locking.
