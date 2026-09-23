@@ -1,4 +1,5 @@
 import { AppNavbar } from "@/components/navbar/app-navbar";
+import { SiteFooter } from "@/components/site-footer";
 
 /**
  * The navbar above a Project and everything inside it — its Journeys and
@@ -20,6 +21,7 @@ export default async function ProjectLayout({
     <>
       <AppNavbar projectId={projectId} />
       {children}
+      <SiteFooter />
     </>
   );
 }

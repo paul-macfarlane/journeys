@@ -19,6 +19,19 @@ export const CONTACT_EMAIL = "pauljosephmacfarlane@gmail.com";
 /** The day the legal pages were last changed, shown on both. */
 export const LEGAL_UPDATED = "22 September 2026";
 
+/** Where the site footer's GitHub link points. */
+export const REPOSITORY_URL = "https://github.com/paul-macfarlane/journeys";
+
+/** Who the site footer's copyright line names. */
+export const COPYRIGHT_HOLDER = "Paul Macfarlane";
+
+/**
+ * The year the site footer's copyright line shows. Read once at module
+ * load — the server's build/boot clock, never a Participant's or an
+ * Author's own browser clock — so every render of the footer agrees.
+ */
+export const COPYRIGHT_YEAR = new Date().getFullYear();
+
 /**
  * The palette's anchors as sRGB hex, for the surfaces that cannot read a
  * CSS variable: the favicon, the web manifest, the theme-color meta tags,

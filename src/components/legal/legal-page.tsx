@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { LegalLinks, Wordmark } from "@/components/brand";
+import { Wordmark } from "@/components/brand";
+import { SiteFooter } from "@/components/site-footer";
 import { LEGAL_UPDATED } from "@/lib/brand";
 
 /**
@@ -45,14 +46,7 @@ export function LegalPage({
         </div>
       </main>
 
-      <footer className="border-t">
-        <div className="text-muted-foreground mx-auto flex w-full max-w-prose items-center justify-between gap-4 px-4 py-4 text-sm sm:px-6">
-          <Link href="/" className="hover:text-foreground">
-            Back to Journeys
-          </Link>
-          <LegalLinks />
-        </div>
-      </footer>
+      <SiteFooter width="prose" />
     </div>
   );
 }
