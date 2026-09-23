@@ -6,6 +6,7 @@ import {
   type Content,
   type InlineElement,
   type ListItem,
+  type Paragraph,
 } from "@/lib/graph/content";
 import { richTextExtensions } from "@/lib/rich-text/extensions";
 
@@ -70,10 +71,9 @@ function hardenBlock(block: Block): Block | null {
     case "blockquote":
       return {
         ...block,
-        content: block.content.map((paragraph) => ({
-          ...paragraph,
-          content: hardenInline(paragraph.content),
-        })),
+        content: block.content.map(
+          (paragraph) => hardenBlock(paragraph) as Paragraph,
+        ),
       };
     case "bulletList":
     case "orderedList":
@@ -111,7 +111,7 @@ export function RichText({ content }: { content: Content }) {
       // phone scrolls sideways to reach the text. A quote is set off by a
       // rule in the Theme's muted colour and stays upright, so an Author's
       // own italics inside it still read as emphasis.
-      className="flex flex-col gap-4 break-words [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:not-italic [&_blockquote>*+*]:mt-4 [&_a]:underline [&_a]:underline-offset-4 [&_figcaption]:mt-2 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
+      className="flex flex-col gap-4 break-words [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:not-italic [&_blockquote>*+*]:mt-4 [&_figcaption]:mt-2 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

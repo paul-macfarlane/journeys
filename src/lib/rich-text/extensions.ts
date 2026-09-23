@@ -11,9 +11,8 @@ import StarterKit from "@tiptap/starter-kit";
  *
  * Both close over the same allowed set `@/lib/graph/content` describes:
  * paragraphs and line breaks, headings, quotes, bold, italic, underline,
- * strike, bullet and ordered lists, links, and an
- * image with alt text and a caption. Everything else StarterKit would bring is
- * switched off. `editorExtensions` additionally leaves undo/redo, the drop
+ * strike, bullet and ordered lists, links, and an image with alt text and a
+ * caption. Everything else StarterKit would bring is switched off. `editorExtensions` additionally leaves undo/redo, the drop
  * cursor, and the gap cursor enabled — editing conveniences that emit no
  * content of their own, so the closed content set stays the same either way.
  */
@@ -66,15 +65,18 @@ export const CaptionedImage = Image.extend({
 
 /**
  * A quote that holds paragraphs and nothing else (ticket 40), the shape
- * `@/lib/graph/content` stores. StarterKit's quote holds any block, so a
- * heading, list, or second quote inside one would be dropped on save; with
- * this content rule the editor never makes one. Written here rather than
- * extended from `@tiptap/extension-blockquote`, which is only StarterKit's
- * dependency, not the app's; the commands and Mod-Shift-b are the same.
+ * `@/lib/graph/content` stores. StarterKit's quote holds any block and sits
+ * anywhere a block can — a list item among them — so a heading or list in a
+ * quote, or a quote in a list, would lose its words on save. Here it holds
+ * paragraphs, and it is in a group of its own that only `QuoteDocument`
+ * admits, so the editor never makes either shape and a paste of one is
+ * lifted into what fits. Written here rather than extended from
+ * `@tiptap/extension-blockquote`, which is only StarterKit's dependency, not
+ * the app's; the commands and Mod-Shift-b are the same.
  */
 export const ParagraphQuote = Node.create({
   name: "blockquote",
-  group: "block",
+  group: "quote",
   content: "paragraph+",
   defining: true,
   parseHTML() {
@@ -100,12 +102,26 @@ export const ParagraphQuote = Node.create({
     };
   },
   addKeyboardShortcuts() {
-    return { "Mod-Shift-b": () => this.editor.commands.toggleBlockquote() };
+    return {
+      // Answered even where no quote can go, so the press never falls
+      // through to Bold's Mod-b.
+      "Mod-Shift-b": () => {
+        this.editor.commands.toggleBlockquote();
+        return true;
+      },
+    };
   },
   addInputRules() {
     // "> " at the start of a paragraph quotes it, as in Tiptap's own.
     return [wrappingInputRule({ find: /^\s*>\s$/, type: this.type })];
   },
+});
+
+/** StarterKit's document, admitting a quote beside the blocks at its top. */
+export const QuoteDocument = Node.create({
+  name: "doc",
+  topNode: true,
+  content: "(block|quote)+",
 });
 
 /**
@@ -114,7 +130,9 @@ export const ParagraphQuote = Node.create({
  * the runner never edits.
  */
 const sharedStarterKitOptions = {
-  // StarterKit's own quote is swapped for `ParagraphQuote` below.
+  // StarterKit's own document and quote are swapped for `QuoteDocument`
+  // and `ParagraphQuote` below.
+  document: false,
   blockquote: false,
   code: false,
   codeBlock: false,
@@ -134,12 +152,14 @@ export const richTextExtensions = [
     gapcursor: false,
     undoRedo: false,
   }),
+  QuoteDocument,
   ParagraphQuote,
   CaptionedImage,
 ];
 
 export const editorExtensions = [
   StarterKit.configure({ ...sharedStarterKitOptions }),
+  QuoteDocument,
   ParagraphQuote,
   CaptionedImage,
 ];
@@ -158,6 +178,7 @@ export const editorExtensions = [
  */
 export const draftEditorExtensions = [
   StarterKit.configure({ ...sharedStarterKitOptions, undoRedo: false }),
+  QuoteDocument,
   ParagraphQuote,
   CaptionedImage,
 ];

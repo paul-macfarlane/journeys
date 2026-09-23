@@ -539,29 +539,35 @@ test("rich-text-underline-strike-quote", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
   await renameStep(page, "Lamp room");
 
-  // Underline from the toolbar, strikethrough from its shortcut, a line
-  // break from Shift+Enter, and a quote from the toolbar again.
+  // Every mark and the quote go on by one of button or shortcut and the
+  // marks come off by the other, so all three shortcuts and all three
+  // buttons are pressed; the line break is Shift+Enter.
   const surface = page.getByLabel("Step content");
   const underline = page.getByRole("button", {
     name: "Underline",
     exact: true,
   });
   await surface.click();
+  const strike = page.getByRole("button", {
+    name: "Strikethrough",
+    exact: true,
+  });
+  const quoteButton = page.getByRole("button", { name: "Quote", exact: true });
   await underline.click();
   await page.keyboard.type("Never");
-  await underline.click();
+  await page.keyboard.press("ControlOrMeta+u");
+  await expect(underline).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.type(" ");
   await page.keyboard.press("ControlOrMeta+Shift+s");
   await page.keyboard.type("leave");
-  await page.keyboard.press("ControlOrMeta+Shift+s");
+  await strike.click();
+  await expect(strike).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Shift+Enter");
   await page.keyboard.type("the light");
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Quote", exact: true }).click();
+  await page.keyboard.press("ControlOrMeta+Shift+b");
+  await expect(quoteButton).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.type("Keep the light burning.");
-  await expect(
-    page.getByRole("button", { name: "Quote", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
   await expectSaved(page);
 
   // The tooltip names the shortcut the editor answered to.

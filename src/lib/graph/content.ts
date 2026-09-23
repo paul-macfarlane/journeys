@@ -528,9 +528,10 @@ export function isBlankContent(content: Content): boolean {
  * when an Author hovers or focuses it, so the map can be skimmed without
  * opening every Step.
  *
- * Every paragraph, heading, quote, and list item in document order, joined by single
- * spaces with the whitespace collapsed; content longer than `limit` is cut
- * there and marked with an ellipsis. Pure — no DOM — so the map and a test
+ * Every paragraph, heading, quote, and list item in document order, joined
+ * by single spaces with the whitespace collapsed (a line break reads as a
+ * space); content longer than `limit` is cut there and marked with an
+ * ellipsis. Pure — no DOM — so the map and a test
  * read the same thing.
  */
 export function contentPreview(
