@@ -9,7 +9,9 @@ import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
   loopDocument,
+  promptDocument,
   publishDocument,
+  QUEUE_PROMPT,
   QUEUE_STEP_ID,
   QUEUE_STEP_TITLE,
   readRuns,
@@ -121,6 +123,11 @@ async function expectNoSidewaysScroll(page: Page): Promise<void> {
       document.documentElement.clientWidth,
   );
   expect(fits).toBe(true);
+}
+
+/** The Prompt's textbox on a runner screen, found by its question. */
+function promptBox(page: Page, label: string) {
+  return page.getByRole("textbox", { name: label });
 }
 
 test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
@@ -240,6 +247,104 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
   ]);
   expect(runs[0].ended_at).not.toBeNull();
   expect(runs[0].outcome_id).toBe("outcome-died-in-emergency");
+});
+
+test("runner-required-prompt-refusal", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Crossing ${suffix}`,
+  );
+
+  // The middle Step's Prompt is required; the Start's is optional.
+  await writeDraftDocument(journeyId, promptDocument());
+  const versionId = await publishDocument(journeyId, promptDocument());
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+
+    // The Start's optional Prompt left blank still creates the Run.
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    // Advancing with the required box blank is refused at the field: the
+    // app's own text beside the box, not a browser bubble, and the Run stays
+    // on the same Step.
+    const queueBox = promptBox(participant, QUEUE_PROMPT);
+    const form = participant.locator("form");
+    await expect(form).toHaveJSProperty("noValidate", true);
+
+    await participant.getByRole("button", { name: "Show your papers" }).click();
+
+    await expect(participant).toHaveURL(
+      new RegExp(`/j/${journeyId}/${QUEUE_STEP_ID}(\\?|$)`),
+    );
+    expect((await readRuns(versionId))[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+    ]);
+
+    await expect(queueBox).toHaveAttribute("aria-required", "true");
+    await expect(queueBox).toHaveAttribute("aria-invalid", "true");
+    await expect(queueBox).toHaveAttribute(
+      "aria-describedby",
+      `response-${QUEUE_STEP_ID}-refusal`,
+    );
+    await expect(queueBox).toHaveJSProperty("validationMessage", "");
+    await expect(queueBox).toBeFocused();
+
+    const refusal = participant
+      .getByRole("alert")
+      .filter({ hasText: "This step needs a response before you go on." });
+    await expect(refusal).toBeVisible();
+
+    // One place, the field: the same text does not also show above the Step.
+    await expect(
+      participant
+        .getByRole("status")
+        .filter({ hasText: "This step needs a response before you go on." }),
+    ).toHaveCount(0);
+
+    await participant.screenshot({
+      path: evidencePath(
+        "runner-required-prompt-refusal",
+        "runner-required-prompt-refusal.png",
+      ),
+      fullPage: true,
+    });
+
+    // Answered, the Choice goes through and the Run moves on.
+    await queueBox.fill("Whether the paper in my pocket is the right one.");
+    await participant.getByRole("button", { name: "Show your papers" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Waved through" }),
+    ).toBeVisible();
+    expect((await readRuns(versionId))[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      "waved-through",
+    ]);
+  } finally {
+    await participantContext.close();
+  }
 });
 
 test("runner-back-and-choose-again", async ({ page, context, browser }) => {

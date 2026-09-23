@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
-import { StepView } from "@/components/runner/step-view";
+import {
+  ResponseNotice,
+  responseRefusal,
+  StepView,
+} from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
@@ -22,11 +26,16 @@ import { previewChooseAction } from "./actions";
  */
 export default async function PreviewStartPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projectId: string; journeyId: string }>;
+  searchParams: Promise<{ notice?: string | string[] }>;
 }) {
   const session = await requireSession();
-  const { projectId, journeyId } = await params;
+  const [{ projectId, journeyId }, { notice }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   const journey = await getJourneyForMember(
     projectId,
@@ -59,31 +68,35 @@ export default async function PreviewStartPage({
       theme={theme}
     >
       {hasStart ? (
-        // No "Start over" on an Ending here: this is the start. The live
-        // Start offers no Prompt while it is an Ending either, so neither
-        // does this one — links, then, exactly as the runner chooses.
-        <StepView
-          step={draft.steps[draft.startStepId]}
-          document={draft}
-          choices={
-            draft.steps[draft.startStepId].prompt !== null &&
-            draft.steps[draft.startStepId].choices.length > 0
-              ? {
-                  kind: "form",
-                  action: previewChooseAction.bind(
-                    null,
-                    projectId,
-                    journeyId,
-                    draft.startStepId,
-                  ),
-                }
-              : {
-                  kind: "links",
-                  href: (stepId) => `${journeyHref}/preview/${stepId}`,
-                }
-          }
-          startOver={null}
-        />
+        <>
+          <ResponseNotice notice={notice} />
+          {/* No "Start over" on an Ending here: this is the start. The live
+              Start offers no Prompt while it is an Ending either, so neither
+              does this one — links, then, exactly as the runner chooses. */}
+          <StepView
+            step={draft.steps[draft.startStepId]}
+            document={draft}
+            choices={
+              draft.steps[draft.startStepId].prompt !== null &&
+              draft.steps[draft.startStepId].choices.length > 0
+                ? {
+                    kind: "form",
+                    action: previewChooseAction.bind(
+                      null,
+                      projectId,
+                      journeyId,
+                      draft.startStepId,
+                    ),
+                    refusal: responseRefusal(notice),
+                  }
+                : {
+                    kind: "links",
+                    href: (stepId) => `${journeyHref}/preview/${stepId}`,
+                  }
+            }
+            startOver={null}
+          />
+        </>
       ) : (
         <p className="text-muted-foreground">This draft has no start step.</p>
       )}

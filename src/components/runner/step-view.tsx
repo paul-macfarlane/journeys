@@ -63,6 +63,7 @@ export type ChoiceControls =
       kind: "form";
       action: (formData: FormData) => Promise<void>;
       response?: string | null;
+      refusal?: string | null;
     };
 
 /**
@@ -87,7 +88,27 @@ const RESPONSE_NOTICES: Record<string, { text: string; refusal: boolean }> = {
   },
 };
 
-/** The notice named in the address, when it is one of the Prompt's. */
+/**
+ * The refusal text for a notice, when the notice is one of the two the
+ * server sends a blank or over-long Prompt back with — null for every other
+ * notice, known or not. `ResponseField` is the refusal's one place; a
+ * refusal never renders above the Step as well.
+ */
+export function responseRefusal(
+  notice: string | string[] | undefined,
+): string | null {
+  const known =
+    typeof notice === "string" && Object.hasOwn(RESPONSE_NOTICES, notice)
+      ? RESPONSE_NOTICES[notice]
+      : null;
+  return known !== null && known.refusal ? known.text : null;
+}
+
+/**
+ * The notice named in the address, when it is one of the Prompt's — except a
+ * refusal, which `responseRefusal` renders at the field instead, so it shows
+ * in exactly one place.
+ */
 export function ResponseNotice({
   notice,
 }: {
@@ -97,16 +118,10 @@ export function ResponseNotice({
     typeof notice === "string" && Object.hasOwn(RESPONSE_NOTICES, notice)
       ? RESPONSE_NOTICES[notice]
       : null;
-  if (known === null) return null;
+  if (known === null || known.refusal) return null;
 
   return (
-    <p
-      role="status"
-      className={cn(
-        "text-sm",
-        known.refusal ? "text-destructive" : "text-muted-foreground",
-      )}
-    >
+    <p role="status" className="text-muted-foreground text-sm">
       {known.text}
     </p>
   );
@@ -114,20 +129,28 @@ export function ResponseNotice({
 
 /**
  * The Prompt's textbox: the question as its label, "(optional)" when it is,
- * the browser's own `required` check when it is not, and the same cap the
- * server enforces. A native label, like everything else in the runner: the
- * page ships no client bundle.
+ * `aria-required` when it is not (native constraint validation is off across
+ * the app, so nothing here relies on the browser's own `required` bubble),
+ * and the same cap the server enforces. A refusal from the server renders
+ * directly beneath the textbox, in the destructive colour, wired to it by
+ * `aria-describedby` and `aria-invalid`; `autoFocus` is what keeps the field
+ * in focus after the server's redirect, since the runner ships no JS of its
+ * own to do it. A native label, like everything else in the runner: the page
+ * ships no client bundle.
  */
 function ResponseField({
   step,
   prompt,
   response,
+  refusal,
 }: {
   step: Step;
   prompt: Prompt;
   response: string | null | undefined;
+  refusal: string | null;
 }) {
   const id = `response-${step.id}`;
+  const refusalId = `${id}-refusal`;
 
   return (
     <div className="flex flex-col gap-2">
@@ -141,11 +164,19 @@ function ResponseField({
         id={id}
         name="response"
         rows={4}
-        required={prompt.required}
+        aria-required={prompt.required}
         maxLength={MAX_RESPONSE_LENGTH}
         defaultValue={response ?? ""}
         autoComplete="off"
+        aria-invalid={refusal !== null}
+        aria-describedby={refusal !== null ? refusalId : undefined}
+        autoFocus={refusal !== null}
       />
+      {refusal !== null ? (
+        <p id={refusalId} role="alert" className="text-destructive text-sm">
+          {refusal}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -181,11 +212,16 @@ function EndingView({
           Its own form, too: "Start over" below is a form as well, and one
           form cannot hold another. */}
       {step.prompt !== null && choices.kind === "form" ? (
-        <form action={choices.action} className="flex flex-col gap-3">
+        <form
+          action={choices.action}
+          noValidate
+          className="flex flex-col gap-3"
+        >
           <ResponseField
             step={step}
             prompt={step.prompt}
             response={choices.response}
+            refusal={choices.refusal ?? null}
           />
           <button type="submit" className={choiceLinkClassName}>
             Save response
@@ -245,12 +281,13 @@ function ChoiceList({
   if (choices.kind !== "form") return list;
 
   return (
-    <form action={choices.action} className="flex flex-col gap-6">
+    <form action={choices.action} noValidate className="flex flex-col gap-6">
       {step.prompt !== null ? (
         <ResponseField
           step={step}
           prompt={step.prompt}
           response={choices.response}
+          refusal={choices.refusal ?? null}
         />
       ) : null}
       {list}

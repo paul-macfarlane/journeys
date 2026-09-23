@@ -186,7 +186,7 @@ test("prompts-participant-answers-and-author-reads", async ({
     ).toBeVisible();
     const startBox = promptBox(participant, `${START_PROMPT} (optional)`);
     await expect(startBox).toBeVisible();
-    await expect(startBox).not.toHaveAttribute("required", /.*/);
+    await expect(startBox).toHaveAttribute("aria-required", "false");
 
     await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(participant).toHaveURL(
@@ -195,32 +195,19 @@ test("prompts-participant-answers-and-author-reads", async ({
     expect(await readRuns(versionId)).toHaveLength(1);
     expect(await readResponses(versionId)).toEqual([]);
 
-    // The middle Step's Prompt is required: the browser refuses the Choice
-    // while the box is blank, and the Run has not moved.
+    // The middle Step's Prompt is required: the server refuses the Choice
+    // while the box is blank, refusing at the field itself, and the Run has
+    // not moved.
     const queueBox = promptBox(participant, QUEUE_PROMPT);
     await expect(queueBox).toBeVisible();
-    await expect(queueBox).toHaveAttribute("required", "");
+    await expect(queueBox).toHaveAttribute("aria-required", "true");
     await participant.getByRole("button", { name: "Show your papers" }).click();
-    await expect(queueBox).toHaveJSProperty("validity.valueMissing", true);
-    expect((await readRuns(versionId))[0].path).toEqual([
-      START_STEP_ID,
-      QUEUE_STEP_ID,
-    ]);
-
-    // The same form posted past the browser's check — what a crafted
-    // request looks like — is refused by the server with the notice, and
-    // still moves nothing.
-    await queueBox.evaluate((box) => {
-      const form = (box as HTMLTextAreaElement).form;
-      if (!form) throw new Error("the Prompt's box is outside its form");
-      form.noValidate = true;
-      form.requestSubmit(
-        form.querySelector<HTMLButtonElement>('button[value="waved-through"]'),
-      );
-    });
-    await expect(participant.getByRole("status")).toHaveText(
-      "This step needs a response before you go on.",
-    );
+    await expect(queueBox).toHaveAttribute("aria-invalid", "true");
+    await expect(
+      participant
+        .getByRole("alert")
+        .filter({ hasText: "This step needs a response before you go on." }),
+    ).toBeVisible();
     await expect(
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
@@ -386,11 +373,16 @@ test("prompts-preview-stores-nothing", async ({ page, context }) => {
   );
 
   // The required Prompt is required here too — the same box, the same
-  // browser check — and then walks on to the Ending.
+  // server refusal — and then walks on to the Ending.
   const queueBox = promptBox(page, QUEUE_PROMPT);
-  await expect(queueBox).toHaveAttribute("required", "");
+  await expect(queueBox).toHaveAttribute("aria-required", "true");
   await page.getByRole("button", { name: "Show your papers" }).click();
-  await expect(queueBox).toHaveJSProperty("validity.valueMissing", true);
+  await expect(queueBox).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "This step needs a response before you go on." }),
+  ).toBeVisible();
   await queueBox.fill("Whether I will be believed.");
   await page.getByRole("button", { name: "Show your papers" }).click();
   await expect(
