@@ -47,7 +47,10 @@ export function VersionList({
    * live version — and always for a Journey with no live version.
    */
   hasUnpublishedChanges: boolean;
-  /** When the Draft was last saved or restored. */
+  /**
+   * When the Draft was last edited: its document's save or restore, or a
+   * later title or description edit while that is what is pending.
+   */
   draftUpdatedAt: Date;
 }) {
   return (

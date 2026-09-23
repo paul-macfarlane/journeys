@@ -592,4 +592,29 @@ test("versions-tab-shows-draft", async ({ page, context }) => {
     versions.nth(0).getByText("Live", { exact: true }),
   ).toBeVisible();
   expect(await readVersionRows(journeyId)).toHaveLength(2);
+
+  // A description edit alone is an unpublished change too, so the Draft
+  // row is back — and its time is that edit's, not the document's older
+  // save.
+  await editJourneyField(
+    page,
+    journeyId,
+    "description",
+    "A family waits for the night crossing.",
+  );
+  await expect(draftRow).toHaveCount(1);
+  const [journeyRecord] = await queryE2eDatabase<{
+    updated_at: string | Date;
+  }>('SELECT updated_at FROM "journey" WHERE id = $1', [journeyId]);
+  const [draftAfter] = await queryE2eDatabase<{ updated_at: string | Date }>(
+    'SELECT updated_at FROM "draft" WHERE journey_id = $1',
+    [journeyId],
+  );
+  expect(new Date(journeyRecord.updated_at).getTime()).toBeGreaterThan(
+    new Date(draftAfter.updated_at).getTime(),
+  );
+  await expect(draftRow.locator("time")).toHaveAttribute(
+    "datetime",
+    new Date(journeyRecord.updated_at).toISOString(),
+  );
 });

@@ -119,11 +119,22 @@ export default async function JourneyPage({
   // the Draft, the title, and the description. An unpublished or
   // never-published Journey always has something to publish.
   const live = await getLiveVersion(projectId, journeyId, session.user.id);
-  const hasUnpublishedChanges =
+  const titleOrDescriptionPending =
     live === null ||
     live.title !== journey.title ||
-    live.description !== journey.description ||
-    !documentsEqual(draft, live.document);
+    live.description !== journey.description;
+  const hasUnpublishedChanges =
+    titleOrDescriptionPending || !documentsEqual(draft, live.document);
+
+  // When the Draft was last edited, for its row on the Versions tab: the
+  // document's own save, or the title's and description's when they are
+  // what is pending and were edited later. The Journey row's timestamp
+  // also moves on publish, unpublish, and a Theme change, so it counts
+  // only while the title or description differs from the live version.
+  const draftEditedAt =
+    titleOrDescriptionPending && journey.updatedAt > stored.updatedAt
+      ? journey.updatedAt
+      : stored.updatedAt;
 
   return (
     <>
@@ -211,7 +222,7 @@ export default async function JourneyPage({
                   journeyId={journey.id}
                   versions={versions}
                   hasUnpublishedChanges={hasUnpublishedChanges}
-                  draftUpdatedAt={stored.updatedAt}
+                  draftUpdatedAt={draftEditedAt}
                 />
               ),
             },
