@@ -33,7 +33,8 @@ const THEMES = [
  * choices as plain rows (a fly-out submenu is a desktop idiom that cramps a
  * phone), and Sign out. The name also sits beside the avatar from tablet
  * width up and hides at phone width, where the avatar alone is the trigger
- * and the menu opens as a bottom sheet (see `DropdownMenuContent`).
+ * and the menu opens as a popover under it, as at every width (Base UI's
+ * positioner flips and clamps it into the viewport).
  *
  * Sign out is the sign-out button `/projects` used to carry: end the
  * session, then push *and* refresh, because the server components above

@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
  *
  * Two renderings share the geometry. `tile` sits the fork on a rounded
  * square in the primary colour (the navbar, the sign-in page, the favicon's
- * twin in `src/app/icon.svg`); `line` draws the fork alone in the current
- * text colour, for places that should stay quiet, like the runner footer.
+ * twin in `src/app/icon.svg`, and the site footer everywhere, the runner
+ * included); `line` draws the fork alone in the current text colour, for a
+ * place that should stay quiet — none at the moment, since ticket 34 gave
+ * the runner the same footer as every other page.
  *
  * `aria-hidden` by default: the mark always sits beside the name, and a
  * screen reader should hear "Journeys" once.

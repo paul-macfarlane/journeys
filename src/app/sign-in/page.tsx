@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { LegalLinks, Wordmark } from "@/components/brand";
+import { Wordmark } from "@/components/brand";
 import { SignInButtons } from "@/components/sign-in-buttons";
+import { SiteFooter } from "@/components/site-footer";
 import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -38,15 +39,7 @@ export default async function SignInPage() {
           below.
         </p>
       </main>
-      <footer className="mx-auto flex w-full max-w-sm items-center justify-between gap-4 px-6 py-6">
-        <Link
-          href="/"
-          className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
-        >
-          Back to Journeys
-        </Link>
-        <LegalLinks className="text-muted-foreground" />
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

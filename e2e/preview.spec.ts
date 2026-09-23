@@ -31,6 +31,8 @@ test.afterAll(async () => {
 test("preview", async ({ page, context }) => {
   // Preview sits under the Author navbar (ticket 29), so the page has two
   // banner landmarks; the frame's own header is the one without the App nav.
+  // The footer, though, is the frame's alone (ticket 34): the Author layout
+  // above it renders none, so there is exactly one contentinfo landmark.
   const frameHeader = page
     .getByRole("banner")
     .filter({ hasNot: page.getByRole("navigation", { name: "App" }) });
@@ -57,6 +59,7 @@ test("preview", async ({ page, context }) => {
   // the banner and its way back to the editor telling it apart.
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
   await expect(frameHeader).toHaveText(journeyTitle);
+  await expect(page.getByRole("contentinfo")).toHaveCount(1);
   await expect(page.getByText("Preview — nothing is recorded.")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Back to editor" }),

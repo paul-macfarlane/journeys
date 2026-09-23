@@ -392,6 +392,17 @@
   html {
     @apply font-sans;
   }
+  /* Scrolling something into view — a focus move, an anchored jump —
+     lands it below the sticky navbar (h-14) and, from tablet width up, the
+     sticky tab row under it (ticket 34), never beneath them. */
+  html:has([data-slot="app-navbar"]) {
+    scroll-padding-top: 3.5rem;
+  }
+  @media (width >= 40rem) {
+    html:has([data-slot="sticky-tabs"]) {
+      scroll-padding-top: 7rem;
+    }
+  }
   /* Headings carry the reading face, everywhere: page titles, dialog
      titles, the Step titles a Participant reads, and the headings inside
      a Step's rich text. Weights stay whatever each heading sets. */

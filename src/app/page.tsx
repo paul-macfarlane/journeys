@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { JourneysMark, LegalLinks } from "@/components/brand";
+import { JourneysMark } from "@/components/brand";
+import { SiteFooter } from "@/components/site-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -61,9 +62,7 @@ export default async function LandingPage() {
           )}
         </div>
       </main>
-      <footer className="mx-auto flex w-full max-w-2xl items-center justify-end px-6 py-6">
-        <LegalLinks className="text-muted-foreground" />
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

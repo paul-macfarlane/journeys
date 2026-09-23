@@ -1,4 +1,5 @@
 import { AppNavbar } from "@/components/navbar/app-navbar";
+import { SiteFooter } from "@/components/site-footer";
 
 /**
  * The navbar above the Projects list. It is a sibling of the layout under
@@ -18,6 +19,7 @@ export default function ProjectsListLayout({
     <>
       <AppNavbar />
       {children}
+      <SiteFooter />
     </>
   );
 }
