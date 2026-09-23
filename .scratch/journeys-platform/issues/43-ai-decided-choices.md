@@ -1,8 +1,8 @@
 # 43: Free text as the decision, judged by jev
 
-Status: ready-for-agent
+Status: done
 Blocked by: None
-Owner:
+Owner: Claude Fable 5.1 (`/atlas-implement`, claimed 2026-09-23)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 3 (Paul, 2026-09-22, grilled the same day): sweep 1 (hackathon) 33 → 34 → 35 → 36 → 37; sweep 2 (nice to have before the judges) 38 → 39 → 40 → **43**; sweep 3 (post-hackathon) 41 → 42 → 44 → 45. 14 stays available; 17 is post-hackathon. Paul, Q22: "nice to have for hackathon, but not required."
 Route: contract
@@ -35,5 +35,41 @@ Acceptance criteria:
 - [ ] `pnpm test:e2e` passes once in full at the end.
 
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `contract`): commit only the screenshot directories of the specs this ticket names plus `ac-3-real-model.txt`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-22, item 11, grilled the same day.
+
+### [EXECUTION PLAN] 2026-09-23 — Claude Fable 5.1 (`/atlas-implement`, Route: contract)
+
+Worktree `.claude/worktrees/43-ai-decided-choices/journeys` on `feat/43-ai-decided-choices` (off `origin/staging` at `14382c5`), dummy env exported inline (no `.env.local`), e2e on port 3143 against `journeys_e2e_t43`. Two sequential deliverables, one worker each, same branch, no integration worktree (D2 builds on D1's contract, and both touch `step-view.tsx`, `prompt.ts`, and `documents.ts`, so parallel work would collide there):
+
+- **D1 — contract, decision module, editor.** `prompt.decides` (zod default `false`; `readResponse` treats a deciding Prompt as required; `setStepPrompt` forces `required: true` when `decides`), the `ai` package (`package.json` only — the lockfile commit is Paul's), `src/lib/ai/decide.ts` (pure `buildDecision`/`decideChoice(step, response, judge)` with `DECISION_THRESHOLD = 0.5`, plus `gatewayJudge` around `experimental_evaluate`, `model: "typesafe-ai/jev"`, gateway tag `feature:decide`, null on any failure or an answer naming no Choice of the Step), the Step panel's "Let the response decide the next step" checkbox (two or more Choices only), the "(optional)" label rule, and unit tests at those seams.
+- **D2 — runner, Preview, publish warning, spec, amendments.** The deciding form (textbox and one "Continue" button, no Choice buttons) in `StepView`; `respondAndChooseAction` and `chooseFromStartAction` judge when the form carries no `to`, advance on a confident answer exactly as a pressed Choice, else redirect with `?decide=<choiceId|none>` (the Start also carries `response=` since no Run holds it yet) and the page shows the Choices, jev's pick marked, under "Choose for yourself"; per-Run rate limit of one decision per second (fallback, never an error); Preview always comes back with the pick and its probability and records nothing; `publishJourneyAction` returns a non-blocking warning when a deciding Prompt is published with no key; `playwright.config.ts` blanks `AI_GATEWAY_API_KEY` for the e2e server; `runner-deciding-prompt` in `runner.spec.ts` over a `decidingDocument()` fixture; `[SCOPE CHANGE]` on the spec and the `decisions.md` amendment.
+
+Verification map (`local + deployed`; commands run inside the worktree with the dummy env): AC-1 — `pnpm test` over `decide.test.ts` and `actions.test.ts` (confident path records the Choice and the Response) plus `runner-deciding-prompt` (deciding form, no buttons, advance from a button) and one manual real-model run captured as `test-results/ac-3-real-model.txt`; AC-2 — the same unit files (weak → preselected, error/none/no key → none) plus the spec's fallback screen with the key blank; AC-3 — `ac-3-existing-documents.txt` (every fixture and the three legacy documents parse unchanged), the blank key in `playwright.config.ts`, and the unit test that `gatewayJudge` is never reached without a key; AC-4 — `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=runner-deciding-prompt pnpm test:e2e` captured as `dod-1-commands.txt` and `dod-1-e2e.txt`. Human gates: (H1) the `pnpm-lock.yaml` commit after D1 adds `ai` — PR CI is red until Paul pushes it; (H2) the real-model run needs the gateway key at hand in the worktree, which only Paul can place. Review: two frontier readers (spec conformity, standards) over `14382c5...HEAD`.
+
+### [CLOSEOUT] 2026-09-23 — Claude Opus 5.5 (`/atlas-implement`, Route: contract)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/52 (base `staging`, comparison SHA `14382c5`). Status set to `done` in this commit; merging the PR is Paul's acceptance. **The `pnpm-lock.yaml` commit for `ai@7.0.112` is Paul's; CI is red until it lands.**
+
+**Deliverables.** D1, contract, decide module, and editor (Sonnet worker): 8f4e366, plus orchestrator fix 1812569 (the unit test no longer imports `e2e/setup`). D2, runner, Preview, publish warning, spec, and amendments (Opus worker): 9516c6e. R1, review fixes (Sonnet worker): 85c11b0, plus orchestrator fix 52e21a3 (`setStepPrompt` forces required only while the Prompt genuinely decides). Evidence: d90631e and the real-model commit. One worktree, sequential. Parallelism was rejected on predicted collisions in `prompt.ts`, `step-view.tsx`, and `e2e/setup/documents.ts`; the real D1/D2 diffs overlapped in `step-view.tsx`, `documents.ts`, and `package.json` (not `prompt.ts`), and D2 depended on D1's contract regardless.
+
+**Verified run command (code at 52e21a3):** `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=runner-deciding-prompt pnpm test:e2e`, run with the CI dummy env, `AI_GATEWAY_API_KEY` unset, port 3143, and `journeys_e2e_t43`. Every block exited 0. Unit: 486/486. e2e: 97 passed in 1.8 min, 0 flaky, retries 0. No migration.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| Deciding Step shows the textbox and no Choice buttons; a confident answer advances along the judged Choice, recording path and Response as for a pressed Choice | PASS | `test-results/runner-deciding-prompt/deciding-form.png`; `test-results/ac-1-2-judged-paths.txt` (runner and Start confident paths); `test-results/ac-3-real-model.txt` (real jev: "I keep my eyes down and hold out my papers." advances along Show your papers at 1; "I have waited long enough…" along Leave the queue at 1) |
+| Weak → pick preselected; no key, failed call, or invalid answer → none; the Participant can go on | PASS | `test-results/runner-deciding-prompt/fallback.png` (key blank, then a pressed Choice advances); `test-results/ac-1-2-judged-paths.txt` |
+| Existing documents parse unchanged; Published Versions never rewritten; the e2e suite makes no gateway call | PASS | `test-results/ac-3-existing-documents.txt`; `playwright.config.ts` blanks the key; no-key unit tests |
+| `pnpm test:e2e` passes once in full at the end | PASS locally; PR CI is the durable proof | `test-results/dod-1-commands.txt`, `test-results/dod-1-e2e.txt` |
+| Spec `[SCOPE CHANGE]` and `decisions.md` amendment | PASS | `spec.md` `[SCOPE CHANGE] 2026-09-23` with pointers in "Graph document" and "Public URL and runner"; `decisions.md` "Amendment for ticket 43" with Supersedes; `CONTEXT.md` Prompt and Judge |
+
+**AI code review (two readers over `14382c5...9516c6e`, adjudicated by the orchestrator).**
+- *Spec conformity.* Blocking, fixed in 85c11b0: `gatewayJudge` had no timeout and kept the SDK's two retries, so a stalled gateway stranded the Participant; it is now 5 s with `maxRetries: 0`. Blocking, fixed (raised by both readers): the Start Step keyed the rate limit on the Journey id, so first-time visitors shared one decision per second; the Participant id is now minted before judging. Non-blocking, fixed: a stale `decides` on a Step with fewer than two Choices (the new `isDeciding`, plus 52e21a3); Preview rounding 0.496 to "would have advanced" (it now floors); `step-view.tsx` importing the network module for one constant (`threshold.ts`); the `?response=` prefill ungated; tests added for the Preview action, `gatewayJudge`'s answer branches, and the Start rate key.
+- *Coding standards.* All non-blocking, all fixed: one judge path in server-only `src/lib/ai/judge.ts` instead of two copies; import order; the missing Supersedes sentence in `decisions.md`; the missing spec pointer; lowercase "choice" in editor copy; the `CONTEXT.md` Prompt and Judge entries; a period; `Object.fromEntries` for `criteria`.
+- Open, non-blocking: the rate-limit prune past 10k keys, the Step panel checkbox, and the PublishButton warning display are untested.
+
+**Deviations (approved at review).** `scripts/decide-probe.ts` imports `src/lib/ai` (CLAUDE.md Structure updated); `e2e/prompts.spec.ts` expectations gained `decides: false`; Preview never advances; the Response travels in `?response=` on the Start and in Preview; `publishDraft` returns the document; the rate limit is per instance.
+
+**Queued for Paul (non-blocking, also in the PR).** (1) jev's latency is bimodal (most calls ~0.5 s, 3 of 8 took 12–14 s); at the 5 s timeout the slow third fall back to the Choices. Keep it, or raise it? (2) A hedge ("I'm not sure…") scored 0.65–0.75, so at a threshold of 0.5 a live Run advances on it.
+
+**Next in Paul's order:** sweep 3: 41 → 42 → 44 → 45.
 
 ## Comments

@@ -7,6 +7,7 @@ import { RunHistory } from "@/components/runner/run-history";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
+  liveDecision,
   ResponseNotice,
   responseRefusal,
   StepView,
@@ -53,6 +54,8 @@ export async function generateMetadata({
  * a Back on a loop-closing Step from a Choice to that same Step, and `notice`
  * carries the refusals and confirmations a Participant is told about — the
  * path being full, and since ticket 12 what became of an answer to a Prompt.
+ * A deciding Prompt's answer (ticket 43) comes back as `decide`, the
+ * judge's pick or "none", and the page offers the Choices with it marked.
  * `RunHistoryScript` and `RunHistory` between them write the index into
  * `history.state` for the next Back, correct a Back the server read as a
  * Choice, and strip both parameters from the address bar.
@@ -69,10 +72,11 @@ export default async function RunStepPage({
   searchParams: Promise<{
     at?: string | string[];
     notice?: string | string[];
+    decide?: string | string[];
   }>;
 }) {
   const { journeyId, stepId } = await params;
-  const { at, notice } = await searchParams;
+  const { at, notice, decide } = await searchParams;
 
   const cookieStore = await cookies();
   const runId = cookieStore.get(runCookieName(journeyId))?.value;
@@ -178,6 +182,7 @@ export default async function RunStepPage({
                 action: respondAndChooseAction.bind(null, journeyId, stepId),
                 response,
                 refusal: responseRefusal(notice),
+                decision: liveDecision(step, decide),
               }
             : {
                 kind: "links",

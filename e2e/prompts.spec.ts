@@ -137,7 +137,12 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
       const draft = await readDraft(journeyId);
       return draft.steps[draft.startStepId].prompt;
     })
-    .toEqual({ type: "free_text", label: START_PROMPT, required: false });
+    .toEqual({
+      type: "free_text",
+      label: START_PROMPT,
+      required: false,
+      decides: false,
+    });
 
   await required.check();
   await expect
@@ -145,7 +150,12 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
       const draft = await readDraft(journeyId);
       return draft.steps[draft.startStepId].prompt;
     })
-    .toEqual({ type: "free_text", label: START_PROMPT, required: true });
+    .toEqual({
+      type: "free_text",
+      label: START_PROMPT,
+      required: true,
+      decides: false,
+    });
 
   await page.screenshot({
     path: evidencePath(

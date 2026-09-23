@@ -128,6 +128,13 @@ export function updateStep(
  * panel's one field means both "ask this" and "ask nothing". The label is
  * otherwise kept as typed — trimming it under an Author's cursor would move
  * the cursor — and the runner shows it as it is.
+ *
+ * A deciding Prompt (ticket 43) is always required: the panel disables its
+ * own "Required" checkbox while the Prompt decides, and this is the one
+ * place that forces the stored flag to agree, whatever `prompt.required`
+ * says on the way in. Only while it genuinely decides (`isDeciding`: two or
+ * more Choices) — a stale `decides` on a Step left with one Choice forces
+ * nothing, so the Author can still untick "Required" there.
  */
 export function setStepPrompt(
   document: GraphDocument,
@@ -141,7 +148,13 @@ export function setStepPrompt(
   const next =
     prompt.label.trim().length === 0
       ? null
-      : { type: "free_text" as const, ...prompt };
+      : {
+          type: "free_text" as const,
+          ...prompt,
+          required:
+            prompt.required ||
+            (prompt.decides && document.steps[stepId].choices.length >= 2),
+        };
   return updateStep(document, stepId, { prompt: next });
 }
 

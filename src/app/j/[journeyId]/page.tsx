@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
+  liveDecision,
   ResponseNotice,
   responseRefusal,
   StepView,
@@ -53,9 +54,16 @@ export default async function JourneyStartPage({
   searchParams,
 }: {
   params: Promise<{ journeyId: string }>;
-  searchParams: Promise<{ notice?: string | string[] }>;
+  searchParams: Promise<{
+    notice?: string | string[];
+    decide?: string | string[];
+    response?: string | string[];
+  }>;
 }) {
-  const [{ journeyId }, { notice }] = await Promise.all([params, searchParams]);
+  const [{ journeyId }, { notice, decide, response }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   const journey = await getPublicJourney(journeyId);
   // No such Journey at all: a 404, the same answer an unknown id gets
@@ -145,6 +153,17 @@ export default async function JourneyStartPage({
                 kind: "form",
                 action: chooseFromStartAction.bind(null, journeyId),
                 refusal: responseRefusal(notice),
+                // A deciding Prompt's answer (ticket 43): with no Run yet to
+                // hold the Response, it comes back in the address with the
+                // judge's pick, and the box shows it again — but only once
+                // the judge has actually been asked (`decide` present); a
+                // bare `?response=` on its own is never trusted back into
+                // the box (ticket 43 F6).
+                response:
+                  typeof decide === "string" && typeof response === "string"
+                    ? response
+                    : undefined,
+                decision: liveDecision(startStep, decide),
               }
         }
         startOver={null}

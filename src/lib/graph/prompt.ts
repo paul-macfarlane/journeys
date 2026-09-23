@@ -15,6 +15,18 @@ import type { Step } from "@/lib/graph/document";
  */
 export const MAX_RESPONSE_LENGTH = 2000;
 
+/**
+ * True when a Step's Prompt decides the next Step (ticket 43 F3): it needs
+ * two or more Choices to do that, since a judge with fewer than two has
+ * nothing to pick between. A stale `decides: true` left over from a Step
+ * whose Choices dropped to one, or to none (an Ending), is read as not
+ * deciding here — this is the one place that rule is enforced, so the
+ * runner, the Editor, and the publish check cannot disagree about it.
+ */
+export function isDeciding(step: Step): boolean {
+  return step.prompt?.decides === true && step.choices.length >= 2;
+}
+
 export type ResponseReading =
   /** Text to store against the Run and this Step. */
   | { kind: "answered"; text: string }
@@ -30,13 +42,25 @@ export type ResponseReading =
  * text a Participant typed — a repeated field or a file is not — and only the
  * ends are trimmed, so the lines of a longer answer stay as written. A Step
  * with no Prompt never stores anything, whatever travelled with the form.
+ *
+ * A genuinely deciding Prompt (`isDeciding`, ticket 43) is read as required
+ * whatever its stored `required` flag says: a blank Response gives the judge
+ * nothing to decide from, so the Run cannot advance on it and the
+ * Participant is sent back exactly as for any other required Prompt left
+ * blank. `setStepPrompt` already forces `required: true` when `decides` is
+ * true; the `|| isDeciding(step)` here is the same rule read defensively,
+ * for a document that reached this function some other way — and it reads
+ * `false` for a Step whose Choices have dropped below two, where `decides`
+ * is stale and there is nothing left to judge.
  */
 export function readResponse(step: Step, raw: unknown): ResponseReading {
   if (step.prompt === null) return { kind: "skipped" };
 
   const text = typeof raw === "string" ? raw.trim() : "";
   if (text.length === 0) {
-    return step.prompt.required ? { kind: "missing" } : { kind: "skipped" };
+    return step.prompt.required || isDeciding(step)
+      ? { kind: "missing" }
+      : { kind: "skipped" };
   }
   if (text.length > MAX_RESPONSE_LENGTH) return { kind: "too-long" };
 

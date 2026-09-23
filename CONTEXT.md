@@ -74,17 +74,21 @@ _Avoid_: Undo, rewind
 
 ## Participation
 
+**Judge**:
+The AI reader that picks a choice for a deciding prompt's response. Sees only the step it is asked about, never an ending, an outcome, another step, or another participant's response; falls back to the participant choosing when it has no answer.
+_Avoid_: AI, judge model, evaluator
+
+**Preview**:
+An author walking the draft in the participant runner. Records no run.
+_Avoid_: Test mode, dry run
+
 **Prompt**:
-An optional free-text question attached to a step that a participant may answer before choosing.
+An optional free-text question attached to a step that a participant may answer before choosing. A prompt may decide the next step: a deciding prompt is required, and its response is judged against the step's choices instead of the participant picking one directly.
 _Avoid_: Input, form, field, question
 
 **Response**:
 A participant's answer to a prompt within one run. Readable by authors, never shown to participants.
 _Avoid_: Answer, submission, feedback
-
-**Preview**:
-An author walking the draft in the participant runner. Records no run.
-_Avoid_: Test mode, dry run
 
 ## Collaboration
 

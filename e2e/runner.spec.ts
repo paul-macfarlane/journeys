@@ -10,12 +10,15 @@ import caseTwoJson from "../scripts/seed/journey-stories/case-2.json";
 import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
+  DECIDING_PROMPT,
+  decidingDocument,
   loopDocument,
   promptDocument,
   publishDocument,
   QUEUE_PROMPT,
   QUEUE_STEP_ID,
   QUEUE_STEP_TITLE,
+  readResponses,
   readRuns,
   runnerDocument,
   START_STEP_ID,
@@ -349,6 +352,109 @@ test("runner-required-prompt-refusal", async ({ page, context, browser }) => {
       START_STEP_ID,
       QUEUE_STEP_ID,
       "waved-through",
+    ]);
+  } finally {
+    await participantContext.close();
+  }
+});
+
+test("runner-deciding-prompt", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Crossing ${suffix}`,
+  );
+
+  // The queue Step's Prompt decides; the server has no gateway key, so the
+  // judge never answers and the runner falls back to the Choices.
+  await writeDraftDocument(journeyId, decidingDocument());
+  const versionId = await publishDocument(journeyId, decidingDocument());
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    // The deciding form: the textbox and one Continue, and no Choices yet.
+    const decidingBox = promptBox(participant, DECIDING_PROMPT);
+    await expect(decidingBox).toBeVisible();
+    await expect(decidingBox).toHaveAttribute("aria-required", "true");
+    await expect(
+      participant.getByRole("button", { name: "Continue" }),
+    ).toBeVisible();
+    await expect(
+      participant.getByRole("list", { name: "Choices" }),
+    ).toHaveCount(0);
+    await expect(
+      participant.getByRole("button", { name: "Show your papers" }),
+    ).toHaveCount(0);
+
+    await participant.screenshot({
+      path: evidencePath("runner-deciding-prompt", "deciding-form.png"),
+      fullPage: true,
+    });
+
+    const response = "I keep my eyes down and hold out my papers.";
+    await decidingBox.fill(response);
+    await participant.getByRole("button", { name: "Continue" }).click();
+
+    // No key, so no pick: every Choice offered, none marked.
+    await expect(
+      participant.getByRole("heading", { name: "Choose for yourself" }),
+    ).toBeVisible();
+    await expect(
+      participant.getByRole("button", { name: "Show your papers" }),
+    ).toBeVisible();
+    await expect(
+      participant.getByRole("button", { name: "Leave the queue" }),
+    ).toBeVisible();
+    await expect(participant.locator("[data-suggested]")).toHaveCount(0);
+    await expect(
+      participant
+        .getByRole("status")
+        .filter({ hasText: "Choose the step that fits your response." }),
+    ).toBeVisible();
+    await expect(decidingBox).toHaveValue(response);
+
+    // The judge moved nothing: the Run still stands on the queue Step.
+    expect((await readRuns(versionId))[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+    ]);
+
+    await participant.screenshot({
+      path: evidencePath("runner-deciding-prompt", "fallback.png"),
+      fullPage: true,
+    });
+
+    // A pressed Choice goes on as any other, and the Response is kept.
+    await participant.getByRole("button", { name: "Show your papers" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Waved through" }),
+    ).toBeVisible();
+    expect((await readRuns(versionId))[0].path).toEqual([
+      START_STEP_ID,
+      QUEUE_STEP_ID,
+      "waved-through",
+    ]);
+    const responses = await readResponses(versionId);
+    expect(responses.map(({ step_id, text }) => ({ step_id, text }))).toEqual([
+      { step_id: QUEUE_STEP_ID, text: response },
     ]);
   } finally {
     await participantContext.close();

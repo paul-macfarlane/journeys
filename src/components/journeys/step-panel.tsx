@@ -26,6 +26,7 @@ import {
   setStepPrompt,
   updateStep,
 } from "@/lib/graph/edit";
+import { isDeciding } from "@/lib/graph/prompt";
 import type { PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -246,7 +247,12 @@ function PromptField({
 }) {
   const labelFieldId = useId();
   const requiredFieldId = useId();
+  const decidesFieldId = useId();
   const required = step.prompt?.required ?? false;
+  const decides = step.prompt?.decides ?? false;
+  // Deciding needs a Choice to land on, and a choice between them: one
+  // Choice is already where a Response leads without any judging.
+  const canDecide = step.choices.length >= 2;
 
   return (
     <div className="flex flex-col gap-2">
@@ -263,6 +269,7 @@ function PromptField({
             setStepPrompt(document, step.id, {
               label: event.target.value,
               required,
+              decides,
             }),
             { field: `prompt-label:${step.id}` },
           )
@@ -278,12 +285,14 @@ function PromptField({
             id={requiredFieldId}
             type="checkbox"
             className="size-4 accent-primary"
-            checked={required}
+            checked={decides || required}
+            disabled={isDeciding(step)}
             onChange={(event) =>
               onChange(
                 setStepPrompt(document, step.id, {
                   label: step.prompt?.label ?? "",
                   required: event.target.checked,
+                  decides,
                 }),
               )
             }
@@ -291,6 +300,35 @@ function PromptField({
           <Label htmlFor={requiredFieldId} className="font-normal">
             Required — participants must answer before choosing
           </Label>
+        </div>
+      ) : null}
+      {step.prompt !== null && (canDecide || decides) ? (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <input
+              id={decidesFieldId}
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={decides}
+              onChange={(event) =>
+                onChange(
+                  setStepPrompt(document, step.id, {
+                    label: step.prompt?.label ?? "",
+                    required,
+                    decides: event.target.checked,
+                  }),
+                )
+              }
+            />
+            <Label htmlFor={decidesFieldId} className="font-normal">
+              Let the response decide the next step
+            </Label>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {decides && !canDecide
+              ? "Needs two or more choices to decide."
+              : "An AI judge reads the response and picks the choice it fits. Participants choose for themselves when it's unsure or unavailable."}
+          </p>
         </div>
       ) : null}
     </div>

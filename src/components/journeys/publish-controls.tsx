@@ -50,8 +50,10 @@ export function PublishButton({
 }) {
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   function publish() {
+    setWarning(null);
     startTransition(async () => {
       const result = await publishJourneyAction(projectId, journeyId);
 
@@ -59,6 +61,9 @@ export function PublishButton({
         setRefusal({ error: result.error, problems: result.problems ?? [] });
         return;
       }
+      // Published all the same; the Author is told what Participants will
+      // meet (ticket 43: a deciding Prompt with no gateway key).
+      setWarning(result.warning ?? null);
       // No router.refresh(): the action revalidates the Journey page, so its
       // response already carries the re-rendered tree. A second refresh
       // landed hundreds of milliseconds later under load and re-rendered
@@ -78,6 +83,12 @@ export function PublishButton({
       >
         Publish
       </Button>
+
+      {warning !== null ? (
+        <p role="status" className="text-muted-foreground max-w-xs text-sm">
+          {warning}
+        </p>
+      ) : null}
 
       <AlertDialog
         open={refusal !== null}

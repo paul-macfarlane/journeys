@@ -234,3 +234,32 @@ public URLs, custom theme editor, manual canvas layout.
   dropped with its contents, never refused. Additive: stored Drafts and
   Published Versions still parse unchanged. Supersedes the node and mark
   list under "Rich text" and the ticket 15 `hardBreak` gap.
+
+## Amendment for ticket 43 (2026-09-23, decided by Paul on 2026-09-22)
+
+- Graph contract: a Prompt gains `decides` (zod default `false`); a deciding
+  Prompt is required. Additive: stored Drafts and Published Versions still
+  parse unchanged, and Published Versions are never rewritten.
+- The judge is jev (`typesafe-ai/jev`) on the Vercel AI Gateway with the
+  static `AI_GATEWAY_API_KEY`, called through the AI SDK's
+  `experimental_evaluate` as a `choice` question over the Step's Choices,
+  tagged `feature:decide`. The judge sees the Step only: its title and plain
+  text, the Prompt label, each Choice's id and label, and the Response —
+  never Endings, Outcomes, other Steps, or other Participants' Responses.
+- Threshold 0.5: at or above it the Run advances along the judged Choice,
+  recorded exactly as a pressed Choice plus the Response; below it the
+  Choices are shown with the pick marked, under "Choose for yourself".
+- Fallback: no key, a failed call, a call inside the rate limit (one
+  decision per Run per second), or an answer naming no Choice of the Step
+  shows the Choices with nothing marked. A Run is never stuck.
+- Preview judges the same way, records nothing, never advances on its own,
+  and shows the pick and its probability so an Author can tune labels.
+- A deciding Prompt published with no key is a publish-time warning, never
+  a refusal.
+- Supersedes "Vercel AI SDK (`ai` v6) for AI features." (decisions still use
+  `ai`, but the judge is jev on the Gateway, not a model chosen per feature);
+  "AI: Anthropic `claude-opus-5` via Vercel AI SDK Anthropic provider; key is
+  an env var populated out of band; features hidden when absent" for
+  decisions only (AI authoring keeps its own Anthropic line until ticket
+  14); and "MVP: AI *authoring* only" (the runner now also uses AI, to judge
+  a deciding Prompt's Response).

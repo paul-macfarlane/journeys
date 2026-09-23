@@ -7,8 +7,12 @@ import {
   isEnding,
   parseGraphDocument,
   prepareDocumentForWrite,
+  type Prompt,
 } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
+import case1 from "../../../scripts/seed/journey-stories/case-1.json";
+import case2 from "../../../scripts/seed/journey-stories/case-2.json";
+import case3 from "../../../scripts/seed/journey-stories/case-3.json";
 
 describe("createDraftDocument", () => {
   it("creates a Draft holding exactly one Step", () => {
@@ -150,6 +154,54 @@ describe("graphDocumentSchema", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("defaults a Prompt's decides to false when the stored shape does not carry it (ticket 43)", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+
+    const result = graphDocumentSchema.safeParse({
+      ...document,
+      steps: {
+        [start.id]: {
+          ...start,
+          prompt: {
+            type: "free_text",
+            label: "What would you do?",
+            required: false,
+          },
+        },
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.steps[start.id].prompt?.decides).toBe(false);
+    }
+  });
+
+  it("round-trips a Prompt with decides: true", () => {
+    const document = createDraftDocument();
+    const start = document.steps[document.startStepId];
+    const withDecidingPrompt = {
+      ...document,
+      steps: {
+        [start.id]: {
+          ...start,
+          prompt: {
+            type: "free_text" as const,
+            label: "Which way?",
+            required: true,
+            decides: true,
+          },
+        },
+      },
+    };
+
+    expect(parseGraphDocument(withDecidingPrompt)).toEqual({
+      ok: true,
+      document: withDecidingPrompt,
+    });
   });
 
   it("rejects a schema version it was not written for", () => {
@@ -538,4 +590,38 @@ describe("documentsEqual", () => {
 
     expect(documentsEqual(largeJourney, edited)).toBe(false);
   });
+});
+
+describe("decides defaults to false on every stored Prompt (ticket 43)", () => {
+  /** Every Prompt a document holds, walking every Step. */
+  function promptsIn(document: {
+    steps: Record<string, { prompt: unknown }>;
+  }): Prompt[] {
+    return Object.values(document.steps)
+      .map((step) => step.prompt)
+      .filter((prompt): prompt is Prompt => prompt !== null);
+  }
+
+  it.each([
+    // The e2e builders are not imported here: `e2e/setup/documents.ts`
+    // reaches the session helper, which loads the e2e environment at import.
+    // They are parsed by every e2e run instead.
+    ["large-journey fixture", largeJourney],
+    ["legacy case-1.json", case1],
+    ["legacy case-2.json", case2],
+    ["legacy case-3.json", case3],
+  ])(
+    "%s still parses, with decides: false on every Prompt",
+    (_name, document) => {
+      const result = parseGraphDocument(document);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const prompts = promptsIn(result.document);
+        for (const prompt of prompts) {
+          expect(prompt.decides).toBe(false);
+        }
+      }
+    },
+  );
 });
