@@ -1,6 +1,6 @@
 # DoD-1 command chain for ticket 37 (link previews), contract route
-# Commit: 0486e23
-# Run: 2026-09-23T14:05:34Z from the worktree .claude/worktrees/37-link-previews/journeys; e2e on port 3137 against journeys_e2e_t37 (docker Postgres :5436, production build, Chromium)
+# Commit: 017f6e7
+# Run: 2026-09-23T14:15:42Z from the worktree .claude/worktrees/37-link-previews/journeys; e2e on port 3137 against journeys_e2e_t37 (docker Postgres :5436, production build, Chromium)
 # Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=journey-link-preview,project-link-preview pnpm test:e2e
 # Filter: terminal control sequences removed; the repository's absolute path shortened to '.'; pnpm build is not run on its own because pnpm test:e2e builds the app
 
@@ -40,13 +40,13 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
 
  Test Files  26 passed (26)
-      Tests  399 passed (399)
-   Start at  10:05:43
-   Duration  987ms (transform 1.74s, setup 0ms, import 4.22s, tests 748ms, environment 2ms)
+      Tests  400 passed (400)
+   Start at  10:15:51
+   Duration  908ms (transform 1.40s, setup 0ms, import 3.71s, tests 668ms, environment 2ms)
 
 exit=0
 
 $ E2E_EVIDENCE=journey-link-preview,project-link-preview pnpm test:e2e
 (full output in test-results/dod-1-e2e.txt)
-  92 passed (2.8m)
+  92 passed (6.1m)
 exit=0
