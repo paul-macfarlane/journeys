@@ -31,8 +31,9 @@ import { formatShortcut, isApplePlatform } from "@/lib/rich-text/shortcuts";
 /**
  * The Step's rich text — and, since ticket 07, the Project's description,
  * which is the same closed content shape — and the small toolbar that
- * shapes it: headings, bold, italic, the two lists, links, and an image with
- * alt text and an optional caption. A selected image shows a ring and a
+ * shapes it: headings, bold, italic, underline, strikethrough, quotes, the
+ * two lists, links, and an image with alt text and an optional caption.
+ * Shift+Enter breaks a line inside a block; it has no button. A selected image shows a ring and a
  * small floating toolbar to edit or remove it; every toolbar button carries
  * a tooltip with its name and, where the editor binds one, its shortcut.
  *
@@ -67,7 +68,7 @@ const URL_HINT = "Start the address with http:// or https://";
  * picture so the ring does.
  */
 const EDITOR_CLASS =
-  "min-h-64 px-4 py-3 outline-none [&>*+*]:mt-4 [&_a]:underline [&_a]:underline-offset-4 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figure]:w-fit [&_figure]:rounded-lg [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_.ProseMirror-selectednode]:ring-2 [&_.ProseMirror-selectednode]:ring-ring [&_.ProseMirror-selectednode]:ring-offset-2 [&_.ProseMirror-selectednode]:ring-offset-background";
+  "min-h-64 px-4 py-3 outline-none [&>*+*]:mt-4 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote>*+*]:mt-4 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figure]:w-fit [&_figure]:rounded-lg [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_.ProseMirror-selectednode]:ring-2 [&_.ProseMirror-selectednode]:ring-ring [&_.ProseMirror-selectednode]:ring-offset-2 [&_.ProseMirror-selectednode]:ring-offset-background";
 
 /**
  * The floating image toolbar shows while the selection is an image node.
@@ -283,6 +284,9 @@ export function RichTextEditor({
       heading3: instance?.isActive("heading", { level: 3 }) ?? false,
       bold: instance?.isActive("bold") ?? false,
       italic: instance?.isActive("italic") ?? false,
+      underline: instance?.isActive("underline") ?? false,
+      strike: instance?.isActive("strike") ?? false,
+      blockquote: instance?.isActive("blockquote") ?? false,
       bulletList: instance?.isActive("bulletList") ?? false,
       orderedList: instance?.isActive("orderedList") ?? false,
       link: instance?.isActive("link") ?? false,
@@ -423,6 +427,27 @@ export function RichTextEditor({
             text="I"
             pressed={active?.italic ?? false}
             onClick={() => editor?.chain().focus().toggleItalic().run()}
+          />
+          <ToolbarButton
+            label="Underline"
+            shortcut="Mod-u"
+            text="U"
+            pressed={active?.underline ?? false}
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
+          />
+          <ToolbarButton
+            label="Strikethrough"
+            shortcut="Mod-Shift-s"
+            text="S"
+            pressed={active?.strike ?? false}
+            onClick={() => editor?.chain().focus().toggleStrike().run()}
+          />
+          <ToolbarButton
+            label="Quote"
+            shortcut="Mod-Shift-b"
+            text="Quote"
+            pressed={active?.blockquote ?? false}
+            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
           />
           <ToolbarButton
             label="Bullet list"

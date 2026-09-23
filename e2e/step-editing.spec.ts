@@ -535,6 +535,112 @@ test("step-editing-image-caption-alt-and-preview", async ({
   await participant.close();
 });
 
+test("rich-text-underline-strike-quote", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+  await renameStep(page, "Lamp room");
+
+  // Underline from the toolbar, strikethrough from its shortcut, a line
+  // break from Shift+Enter, and a quote from the toolbar again.
+  const surface = page.getByLabel("Step content");
+  const underline = page.getByRole("button", {
+    name: "Underline",
+    exact: true,
+  });
+  await surface.click();
+  await underline.click();
+  await page.keyboard.type("Never");
+  await underline.click();
+  await page.keyboard.type(" ");
+  await page.keyboard.press("ControlOrMeta+Shift+s");
+  await page.keyboard.type("leave");
+  await page.keyboard.press("ControlOrMeta+Shift+s");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.type("the light");
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Quote", exact: true }).click();
+  await page.keyboard.type("Keep the light burning.");
+  await expect(
+    page.getByRole("button", { name: "Quote", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expectSaved(page);
+
+  // The tooltip names the shortcut the editor answered to.
+  const tooltip = page.locator('[data-slot="tooltip-content"]');
+  await page
+    .getByRole("button", { name: "Strikethrough", exact: true })
+    .hover();
+  await expect(tooltip).toHaveText(/^Strikethrough(⌘⇧|Ctrl\+Shift\+)S$/);
+  await surface.hover();
+
+  // The Draft row holds all four, in the stored shape.
+  const draft = await readDraft(journeyId);
+  expect(draft.steps[draft.startStepId].content).toEqual({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Never", marks: [{ type: "underline" }] },
+          { type: "text", text: " " },
+          { type: "text", text: "leave", marks: [{ type: "strike" }] },
+          { type: "hardBreak" },
+          { type: "text", text: "the light" },
+        ],
+      },
+      {
+        type: "blockquote",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Keep the light burning." }],
+          },
+        ],
+      },
+    ],
+  });
+
+  // A reload reads them back into the editor.
+  await page.reload();
+  await expect(surface.locator("u")).toHaveText("Never");
+  await expect(surface.locator("s")).toHaveText("leave");
+  await expect(surface.locator("p br")).toHaveCount(1);
+  await expect(surface.locator("blockquote")).toHaveText(
+    "Keep the light burning.",
+  );
+  await page.screenshot({
+    path: evidencePath("rich-text-underline-strike-quote", "editor.png"),
+    fullPage: true,
+  });
+
+  await expectSaved(page);
+  const publish = page.getByRole("button", { name: "Publish", exact: true });
+  await expect(publish).toBeEnabled();
+  await publish.click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  // A participant reads the Published Version: the marks, the break, and a
+  // quote set off by a rule and left upright.
+  const participant = await context.browser()!.newContext();
+  const runner = await participant.newPage();
+  await runner.goto(`${E2E_BASE_URL}/j/${journeyId}`);
+  await expect(runner.locator("u")).toHaveText("Never");
+  await expect(runner.locator("s")).toHaveText("leave");
+  // The break sits between the struck word and the next line, in one
+  // paragraph.
+  const broken = runner.locator("p", { has: runner.locator("u") });
+  await expect(broken).toHaveText("Never leavethe light");
+  await expect(broken.locator("br")).toHaveCount(1);
+  const quote = runner.locator("blockquote");
+  await expect(quote).toHaveText("Keep the light burning.");
+  await expect(quote).toHaveCSS("border-left-style", "solid");
+  await expect(quote).toHaveCSS("font-style", "normal");
+  await runner.screenshot({
+    path: evidencePath("rich-text-underline-strike-quote", "runner.png"),
+    fullPage: true,
+  });
+  await participant.close();
+});
+
 test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
 

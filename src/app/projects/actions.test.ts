@@ -161,7 +161,7 @@ describe("editProjectDescriptionAction", () => {
               text: "Click",
               marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }],
             },
-            { type: "text", text: " here", marks: [{ type: "underline" }] },
+            { type: "text", text: " here", marks: [{ type: "code" }] },
           ],
         },
         { type: "codeBlock", content: [{ type: "text", text: "rm -rf /" }] },

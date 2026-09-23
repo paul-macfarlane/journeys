@@ -224,3 +224,13 @@ public URLs, custom theme editor, manual canvas layout.
   Stored documents are read with `credit` as `caption`; Published Versions
   are never rewritten. The sanitizer no longer refuses an image for anything.
   Supersedes "image node with a required `credit` attribute" above.
+
+## Amendment for ticket 40 (2026-09-23, decided by Paul on 2026-09-22)
+
+- Rich-text contract: `underline` and `strike` marks, a top-level
+  `blockquote` of paragraphs, and the `hardBreak` inline node (Shift+Enter)
+  join the allowed set. Inline code, horizontal rules, alignment, and
+  highlight stay out. A quote where the contract does not allow one is
+  dropped with its contents, never refused. Additive: stored Drafts and
+  Published Versions still parse unchanged. Supersedes the node and mark
+  list under "Rich text" and the ticket 15 `hardBreak` gap.

@@ -1,4 +1,4 @@
-import { mergeAttributes } from "@tiptap/core";
+import { mergeAttributes, Node, wrappingInputRule } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import StarterKit from "@tiptap/starter-kit";
 
@@ -10,7 +10,8 @@ import StarterKit from "@tiptap/starter-kit";
  * sides import this file.
  *
  * Both close over the same allowed set `@/lib/graph/content` describes:
- * paragraph, headings, bold, italic, bullet and ordered lists, links, and an
+ * paragraphs and line breaks, headings, quotes, bold, italic, underline,
+ * strike, bullet and ordered lists, links, and an
  * image with alt text and a caption. Everything else StarterKit would bring is
  * switched off. `editorExtensions` additionally leaves undo/redo, the drop
  * cursor, and the gap cursor enabled — editing conveniences that emit no
@@ -64,18 +65,60 @@ export const CaptionedImage = Image.extend({
 });
 
 /**
+ * A quote that holds paragraphs and nothing else (ticket 40), the shape
+ * `@/lib/graph/content` stores. StarterKit's quote holds any block, so a
+ * heading, list, or second quote inside one would be dropped on save; with
+ * this content rule the editor never makes one. Written here rather than
+ * extended from `@tiptap/extension-blockquote`, which is only StarterKit's
+ * dependency, not the app's; the commands and Mod-Shift-b are the same.
+ */
+export const ParagraphQuote = Node.create({
+  name: "blockquote",
+  group: "block",
+  content: "paragraph+",
+  defining: true,
+  parseHTML() {
+    return [{ tag: "blockquote" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["blockquote", HTMLAttributes, 0];
+  },
+  addCommands() {
+    return {
+      setBlockquote:
+        () =>
+        ({ commands }) =>
+          commands.wrapIn(this.name),
+      toggleBlockquote:
+        () =>
+        ({ commands }) =>
+          commands.toggleWrap(this.name),
+      unsetBlockquote:
+        () =>
+        ({ commands }) =>
+          commands.lift(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return { "Mod-Shift-b": () => this.editor.commands.toggleBlockquote() };
+  },
+  addInputRules() {
+    // "> " at the start of a paragraph quotes it, as in Tiptap's own.
+    return [wrappingInputRule({ find: /^\s*>\s$/, type: this.type })];
+  },
+});
+
+/**
  * The StarterKit options both extension sets share. `richTextExtensions`
  * additionally disables undo/redo, the drop cursor, and the gap cursor, since
  * the runner never edits.
  */
 const sharedStarterKitOptions = {
+  // StarterKit's own quote is swapped for `ParagraphQuote` below.
   blockquote: false,
   code: false,
   codeBlock: false,
-  hardBreak: false,
   horizontalRule: false,
-  strike: false,
-  underline: false,
   listKeymap: false,
   trailingNode: false,
   link: {
@@ -91,11 +134,13 @@ export const richTextExtensions = [
     gapcursor: false,
     undoRedo: false,
   }),
+  ParagraphQuote,
   CaptionedImage,
 ];
 
 export const editorExtensions = [
   StarterKit.configure({ ...sharedStarterKitOptions }),
+  ParagraphQuote,
   CaptionedImage,
 ];
 
@@ -113,5 +158,6 @@ export const editorExtensions = [
  */
 export const draftEditorExtensions = [
   StarterKit.configure({ ...sharedStarterKitOptions, undoRedo: false }),
+  ParagraphQuote,
   CaptionedImage,
 ];

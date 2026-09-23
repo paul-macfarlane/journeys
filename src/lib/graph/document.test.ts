@@ -336,7 +336,7 @@ describe("prepareDocumentForWrite", () => {
     }
   });
 
-  it("drops a pasted line break and keeps the text around it", () => {
+  it("keeps a line break between the words around it (ticket 40)", () => {
     const result = prepareDocumentForWrite(
       rawDraftWith({
         type: "doc",
@@ -362,6 +362,7 @@ describe("prepareDocumentForWrite", () => {
             type: "paragraph",
             content: [
               { type: "text", text: "The lamp is lit." },
+              { type: "hardBreak" },
               { type: "text", text: "The wind is west." },
             ],
           },
