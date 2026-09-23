@@ -27,6 +27,13 @@ import {
  * way out as well as on the way in.
  */
 
+/** A Draft as stored: its document, and when an Author last saved it. */
+export type Draft = {
+  document: GraphDocument;
+  /** The last save (or restore) — what the Versions tab shows beside it. */
+  updatedAt: Date;
+};
+
 /**
  * The Draft behind a Project id and Journey id pair, but only for one of the
  * Project's Members. Returns null for a non-Member, an unknown Project, and
@@ -40,9 +47,9 @@ export async function getDraftForMember(
   projectId: string,
   journeyId: string,
   userId: string,
-): Promise<GraphDocument | null> {
+): Promise<Draft | null> {
   const [row] = await db
-    .select({ document: draft.document })
+    .select({ document: draft.document, updatedAt: draft.updatedAt })
     .from(draft)
     .innerJoin(journey, eq(journey.id, draft.journeyId))
     .innerJoin(project, eq(project.id, journey.projectId))
@@ -56,7 +63,12 @@ export async function getDraftForMember(
     )
     .limit(1);
 
-  return row ? graphDocumentSchema.parse(row.document) : null;
+  return row
+    ? {
+        document: graphDocumentSchema.parse(row.document),
+        updatedAt: row.updatedAt,
+      }
+    : null;
 }
 
 export type SaveDraftResult =

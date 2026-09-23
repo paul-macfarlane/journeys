@@ -1,8 +1,8 @@
 # 36: The Draft on the Versions tab
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude (Fable 5.1), worktree `feat/36-versions-tab-draft-row`, 2026-09-23
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 3 (Paul, 2026-09-22, grilled the same day): sweep 1 (hackathon) 33 → 34 → 35 → **36** → 37; sweep 2 (nice to have before the judges) 38 → 39 → 40 → 43; sweep 3 (post-hackathon) 41 → 42 → 44 → 45. 14 stays available; 17 is post-hackathon.
 Route: polish

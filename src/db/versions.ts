@@ -152,8 +152,9 @@ export async function publishDraft(
   const existing = await getJourneyForMember(projectId, journeyId, userId);
   if (!existing) return null;
 
-  const document = await getDraftForMember(projectId, journeyId, userId);
-  if (!document) return null;
+  const stored = await getDraftForMember(projectId, journeyId, userId);
+  if (!stored) return null;
+  const document = stored.document;
 
   const problems = validateForPublish(document);
   if (problems.length > 0) return { ok: false, problems };

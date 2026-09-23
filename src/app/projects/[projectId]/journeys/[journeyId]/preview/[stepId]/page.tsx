@@ -44,8 +44,9 @@ export default async function PreviewStepPage({
   );
   if (!journey) notFound();
 
-  const draft = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!draft) notFound();
+  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  if (!stored) notFound();
+  const draft = stored.document;
 
   // Own property only: `steps` is a plain object parsed from JSON, and a
   // URL naming "toString" must 404 rather than find a prototype method.

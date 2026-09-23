@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { withTab } from "@/lib/tabs";
+import { readTab, withTab } from "@/lib/tabs";
 
 export type UrlTab = {
   value: string;
@@ -13,10 +14,12 @@ export type UrlTab = {
 
 /**
  * A page's main sections as tabs, the open one named in the address as
- * `?tab=<value>` so a reload or a shared link opens on it. The server page
- * reads the parameter (`readTab`) and hands the result in as `initialTab`;
- * switching rewrites the address in place, with no navigation, and the
- * first tab is the default the plain address means.
+ * `?tab=<value>` so a reload or a shared link opens on it. The address is
+ * the one source of truth: the open tab is read off it (`readTab`) on the
+ * server and on the client alike, switching rewrites it in place with no
+ * navigation, and the first tab is the default the plain address means. So
+ * anything on the page can open a tab by linking to its address — the
+ * Versions tab's Draft row links to the editor that way.
  *
  * Only the open tab's content is mounted: the Journey editor is heavy, and
  * the Versions list must show what a restore just did, which a fresh mount
@@ -33,29 +36,26 @@ export type UrlTab = {
 export function UrlTabs({
   label,
   tabs,
-  initialTab,
   sticky = false,
 }: {
   /** What the row of tabs is called to a screen reader. */
   label: string;
   tabs: readonly UrlTab[];
-  initialTab: string;
   /** Keep the row of tabs under the navbar while the page scrolls. */
   sticky?: boolean;
 }) {
-  const [tab, setTab] = useState(initialTab);
+  const values = tabs.map((entry) => entry.value);
+  // Next keeps this in step with `history.replaceState` below, so a tab
+  // click and a link to `?tab=…` both land here.
+  const searchParams = useSearchParams();
+  const tab = readTab(values, searchParams.get("tab") ?? undefined);
 
   function change(next: unknown) {
     if (typeof next !== "string") return;
-    setTab(next);
     window.history.replaceState(
       null,
       "",
-      withTab(
-        window.location.href,
-        tabs.map((entry) => entry.value),
-        next,
-      ),
+      withTab(window.location.href, values, next),
     );
   }
 
