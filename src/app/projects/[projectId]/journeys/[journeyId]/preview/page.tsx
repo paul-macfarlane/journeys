@@ -44,8 +44,9 @@ export default async function PreviewStartPage({
   );
   if (!journey) notFound();
 
-  const draft = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!draft) notFound();
+  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  if (!stored) notFound();
+  const draft = stored.document;
 
   // Preview paints the Theme a Participant will see (the Journey's
   // override, else the Project's), so an Author sees the look along with

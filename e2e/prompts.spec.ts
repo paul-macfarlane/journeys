@@ -86,6 +86,28 @@ function promptBox(page: Page, label: string) {
   return page.getByRole("textbox", { name: label });
 }
 
+/**
+ * Waits until React is running on a runner step page before a box that
+ * already shows an answer is typed into. React DOM's hydration of a
+ * `<textarea>` with a non-empty default sets its value back to that default
+ * (`react-dom-client`: `element.value = textContent`), so anything typed
+ * before the bundle ran is lost — and under load the bundle lands a second
+ * or more after the page is readable. A step page arrives with `?at` (after
+ * Back) or `?notice` (after a save), and `RunHistory` strips them in its
+ * first effect, so the bare step address is the page saying React is up. A
+ * box whose default is empty needs no wait: the reset only restores a
+ * non-empty default.
+ */
+async function hydrated(
+  participant: Page,
+  journeyId: string,
+  stepId: string,
+): Promise<void> {
+  await expect(participant).toHaveURL(
+    `${E2E_BASE_URL}/j/${journeyId}/${stepId}`,
+  );
+}
+
 test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
@@ -258,6 +280,7 @@ test("prompts-participant-answers-and-author-reads", async ({
 
     // Emptied and saved again, the Ending's optional answer is taken back:
     // the box showed it, and the Participant chose not to keep it.
+    await hydrated(participant, journeyId, "waved-through");
     await promptBox(participant, `${ENDING_PROMPT} (optional)`).fill("");
     await participant.getByRole("button", { name: "Save response" }).click();
     await expect(participant.getByRole("status")).toHaveText(
@@ -281,6 +304,7 @@ test("prompts-participant-answers-and-author-reads", async ({
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
     await expect(promptBox(participant, QUEUE_PROMPT)).toHaveValue(queueAnswer);
+    await hydrated(participant, journeyId, QUEUE_STEP_ID);
     await promptBox(participant, QUEUE_PROMPT).fill(startAnswer);
     await participant.getByRole("button", { name: "Show your papers" }).click();
     await expect(

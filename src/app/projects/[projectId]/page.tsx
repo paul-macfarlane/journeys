@@ -15,20 +15,15 @@ import { listMembers } from "@/db/members";
 import { getProjectForMember } from "@/db/projects";
 import { contentPreview } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
-import { readTab } from "@/lib/tabs";
-
-/** The page's sections, the first being what the plain address opens on. */
-const PROJECT_TABS = ["journeys", "members", "settings"] as const;
 
 export default async function ProjectPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
+  // The open tab is `?tab=<name>` in the address, read by `UrlTabs` itself.
 }) {
   const session = await requireSession();
-  const [{ projectId }, { tab }] = await Promise.all([params, searchParams]);
+  const { projectId } = await params;
 
   // Null for a non-Member and for an id that never existed alike, so both
   // get the same 404 and neither leaks the other's existence.
@@ -80,7 +75,6 @@ export default async function ProjectPage({
         <UrlTabs
           label="Project"
           sticky
-          initialTab={readTab(PROJECT_TABS, tab)}
           tabs={[
             {
               value: "journeys",

@@ -36,6 +36,12 @@ export type JourneySummary = {
   publishState: PublishState;
   /** The Journey's Theme override (ticket 11); a null preset means none. */
   theme: ThemeOverride;
+  /**
+   * The last write to the Journey row itself: a title or description edit,
+   * a Theme change, a publish, or an unpublish. The Draft's document has
+   * its own (`@/db/drafts`).
+   */
+  updatedAt: Date;
 };
 
 const journeyColumns = {
@@ -44,6 +50,7 @@ const journeyColumns = {
   description: journey.description,
   themePreset: journey.themePreset,
   themeAccent: journey.themeAccent,
+  updatedAt: journey.updatedAt,
 };
 
 /** The Journey itself plus the live pointer publish state is derived from. */
@@ -91,6 +98,7 @@ function toSummary(
     description: string;
     themePreset: string | null;
     themeAccent: string | null;
+    updatedAt: Date;
   },
   publishState: PublishState,
 ): JourneySummary {
@@ -100,6 +108,7 @@ function toSummary(
     description: row.description,
     publishState,
     theme: readThemeOverride(row),
+    updatedAt: row.updatedAt,
   };
 }
 

@@ -26,8 +26,9 @@ export async function previewChooseAction(
   const session = await requireSession();
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
-  const draft = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!draft) redirect(journeyHref);
+  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  if (!stored) redirect(journeyHref);
+  const draft = stored.document;
 
   const base = `${journeyHref}/preview`;
   // A Step the Draft no longer has (deleted in another tab): back to the
