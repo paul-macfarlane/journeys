@@ -4083,26 +4083,21 @@ async function expectControlsThemed(page: Page, where: string): Promise<void> {
   // The map itself is told which theme it is in: the class React Flow
   // stamps for its own dark rules is the dark one, whichever way the page
   // was reached.
-  expect
-    .soft(
-      await canvas(page).locator(".react-flow").getAttribute("class"),
-      `${where}: the map carries React Flow's dark class`,
-    )
-    .toMatch(/\bdark\b/);
-  expect
-    .soft(
-      await paintedRgb(page, {
-        selector: button,
-        property: "background-color",
-      }),
-      `${where}: the controls' background is the card`,
+  await expect(
+    canvas(page).locator(".react-flow"),
+    `${where}: the map carries React Flow's dark class`,
+  ).toHaveClass(/\bdark\b/);
+  await expect
+    .poll(
+      () =>
+        paintedRgb(page, { selector: button, property: "background-color" }),
+      { message: `${where}: the controls' background is the card` },
     )
     .toBe(await paintedRgb(page, { token: "--card" }));
-  expect
-    .soft(
-      await paintedRgb(page, { selector: button, property: "color" }),
-      `${where}: the controls' glyphs are the foreground`,
-    )
+  await expect
+    .poll(() => paintedRgb(page, { selector: button, property: "color" }), {
+      message: `${where}: the controls' glyphs are the foreground`,
+    })
     .toBe(await paintedRgb(page, { token: "--foreground" }));
 }
 

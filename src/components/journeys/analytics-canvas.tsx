@@ -312,7 +312,7 @@ function AnalyticsFlow({
   }, [analytics, direction, document]);
 
   // Turning the map a quarter puts every box somewhere else, so wherever the
-  // Author had panned and zoomed to is about a map that no longer exists:
+  // Member had panned and zoomed to is about a map that no longer exists:
   // the whole of the new one is shown instead, as the editor's map does.
   const { fitView } = useReactFlow();
   const lastDirection = useRef(direction);

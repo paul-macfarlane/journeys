@@ -38,6 +38,7 @@ import {
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import { DirectionControl } from "@/components/journeys/direction-control";
 import {
+  ARROW_DIRECTIONS,
   arrowPoints,
   EDGE_LABEL_HEIGHT,
   handleOffset,
@@ -47,6 +48,7 @@ import {
   sourceSide,
   targetSide,
   useCanvasColorMode,
+  type ArrowDirection,
 } from "@/components/journeys/canvas-shared";
 import {
   choiceLabel,
@@ -168,19 +170,9 @@ type CanvasActions = {
    * box in a direction is a question about every box, which is something the
    * canvas knows and a box does not.
    */
-  onMoveFocus: (fromNodeId: string, direction: Direction) => void;
+  onMoveFocus: (fromNodeId: string, direction: ArrowDirection) => void;
   /** Out of the boxes and back to the map itself. */
   onEscape: () => void;
-};
-
-/** Which way an arrow key asks to go. */
-type Direction = "up" | "down" | "left" | "right";
-
-const ARROW_DIRECTIONS: Record<string, Direction | undefined> = {
-  ArrowUp: "up",
-  ArrowDown: "down",
-  ArrowLeft: "left",
-  ArrowRight: "right",
 };
 
 /**
@@ -1146,7 +1138,7 @@ function CanvasFlow({
   // Enter is what opens one — but a box walked onto off the map is brought
   // onto it, exactly as opening one by name does.
   const moveFocus = useCallback(
-    (fromNodeId: string, direction: Direction) => {
+    (fromNodeId: string, direction: ArrowDirection) => {
       const boxes = nodesRef.current;
       const from = boxes.find((node) => node.id === fromNodeId);
       if (from === undefined) return;

@@ -146,6 +146,21 @@ export function arrowPoints(
     : [source, ...(routed ?? []).slice(1, -1), target];
 }
 
+/** Which way an arrow key asks to go. */
+export type ArrowDirection = "up" | "down" | "left" | "right";
+
+/**
+ * The arrow keys, by the direction each asks for: what the keyboard walks
+ * across the boxes with on the editor's map, and moves between the two
+ * answers of the direction control with on both maps.
+ */
+export const ARROW_DIRECTIONS: Record<string, ArrowDirection | undefined> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
+
 /** How tall the label on an arrow is drawn, in flow units. */
 export const EDGE_LABEL_HEIGHT = 24;
 
@@ -199,8 +214,10 @@ const isServer = () => false;
  * attribute standing on a hydration mismatch rather than patching it. Every
  * later render then computes the same class as the hydrating one did and so
  * changes nothing, and the map stays stamped `light` for the life of the
- * page — which is how the dark theme's controls came up in the light
- * colours on a full load with the OS dark (ticket 35). A definite mode
+ * page — which is how the dark theme's controls came up white, in React
+ * Flow's light colours, on a full load with the OS dark (ticket 35); the
+ * order contest `globals.css` describes is the other half of that ticket,
+ * and gave the greys of React Flow's dark colours instead. A definite mode
  * gives the two renders the same answer, and the change to the real theme
  * afterwards is an ordinary update the DOM follows.
  *

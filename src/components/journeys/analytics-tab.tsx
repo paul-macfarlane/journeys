@@ -1,7 +1,5 @@
 "use client";
 
-import { useCallback } from "react";
-
 import { AnalyticsCanvas } from "@/components/journeys/analytics-canvas";
 import { AnalyticsVersionSelect } from "@/components/journeys/analytics-version-select";
 import { DirectionControl } from "@/components/journeys/direction-control";
@@ -91,9 +89,8 @@ function AnalyticsReading({
   );
   const preference = stored.success ? stored.data : null;
 
-  const chooseDirection = useCallback((direction: LayoutDirection) => {
+  const chooseDirection = (direction: LayoutDirection) =>
     writePreference(ANALYTICS_DIRECTION_STORAGE_KEY, direction);
-  }, []);
 
   const direction = preference ?? document.layoutDirection;
 

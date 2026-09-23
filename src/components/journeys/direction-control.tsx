@@ -2,6 +2,7 @@
 
 import { useRef, type KeyboardEvent } from "react";
 
+import { ARROW_DIRECTIONS } from "@/components/journeys/canvas-shared";
 import { Button } from "@/components/ui/button";
 import type { LayoutDirection } from "@/lib/graph/document";
 import { cn } from "@/lib/utils";
@@ -11,8 +12,6 @@ const LAYOUT_DIRECTIONS: { direction: LayoutDirection; label: string }[] = [
   { direction: "TB", label: "Top to bottom" },
   { direction: "LR", label: "Left to right" },
 ];
-
-const ARROW_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 
 /**
  * Which way a map runs: a radio group, because the two are one choice with
@@ -37,7 +36,7 @@ export function DirectionControl({
   const groupRef = useRef<HTMLDivElement>(null);
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
-    if (!ARROW_KEYS.has(event.key)) return;
+    if (ARROW_DIRECTIONS[event.key] === undefined) return;
     // Otherwise the browser scrolls the page and React Flow pans the map.
     event.preventDefault();
 
