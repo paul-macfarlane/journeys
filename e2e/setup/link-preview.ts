@@ -4,10 +4,21 @@ import path from "node:path";
 import type { APIResponse, Page } from "@playwright/test";
 
 /**
- * Reading a link-preview image (ticket 37) without an image library: the
- * PNG header carries the size, and the browser itself can paint the image
- * onto a canvas and read a pixel back.
+ * Reading a link preview (ticket 37) the way a crawler does: the tags off
+ * the page, and the image without an image library — the PNG header
+ * carries the size, and the browser itself can paint the image onto a
+ * canvas and read a pixel back.
  */
+
+/**
+ * The `content` of the page's `<meta property="og:…">` or
+ * `<meta name="twitter:…">` tag: Open Graph keys are properties, the rest
+ * are names.
+ */
+export function metaContent(page: Page, key: string): Promise<string | null> {
+  const attribute = key.startsWith("og:") ? "property" : "name";
+  return page.locator(`meta[${attribute}="${key}"]`).getAttribute("content");
+}
 
 export type PngResponse = {
   status: number;

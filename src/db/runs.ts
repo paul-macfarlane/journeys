@@ -87,9 +87,8 @@ export type PublicJourney =
  * the Published Version, never the Journey row, so a rename after publish
  * never changes what a live or in-progress Run shows.
  *
- * Wrapped in React's `cache` so a page and its `generateMetadata` (and, on
- * the same request, nothing else) share one query, as `getPublicProject`
- * does.
+ * Wrapped in React's `cache` so a page and its `generateMetadata` share one
+ * query on a request, as `getPublicProject` does.
  */
 export const getPublicJourney = cache(async function getPublicJourney(
   journeyId: string,

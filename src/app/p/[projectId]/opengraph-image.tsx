@@ -1,5 +1,5 @@
-import { APP_NAME } from "@/lib/brand";
 import { getPublicProject } from "@/db/projects";
+import { APP_NAME } from "@/lib/brand";
 import { contentPreview } from "@/lib/graph/content";
 import {
   LINK_PREVIEW_DESCRIPTION_LIMIT,
@@ -37,19 +37,21 @@ export default async function ProjectOpenGraphImage({
   const project = await getPublicProject(projectId);
 
   return ogResponse(
-    project ? (
-      <LinkPreviewCard
-        kicker={APP_NAME}
-        title={project.title}
-        description={contentPreview(
-          project.description,
-          LINK_PREVIEW_DESCRIPTION_LIMIT,
-        )}
-        palette={linkPreviewPalette(project.theme)}
-      />
-    ) : (
-      <BrandCard />
-    ),
+    (face) =>
+      project ? (
+        <LinkPreviewCard
+          face={face}
+          kicker={APP_NAME}
+          title={project.title}
+          description={contentPreview(
+            project.description,
+            LINK_PREVIEW_DESCRIPTION_LIMIT,
+          )}
+          palette={linkPreviewPalette(project.theme)}
+        />
+      ) : (
+        <BrandCard face={face} />
+      ),
     { cacheControl: OG_CACHE_CONTROL },
   );
 }

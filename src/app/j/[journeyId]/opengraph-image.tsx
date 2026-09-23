@@ -1,6 +1,10 @@
-import { APP_NAME } from "@/lib/brand";
 import { getPublicJourney } from "@/db/runs";
-import { linkPreviewPalette } from "@/lib/link-preview";
+import { APP_NAME } from "@/lib/brand";
+import { textPreview } from "@/lib/graph/content";
+import {
+  LINK_PREVIEW_DESCRIPTION_LIMIT,
+  linkPreviewPalette,
+} from "@/lib/link-preview";
 import {
   BrandCard,
   LinkPreviewCard,
@@ -39,16 +43,21 @@ export default async function JourneyOpenGraphImage({
   const journey = await getPublicJourney(journeyId);
 
   return ogResponse(
-    journey?.kind === "live" ? (
-      <LinkPreviewCard
-        kicker={journey.projectTitle}
-        title={journey.title}
-        description={journey.description}
-        palette={linkPreviewPalette(journey.theme)}
-      />
-    ) : (
-      <BrandCard />
-    ),
+    (face) =>
+      journey?.kind === "live" ? (
+        <LinkPreviewCard
+          face={face}
+          kicker={journey.projectTitle}
+          title={journey.title}
+          description={textPreview(
+            journey.description,
+            LINK_PREVIEW_DESCRIPTION_LIMIT,
+          )}
+          palette={linkPreviewPalette(journey.theme)}
+        />
+      ) : (
+        <BrandCard face={face} />
+      ),
     { cacheControl: OG_CACHE_CONTROL },
   );
 }

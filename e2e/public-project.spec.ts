@@ -17,7 +17,12 @@ import {
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
-import { pixelsAt, readPng, saveBytes } from "./setup/images";
+import {
+  metaContent,
+  pixelsAt,
+  readPng,
+  saveBytes,
+} from "./setup/link-preview";
 import {
   cleanup,
   closePools,
@@ -311,21 +316,19 @@ test("project-link-preview", async ({ page, context, browser }) => {
     const participant = await participantContext.newPage();
     await participant.goto(`/p/${projectId}`);
 
-    const meta = (key: string) =>
-      participant
-        .locator(
-          `meta[${key.startsWith("og:") ? "property" : "name"}="${key}"]`,
-        )
-        .getAttribute("content");
     await expect(participant).toHaveTitle(`${projectTitle} · ${APP_NAME}`);
-    expect(await meta("og:title")).toBe(projectTitle);
-    expect(await meta("og:description")).toBe(
+    expect(await metaContent(participant, "og:title")).toBe(projectTitle);
+    expect(await metaContent(participant, "og:description")).toBe(
       "About these journeys Three cases from the northern route.",
     );
-    expect(await meta("og:url")).toBe(`${E2E_BASE_URL}/p/${projectId}`);
-    expect(await meta("og:site_name")).toBe(APP_NAME);
-    expect(await meta("twitter:card")).toBe("summary_large_image");
-    const imageUrl = await meta("og:image");
+    expect(await metaContent(participant, "og:url")).toBe(
+      `${E2E_BASE_URL}/p/${projectId}`,
+    );
+    expect(await metaContent(participant, "og:site_name")).toBe(APP_NAME);
+    expect(await metaContent(participant, "twitter:card")).toBe(
+      "summary_large_image",
+    );
+    const imageUrl = await metaContent(participant, "og:image");
     expect(imageUrl).toMatch(
       new RegExp(`^${E2E_BASE_URL}/p/${projectId}/opengraph-image`),
     );

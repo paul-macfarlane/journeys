@@ -24,7 +24,12 @@ import {
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { capturePath, evidencePath } from "./setup/evidence";
-import { pixelsAt, readPng, saveBytes } from "./setup/images";
+import {
+  metaContent,
+  pixelsAt,
+  readPng,
+  saveBytes,
+} from "./setup/link-preview";
 import {
   cleanup,
   closePools,
@@ -1080,12 +1085,6 @@ test("runner-unavailable-and-unknown", async ({ page, context, browser }) => {
   }
 });
 
-/** The `content` of a `<meta property=…>` or `<meta name=…>` tag. */
-async function metaContent(page: Page, key: string): Promise<string | null> {
-  const attribute = key.startsWith("og:") ? "property" : "name";
-  return page.locator(`meta[${attribute}="${key}"]`).getAttribute("content");
-}
-
 /** An id no Journey has: every real one is a `crypto.randomUUID()`. */
 const UNKNOWN_JOURNEY_ID = "00000000-0000-4000-8000-000000000000";
 
@@ -1177,6 +1176,12 @@ test("journey-link-preview", async ({ page, context, browser }) => {
     await expect(participant).toHaveURL(
       `${E2E_BASE_URL}/j/${journeyId}/${QUEUE_STEP_ID}`,
     );
+    // Loaded afresh, as a crawler would load it, so the tags read are the
+    // Step page's own and not the Start page's left behind.
+    await participant.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
     expect(await metaContent(participant, "og:title")).toBe(journeyTitle);
     expect(await metaContent(participant, "og:url")).toBe(
       `${E2E_BASE_URL}/j/${journeyId}`,

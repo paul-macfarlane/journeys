@@ -17,22 +17,6 @@ import { runCookieName } from "@/lib/run-cookies";
 import { chooseFromStartAction, startOverAction } from "./actions";
 
 /**
- * The participant runner's first screen: the Start Step itself, under the
- * Journey's title, with the description beneath the header (ticket 27 —
- * there is no title page in front of the Journey). Public and anonymous: no
- * session, no Project membership, no account — a Participant only ever
- * needs the link.
- *
- * Nothing is recorded by opening this page. The Start Step's Choices are a
- * form, and the Run is created — already holding the Start and the chosen
- * Step — when a Choice is taken. A Journey whose Start is an Ending shows
- * "The end" here and records no Run at all.
- *
- * The title, description, and Start Step come from the live Published
- * Version, never the `journey` row, so renaming a Journey after publishing
- * never changes what a Participant is looking at until the next publish.
- */
-/**
  * What a link to this page previews as (ticket 37): the live Published
  * Version's title and description, with the card `opengraph-image.tsx`
  * beside this file renders; a Journey that is not live reads as the site
@@ -48,6 +32,22 @@ export async function generateMetadata({
   return journeyLinkMetadata(await getPublicJourney(journeyId), journeyId);
 }
 
+/**
+ * The participant runner's first screen: the Start Step itself, under the
+ * Journey's title, with the description beneath the header (ticket 27 —
+ * there is no title page in front of the Journey). Public and anonymous: no
+ * session, no Project membership, no account — a Participant only ever
+ * needs the link.
+ *
+ * Nothing is recorded by opening this page. The Start Step's Choices are a
+ * form, and the Run is created — already holding the Start and the chosen
+ * Step — when a Choice is taken. A Journey whose Start is an Ending shows
+ * "The end" here and records no Run at all.
+ *
+ * The title, description, and Start Step come from the live Published
+ * Version, never the `journey` row, so renaming a Journey after publishing
+ * never changes what a Participant is looking at until the next publish.
+ */
 export default async function JourneyStartPage({
   params,
   searchParams,

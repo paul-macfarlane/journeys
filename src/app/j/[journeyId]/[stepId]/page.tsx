@@ -20,6 +20,21 @@ import { runCookieName } from "@/lib/run-cookies";
 import { respondAndChooseAction, startOverAction } from "../actions";
 
 /**
+ * A Step URL pasted into a chat previews as the Journey does (ticket 37):
+ * the live version's title and description and the Journey's card, never
+ * the Step's own content, and `og:url` names the Journey — which is where
+ * anyone but the Participant holding the Run cookie lands.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ journeyId: string; stepId: string }>;
+}): Promise<Metadata> {
+  const { journeyId } = await params;
+  return journeyLinkMetadata(await getPublicJourney(journeyId), journeyId);
+}
+
+/**
  * One Step of a Run. Every Step has a URL of its own so the browser's back
  * button walks the Journey the way an in-app Back control does — which is why
  * this page, unusually, writes to the database while it renders: a back
@@ -46,21 +61,6 @@ import { respondAndChooseAction, startOverAction } from "../actions";
  * `respondAndChooseAction` rather than as links, so the answer travels with
  * the Choice; the form shows back whatever this Run already answered here.
  */
-/**
- * A Step URL pasted into a chat previews as the Journey does (ticket 37):
- * the live version's title and description and the Journey's card, never
- * the Step's own content, and `og:url` names the Journey — which is where
- * anyone but the Participant holding the Run cookie lands.
- */
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ journeyId: string; stepId: string }>;
-}): Promise<Metadata> {
-  const { journeyId } = await params;
-  return journeyLinkMetadata(await getPublicJourney(journeyId), journeyId);
-}
-
 export default async function RunStepPage({
   params,
   searchParams,

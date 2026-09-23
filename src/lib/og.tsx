@@ -1,11 +1,8 @@
 import { ImageResponse } from "next/og";
 
 import { APP_NAME, APP_TAGLINE, BRAND_COLORS } from "@/lib/brand";
-import {
-  LINK_PREVIEW_DESCRIPTION_LIMIT,
-  type LinkPreviewPalette,
-} from "@/lib/link-preview";
 import { textPreview } from "@/lib/graph/content";
+import type { LinkPreviewPalette } from "@/lib/link-preview";
 
 /**
  * The Open Graph images (ticket 37): the brand card the site root has
@@ -36,6 +33,12 @@ export const OG_CACHE_CONTROL =
 /** How long a title may run before the card cuts it. */
 const TITLE_LIMIT = 120;
 
+/** How long the line above the title — a Project's name — may run. */
+const KICKER_LIMIT = 80;
+
+/** The face a card's titles are set in: Literata when it loaded, else a serif. */
+export type DisplayFace = "Literata" | "serif";
+
 let literata: Promise<ArrayBuffer | null> | null = null;
 
 /**
@@ -49,7 +52,7 @@ let literata: Promise<ArrayBuffer | null> | null = null;
  * `docs/branding.md` notes the trade. A failed fetch is not kept, so the
  * next card tries again.
  */
-export function loadLiterata(): Promise<ArrayBuffer | null> {
+function loadLiterata(): Promise<ArrayBuffer | null> {
   literata ??= fetchLiterata().then((font) => {
     if (font === null) literata = null;
     return font;
@@ -75,16 +78,18 @@ async function fetchLiterata(): Promise<ArrayBuffer | null> {
 }
 
 /**
- * Renders a card at the standard size in the display face when it loaded.
- * `cacheControl` is for the request-time cards; the root card, built once,
- * leaves it unset and takes the renderer's immutable year.
+ * Renders a card at the standard size. The font is loaded once here and
+ * the face it gives is handed to the card, so a card never names a face
+ * the renderer was not given. `cacheControl` is for the request-time
+ * cards; the root card, built once, leaves it unset and takes the
+ * renderer's immutable year.
  */
 export async function ogResponse(
-  card: React.ReactElement,
+  card: (face: DisplayFace) => React.ReactElement,
   options: { cacheControl?: string } = {},
 ): Promise<ImageResponse> {
   const font = await loadLiterata();
-  return new ImageResponse(card, {
+  return new ImageResponse(card(font ? "Literata" : "serif"), {
     ...OG_SIZE,
     fonts: font
       ? [{ name: "Literata", data: font, weight: 600, style: "normal" }]
@@ -93,11 +98,6 @@ export async function ogResponse(
       ? { "Cache-Control": options.cacheControl }
       : undefined,
   });
-}
-
-/** The face the titles are set in: Literata when it loaded, else a serif. */
-async function displayFace(): Promise<string> {
-  return (await loadLiterata()) ? "Literata" : "serif";
 }
 
 /** The app mark: the fork on its rounded tile, as `icon.svg` draws it. */
@@ -132,8 +132,7 @@ function Mark({
  * the root serves, and what a Journey or Project link falls back to when
  * there is nothing public to show.
  */
-export async function BrandCard() {
-  const face = await displayFace();
+export function BrandCard({ face }: { face: DisplayFace }) {
   return (
     <div
       style={{
@@ -187,27 +186,25 @@ function titleSize(title: string): number {
  * frame paints them: the accent stripe along the top, the mark on its
  * tile beside the kicker (the Project a Journey belongs to; the app for a
  * Project), then the title in the display face and the description in the
- * muted tone. The words are cut before they reach the renderer, which
- * clamps nothing, so a long title steps down in size rather than off the
- * card.
+ * muted tone. The description arrives already cut to the link-preview
+ * limit, the same text the page's `og:description` carries; the title and
+ * the kicker are cut here, since the renderer clamps nothing, and a long
+ * title steps down in size rather than off the card.
  */
-export async function LinkPreviewCard({
+export function LinkPreviewCard({
+  face,
   kicker,
   title,
   description,
   palette,
 }: {
+  face: DisplayFace;
   kicker: string;
   title: string;
   description: string;
   palette: LinkPreviewPalette;
 }) {
-  const face = await displayFace();
   const shownTitle = textPreview(title, TITLE_LIMIT);
-  const shownDescription = textPreview(
-    description,
-    LINK_PREVIEW_DESCRIPTION_LIMIT,
-  );
   return (
     <div
       style={{
@@ -240,7 +237,7 @@ export async function LinkPreviewCard({
           }}
         >
           <Mark size={56} tile={palette.primary} fork={palette.onPrimary} />
-          <span>{textPreview(kicker, 80)}</span>
+          <span>{textPreview(kicker, KICKER_LIMIT)}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div
@@ -254,7 +251,7 @@ export async function LinkPreviewCard({
           >
             {shownTitle}
           </div>
-          {shownDescription.length > 0 ? (
+          {description.length > 0 ? (
             <div
               style={{
                 fontSize: 34,
@@ -262,7 +259,7 @@ export async function LinkPreviewCard({
                 color: palette.muted,
               }}
             >
-              {shownDescription}
+              {description}
             </div>
           ) : null}
         </div>

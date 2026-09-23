@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { APP_NAME, APP_TAGLINE, BRAND_COLORS } from "@/lib/brand";
+import { THEME_PRESETS } from "@/lib/theme";
 
 import {
   journeyLinkMetadata,
@@ -9,7 +13,66 @@ import {
   projectLinkMetadata,
 } from "./link-preview";
 
+/**
+ * oklch to sRGB hex, the maths in `scripts/contrast.mjs`: what the palette
+ * copies in `link-preview.ts` were made with, run here over `globals.css`
+ * itself so an edited preset fails this test rather than drifting.
+ */
+function oklchToHex(L: number, C: number, h: number): string {
+  const hr = (h * Math.PI) / 180;
+  const a = C * Math.cos(hr);
+  const b = C * Math.sin(hr);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const linear = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ].map((v) => Math.min(1, Math.max(0, v)));
+  return `#${linear
+    .map((v) => {
+      const srgb = v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055;
+      return Math.round(srgb * 255)
+        .toString(16)
+        .padStart(2, "0");
+    })
+    .join("")}`;
+}
+
+/** A preset's light-scheme token from its `[data-theme="<id>"]` block. */
+function cssToken(css: string, preset: string, token: string): string {
+  const block = css.match(
+    new RegExp(`^\\[data-theme="${preset}"\\] \\{([^}]*)\\}`, "m"),
+  )?.[1];
+  if (!block) throw new Error(`no light block for ${preset}`);
+  const value = block.match(
+    new RegExp(`--${token}: oklch\\(([\\d.]+) ([\\d.]+) ([\\d.]+)\\)`),
+  );
+  if (!value) throw new Error(`no --${token} for ${preset}`);
+  return oklchToHex(Number(value[1]), Number(value[2]), Number(value[3]));
+}
+
 describe("linkPreviewPalette", () => {
+  it("matches every preset's light block in globals.css", () => {
+    const css = readFileSync(
+      path.resolve(__dirname, "../app/globals.css"),
+      "utf8",
+    );
+    for (const { id } of THEME_PRESETS) {
+      // Trail is the root palette itself and has no block; BRAND_COLORS
+      // already records its hex, checked in the test below.
+      if (id === "trail") continue;
+      expect(linkPreviewPalette({ preset: id, accent: null }), id).toEqual({
+        background: cssToken(css, id, "background"),
+        foreground: cssToken(css, id, "foreground"),
+        muted: cssToken(css, id, "muted-foreground"),
+        primary: cssToken(css, id, "primary"),
+        onPrimary: cssToken(css, id, "primary-foreground"),
+      });
+    }
+  });
+
   it("paints the default preset in the app's own colours", () => {
     expect(linkPreviewPalette({ preset: "trail", accent: null })).toEqual({
       background: BRAND_COLORS.chalk,
