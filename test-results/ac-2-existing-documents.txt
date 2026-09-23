@@ -1,0 +1,31 @@
+# Ticket 40, criterion 2: every existing fixture document and the three committed legacy documents still validate unchanged.
+# Commit: 0dd40d1, run 2026-09-23T17:34:16Z
+# Command: pnpm exec vitest run --reporter=verbose src/lib/graph/content.test.ts src/lib/graph/validate.test.ts src/lib/graph/document.test.ts
+# The 'documents stored before ticket 40' block parses each legacy case and the large fixture and sanitizes every Step's content to itself; the validate lock publishes each legacy case.
+
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' parses as a graph document 14ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' parses as a graph document 3ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' parses as a graph document 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' is publishable 2ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' is publishable 3ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' is publishable 2ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' starts at the Preface 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' starts at the Preface 3ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' starts at the Preface 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' holds every Step and Choice the legacy case has 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' holds every Step and Choice the legacy case has 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' holds every Step and Choice the legacy case has 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' tags every Ending with an Outcome it defines 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' tags every Ending with an Outcome it defines 2ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' tags every Ending with an Outcome it defines 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' captions every image and links it over http(s) 4ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' captions every image and links it over http(s) 2ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' captions every image and links it over http(s) 1ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > case 1 parses and every Step's content sanitizes unchanged 15ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > case 2 parses and every Step's content sanitizes unchanged 8ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > case 3 parses and every Step's content sanitizes unchanged 2ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > the large fixture parses and every Step's content sanitizes unchanged 3ms
+ Test Files  3 passed (3)
+      Tests  128 passed (128)
+
+exit=0

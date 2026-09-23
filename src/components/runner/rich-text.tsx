@@ -4,8 +4,9 @@ import {
   readStoredImageAttrs,
   type Block,
   type Content,
+  type InlineElement,
   type ListItem,
-  type TextElement,
+  type Paragraph,
 } from "@/lib/graph/content";
 import { richTextExtensions } from "@/lib/rich-text/extensions";
 
@@ -32,13 +33,19 @@ function isHttpUrl(value: string): boolean {
 }
 
 /** A link the rule refuses keeps its text and loses its mark. */
-function hardenInline(elements: TextElement[] | undefined) {
-  return elements?.map((element) => ({
-    ...element,
-    marks: element.marks?.filter(
-      (mark) => mark.type !== "link" || isHttpUrl(mark.attrs.href),
-    ),
-  }));
+function hardenInline(
+  elements: InlineElement[] | undefined,
+): InlineElement[] | undefined {
+  return elements?.map((element) =>
+    element.type === "text"
+      ? {
+          ...element,
+          marks: element.marks?.filter(
+            (mark) => mark.type !== "link" || isHttpUrl(mark.attrs.href),
+          ),
+        }
+      : element,
+  );
 }
 
 function hardenListItem(item: ListItem): ListItem {
@@ -61,6 +68,13 @@ function hardenBlock(block: Block): Block | null {
     case "paragraph":
     case "heading":
       return { ...block, content: hardenInline(block.content) };
+    case "blockquote":
+      return {
+        ...block,
+        content: block.content.map(
+          (paragraph) => hardenBlock(paragraph) as Paragraph,
+        ),
+      };
     case "bulletList":
     case "orderedList":
       return { ...block, content: block.content.map(hardenListItem) };
@@ -94,8 +108,10 @@ export function RichText({ content }: { content: Content }) {
       // `[&_img]` keeps a picture inside the reading column whatever its own
       // dimensions are, and `break-words` (inherited by every descendant)
       // breaks the long bare URLs image captions are full of — without both, a
-      // phone scrolls sideways to reach the text.
-      className="flex flex-col gap-4 break-words [&_a]:underline [&_a]:underline-offset-4 [&_figcaption]:mt-2 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
+      // phone scrolls sideways to reach the text. A quote is set off by a
+      // rule in the Theme's muted colour and stays upright, so an Author's
+      // own italics inside it still read as emphasis.
+      className="flex flex-col gap-4 break-words [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:not-italic [&_blockquote>*+*]:mt-4 [&_figcaption]:mt-2 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
