@@ -69,6 +69,7 @@ export function NewProjectDialog() {
       <DialogContent>
         <form
           className="flex flex-col gap-4"
+          noValidate
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <DialogHeader>
