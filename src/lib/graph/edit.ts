@@ -130,9 +130,11 @@ export function updateStep(
  * the cursor — and the runner shows it as it is.
  *
  * A deciding Prompt (ticket 43) is always required: the panel disables its
- * own "Required" checkbox while `decides` is checked, and this is the one
+ * own "Required" checkbox while the Prompt decides, and this is the one
  * place that forces the stored flag to agree, whatever `prompt.required`
- * says on the way in.
+ * says on the way in. Only while it genuinely decides (`isDeciding`: two or
+ * more Choices) — a stale `decides` on a Step left with one Choice forces
+ * nothing, so the Author can still untick "Required" there.
  */
 export function setStepPrompt(
   document: GraphDocument,
@@ -149,7 +151,9 @@ export function setStepPrompt(
       : {
           type: "free_text" as const,
           ...prompt,
-          required: prompt.required || prompt.decides,
+          required:
+            prompt.required ||
+            (prompt.decides && document.steps[stepId].choices.length >= 2),
         };
   return updateStep(document, stepId, { prompt: next });
 }

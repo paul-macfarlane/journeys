@@ -1018,4 +1018,15 @@ describe("setStepPrompt", () => {
       decides: true,
     });
   });
+
+  it("forces nothing from a stale decides on a Step with one Choice", () => {
+    const oneChoice = removeChoice(base, "start", "choice-b");
+    const next = setStepPrompt(oneChoice, "start", {
+      label: "Which way?",
+      required: false,
+      decides: true,
+    });
+
+    expect(next.steps.start.prompt?.required).toBe(false);
+  });
 });
