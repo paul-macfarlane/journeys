@@ -1,6 +1,6 @@
 # 39: Loading states
 
-Status: ready-for-agent
+Status: needs-info
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -25,3 +25,15 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `polish`); never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-22, item 9.
 
 ## Comments
+
+### [BLOCKED] 2026-09-23 — parked by Paul, blocked on Next.js
+
+**Reason.** Any `loading.tsx` over an Author page breaks that page's in-place updates on Next 16.2.10 (and on 16.2.12, the latest 16.2 patch, tried locally and reverted): after a server action the page intermittently never re-renders, or re-renders and then reverts to the old render half a second later, and a `useTransition` pending state can stay set so the next click times out. Upstream: [vercel/next.js#86055](https://github.com/vercel/next.js/issues/86055) ("`useTransition` stuck … `router.refresh()` after calling a server action"; removing `loading.tsx` is the only reliable workaround there) and the React race in [discussion #88767](https://github.com/vercel/next.js/discussions/88767).
+
+**Evidence.** The first full `pnpm test:e2e` (worktree, port 3139) failed 29 of 95; under heavy load (average 198) some were contention, but `journeys-reorder` and `journey-edit-and-delete` fail on a quiet machine, every time, and pass at once with the Project skeleton removed. Tried and ruled out: dropping the `router.refresh()` after revalidating actions (the ticket-29 race), dropping `revalidatePath` from the move action, Next 16.2.12. The server sends the right tree every time; the client drops it.
+
+**Also found (fixed on the branch).** A `loading.tsx` streams the page, so a `notFound()` in it answers 200: `project-non-member`, `project-delete`, and `preview-non-member` expect 404. Fixed by running the member checks in the `[projectId]` and `[journeyId]` layouts (outside the boundary) and by putting each page and its skeleton in a route group, `(overview)` and `(editor)`, so a skeleton covers its own page only (a Preview otherwise loaded under the editor's skeleton, and an unknown Preview Step answered 200). `revalidatePath` then names the group (`/projects/[projectId]/(overview)`).
+
+**Preserved.** Branch `feat/39-loading-states` (worktree `.claude/worktrees/39-loading-states/journeys`, not merged, no PR): `52e9c3f` adds the three skeletons, `page-skeleton.tsx`, the shadcn `Skeleton` (stray `cn` dependency removed, lockfile untouched) and the render test; `1f668bf` adds the scoping and 404 fix. Lint, typecheck, and the 413 unit tests pass on it; the skeletons were checked in the built app in both themes under the navbar.
+
+**Resume.** When a Next release closes #86055: rebase the branch on `staging`, bump `next`, run `journeys-reorder` and `journey-edit-and-delete` with `--repeat-each 4`, then the full polish chain. Next in Paul's order: 40.
