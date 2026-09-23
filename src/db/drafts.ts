@@ -28,7 +28,7 @@ import {
  */
 
 /** A Draft as stored: its document, and when an Author last saved it. */
-export type Draft = {
+export type StoredDraft = {
   document: GraphDocument;
   /** The last save (or restore) — what the Versions tab shows beside it. */
   updatedAt: Date;
@@ -47,7 +47,7 @@ export async function getDraftForMember(
   projectId: string,
   journeyId: string,
   userId: string,
-): Promise<Draft | null> {
+): Promise<StoredDraft | null> {
   const [row] = await db
     .select({ document: draft.document, updatedAt: draft.updatedAt })
     .from(draft)

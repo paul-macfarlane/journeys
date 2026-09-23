@@ -46,7 +46,9 @@ export function UrlTabs({
 }) {
   const values = tabs.map((entry) => entry.value);
   // Next keeps this in step with `history.replaceState` below, so a tab
-  // click and a link to `?tab=…` both land here.
+  // click and a link to `?tab=…` both land here. Both pages that use this
+  // render dynamically (they read the session), so no Suspense boundary is
+  // needed; turning on Cache Components would call for one around it.
   const searchParams = useSearchParams();
   const tab = readTab(values, searchParams.get("tab") ?? undefined);
 

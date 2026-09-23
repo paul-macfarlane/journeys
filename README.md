@@ -105,8 +105,10 @@ Leave `AI_GATEWAY_API_KEY` empty to hide the AI authoring features.
   version (refused, with the problems listed, while the draft has any),
   unpublish to take it back from participants, preview it, and see every
   published version — number, when, and who published it — with the live one
-  marked and any of them restorable into the draft. Members of the project
-  only; anyone else gets a 404.
+  marked and any of them restorable into the draft. While the draft, title, or
+  description differs from the live version, the draft heads that list with
+  its last-edited time, a way to the editor, and Publish. Members of the
+  project only; anyone else gets a 404.
 - `/projects/<project-id>/journeys/<journey-id>/preview` — walks the draft
   from its start step to an ending in the participant runner's own frame,
   exactly as a participant would, under a banner saying nothing is recorded.
