@@ -35,3 +35,16 @@ export function evidencePath(testName: string, file: string): string {
       : SCRATCH_EVIDENCE_ROOT;
   return path.join(root, testName, file);
 }
+
+/**
+ * `test-results/<file>` when the run names the test, else scratch: for a
+ * captured response a ticket files at the proof root as
+ * `ac-<n>-<slug>.txt` rather than under the test's own directory.
+ */
+export function capturePath(testName: string, file: string): string {
+  const root =
+    named.has("all") || named.has(testName)
+      ? TRACKED_EVIDENCE_ROOT
+      : SCRATCH_EVIDENCE_ROOT;
+  return path.join(root, file);
+}
