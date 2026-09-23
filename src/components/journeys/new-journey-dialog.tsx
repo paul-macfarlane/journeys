@@ -72,6 +72,7 @@ export function NewJourneyDialog({ projectId }: { projectId: string }) {
       <DialogContent>
         <form
           className="flex flex-col gap-4"
+          noValidate
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <DialogHeader>

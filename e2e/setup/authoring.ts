@@ -104,7 +104,10 @@ export function arrowLabelled(page: Page, label: string): Locator {
  */
 export async function tagWithOutcome(page: Page, label: string): Promise<void> {
   const field = page.getByRole("combobox", { name: "Outcome", exact: true });
-  await field.fill(label);
+  await field.click();
+  await page
+    .getByRole("combobox", { name: "Filter outcomes", exact: true })
+    .fill(label);
 
   const list = page.getByRole("listbox", { name: "Outcomes" });
   const option = list.getByRole("option", { name: label, exact: true }).or(
@@ -116,7 +119,7 @@ export async function tagWithOutcome(page: Page, label: string): Promise<void> {
   await expect(option).toHaveCount(1);
   await option.click();
 
-  await expect(field).toHaveValue(label);
+  await expect(field).toHaveText(label);
 }
 
 /**

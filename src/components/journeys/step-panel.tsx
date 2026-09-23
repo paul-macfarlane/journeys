@@ -1,7 +1,10 @@
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 
 import { ChoiceList } from "@/components/journeys/choice-list";
-import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
+import {
+  SelectCombobox,
+  type ComboboxOption,
+} from "@/components/journeys/combobox";
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import {
   counted,
@@ -44,8 +47,10 @@ const CREATE_OUTCOME = "__create__";
 
 /**
  * The Outcome an Ending is grouped by, made, chosen, and renamed from the
- * Ending itself: every Outcome the Journey defines with the Endings it holds,
- * "No outcome" to let go of one, and — for a label no Outcome answers to yet
+ * Ending itself, on a control that reads as a select: what the Ending carries
+ * (or "No outcome") until it is opened, and then a filter over every Outcome
+ * the Journey defines with the Endings it holds, "No outcome" to let go of
+ * one, and — for a label no Outcome answers to yet
  * — "Create outcome “…”", which defines it and tags this Ending in one edit.
  * An Outcome the last Ending drops goes with it; there is nothing to remove
  * by hand.
@@ -83,7 +88,6 @@ function OutcomeField({
   const options = useMemo<ComboboxOption[]>(() => {
     const counts = endingCountsByOutcome(document);
     return [
-      { id: NO_OUTCOME, name: "No outcome" },
       ...Object.values(document.outcomes).map((entry) => ({
         id: entry.id,
         name: entry.label,
@@ -96,6 +100,7 @@ function OutcomeField({
           </>
         ),
       })),
+      { id: NO_OUTCOME, name: "No outcome" },
     ];
   }, [document]);
 
@@ -189,14 +194,17 @@ function OutcomeField({
 
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <Combobox
+      <SelectCombobox
         label="Outcome"
         listLabel="Outcomes"
+        filterLabel="Filter outcomes"
+        filterPlaceholder="Filter or create…"
         emptyMessage="No outcomes match"
         className="w-64"
         options={options}
         action={createOption}
         value={outcome?.label ?? "No outcome"}
+        chosenId={outcome?.id ?? NO_OUTCOME}
         onChoose={choose}
       />
 

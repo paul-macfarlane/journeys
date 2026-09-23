@@ -66,9 +66,9 @@ export async function chooseFromStartAction(
   // stay: nothing is recorded, and the Start is shown again.
   if (begun.kind === "refused") redirect(`/j/${journeyId}`);
 
-  // The Start Step's Prompt, answered with this first Choice. The browser's
-  // own `required` check has already asked once; this is for a request that
-  // did not go through it.
+  // The Start Step's Prompt, answered with this first Choice. Native
+  // constraint validation is off across the app, so the server is the only
+  // check a required Prompt left blank ever meets.
   const startStep = journey.document.steps[journey.document.startStepId];
   const reading = readResponse(startStep, formData.get("response"));
   const refused = refusalNotice(reading);

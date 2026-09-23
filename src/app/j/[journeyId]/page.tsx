@@ -5,6 +5,7 @@ import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
   ResponseNotice,
+  responseRefusal,
   StepView,
 } from "@/components/runner/step-view";
 import { getPublicJourney, getRunForJourney } from "@/db/runs";
@@ -102,9 +103,11 @@ export default async function JourneyStartPage({
         </div>
       ) : null}
 
-      {/* The one refusal this screen can be sent back with: a required
-          Prompt on the Start left blank by a request the browser's own
-          check did not see. Read by the action's redirect; the address is
+      {/* The one notice this screen can be sent back with is a refusal — a
+          required Prompt on the Start left blank — and `ResponseField`
+          renders that at the field itself, so `ResponseNotice` here renders
+          nothing for it; it stays for symmetry with every other Step, and
+          for a future confirmation this screen might carry. The address is
           not rewritten here, since no Run exists to keep in step with. */}
       <ResponseNotice notice={notice} />
 
@@ -123,6 +126,7 @@ export default async function JourneyStartPage({
             : {
                 kind: "form",
                 action: chooseFromStartAction.bind(null, journeyId),
+                refusal: responseRefusal(notice),
               }
         }
         startOver={null}

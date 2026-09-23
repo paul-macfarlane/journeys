@@ -4,6 +4,7 @@ import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
   ResponseNotice,
+  responseRefusal,
   StepView,
 } from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
@@ -85,6 +86,7 @@ export default async function PreviewStepPage({
                   journeyId,
                   stepId,
                 ),
+                refusal: responseRefusal(notice),
               }
             : {
                 kind: "links",
