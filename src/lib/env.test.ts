@@ -27,15 +27,15 @@ describe("parseEnv", () => {
     expect(parsed.DISCORD_CLIENT_SECRET).toBe("discord-client-secret");
   });
 
-  it("keeps ANTHROPIC_API_KEY optional", () => {
-    expect(parseEnv(validEnv).ANTHROPIC_API_KEY).toBeUndefined();
+  it("keeps AI_GATEWAY_API_KEY optional", () => {
+    expect(parseEnv(validEnv).AI_GATEWAY_API_KEY).toBeUndefined();
   });
 
   // .env.example tells an Author to leave the key empty to hide the AI
   // features, so a blank value has to mean "absent", not "invalid".
-  it("treats an empty ANTHROPIC_API_KEY as absent", () => {
+  it("treats an empty AI_GATEWAY_API_KEY as absent", () => {
     expect(
-      parseEnv({ ...validEnv, ANTHROPIC_API_KEY: "" }).ANTHROPIC_API_KEY,
+      parseEnv({ ...validEnv, AI_GATEWAY_API_KEY: "" }).AI_GATEWAY_API_KEY,
     ).toBeUndefined();
   });
 
