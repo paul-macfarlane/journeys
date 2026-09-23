@@ -10,13 +10,6 @@ import {
   type Prompt,
 } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
-import {
-  dimmingDocument,
-  loopDocument,
-  promptDocument,
-  publishableDocument,
-  runnerDocument,
-} from "../../../e2e/setup/documents";
 import case1 from "../../../scripts/seed/journey-stories/case-1.json";
 import case2 from "../../../scripts/seed/journey-stories/case-2.json";
 import case3 from "../../../scripts/seed/journey-stories/case-3.json";
@@ -610,12 +603,10 @@ describe("decides defaults to false on every stored Prompt (ticket 43)", () => {
   }
 
   it.each([
+    // The e2e builders are not imported here: `e2e/setup/documents.ts`
+    // reaches the session helper, which loads the e2e environment at import.
+    // They are parsed by every e2e run instead.
     ["large-journey fixture", largeJourney],
-    ["e2e publishableDocument()", publishableDocument()],
-    ["e2e runnerDocument()", runnerDocument()],
-    ["e2e promptDocument()", promptDocument()],
-    ["e2e loopDocument()", loopDocument()],
-    ["e2e dimmingDocument()", dimmingDocument()],
     ["legacy case-1.json", case1],
     ["legacy case-2.json", case2],
     ["legacy case-3.json", case3],
