@@ -77,6 +77,7 @@ export default async function ProjectPage({
 
       <UrlTabs
         label="Project"
+        sticky
         initialTab={readTab(PROJECT_TABS, tab)}
         tabs={[
           {

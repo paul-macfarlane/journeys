@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import {
   createJourney,
@@ -201,28 +201,29 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
 
   // At phone width the bar keeps to one row and nothing scrolls sideways:
   // the switcher shows the title alone and the user menu its avatar, and a
-  // menu opens as a full-width sheet on the bottom edge rather than a
-  // popover under its trigger.
+  // menu opens as a popover under its trigger, as at every width, never a
+  // full-width sheet pinned to the bottom edge (ticket 34).
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(`/projects/${p1Id}`);
   await account.click();
-  const sheet = page.getByRole("menu");
-  await expect(sheet.getByText(author.email)).toBeVisible();
-  // Polled: the sheet slides up into place, so its bottom edge only meets
-  // the viewport's once the enter animation has finished.
+  const menu = page.getByRole("menu");
+  await expect(menu.getByText(author.email)).toBeVisible();
+  // Polled: the popover zooms into place, so its box only settles once the
+  // enter animation has finished.
   await expect
     .poll(async () => {
-      const box = await sheet.boundingBox();
-      return box ? Math.round(box.y + box.height) : -1;
+      const box = await menu.boundingBox();
+      if (!box) return "absent";
+      const inside =
+        box.x >= 0 &&
+        box.y >= 0 &&
+        box.x + box.width <= 375 &&
+        box.y + box.height <= 812;
+      const sheet = box.x === 0 && Math.round(box.y + box.height) === 812;
+      return inside && !sheet && box.width < 375 ? "popover" : "elsewhere";
     })
-    .toBe(812);
-  const sheetBox = await sheet.boundingBox();
-  expect(sheetBox?.x).toBe(0);
-  expect(sheetBox?.width).toBe(375);
-  await page.screenshot({
-    path: evidencePath("navbar-switch-project-and-theme", "phone-sheet.png"),
-  });
-  await sheet.getByRole("menuitemradio", { name: "Dark" }).click();
+    .toBe("popover");
+  await menu.getByRole("menuitemradio", { name: "Dark" }).click();
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
   await expect(appNav(page).getByRole("button", { name: p1 })).toBeVisible();
@@ -235,4 +236,129 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   await page.screenshot({
     path: evidencePath("navbar-switch-project-and-theme", "phone.png"),
   });
+});
+
+/** Where a locator's box sits, rounded, for polling while things settle. */
+async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox();
+  return box
+    ? {
+        x: Math.round(box.x),
+        y: Math.round(box.y),
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+      }
+    : null;
+}
+
+test("navbar-sticky-and-phone-menu: the navbar and tab row stick while the header scrolls away, and the phone user menu is a popover", async ({
+  page,
+  context,
+}) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Sticky project ${suffix}`;
+  const journeyTitle = `Sticky journey ${suffix}`;
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // The default 1280 × 720: scroll the Journey page and the navbar stays on
+  // the top edge, the tab row sits directly beneath it, and the header — the
+  // Journey's title with it — has scrolled away above the viewport.
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  const banner = page.getByRole("banner").filter({ has: appNav(page) });
+  const tablist = page.getByRole("tablist", { name: "Journey" });
+  // The Journey page's header edits the title in place: its Title field.
+  const title = page.getByRole("textbox", { name: "Title", exact: true });
+  await expect(title).toHaveValue(journeyTitle);
+  await expect(tablist).toBeVisible();
+  const restingTabs = await boxOf(tablist);
+
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+  await expect.poll(async () => (await boxOf(banner))?.y).toBe(0);
+  await expect
+    .poll(async () => {
+      const bar = await boxOf(banner);
+      const tabs = await boxOf(tablist);
+      if (!bar || !tabs) return null;
+      // The tab list sits inside the sticky band, whose top meets the bar.
+      const band = await boxOf(
+        page.locator("[data-slot=sticky-tabs]").filter({ has: tablist }),
+      );
+      return band ? Math.abs(band.y - (bar.y + bar.height)) <= 1 : null;
+    })
+    .toBe(true);
+  await expect
+    .poll(async () => {
+      const box = await boxOf(title);
+      return box ? box.y + box.height <= 0 : null;
+    })
+    .toBe(true);
+  // The tab list itself moved up with the page and then stopped under the bar.
+  expect((await boxOf(tablist))!.y).toBeLessThan(restingTabs!.y);
+  await page.screenshot({
+    path: evidencePath("navbar-sticky-and-phone-menu", "sticky-tabs.png"),
+  });
+
+  // At phone width nothing but the navbar sticks: scrolling carries the tab
+  // row away with the page.
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.reload();
+  await expect(tablist).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  const phoneTabs = await boxOf(tablist);
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+  const scrolledBy = await page.evaluate(() => window.scrollY);
+  await expect
+    .poll(async () => (await boxOf(tablist))?.y)
+    .toBe(phoneTabs!.y - scrolledBy);
+  await expect.poll(async () => (await boxOf(banner))?.y).toBe(0);
+
+  // The user menu opens as a popover with every Theme choice and Sign out
+  // inside the viewport.
+  const account = page.getByRole("button", { name: "Account: Test Author" });
+  await account.click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  const rows = [
+    menu.getByRole("menuitemradio", { name: "Light" }),
+    menu.getByRole("menuitemradio", { name: "Dark" }),
+    menu.getByRole("menuitemradio", { name: "System" }),
+    menu.getByRole("menuitem", { name: "Sign out" }),
+  ];
+  for (const row of rows) {
+    await expect
+      .poll(async () => {
+        const box = await row.boundingBox();
+        return box
+          ? box.x >= 0 &&
+              box.y >= 0 &&
+              box.x + box.width <= 375 &&
+              box.y + box.height <= 667
+          : null;
+      })
+      .toBe(true);
+  }
+  await page.screenshot({
+    path: evidencePath("navbar-sticky-and-phone-menu", "phone-menu.png"),
+  });
+
+  await menu.getByRole("menuitemradio", { name: "Dark" }).click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+
+  await account.click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/sign-in`);
 });

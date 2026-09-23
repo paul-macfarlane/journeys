@@ -193,6 +193,7 @@ export default async function JourneyPage({
 
       <UrlTabs
         label="Journey"
+        sticky
         initialTab={readTab(JOURNEY_TABS, tab)}
         tabs={[
           {

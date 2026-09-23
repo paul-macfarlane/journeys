@@ -799,10 +799,39 @@ async function expandStepActions(page: Page, title: string): Promise<Locator> {
   // Clicking the box can have taken the map to it, and a button pressed while
   // the map is still moving is a button pressed where it no longer is.
   await settledTransform(page);
+  await toolbarOntoMap(page, title);
   await opener.click();
   await expect(opener).toHaveAttribute("aria-expanded", "true");
 
   return boxToolbar(page, title);
+}
+
+/**
+ * A box's moves brought inside the map's frame before they are pressed. After
+ * a fit of the whole map at a high zoom the top box sits a few pixels under
+ * the frame's top edge and its moves, drawn above it, hang over the edge,
+ * where the frame clips them beneath the Map controls row: a pointer aimed
+ * there lands on the row. Before the navbar was sticky (ticket 34) the click
+ * went through by accident — Playwright's last-resort scroll put the frame's
+ * top edge on the window's, and the sliver of a button still inside the
+ * frame took the click; with the bar covering the window's top 56px there is
+ * no sliver to take it. So the map is zoomed out a notch, through its own
+ * control, until the moves are inside the frame — what an Author does when a
+ * box's moves are cut off — which never fires the pane click that would fold
+ * them away.
+ */
+async function toolbarOntoMap(page: Page, title: string): Promise<void> {
+  const pane = canvas(page).locator(".react-flow");
+  for (let notch = 0; notch < 3; notch += 1) {
+    const frame = await pane.boundingBox();
+    const moves = await boxToolbar(page, title).boundingBox();
+    if (frame === null || moves === null || moves.y >= frame.y + 4) return;
+
+    await canvas(page)
+      .getByRole("button", { name: /zoom out/i })
+      .click();
+    await settledTransform(page);
+  }
 }
 
 /** What the map is zoomed to, read off the transform it has settled at. */
