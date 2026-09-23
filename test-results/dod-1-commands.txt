@@ -1,33 +1,40 @@
-# DoD-1 command chain for ticket 36 (the Draft on the Versions tab), polish route
-# Commit: 15b0088
-# Run: 2026-09-23T14:26:59Z from the worktree .claude/worktrees/feat+36-versions-tab-draft-row; e2e on port 3136 against journeys_e2e_t36 (docker Postgres :5436, production build, Chromium)
-# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=versions-tab-shows-draft pnpm test:e2e
+# DoD-1 command chain for ticket 35 (analytics direction and dark controls), polish route
+# Commit: f530d23
+# Run: 2026-09-23T14:11:01Z from the worktree .claude/worktrees/35-analytics-direction-dark-controls/journeys; e2e on port 3135 against journeys_e2e_t35 (docker Postgres :5436, production build, Chromium)
+# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=canvas-dark-controls,analytics-direction-toggle pnpm test:e2e
 # Filter: terminal control sequences removed; the repository's absolute path shortened to '.'
 
 $ pnpm lint
 
+
 > journeys@0.1.0 lint .
 > eslint
+
 
 exit=0
 
 $ pnpm format:check
+
 
 > journeys@0.1.0 format:check .
 > prettier --check .
 
 Checking formatting...
 All matched files use Prettier code style!
+
 exit=0
 
 $ pnpm typecheck
 
+
 > journeys@0.1.0 typecheck .
 > tsc --noEmit
+
 
 exit=0
 
 $ pnpm test
+
 
 > journeys@0.1.0 test .
 > vitest run
@@ -39,14 +46,17 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 .
 
 
- Test Files  25 passed (25)
-      Tests  386 passed (386)
-   Start at  10:27:08
-   Duration  799ms (transform 1.19s, setup 0ms, import 3.24s, tests 597ms, environment 1ms)
+ Test Files  26 passed (26)
+      Tests  396 passed (396)
+   Start at  10:11:11
+   Duration  877ms (transform 1.18s, setup 0ms, import 3.42s, tests 695ms, environment 2ms)
+
 
 exit=0
 
-$ E2E_EVIDENCE=versions-tab-shows-draft pnpm test:e2e
-(full output in test-results/dod-1-e2e.txt)
-  91 passed (2.3m)
+$ E2E_EVIDENCE=canvas-dark-controls,analytics-direction-toggle pnpm test:e2e
+
+(full Playwright output in test-results/dod-1-e2e.txt)
+  92 passed (3.3m)
+
 exit=0

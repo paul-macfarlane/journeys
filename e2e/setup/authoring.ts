@@ -145,8 +145,18 @@ export async function openTab(
 
 /**
  * The Journey's title or description, edited where it sits at the top of
- * the page: typed into the field and left, which is the save. Waits for the
- * row, since the save is a write the page shows nothing for on its own.
+ * the page: typed into and left, which is the save. Waits for the row, since
+ * the save is a write the page shows nothing for on its own.
+ *
+ * Made until it takes. The field is React Hook Form's once the page has
+ * hydrated, and becoming so writes the stored value into the input (the
+ * ref attaching calls `setFieldValue`), over anything typed before it: on a
+ * slow machine `fill`'s select and its insert have landed either side of
+ * that write and the two titles came out concatenated (CI, tickets 35 and
+ * 36). Nothing on the page says when hydration is done, so the edit is
+ * typed, read back off the field, saved, and read back off the row, and a
+ * typing that hydration wrote over — which saves nothing, because the
+ * field then holds what it held — is made again.
  */
 export async function editJourneyField(
   page: Page,
@@ -158,20 +168,24 @@ export async function editJourneyField(
   const input = page.getByLabel(field === "title" ? "Title" : "Description", {
     exact: true,
   });
-  await input.fill(value);
-  if (field === "title") await input.press("Enter");
-  else await input.blur();
-
   const column = { title: "title", description: "description" }[field];
-  await expect
-    .poll(async () => {
-      const [row] = await queryE2eDatabase<{ value: string }>(
-        `SELECT ${column} AS value FROM "journey" WHERE id = $1`,
-        [journeyId],
-      );
-      return row?.value;
-    })
-    .toBe(value);
+  const stored = async () => {
+    const [row] = await queryE2eDatabase<{ value: string }>(
+      `SELECT ${column} AS value FROM "journey" WHERE id = $1`,
+      [journeyId],
+    );
+    return row?.value;
+  };
+
+  await expect(async () => {
+    await input.fill(value);
+    await expect(input, `${field} holds what was typed`).toHaveValue(value, {
+      timeout: 1_000,
+    });
+    if (field === "title") await input.press("Enter");
+    else await input.blur();
+    await expect.poll(stored, { timeout: 3_000 }).toBe(value);
+  }).toPass({ timeout: 20_000 });
 }
 
 export async function createProject(

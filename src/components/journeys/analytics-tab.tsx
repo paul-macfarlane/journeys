@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
  * in the Author's own words — "40% reached care" — with an untagged Ending
  * standing under its own title and the Runs that stopped short as a bar of
  * their own, so every start is in exactly one bar. Member-only by way of
- * the page that renders it; never a Run id or a Participant.
+ * the page that renders it; never a Run id or a Participant. Which way
+ * the map runs is the map's own control to offer (`AnalyticsCanvas`).
  */
 
 export type SelectedVersionAnalytics = {
