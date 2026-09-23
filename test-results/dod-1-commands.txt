@@ -1,7 +1,7 @@
-# DoD-1 command chain for ticket 35 (analytics direction and dark controls), polish route
-# Commit: f530d23
-# Run: 2026-09-23T14:11:01Z from the worktree .claude/worktrees/35-analytics-direction-dark-controls/journeys; e2e on port 3135 against journeys_e2e_t35 (docker Postgres :5436, production build, Chromium)
-# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=canvas-dark-controls,analytics-direction-toggle pnpm test:e2e
+# DoD-1 command chain for ticket 40 (underline, strike, quotes, and line breaks), contract route
+# Commit: 0dd40d1
+# Run: 2026-09-23T17:34:16Z from the worktree .claude/worktrees/40-rich-text-marks/journeys; e2e on port 3140 against journeys_e2e_t40 (docker Postgres :5436, production build, Chromium)
+# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=rich-text-underline-strike-quote pnpm test:e2e
 # Filter: terminal control sequences removed; the repository's absolute path shortened to '.'
 
 $ pnpm lint
@@ -46,17 +46,17 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
  RUN  v4.1.11 .
 
 
- Test Files  26 passed (26)
-      Tests  396 passed (396)
-   Start at  10:11:11
-   Duration  877ms (transform 1.18s, setup 0ms, import 3.42s, tests 695ms, environment 2ms)
+ Test Files  28 passed (28)
+      Tests  425 passed (425)
+   Start at  13:34:25
+   Duration  949ms (transform 1.34s, setup 0ms, import 3.83s, tests 813ms, environment 2ms)
 
 
 exit=0
 
-$ E2E_EVIDENCE=canvas-dark-controls,analytics-direction-toggle pnpm test:e2e
+$ E2E_EVIDENCE=rich-text-underline-strike-quote pnpm test:e2e
 
 (full Playwright output in test-results/dod-1-e2e.txt)
-  92 passed (3.3m)
+  96 passed (3.8m)
 
 exit=0
