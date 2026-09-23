@@ -14,6 +14,7 @@ import {
 import { getProjectForMember } from "@/db/projects";
 import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
 import { env } from "@/lib/env";
+import { isDeciding } from "@/lib/graph/prompt";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
@@ -224,9 +225,7 @@ export async function publishJourneyAction(
 
   // A deciding Prompt (ticket 43) with no gateway key still publishes — the
   // runner falls back to the Choices — but the Author is told, once, here.
-  const decides = Object.values(published.document.steps).some(
-    (step) => step.prompt?.decides === true,
-  );
+  const decides = Object.values(published.document.steps).some(isDeciding);
   if (decides && env.AI_GATEWAY_API_KEY === undefined) {
     return {
       ok: true,

@@ -592,4 +592,54 @@ describe("chooseFromStartAction on a deciding Prompt", () => {
     expect(doubles.judge).not.toHaveBeenCalled();
     expect(doubles.runs.createRun).not.toHaveBeenCalled();
   });
+
+  it("mints a Participant id before judging and keys the rate limit on it, so two first-time visitors judged in the same second are each judged (ticket 43 S8/F2)", async () => {
+    doubles.runs.getPublicJourney.mockResolvedValue({
+      ...liveJourney(),
+      document: decidingDocument(),
+    });
+    doubles.judge.mockResolvedValue({ choiceId: "wait", probability: 0.8 });
+
+    // Neither visitor carries a Participant cookie yet.
+    cookiesPresent({});
+    const first = await redirectOf(
+      chooseFromStartAction(JOURNEY_ID, formResponding(RESPONSE)),
+    );
+    cookiesPresent({});
+    const second = await redirectOf(
+      chooseFromStartAction(JOURNEY_ID, formResponding(RESPONSE)),
+    );
+
+    expect(first).toBe(`/j/${JOURNEY_ID}/queue`);
+    expect(second).toBe(`/j/${JOURNEY_ID}/queue`);
+    expect(doubles.judge).toHaveBeenCalledTimes(2);
+  });
+
+  it("rate-limits a returning Participant re-submitting within a second, on their own id — never the Journey's", async () => {
+    doubles.runs.getPublicJourney.mockResolvedValue({
+      ...liveJourney(),
+      document: decidingDocument(),
+    });
+    doubles.judge.mockResolvedValue({ choiceId: "wait", probability: 0.8 });
+
+    cookiesPresent({});
+    await redirectOf(
+      chooseFromStartAction(JOURNEY_ID, formResponding(RESPONSE)),
+    );
+    const participantSet = doubles.cookieStore.set.mock.calls.find(
+      ([name]) => name === PARTICIPANT_COOKIE,
+    );
+    const participantId = participantSet![1] as string;
+
+    // The same Participant, cookie now present, submitting again at once.
+    cookiesPresent({ [PARTICIPANT_COOKIE]: participantId });
+    const second = await redirectOf(
+      chooseFromStartAction(JOURNEY_ID, formResponding(RESPONSE)),
+    );
+
+    expect(second).toBe(
+      `/j/${JOURNEY_ID}?decide=none&response=${encodeURIComponent(RESPONSE)}`,
+    );
+    expect(doubles.judge).toHaveBeenCalledTimes(1);
+  });
 });

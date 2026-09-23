@@ -3,31 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { getDraftForMember } from "@/db/drafts";
-import { decideChoice, gatewayJudge, type Decision } from "@/lib/ai/decide";
-import { decisionAllowed } from "@/lib/ai/rate-limit";
-import { env } from "@/lib/env";
-import { hasStep, type Step } from "@/lib/graph/document";
+import { asksJudge, judgeResponse } from "@/lib/ai/judge";
+import { hasStep } from "@/lib/graph/document";
 import { readResponse, refusalNotice } from "@/lib/graph/prompt";
 import { requireSession } from "@/lib/session";
-
-/** One decision per Author per second, as the runner allows one per Run. */
-const DECISION_WINDOW_MS = 1000;
-const lastDecisionAt = new Map<string, number>();
-
-/** The runner's judge path: no key or inside the rate limit is no answer. */
-async function judge(
-  step: Step,
-  response: string,
-  rateKey: string,
-): Promise<Decision> {
-  if (env.AI_GATEWAY_API_KEY === undefined) return { kind: "none" };
-  if (
-    !decisionAllowed(lastDecisionAt, rateKey, Date.now(), DECISION_WINDOW_MS)
-  ) {
-    return { kind: "none" };
-  }
-  return decideChoice(step, response, gatewayJudge);
-}
 
 /**
  * Preview's one server action: where a Step with a Prompt posts its form.
@@ -68,17 +47,16 @@ export async function previewChooseAction(
   if (refused) redirect(`${here}?notice=${refused}`);
 
   const step = draft.steps[stepId];
-  if (
-    step.prompt?.decides === true &&
-    step.choices.length > 0 &&
-    formData.get("to") === null &&
-    reading.kind === "answered"
-  ) {
-    const decision = await judge(step, reading.text, session.user.id);
+  if (asksJudge(step, formData) && reading.kind === "answered") {
+    const decision = await judgeResponse(step, reading.text, session.user.id);
+    // Floor, not round (ticket 43 F4): flooring keeps `percent >= 50` exactly
+    // when `probability >= 0.5`, so Preview never claims an advance a live
+    // Run would not make (a rounded 49.6% would read as 50%, which the
+    // runner would not have taken).
     const judged =
       decision.kind === "none"
         ? "decide=none"
-        : `decide=${encodeURIComponent(decision.choiceId)}&confidence=${Math.round(decision.probability * 100)}`;
+        : `decide=${encodeURIComponent(decision.choiceId)}&confidence=${Math.floor(decision.probability * 100)}`;
     redirect(`${here}?${judged}&response=${encodeURIComponent(reading.text)}`);
   }
 

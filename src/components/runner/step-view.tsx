@@ -2,15 +2,15 @@ import type { ReactNode } from "react";
 
 import { RichText } from "@/components/runner/rich-text";
 import { buttonVariants } from "@/components/ui/button";
-import { DECISION_THRESHOLD } from "@/lib/ai/decide";
 import { Textarea } from "@/components/ui/textarea";
+import { DECISION_THRESHOLD } from "@/lib/ai/threshold";
 import {
   isEnding,
   type GraphDocument,
   type Prompt,
   type Step,
 } from "@/lib/graph/document";
-import { MAX_RESPONSE_LENGTH } from "@/lib/graph/prompt";
+import { isDeciding, MAX_RESPONSE_LENGTH } from "@/lib/graph/prompt";
 import { cn } from "@/lib/utils";
 
 /**
@@ -205,7 +205,7 @@ function ResponseField({
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-base font-medium">
         {prompt.label}
-        {prompt.required || prompt.decides ? null : (
+        {prompt.required || isDeciding(step) ? null : (
           <span className="text-muted-foreground font-normal"> (optional)</span>
         )}
       </label>
@@ -213,7 +213,7 @@ function ResponseField({
         id={id}
         name="response"
         rows={4}
-        aria-required={prompt.required || prompt.decides}
+        aria-required={prompt.required || isDeciding(step)}
         maxLength={MAX_RESPONSE_LENGTH}
         defaultValue={response ?? ""}
         autoComplete="off"
@@ -299,7 +299,7 @@ function decisionStatus(step: Step, decision: DecisionView): string {
     const percent = Math.round(decision.probability * 100);
     const outcome =
       decision.probability >= DECISION_THRESHOLD ? "advanced" : "asked";
-    return `The judge picked "${picked.label}" (${percent}%) — a live run would have ${outcome}`;
+    return `The judge picked "${picked.label}" (${percent}%) — a live run would have ${outcome}.`;
   }
 
   return picked === null
@@ -319,7 +319,7 @@ function ChoiceList({
   // A deciding Prompt (ticket 43): the Response is posted on its own first,
   // and only once the judge has answered are the Choices offered — its pick,
   // when it had one, marked among them.
-  const deciding = choices.kind === "form" && step.prompt?.decides === true;
+  const deciding = choices.kind === "form" && isDeciding(step);
   const decision = choices.kind === "form" ? choices.decision : undefined;
   const suggested =
     deciding && decision !== undefined

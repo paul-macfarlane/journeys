@@ -94,9 +94,14 @@ export default async function PreviewStartPage({
                     ),
                     refusal: responseRefusal(notice),
                     // Preview stores nothing, so a deciding Prompt's
-                    // Response travels back in the address (ticket 43).
+                    // Response travels back in the address (ticket 43) —
+                    // but only once the judge has actually been asked
+                    // (`decide` present); a bare `?response=` on its own is
+                    // never trusted back into the box (ticket 43 F6).
                     response:
-                      typeof response === "string" ? response : undefined,
+                      typeof decide === "string" && typeof response === "string"
+                        ? response
+                        : undefined,
                     decision: previewDecision(
                       draft.steps[draft.startStepId],
                       decide,

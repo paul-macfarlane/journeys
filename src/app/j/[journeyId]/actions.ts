@@ -10,9 +10,8 @@ import {
   getRunForJourney,
   saveRunState,
 } from "@/db/runs";
-import { decideChoice, gatewayJudge, type Decision } from "@/lib/ai/decide";
-import { decisionAllowed } from "@/lib/ai/rate-limit";
-import { env } from "@/lib/env";
+import type { Decision } from "@/lib/ai/decide";
+import { asksJudge, judgeResponse } from "@/lib/ai/judge";
 import { beginRun } from "@/lib/graph/begin";
 import { hasStep, type Step } from "@/lib/graph/document";
 import { readResponse, refusalNotice } from "@/lib/graph/prompt";
@@ -52,33 +51,6 @@ import {
  * as "none", so a Run is never stuck.
  */
 
-/** One decision per Run (or, on the Start, per Participant) per second. */
-const DECISION_WINDOW_MS = 1000;
-const lastDecisionAt = new Map<string, number>();
-
-/** True when this form asks the judge rather than naming a Choice. */
-function asksJudge(step: Step, formData: FormData): boolean {
-  return (
-    step.prompt?.decides === true &&
-    step.choices.length > 0 &&
-    formData.get("to") === null
-  );
-}
-
-async function judge(
-  step: Step,
-  response: string,
-  rateKey: string,
-): Promise<Decision> {
-  if (env.AI_GATEWAY_API_KEY === undefined) return { kind: "none" };
-  if (
-    !decisionAllowed(lastDecisionAt, rateKey, Date.now(), DECISION_WINDOW_MS)
-  ) {
-    return { kind: "none" };
-  }
-  return decideChoice(step, response, gatewayJudge);
-}
-
 /** The Step a confident answer leads to; null for any other decision. */
 function judgedTarget(step: Step, decision: Decision): string | null {
   if (decision.kind !== "confident") return null;
@@ -114,6 +86,30 @@ export async function chooseFromStartAction(
   const startStep = journey.document.steps[journey.document.startStepId];
   const cookieStore = await cookies();
 
+  // Pseudonymous and shared across the Journeys this browser walks, so the
+  // analytics in ticket 10 can tell one Participant's walks apart without
+  // ever knowing who they are. Minted on the first Run, kept afterwards —
+  // and minted here, before any judging, rather than only right before
+  // `createRun` below: the judge's rate limit is keyed on this id, and two
+  // different first-time visitors judged in the same second must not share
+  // a key, which they would if the key fell back to the Journey id instead
+  // (ticket 43 S8/F2). Cached in `participantId` so a deciding Start still
+  // mints exactly once, whether or not it ends up judging.
+  let participantId: string | undefined;
+  function ensureParticipantId(): string {
+    if (participantId !== undefined) return participantId;
+    participantId = cookieStore.get(PARTICIPANT_COOKIE)?.value;
+    if (participantId === undefined) {
+      participantId = crypto.randomUUID();
+      cookieStore.set(
+        PARTICIPANT_COOKIE,
+        participantId,
+        participantCookieOptions(),
+      );
+    }
+    return participantId;
+  }
+
   let to = formData.get("to");
   if (asksJudge(startStep, formData)) {
     // A deciding Prompt on the Start: the Response is read (and refused)
@@ -124,10 +120,10 @@ export async function chooseFromStartAction(
     if (refused) redirect(`/j/${journeyId}?notice=${refused}`);
     const text = reading.kind === "answered" ? reading.text : "";
 
-    const decision = await judge(
+    const decision = await judgeResponse(
       startStep,
       text,
-      cookieStore.get(PARTICIPANT_COOKIE)?.value ?? journeyId,
+      ensureParticipantId(),
     );
     to = judgedTarget(startStep, decision);
     if (to === null) {
@@ -153,22 +149,9 @@ export async function chooseFromStartAction(
   const refused = refusalNotice(reading);
   if (refused) redirect(`/j/${journeyId}?notice=${refused}`);
 
-  // Pseudonymous and shared across the Journeys this browser walks, so the
-  // analytics in ticket 10 can tell one Participant's walks apart without
-  // ever knowing who they are. Minted on the first Run, kept afterwards.
-  let participantId = cookieStore.get(PARTICIPANT_COOKIE)?.value;
-  if (!participantId) {
-    participantId = crypto.randomUUID();
-    cookieStore.set(
-      PARTICIPANT_COOKIE,
-      participantId,
-      participantCookieOptions(),
-    );
-  }
-
   const created = await createRun({
     versionId: journey.versionId,
-    participantId,
+    participantId: ensureParticipantId(),
     state: begun.state,
     response:
       reading.kind === "answered"
@@ -256,7 +239,7 @@ export async function respondAndChooseAction(
   if (asksJudge(step, formData) && reading.kind === "answered") {
     // The Response is already saved; a confident answer is taken as the
     // Choice it names, and anything else asks the Participant.
-    const decision = await judge(step, reading.text, run.id);
+    const decision = await judgeResponse(step, reading.text, run.id);
     to = judgedTarget(step, decision);
     if (to === null) redirect(`${here}?${decideParam(decision)}`);
   }

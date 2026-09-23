@@ -155,8 +155,14 @@ export default async function JourneyStartPage({
                 refusal: responseRefusal(notice),
                 // A deciding Prompt's answer (ticket 43): with no Run yet to
                 // hold the Response, it comes back in the address with the
-                // judge's pick, and the box shows it again.
-                response: typeof response === "string" ? response : undefined,
+                // judge's pick, and the box shows it again — but only once
+                // the judge has actually been asked (`decide` present); a
+                // bare `?response=` on its own is never trusted back into
+                // the box (ticket 43 F6).
+                response:
+                  typeof decide === "string" && typeof response === "string"
+                    ? response
+                    : undefined,
                 decision: liveDecision(startStep, decide),
               }
         }

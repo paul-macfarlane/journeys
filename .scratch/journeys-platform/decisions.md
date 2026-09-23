@@ -256,3 +256,10 @@ public URLs, custom theme editor, manual canvas layout.
   and shows the pick and its probability so an Author can tune labels.
 - A deciding Prompt published with no key is a publish-time warning, never
   a refusal.
+- Supersedes "Vercel AI SDK (`ai` v6) for AI features." (decisions still use
+  `ai`, but the judge is jev on the Gateway, not a model chosen per feature);
+  "AI: Anthropic `claude-opus-5` via Vercel AI SDK Anthropic provider; key is
+  an env var populated out of band; features hidden when absent" for
+  decisions only (AI authoring keeps its own Anthropic line until ticket
+  14); and "MVP: AI *authoring* only" (the runner now also uses AI, to judge
+  a deciding Prompt's Response).

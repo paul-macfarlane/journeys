@@ -1,5 +1,6 @@
 import { experimental_evaluate as evaluate } from "ai";
 
+import { DECISION_THRESHOLD } from "@/lib/ai/threshold";
 import { contentPreview } from "@/lib/graph/content";
 import type { Step } from "@/lib/graph/document";
 
@@ -13,8 +14,13 @@ import type { Step } from "@/lib/graph/document";
  * `Judge` and no gateway call.
  */
 
-/** At or above this probability, the Run advances without asking. Tuned in Preview. */
-export const DECISION_THRESHOLD = 0.5;
+/**
+ * Re-exported from `@/lib/ai/threshold` (ticket 43 F5): the number lives
+ * outside this network module so a UI file that only needs it, like
+ * `step-view.tsx`, does not pull the AI SDK in with it. `decideChoice` below
+ * still reads it from here.
+ */
+export { DECISION_THRESHOLD };
 
 /**
  * Exactly what the judge is shown: the Step's title, its content as plain
@@ -51,10 +57,9 @@ export function buildDecision(step: Step, response: string): DecisionInput {
     label: choice.label,
   }));
 
-  const criteria: Record<string, string> = {};
-  for (const choice of choices) {
-    criteria[choice.id] = choice.label;
-  }
+  const criteria = Object.fromEntries(
+    choices.map((choice) => [choice.id, choice.label]),
+  );
 
   return {
     state: {
@@ -131,6 +136,14 @@ export async function decideChoice(
 }
 
 /**
+ * A Participant is waiting on this call, so it does not get the AI SDK's
+ * default retries and never runs longer than this: a slow gateway falls back
+ * to the Choices, the same as any other judge failure, rather than holding a
+ * Run's redirect open until an error page.
+ */
+export const DECISION_TIMEOUT_MS = 5000;
+
+/**
  * The real `Judge`: a thin caller around `experimental_evaluate` with jev on
  * the Vercel AI Gateway, tagged `feature:decide` for usage reporting. Returns
  * null on anything unusable — no `choice` answer, an empty `choiceId`, or a
@@ -146,6 +159,11 @@ export const gatewayJudge: Judge = async (input) => {
     state: input.state,
     questions: { decision: input.question },
     providerOptions: { gateway: { tags: ["feature:decide"] } },
+    // No retry and a hard timeout (ticket 43 blocking fix): a Participant
+    // waits on this call, and a gateway that is merely slow must fall back
+    // to the Choices exactly as fast as one that is down.
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(DECISION_TIMEOUT_MS),
   });
 
   const answer = result.answers.decision;

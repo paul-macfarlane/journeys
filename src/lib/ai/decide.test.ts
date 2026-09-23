@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DECISION_THRESHOLD,
   buildDecision,
   decideChoice,
+  gatewayJudge,
   type Decision,
   type Judge,
 } from "@/lib/ai/decide";
@@ -11,10 +12,14 @@ import type { Step } from "@/lib/graph/document";
 
 /**
  * Seam A for ticket 43's decision: `decideChoice` against a stub `Judge`,
- * never the gateway. `gatewayJudge` is a thin, untested caller by design —
- * the contract that matters is what `decideChoice` does with whatever a
- * judge hands back.
+ * never the gateway. `gatewayJudge` gets its own seam below, at the one
+ * system boundary it owns — `experimental_evaluate` — so the timeout and
+ * retry setting a Participant's wait depends on are proved without a real
+ * network call.
  */
+
+const mockEvaluate = vi.hoisted(() => vi.fn());
+vi.mock("ai", () => ({ experimental_evaluate: mockEvaluate }));
 
 function stepWith(
   choices: Array<{ id: string; label: string }>,
@@ -157,5 +162,65 @@ describe("buildDecision", () => {
       "choice-wait": "Wait your turn",
       "choice-leave": "Walk away",
     });
+  });
+});
+
+describe("gatewayJudge", () => {
+  beforeEach(() => {
+    mockEvaluate.mockReset();
+  });
+
+  it("asks jev on the gateway with no retry and a bounded timeout, tagged for usage reporting", async () => {
+    mockEvaluate.mockResolvedValue({
+      answers: {
+        decision: {
+          type: "choice",
+          choice: "c1",
+          probabilities: { c1: 0.8 },
+        },
+      },
+    });
+
+    const result = await gatewayJudge(buildDecision(step, "I'll wait"));
+
+    expect(result).toEqual({ choiceId: "c1", probability: 0.8 });
+    expect(mockEvaluate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "typesafe-ai/jev",
+        maxRetries: 0,
+        abortSignal: expect.any(AbortSignal),
+        providerOptions: { gateway: { tags: ["feature:decide"] } },
+      }),
+    );
+    const call = mockEvaluate.mock.calls[0][0] as {
+      abortSignal: AbortSignal;
+    };
+    expect(call.abortSignal.aborted).toBe(false);
+  });
+
+  it("is null when the answer carries no probabilities", async () => {
+    mockEvaluate.mockResolvedValue({
+      answers: { decision: { type: "choice", choice: "c1" } },
+    });
+
+    expect(await gatewayJudge(buildDecision(step, "I'll wait"))).toBeNull();
+  });
+
+  it("is null when the choice is empty", async () => {
+    mockEvaluate.mockResolvedValue({
+      answers: {
+        decision: { type: "choice", choice: "", probabilities: {} },
+      },
+    });
+
+    expect(await gatewayJudge(buildDecision(step, "I'll wait"))).toBeNull();
+  });
+
+  it("is null when the answer is not a choice", async () => {
+    mockEvaluate.mockResolvedValue({
+      answers: { decision: { type: "text", text: "unrelated" } },
+    });
+
+    expect(await gatewayJudge(buildDecision(step, "I'll wait"))).toBeNull();
   });
 });

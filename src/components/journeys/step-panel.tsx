@@ -26,6 +26,7 @@ import {
   setStepPrompt,
   updateStep,
 } from "@/lib/graph/edit";
+import { isDeciding } from "@/lib/graph/prompt";
 import type { PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -285,7 +286,7 @@ function PromptField({
             type="checkbox"
             className="size-4 accent-primary"
             checked={decides || required}
-            disabled={decides}
+            disabled={isDeciding(step)}
             onChange={(event) =>
               onChange(
                 setStepPrompt(document, step.id, {
@@ -301,7 +302,7 @@ function PromptField({
           </Label>
         </div>
       ) : null}
-      {step.prompt !== null && canDecide ? (
+      {step.prompt !== null && (canDecide || decides) ? (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <input
@@ -324,9 +325,9 @@ function PromptField({
             </Label>
           </div>
           <p className="text-muted-foreground text-xs">
-            An AI judge reads the response and picks the Choice it fits.
-            Participants choose for themselves when it&apos;s unsure or
-            unavailable.
+            {decides && !canDecide
+              ? "Needs two or more choices to decide."
+              : "An AI judge reads the response and picks the choice it fits. Participants choose for themselves when it's unsure or unavailable."}
           </p>
         </div>
       ) : null}

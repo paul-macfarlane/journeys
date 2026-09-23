@@ -96,8 +96,14 @@ export default async function PreviewStepPage({
                 refusal: responseRefusal(notice),
                 // Preview stores nothing, so a deciding Prompt's Response
                 // travels back in the address with the judge's pick and
-                // probability (ticket 43).
-                response: typeof response === "string" ? response : undefined,
+                // probability (ticket 43) — but only once the judge has
+                // actually been asked (`decide` present); a bare
+                // `?response=` on its own is never trusted back into the
+                // box (ticket 43 F6).
+                response:
+                  typeof decide === "string" && typeof response === "string"
+                    ? response
+                    : undefined,
                 decision: previewDecision(step, decide, confidence),
               }
             : {
