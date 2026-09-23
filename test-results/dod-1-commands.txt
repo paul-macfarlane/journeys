@@ -1,7 +1,7 @@
-# DoD-1 command chain for ticket 34 (sticky shell and footer), polish route
-# Commit: f022ea0
-# Run: 2026-09-23T13:27:35Z from the direct checkout; e2e on port 3100 against journeys_e2e (docker Postgres :5436, production build, Chromium)
-# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=navbar-sticky-and-phone-menu,navbar-switch-project-and-theme,landing,legal-pages pnpm test:e2e
+# DoD-1 command chain for ticket 36 (the Draft on the Versions tab), polish route
+# Commit: 707ade1
+# Run: 2026-09-23T14:02:25Z from the worktree .claude/worktrees/feat+36-versions-tab-draft-row; e2e on port 3136 against journeys_e2e_t36 (docker Postgres :5436, production build, Chromium)
+# Command: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && E2E_EVIDENCE=versions-tab-shows-draft pnpm test:e2e
 # Filter: terminal control sequences removed; the repository's absolute path shortened to '.'
 
 $ pnpm lint
@@ -41,8 +41,12 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  Test Files  25 passed (25)
       Tests  386 passed (386)
-   Start at  09:27:44
-   Duration  902ms (transform 1.30s, setup 0ms, import 3.51s, tests 769ms, environment 6ms)
+   Start at  10:02:34
+   Duration  839ms (transform 1.15s, setup 0ms, import 3.32s, tests 717ms, environment 1ms)
 
 exit=0
 
+$ E2E_EVIDENCE=versions-tab-shows-draft pnpm test:e2e
+(full output in test-results/dod-1-e2e.txt)
+  91 passed (1.8m)
+exit=0
