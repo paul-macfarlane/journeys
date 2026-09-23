@@ -25,7 +25,9 @@ import type { ActionResult } from "@/lib/action-result";
  * refresh carrying a value this form did not save is another Member's
  * edit: adopted into a field the Author has not touched, and left for the
  * Author's own blur to overwrite in one they are mid-edit in, as last
- * write wins.
+ * write wins. The refresh a field's own save asks for can land while the
+ * next field is being typed into, so the mid-edit text is kept as an edit
+ * still to save, never mistaken for the baseline.
  */
 export function useBlurSavedForm<T extends FieldValues>({
   schema,
@@ -47,11 +49,22 @@ export function useBlurSavedForm<T extends FieldValues>({
     resolver: zodResolver(schema) as Resolver<T, unknown, T>,
     defaultValues: values as DefaultValues<T>,
   });
-  const { reset } = form;
-
   useEffect(() => {
-    reset(values, { keepDirtyValues: true });
-  }, [reset, values]);
+    // Adopt the server's values as the baseline, then put back whatever the
+    // Author has changed since the last baseline, still marked as theirs.
+    // Not react-hook-form's `keepDirtyValues`: that folds the kept text into
+    // the new defaults, so a refresh landing while a field is mid-edit —
+    // the previous field's save refreshing the page — makes the edit look
+    // already saved, and the blur that follows saves nothing.
+    const before = form.formState.defaultValues as Partial<T> | undefined;
+    const current = form.getValues();
+    form.reset(values);
+    for (const key of Object.keys(values) as Path<T>[]) {
+      if (before && current[key] !== before[key]) {
+        form.setValue(key, current[key], { shouldDirty: true });
+      }
+    }
+  }, [form, values]);
 
   /** The whole record, as the action takes it, from one field's blur. */
   function save(field: Path<T>) {
