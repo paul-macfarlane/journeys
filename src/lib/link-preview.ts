@@ -16,6 +16,12 @@ import { accentForeground, type Theme, type ThemePreset } from "@/lib/theme";
  * Project's title and description, the app mark. A Journey that is unknown,
  * never published, or unpublished gets the app's own metadata, so a preview
  * reveals nothing a Participant is not shown.
+ *
+ * Since ticket 60 the public pages answer a missing row with `notFound()`
+ * from `generateMetadata` itself, so a link to nothing previews as the
+ * not-found page; the `null` branches below still serve the runner's Step
+ * page, which redirects rather than 404s, and the unit tests. A Journey
+ * that exists but is not live keeps the app's own metadata.
  */
 
 /** How much of a description a link preview gets, as the Project page cut it. */
