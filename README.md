@@ -210,9 +210,9 @@ pnpm seed:journey-stories you@example.com    # seed the local dev database
 
 ## Environments
 
-Local development runs against the Docker Postgres above. Every branch gets
-an ephemeral Vercel preview deployment; the long-lived `staging` branch
-deploys to a stable domain, and `main` is production. Pull requests target
+Local development runs against the Docker Postgres above. Only two branches
+deploy: the long-lived `staging` branch deploys to a stable staging domain,
+and `main` is production; other branches get no preview deployment. Pull requests target
 `staging`, and a human promotes `staging` to `main`.
 
 Vercel builds never run migrations. The
