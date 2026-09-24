@@ -24,13 +24,13 @@ import {
 
 /**
  * The name shows in the navbar, on the Projects list, and on every
- * Project's Members tab, so all three are revalidated. The public Author
- * page and Project page are rendered on every request and need nothing.
+ * Project's Members tab — everything under `/projects`, navbar layouts and
+ * Journey pages included — so the whole `/projects` layout is revalidated.
+ * The public Author page and Project page are rendered on every request
+ * and need nothing.
  */
 function revalidateAuthorName(): void {
-  revalidatePath("/projects");
-  revalidatePath("/projects/settings");
-  revalidatePath("/projects/[projectId]", "page");
+  revalidatePath("/projects", "layout");
 }
 
 async function saveAuthorSettings(

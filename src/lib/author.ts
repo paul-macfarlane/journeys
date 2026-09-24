@@ -66,12 +66,14 @@ const labelByKind = new Map<AuthorLinkKind, string>(
  * whose hostname (lowercased) is the kind's host or `www.` + that host;
  * `website` accepts any hostname. The input is trimmed first.
  */
-export function authorLinkUrlSchema(kind: AuthorLinkKind): z.ZodType<string> {
+export function authorLinkUrlSchema(
+  kind: AuthorLinkKind,
+): z.ZodType<string, string> {
   const host = hostByKind.get(kind) ?? null;
   return z
     .string()
     .trim()
-    .max(2048, "Use 2048 characters or fewer")
+    .max(2048, "Use 2,048 characters or fewer")
     .superRefine((value, ctx) => {
       let url: URL;
       try {

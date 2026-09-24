@@ -99,9 +99,15 @@ test("author-settings", async ({ page, context }) => {
   const alerts = page.getByRole("main").getByRole("alert");
 
   // A blank name and an over-long one are refused; the previous one stays.
-  await nameField.fill("");
-  await nameField.blur();
-  await expect(alerts).toHaveText("Enter a name");
+  // The first edit after a navigation is made until it takes, as the rename
+  // was: hydration writes the stored name back over a `fill` that lands
+  // first, and a blank the page never saw raises no alert.
+  await expect(async () => {
+    await nameField.fill("");
+    await expect(nameField).toHaveValue("", { timeout: 1_000 });
+    await nameField.blur();
+    await expect(alerts).toHaveText("Enter a name", { timeout: 3_000 });
+  }).toPass({ timeout: 20_000 });
   await nameField.fill("x".repeat(61));
   await nameField.blur();
   await expect(alerts).toHaveText("Use 60 characters or fewer");
@@ -109,12 +115,27 @@ test("author-settings", async ({ page, context }) => {
   await expect(nameField).toHaveValue(newName);
   expect((await readAuthor(author.id)).name).toBe(newName);
 
-  // A bio, line break and all, and a LinkedIn link.
+  // better-auth's own update endpoint is closed, so the Settings actions are
+  // the only path that writes the name: a blank sent straight at it is a 404
+  // and the row is untouched.
+  const bypass = await page.request.post("/api/auth/update-user", {
+    data: { name: "" },
+  });
+  expect(bypass.status()).toBe(404);
+  expect((await readAuthor(author.id)).name).toBe(newName);
+
+  // A bio, line break and all, and a LinkedIn link. The bio is the first
+  // edit after the reload, so it is made until it takes, as above.
   const bio = "I write branching journeys about care.\nSecond line.";
   const bioField = page.getByRole("textbox", { name: "Bio" });
-  await bioField.fill(bio);
-  await bioField.blur();
-  await expect.poll(async () => (await readAuthor(author.id)).bio).toBe(bio);
+  await expect(async () => {
+    await bioField.fill(bio);
+    await expect(bioField).toHaveValue(bio, { timeout: 1_000 });
+    await bioField.blur();
+    await expect
+      .poll(async () => (await readAuthor(author.id)).bio, { timeout: 3_000 })
+      .toBe(bio);
+  }).toPass({ timeout: 20_000 });
 
   const linkedinUrl = `https://www.linkedin.com/in/ada-${suffix}`;
   const linkedinField = page.getByRole("textbox", { name: "LinkedIn" });
@@ -139,9 +160,7 @@ test("author-settings", async ({ page, context }) => {
   await expect(
     alerts.filter({ hasText: "Use an https:// link" }),
   ).toBeVisible();
-  await expect
-    .poll(async () => (await readAuthor(author.id)).links, { timeout: 2_000 })
-    .toEqual(storedLinks);
+  // Both refusals are on screen, so both saves have finished: one read.
   expect((await readAuthor(author.id)).links).toEqual(storedLinks);
 
   // Cleared, both refusals go and the section is saved again.

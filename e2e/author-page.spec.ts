@@ -44,7 +44,7 @@ test.afterAll(async () => {
   await closePools();
 });
 
-/** An id no account has; user ids are 32-character strings, not UUIDs. */
+/** An id no account has; account ids are 32-character strings, not UUIDs. */
 const UNKNOWN_AUTHOR_ID = "unknown-author-id-00000000000000";
 
 /** A 64×64 filled circle, so the avatar's `<img>` actually loads. */
@@ -139,7 +139,8 @@ test("author-page", async ({ page, context, browser }) => {
       participant.getByText("I write branching journeys about care."),
     ).toBeVisible();
     await expect(participant.getByText("Second line.")).toBeVisible();
-    const bio = participant.locator("main p.whitespace-pre-line");
+    // Both lines sit in one paragraph, and the break between them is kept.
+    const bio = participant.getByText(/I write branching journeys about care/);
     expect(await bio.innerText()).toContain("\n");
 
     const links = participant.getByRole("navigation", { name: "Links" });

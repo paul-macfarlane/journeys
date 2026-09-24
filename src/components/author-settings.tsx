@@ -31,19 +31,30 @@ import {
 } from "@/lib/validation/author";
 
 /**
- * The "Author page" form's own shape: one string field per link kind, empty
- * for none, because a form field always holds a string. The links the
- * action receives are made from it in `submit` below, one entry per field
- * that holds a url, in `AUTHOR_LINK_KINDS` order.
+ * One string field per link kind, empty for none, because a form field
+ * always holds a string. Trimmed before the choice between "none" and a
+ * url, so a field holding only spaces clears the link rather than being
+ * refused as a url that does not parse.
+ */
+function linkFieldSchemas(): Record<AuthorLinkKind, z.ZodType<string, string>> {
+  const shape = {} as Record<AuthorLinkKind, z.ZodType<string, string>>;
+  for (const { kind } of AUTHOR_LINK_KINDS) {
+    shape[kind] = z
+      .string()
+      .trim()
+      .pipe(z.union([z.literal(""), authorLinkUrlSchema(kind)]));
+  }
+  return shape;
+}
+
+/**
+ * The "Author page" form's own shape: the bio and one field per link kind.
+ * The links the action receives are made from it in `submit` below, one
+ * entry per field that holds a url, in `AUTHOR_LINK_KINDS` order.
  */
 const authorPageFormSchema = z.object({
   bio: authorBioSchema,
-  ...(Object.fromEntries(
-    AUTHOR_LINK_KINDS.map(({ kind }) => [
-      kind,
-      z.union([z.literal(""), authorLinkUrlSchema(kind)]),
-    ]),
-  ) as unknown as Record<AuthorLinkKind, z.ZodType<string, string>>),
+  ...linkFieldSchemas(),
 });
 
 type AuthorPageFormInput = { bio: string } & Record<AuthorLinkKind, string>;
