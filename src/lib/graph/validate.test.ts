@@ -403,7 +403,9 @@ const journeyStories = [
     choices: 70,
     endings: 6,
     outcomes: 4,
-    images: 20,
+    // 19, not the legacy 20: ticket 61 dropped the "Years go by" screenshot
+    // whose host is gone.
+    images: 19,
   },
   {
     name: "Case 2",

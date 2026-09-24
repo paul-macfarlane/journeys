@@ -1,50 +1,69 @@
-# Ticket 65 DoD chain, 2026-09-24T19:45:29Z, branch feat/65-publish-acknowledgement at c6f68a4
-# Worktree run: E2E_PORT=3165 E2E_DATABASE_NAME=journeys_e2e_65 E2E_EVIDENCE=publish-acknowledged
-# Filter: terminal control sequences removed; the repository's absolute path shortened to '.'; pnpm build is not run on its own because pnpm test:e2e builds the app
+# Ticket 61 DoD chain, 2026-09-24T19:44Z, commit 273f351, worktree .claude/worktrees/61, E2E_PORT=3161, E2E_DATABASE_NAME=journeys_e2e_61, E2E_EVIDENCE=runner-case-3-on-a-phone,runner-case-2-restored-choice
 
 $ pnpm lint
-
-> journeys@0.1.0 lint .
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
 > eslint
-
-exit=0
-
-$ pnpm format:check
-
-> journeys@0.1.0 format:check .
-> prettier --check .
-
-Checking formatting...
-All matched files use Prettier code style!
-exit=0
+exit 0
 
 $ pnpm typecheck
-
-> journeys@0.1.0 typecheck .
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
 > tsc --noEmit
-
-exit=0
+exit 0
 
 $ pnpm test
-
-> journeys@0.1.0 test .
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
 > vitest run
-
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
-
- RUN  v4.1.11 .
-
-
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
  Test Files  36 passed (36)
       Tests  544 passed (544)
-   Start at  15:45:54
-   Duration  3.23s (transform 3.27s, setup 0ms, import 12.81s, tests 4.10s, environment 18ms)
+   Start at  15:44:21
+   Duration  1.13s (transform 1.58s, setup 0ms, import 4.36s, tests 898ms, environment 2ms)
+exit 0
 
-exit=0
+$ pnpm test:e2e
+contrast slate dark project: 11 elements pass, 0 fail
+  ✓   67 [chromium] › e2e/themes.spec.ts:389:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark (20.3s)
+  ✓   75 [chromium] › e2e/canvas.spec.ts:2649:5 › canvas-arrow-select-and-delete (5.5s)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✓   77 [chromium] › e2e/canvas.spec.ts:1908:7 › the seeded map › canvas-find-step (3.8s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+2026-09-24T19:45:47.843Z WARN [Better Auth]: [better-auth] Warning: your BETTER_AUTH_SECRET appears low-entropy. Use a randomly generated secret for production.
+  ✓   80 [chromium] › e2e/canvas.spec.ts:2028:7 › the seeded map › canvas-find-step-lists-map-order (2.1s)
+  ✓   76 [chromium] › e2e/canvas.spec.ts:1055:5 › canvas-duplicate-step (8.3s)
+  ✓   78 [chromium] › e2e/canvas.spec.ts:3211:7 › authoring from the map › canvas-retarget-selected-arrow (7.7s)
+  ✓   79 [chromium] › e2e/canvas.spec.ts:2724:5 › canvas-delete-key-step (8.1s)
+  ✓   83 [chromium] › e2e/canvas.spec.ts:1127:5 › canvas-content-peek (5.7s)
+  ✓   84 [chromium] › e2e/canvas.spec.ts:3307:7 › authoring from the map › canvas-drop-choice-on-empty-map (4.7s)
+  ✓   81 [chromium] › e2e/canvas.spec.ts:3604:7 › authoring from the map › canvas-undo-build-branch-and-walk (10.3s)
+  ✓   82 [chromium] › e2e/canvas.spec.ts:2068:7 › the seeded map › canvas-view-stays-put (12.1s)
+  ✓   85 [chromium] › e2e/canvas.spec.ts:2848:5 › canvas-arrow-select-second-arrow (7.3s)
+  ✓   86 [chromium] › e2e/canvas.spec.ts:1191:5 › canvas-keyboard-navigation (9.1s)
+  ✓   89 [chromium] › e2e/canvas.spec.ts:2197:7 › the seeded map › canvas-endings-uncolored (3.7s)
+  ✓   87 [chromium] › e2e/canvas.spec.ts:3348:7 › authoring from the map › canvas-build-by-dragging-and-walk (8.5s)
+  ✓   88 [chromium] › e2e/canvas.spec.ts:3702:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (9.8s)
+  ✓   90 [chromium] › e2e/canvas.spec.ts:2923:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (7.3s)
+  ✓   92 [chromium] › e2e/canvas.spec.ts:2248:5 › canvas-validation-marks (7.2s)
+  ✓   94 [chromium] › e2e/canvas.spec.ts:3802:7 › undo and redo › canvas-undo-title-typing (5.5s)
+  ✓   95 [chromium] › e2e/canvas.spec.ts:3000:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (4.5s)
+  ✓   91 [chromium] › e2e/canvas.spec.ts:1270:5 › canvas-hide-and-show-panel (9.8s)
+  ✓   96 [chromium] › e2e/canvas.spec.ts:2362:5 › canvas-problems-readable (5.8s)
+  ✓   93 [chromium] › e2e/canvas.spec.ts:3387:7 › authoring from the map › canvas-build-by-dropping-and-walk (12.2s)
+  ✓   97 [chromium] › e2e/canvas.spec.ts:3855:7 › undo and redo › canvas-undo-rich-text (5.7s)
+  ✓   99 [chromium] › e2e/canvas.spec.ts:1371:5 › canvas-step-actions (9.1s)
+  ✓   98 [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (11.2s)
+case-3 crossing pairs: f24a106 baseline=15 now=14
+  ✓  102 [chromium] › e2e/canvas.spec.ts:1510:7 › the seeded map › canvas-case-3-map (2.1s)
+  ✓  100 [chromium] › e2e/canvas.spec.ts:3425:7 › authoring from the map › canvas-build-left-to-right-and-walk (10.3s)
+  ✓  101 [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget (15.3s)
+  ✓  103 [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish (6.6s)
+  ✓  104 [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls (5.9s)
+  ✓  105 [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice (8.1s)
+  ✓  106 [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart (5.1s)
+  ✓  107 [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll (3.8s)
+  107 passed (2.2m)
+exit 0
 
-$ E2E_EVIDENCE=publish-acknowledged pnpm test:e2e
-(full output in test-results/dod-1-e2e.txt)
-  108 passed (2.1m)
-exit=0
+# RESULT: PASS
