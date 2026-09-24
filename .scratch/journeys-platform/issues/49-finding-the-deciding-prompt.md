@@ -59,4 +59,6 @@ PR: https://github.com/paul-macfarlane/journeys/pull/58 (base `staging`, branche
 
 **Queued for Paul (human prerequisites, non-blocking for the merge).** `AI_GATEWAY_API_KEY` on the Vercel Production and Preview environments; Fluid compute confirmed on the project (the default) so a server action can wait the judge's full 20 s. The worktree at `.claude/worktrees/49-deciding-prompt/journeys` and its `journeys_e2e_49` database are left for removal after the merge.
 
+**Staging merged in at 8f0e578** (PR #57, ticket 47, landed while this ran; the only conflict was the shared `dod-1-commands.txt`, kept as this ticket's). The chain was rerun on the merged code: every block `exit 0`, unit 510/510, e2e 100 passed in 1.8m, 0 flaky; the committed capture and evidence are from that run.
+
 **Next in Paul's order:** 38 → 50 → 51; 52 in its own thread; post-hackathon sweep 3 (41 → 42 → 44 → 45, 53).
