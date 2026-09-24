@@ -59,6 +59,15 @@ export type SelectStepOptions = {
   zoom?: boolean;
   keepView?: boolean;
   reveal?: boolean;
+  /**
+   * The opening came from a click on the map — a box, an arrow — so where
+   * the panel is stacked under the map, narrower than the `lg` breakpoint,
+   * the page is scrolled to bring the panel's top under the sticky rows:
+   * on a phone the map fills the screen and the panel starts below the
+   * fold. Never set for the keyboard walking between boxes, which opens
+   * nothing, nor for openings the panel itself makes.
+   */
+  scrollToPanel?: boolean;
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;

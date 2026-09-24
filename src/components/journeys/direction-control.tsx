@@ -5,7 +5,6 @@ import { useRef, type KeyboardEvent } from "react";
 import { ARROW_DIRECTIONS } from "@/components/journeys/canvas-shared";
 import { Button } from "@/components/ui/button";
 import type { LayoutDirection } from "@/lib/graph/document";
-import { cn } from "@/lib/utils";
 
 /** The two ways the map can be drawn, in the order the control offers them. */
 const LAYOUT_DIRECTIONS: { direction: LayoutDirection; label: string }[] = [
@@ -25,6 +24,11 @@ const LAYOUT_DIRECTIONS: { direction: LayoutDirection; label: string }[] = [
  * One tab stop, as a radio group is: the checked direction is the tab stop and
  * the other is skipped, and an arrow key moves onto the other and chooses it,
  * which is what arrow keys do in a radio group.
+ *
+ * The checked one is painted from its `aria-checked`, in the primary pair, so
+ * the answer reads at a glance in either theme; the unchecked one is the
+ * quiet secondary button. The outline button is not used here because its
+ * dark theme paints its own background over anything a checked state adds.
  */
 export function DirectionControl({
   direction,
@@ -65,7 +69,7 @@ export function DirectionControl({
         return (
           <Button
             key={entry.direction}
-            variant="outline"
+            variant="secondary"
             size="sm"
             role="radio"
             aria-checked={checked}
@@ -73,7 +77,7 @@ export function DirectionControl({
             data-direction={entry.direction}
             onClick={() => onSetLayoutDirection(entry.direction)}
             onKeyDown={handleKeyDown}
-            className={cn(checked && "bg-accent")}
+            className="aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:hover:bg-primary/80"
           >
             {entry.label}
           </Button>

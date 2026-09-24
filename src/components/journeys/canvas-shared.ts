@@ -161,9 +161,6 @@ export const ARROW_DIRECTIONS: Record<string, ArrowDirection | undefined> = {
   ArrowRight: "right",
 };
 
-/** How tall the label on an arrow is drawn, in flow units. */
-export const EDGE_LABEL_HEIGHT = 24;
-
 /**
  * Where a Choice's arrow leaves the node: spread evenly along the side of the
  * box the arrows travel towards — along its bottom running top to bottom,
@@ -229,4 +226,17 @@ export function useCanvasColorMode(): ColorMode {
   const { resolvedTheme } = useTheme();
   const hydrated = useSyncExternalStore(subscribeToNothing, isClient, isServer);
   return hydrated && resolvedTheme === "dark" ? "dark" : "light";
+}
+
+/**
+ * Where a Choice's label hangs: where the layout made room for it on the
+ * route, or halfway along the arrow for a loop — which is routed here, not by
+ * the layout — and for an arrow the layout gave no place to.
+ */
+export function labelPoint(
+  isLoop: boolean,
+  labelAt: Point | undefined,
+  points: Point[],
+): Point {
+  return isLoop || labelAt === undefined ? midwayAlong(points) : labelAt;
 }
