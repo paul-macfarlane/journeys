@@ -32,3 +32,32 @@ export async function expectFooterOnOneRow(page: Page): Promise<void> {
     MIN_FOOTER_SPAN,
   );
 }
+
+/**
+ * The site footer wrapped into two tidy rows (ticket 67): on a phone the
+ * mark and the copyright share the first row and the five links share the
+ * second, each row starting at the same left edge, where `justify-between`
+ * used to scatter whichever items wrapped across the width.
+ */
+export async function expectFooterInTwoRows(page: Page): Promise<void> {
+  const footer = page.getByRole("contentinfo");
+  const box = async (name: string) => {
+    const b = await footer.getByRole("link", { name }).boundingBox();
+    expect(b, `the ${name} link is rendered`).not.toBeNull();
+    return b!;
+  };
+  const mark = await box("Journeys");
+  const about = await box("About");
+  const terms = await box("Terms");
+  const rowOf = (b: { y: number; height: number }) => b.y + b.height / 2;
+  // The links sit on one row below the mark's row.
+  expect(rowOf(about), "About under the mark").toBeGreaterThan(
+    mark.y + mark.height,
+  );
+  expect(
+    Math.abs(rowOf(terms) - rowOf(about)),
+    "About and Terms on one row",
+  ).toBeLessThan(2);
+  // Both rows start at the same left edge: nothing was pushed to the right.
+  expect(Math.abs(about.x - mark.x), "rows share a left edge").toBeLessThan(2);
+}
