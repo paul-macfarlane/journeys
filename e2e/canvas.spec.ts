@@ -28,6 +28,15 @@ import {
   uniqueSuffix,
 } from "./setup/authoring";
 import {
+  canvas,
+  canvasNode,
+  canvasNodeBox,
+  connectHandle,
+  emptySpot,
+  mapInView,
+  settledTransform,
+} from "./setup/canvas";
+import {
   dimmingDocument,
   publishableDocument,
   writeDraftDocument,
@@ -140,10 +149,6 @@ async function startJourney(
   return { projectId, journeyId };
 }
 
-function canvas(page: Page) {
-  return page.getByRole("region", { name: "Canvas" });
-}
-
 /**
  * The panel beside the map, on whichever Step the Author has open. Named
  * exactly, because the problems a Step carries are a region inside it.
@@ -179,11 +184,6 @@ async function hidePanel(page: Page): Promise<string> {
   await page.getByRole("button", { name: "Hide panel", exact: true }).click();
   await expect(stepPanel(page)).toHaveCount(0);
   return settledTransform(page);
-}
-
-/** One box on the map, named by the Step it stands for. */
-function canvasNode(page: Page, title: string) {
-  return canvas(page).getByRole("button", { name: title, exact: true });
 }
 
 /** Every box on the map, by the mark the app puts on each one's button. */
@@ -480,67 +480,6 @@ async function nodeViews(page: Page): Promise<NodeView[]> {
 }
 
 /**
- * How many polls apart the transform has to be the same before the map counts
- * as stopped. `expect.poll` runs its first check straight away, so one
- * agreement proves only that nothing moved in the millisecond between two
- * readings — and a `fitView` the browser has been asked for but has not
- * started yet reads exactly like a map standing still. Two agreements at the
- * interval below are half a second of stillness, comfortably longer than the
- * 200ms every `fitView` in the canvas animates for.
- */
-const SETTLED_POLLS = 2;
-const SETTLE_INTERVAL_MS = 250;
-
-/**
- * The whole map frame inside the window, scrolled the least that gets it
- * there. The page above the map is taller than a 720px window leaves room
- * for, so a box low on the map can lie below the fold: a pointer cannot
- * reach one there, and Playwright's own scroll-into-view is undone by React
- * Flow, which scrolls its pane straight back. Every helper that settles the
- * map before touching it passes through here, so no move below depends on
- * where the window was left, or on whether a reload restored its scroll in
- * time.
- */
-async function mapInView(page: Page): Promise<void> {
-  await canvas(page).evaluate((element) =>
-    element.scrollIntoView({ block: "nearest" }),
-  );
-}
-
-/**
- * The map's transform once it has stopped moving. `fitView` animates, so
- * "the viewport did not move" is only worth asserting against a reading taken
- * after the last animation finished rather than before or during one.
- *
- * Read off the viewport's inline style: React Flow pans and zooms the map by
- * writing a CSS transform there, and the `transform` attribute an SVG would
- * carry is not something it ever sets — read as an attribute, every reading
- * is the same empty nothing and any two of them agree.
- */
-async function settledTransform(page: Page): Promise<string> {
-  await mapInView(page);
-  const viewport = canvas(page).locator(".react-flow__viewport");
-  let last: string | null = null;
-  let still = 0;
-
-  await expect
-    .poll(
-      async () => {
-        const now = await viewport.evaluate(
-          (element) => (element as HTMLElement).style.transform,
-        );
-        still = now === last ? still + 1 : 0;
-        last = now;
-        return still;
-      },
-      { timeout: 10_000, intervals: [SETTLE_INTERVAL_MS] },
-    )
-    .toBeGreaterThanOrEqual(SETTLED_POLLS);
-
-  return last ?? "";
-}
-
-/**
  * One box brought onto the map: the whole of it inside the Canvas frame.
  * Polled, because bringing it there is an animation the browser finishes when
  * it finishes.
@@ -603,13 +542,6 @@ async function expectCenteredOnMap(page: Page, title: string): Promise<void> {
   expect(
     Math.abs(box!.y + box!.height / 2 - (frame!.y + frame!.height / 2)),
   ).toBeLessThan(frame!.height / 4);
-}
-
-/** One box's wrapper on the map, which is what carries its handles. */
-function canvasNodeBox(page: Page, title: string) {
-  return canvas(page)
-    .locator(".react-flow__node")
-    .filter({ has: page.getByRole("button", { name: title, exact: true }) });
 }
 
 /**
@@ -751,11 +683,6 @@ function rectsOverlap(a: Box, b: Box): boolean {
   );
 }
 
-/** The dot an Author drags from to connect a box to another. */
-function connectHandle(page: Page, title: string) {
-  return canvasNodeBox(page, title).locator('[data-handleid="connect"]');
-}
-
 /**
  * One box clicked, the way an Author clicks one: once the map has stopped
  * moving. Adding a Step, opening the problems list above the map, or a
@@ -895,47 +822,6 @@ async function hoverBox(page: Page, title: string): Promise<void> {
   await settledTransform(page);
   const at = await centerOf(canvasNode(page, title));
   await page.mouse.move(at.x, at.y);
-}
-
-/**
- * A patch of the map with nothing on it: the point inside the Canvas frame
- * furthest from every box, and over the pane rather than an overlay — what
- * "dropped on nothing" has to be dropped on.
- */
-async function emptySpot(page: Page): Promise<Point> {
-  await settledTransform(page);
-  const frame = await canvas(page).boundingBox();
-  expect(frame, "the canvas has no box yet").not.toBeNull();
-
-  const spot = await page.evaluate((f) => {
-    const boxes = Array.from(
-      window.document.querySelectorAll(".react-flow__node"),
-    ).map((element) => element.getBoundingClientRect());
-
-    let best: { x: number; y: number; clear: number } | null = null;
-    for (let x = f.x + 20; x <= f.x + f.width - 20; x += 20) {
-      for (let y = f.y + 20; y <= f.y + f.height - 20; y += 20) {
-        const under = window.document.elementFromPoint(x, y);
-        if (under === null || !under.classList.contains("react-flow__pane")) {
-          continue;
-        }
-        let clear = Number.POSITIVE_INFINITY;
-        for (const box of boxes) {
-          const dx = Math.max(box.left - x, 0, x - box.right);
-          const dy = Math.max(box.top - y, 0, y - box.bottom);
-          clear = Math.min(clear, Math.hypot(dx, dy));
-        }
-        if (best === null || clear > best.clear) {
-          best = { x, y, clear };
-        }
-      }
-    }
-    return best;
-  }, frame!);
-
-  expect(spot, "no empty patch of map to drop on").not.toBeNull();
-  expect(spot!.clear).toBeGreaterThan(60);
-  return { x: spot!.x, y: spot!.y };
 }
 
 /**

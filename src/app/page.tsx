@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { JourneysMark } from "@/components/brand";
+import { CanvasDemo } from "@/components/canvas-demo";
 import { SiteFooter } from "@/components/site-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
@@ -25,6 +26,10 @@ export default async function LandingPage() {
             Branching, text-based experiences you can write, publish, and share.
           </p>
         </div>
+
+        {/* The canvas in use: a silent loop, the poster under reduced
+            motion, one recording per theme (ticket 38). */}
+        <CanvasDemo />
 
         <div className="text-muted-foreground flex max-w-prose flex-col gap-4 text-base leading-relaxed">
           <p>
