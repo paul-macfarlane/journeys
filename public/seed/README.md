@@ -16,7 +16,7 @@ file for that address itself, so nothing here needs the network to record.
 - `external-fixator.jpg` — Case 1, "Wait w/ Broken Leg"
   (`scripts/seed/journey-stories/case-1.json`). "Patient with external
   fixator in the leg" by Ortopedikus on Wikimedia Commons, CC BY-SA 4.0
-  (the Commons file page of that name; the Step's own credit links it),
+  (the Commons file page of that name; the Step's own caption links it),
   resized from the 4592px original to 1400px. The Commons thumbnail URL the
   document used to hotlink stopped serving (400) on 2026-09-24 (ticket 61).
 - `caroline-phone.jpg` and `caroline-common-area.jpg` — Case 2, "Legal Org"
@@ -36,5 +36,6 @@ file for that address itself, so nothing here needs the network to record.
   above.
 
 Case 1's "Years go by" image (a screenshot from a WordPress blog that now
-answers 410 with no archived copy) was removed in ticket 61; its credit
-line stays as a paragraph.
+answers 410 with no archived copy) was removed in ticket 61 together with
+its caption, which named no source or author ("Image is author owned") and
+would otherwise have sat under no photo.
