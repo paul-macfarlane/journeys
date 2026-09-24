@@ -139,9 +139,12 @@ export async function decideChoice(
  * A Participant is waiting on this call, so it does not get the AI SDK's
  * default retries and never runs longer than this: a slow gateway falls back
  * to the Choices, the same as any other judge failure, rather than holding a
- * Run's redirect open until an error page.
+ * Run's redirect open until an error page. Twenty seconds (ticket 49): jev's
+ * latency is bimodal, most calls about half a second and a slow third of
+ * them twelve to fourteen, and at the earlier five the slow third fell back
+ * as if the judge had failed. `DecideSubmit` shows "Deciding…" for the wait.
  */
-export const DECISION_TIMEOUT_MS = 5000;
+export const DECISION_TIMEOUT_MS = 20_000;
 
 /**
  * The real `Judge`: a thin caller around `experimental_evaluate` with jev on

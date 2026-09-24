@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DECISION_THRESHOLD,
+  DECISION_TIMEOUT_MS,
   buildDecision,
   decideChoice,
   gatewayJudge,
@@ -192,6 +193,39 @@ describe("gatewayJudge", () => {
         providerOptions: { gateway: { tags: ["feature:decide"] } },
       }),
     );
+    const call = mockEvaluate.mock.calls[0][0] as {
+      abortSignal: AbortSignal;
+    };
+    expect(call.abortSignal.aborted).toBe(false);
+  });
+
+  it("waits up to twenty seconds for jev, whose slow calls run twelve to fourteen (ticket 49)", () => {
+    expect(DECISION_TIMEOUT_MS).toBe(20_000);
+  });
+
+  it("returns an answer that arrives late but inside the timeout", async () => {
+    mockEvaluate.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                answers: {
+                  decision: {
+                    type: "choice",
+                    choice: "c1",
+                    probabilities: { c1: 0.9 },
+                  },
+                },
+              }),
+            50,
+          ),
+        ),
+    );
+
+    const result = await gatewayJudge(buildDecision(step, "I'll wait"));
+
+    expect(result).toEqual({ choiceId: "c1", probability: 0.9 });
     const call = mockEvaluate.mock.calls[0][0] as {
       abortSignal: AbortSignal;
     };

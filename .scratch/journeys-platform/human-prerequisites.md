@@ -57,6 +57,7 @@ Decided 2026-09-22 (Paul): every model call goes through the Vercel AI Gateway w
 - [ ] In Vercel → `journeys` → Settings → AI Gateway, enable the gateway and create an API key.
 - [ ] Set `AI_GATEWAY_API_KEY` in Vercel (Production and Preview) and `.env.local`. Optional: a budget alert in the same settings page; the team's free monthly credit covers hackathon use.
 - [ ] Without it, AI features are hidden and everything else works — safe to defer until ticket 14 or 43 starts.
+- [ ] Confirm the Vercel project runs on Fluid compute (the default; Settings → Functions), so a server action may wait the judge's full 20 s (ticket 49). A non-Fluid function is cut off at 10 s, before the judge's fallback, and a Participant would see an error page instead of the Choices.
 - Expected result: after ticket 14, the AI controls render on a Journey page; after ticket 43, a deciding Prompt advances a Run.
 
 ## 7. Local machine
