@@ -147,6 +147,22 @@ function promptBox(page: Page, label: string) {
   return page.getByRole("textbox", { name: label });
 }
 
+/** More Tab presses than any runner screen has focusable things before its Choices. */
+const TAB_LIMIT = 10;
+
+/**
+ * Presses Tab until `target` holds focus, or gives up after `TAB_LIMIT`
+ * presses. Keyboard focus, not `locator.focus()`: only a key press makes the
+ * browser treat the focus as `:focus-visible`, which is the state under test.
+ */
+async function tabTo(page: Page, target: Locator): Promise<void> {
+  for (let presses = 0; presses < TAB_LIMIT; presses += 1) {
+    await page.keyboard.press("Tab");
+    if (await target.evaluate((el) => el === document.activeElement)) return;
+  }
+  throw new Error(`Tab never reached ${target}`);
+}
+
 test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
@@ -1241,19 +1257,6 @@ test("runner-unavailable-and-unknown", async ({ page, context, browser }) => {
 
 /** An id no Journey has: every real one is a `crypto.randomUUID()`. */
 const UNKNOWN_JOURNEY_ID = "00000000-0000-4000-8000-000000000000";
-
-/**
- * Presses Tab until `target` holds focus, or gives up after `limit` presses.
- * Keyboard focus, not `locator.focus()`: only a key press makes the browser
- * treat the focus as `:focus-visible`, which is the state under test.
- */
-async function tabTo(page: Page, target: Locator, limit = 10): Promise<void> {
-  for (let presses = 0; presses < limit; presses += 1) {
-    await page.keyboard.press("Tab");
-    if (await target.evaluate((el) => el === document.activeElement)) return;
-  }
-  throw new Error(`Tab never reached ${target}`);
-}
 
 /**
  * Ticket 63: a keyboard user can see which Choice is focused, in both

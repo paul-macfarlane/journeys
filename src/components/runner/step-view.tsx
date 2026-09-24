@@ -53,10 +53,13 @@ import { cn } from "@/lib/utils";
  * ring at half opacity over a pale border — is what the outline is drawn
  * over, and it was invisible on a themed card in the dark scheme. Every
  * preset's `--ring` clears 3:1 against its background and card in both
- * schemes (WCAG 2.4.11), and an accent's ring is lifted by night the same
- * way. `outline-solid` is explicit because the button's `outline-none`
- * sets Tailwind's outline-style variable to `none`, which a bare
- * `outline-2` would inherit.
+ * schemes (WCAG 1.4.11 non-text contrast, 2.4.13 focus appearance). An
+ * accent replaces the ring: by night `globals.css` lifts its lightness
+ * first, but by day it is the Author's colour as picked, and a pale accent
+ * on pale paper is theirs to avoid — the hover border has always had the
+ * same latitude. `outline-solid` is explicit because the button's
+ * `outline-none` sets Tailwind's outline-style variable to `none`, which a
+ * bare `outline-2` would inherit.
  */
 export const choiceLinkClassName = cn(
   buttonVariants({ variant: "outline" }),
