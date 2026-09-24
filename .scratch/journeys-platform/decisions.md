@@ -263,3 +263,27 @@ public URLs, custom theme editor, manual canvas layout.
   decisions only (AI authoring keeps its own Anthropic line until ticket
   14); and "MVP: AI *authoring* only" (the runner now also uses AI, to judge
   a deciding Prompt's Response).
+
+## Amendment for feedback round 4 (2026-09-23, decided by Paul on 2026-09-23)
+
+- A Journey's description stays plain text (ticket 47): it is a blurb read
+  by the public Project page card, the runner header, the link-preview
+  description, and the OG image, none of which can take rich text. A
+  Project's description is a page body and stays rich text (ticket 07).
+  Both create dialogs ask for a title only and land on the new Project or
+  Journey.
+- The metadata forms (titles, descriptions, Theme) autosave on the Draft
+  editor's model: debounce, flush on blur, save on unmount, an unload
+  guard, and a status line (ticket 46). Last write wins between Members
+  stays until ticket 15.
+- The authoring UI stays un-themed and the app keeps one brand (Trail);
+  the Theme presets are the Participant's experience and are never a
+  preference for the app itself (ticket 15, reaffirms ticket 11's story 75
+  and ticket 31).
+- The judge's timeout rises from 5 s to 20 s with a pending state on the
+  deciding form, the runner's first client island (ticket 49). Threshold
+  0.5 stays. A Response to a deciding Prompt is disclosed on the privacy
+  page as sent to the AI Gateway.
+- Delete or Backspace on a focused Step box opens the same confirmation
+  the Step actions menu opens; the Start ignores it (ticket 50, agent's
+  ruling under Paul's blanket approval).
