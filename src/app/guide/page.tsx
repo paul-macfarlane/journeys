@@ -33,13 +33,7 @@ export default function GuidePage() {
   return (
     <ProsePage
       title="Guide"
-      subtitle={
-        <p className="text-muted-foreground leading-relaxed">
-          Journeys is for writing branching, text-based experiences and sharing
-          them by link. Authors sign in and build; Participants walk what is
-          published without an account. This page covers both.
-        </p>
-      }
+      subtitle="Journeys is for writing branching, text-based experiences and sharing them by link. Authors sign in and build; Participants walk what is published without an account. This page covers both."
     >
       <nav
         aria-labelledby="contents-heading"

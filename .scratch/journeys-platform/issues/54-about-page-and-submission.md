@@ -1,6 +1,6 @@
 # 54: The splash page, the About page, and the hackathon submission paragraph
 
-Status: ready-for-agent
+Status: done
 Blocked by: 38
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -95,3 +95,37 @@ Then sign in, open the Journey Stories Project, publish Case 1, 2, and 3 from ea
 | 4 | thread | `/implement .scratch/journeys-platform/issues/56-staging-regression-pass.md` after 54 and 55 merge; Paul signs in inside the browser pane himself |
 | 5 | Paul | Promote `staging` → `main`, smoke production (sign in, create, publish, anonymous play, AI Choice), submit the form with the long paragraph and the root URL |
 | 6 | Paul | Narrated 2–3 minute walkthrough, only if time remains |
+
+### 2026-09-24 — Claude (Fable 5.1), `[CLOSEOUT]`
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/68 (base `staging`, head `feat/54-splash-about`, commits `1dacb75` feature, `84aaede` review fixes). Route: polish; delivered with `/implement` in a worktree (`.claude/worktrees/54/journeys`, branched from `staging` at `93cb26b`, after #66), no worker delegation.
+
+**Delivered**
+
+- `src/lib/demo.ts`: `SEED_PROJECT_ID`, `SEED_JOURNEY_IDS`, `PLAY_JOURNEY_HREF`, `PLAY_JOURNEY_LABEL`; `scripts/seed/journey-stories-seed.ts` (re-exports `SEED_PROJECT_ID` for the demo script) and `scripts/record-landing-demo.ts` import them.
+- `src/app/page.tsx` as the splash: hero (mark, display heading, tagline, Play link as the primary button, Sign in as the outline button or "Go to your projects"), `CanvasDemo` unchanged, a two-paragraph explanation with the `/about` teaser, "What it does" with `FeatureGrid`, and the `/guide` line. Entrance fade `animate-in fade-in duration-700 motion-reduce:animate-none`. `max-w-6xl`.
+- `src/components/feature-grid.tsx`: the six cards per decision 5, each `<img data-still-scheme>` pair from `public/demo/<slug>-{light,dark}.png` switched by the `dark` variant, `alt=""`, lazy. Themes copy says preset plus accent (what `src/lib/theme.ts` stores).
+- `src/app/about/page.tsx` per decision 3 (Medha named, purpose, Twine/static-site limits, legacy link once, "rebuilt from the legacy site in September 2026", the Members/Author page/link preview sentence, the Play link, the guide link, signed "— Paul"); `metadata.title` "About" (the layout template appends the app name), a description. Renders through the new `src/components/prose-page.tsx`, which `LegalPage` now wraps with its dateline.
+- `SiteFooter`: About and Guide anchors between the copyright and GitHub.
+- Specs: `landing` (hero video, six headings, six visible light stills and their 200/`image/png`, dark stills in the dark theme, Play href, About/Guide in body and footer, no horizontal overflow at 375 px, three screenshots); new `about` (title "About · Journeys", heading, Medha paragraph, legacy link once, Play href, guide link, no `Claude|Atlas|agent` in main, footer links, three screenshots); `public-project` expects exactly one `/p/` link on the root, the seed Project's.
+
+**Verification**
+
+| Check | Result | Evidence |
+|---|---|---|
+| `pnpm format:check`, `pnpm lint`, `pnpm typecheck` | PASS | `test-results/dod-1-commands.txt` |
+| `pnpm test` | PASS, 544 | `test-results/dod-1-commands.txt` |
+| `pnpm build` | PASS (`/about` prerendered static; `/` dynamic for the session read, as before) | `test-results/dod-1-commands.txt` |
+| `E2E_EVIDENCE=landing,about pnpm test:e2e` (full, once, at the end, on port 3154 / `journeys_e2e_54`) | PASS, 105 | `test-results/dod-1-e2e.txt`, `test-results/landing/`, `test-results/about/` |
+| Deployed smoke | Not applicable until merge (no PR previews); ticket 56 exercises staging | — |
+
+One earlier full run had `author-page` time out at 30 s under load; it passed alone and in the final full run. Paths in the captures are scrubbed to `<worktree>` because the commit-time secret scrub refuses the 60-character worktree path.
+
+**AI code review** (`/code-review`, one pass, high effort, 8 findings)
+
+- Applied: Themes card promised a "type" choice the feature lacks → copy now says preset plus accent; About title doubled the app name under the layout template → "About", spec asserts the exact title; comment credited tw-animate-css with reduced-motion handling → names `motion-reduce:animate-none`; seed href/label re-typed in three specs → imported from `@/lib/demo`; About duplicated `LegalPage`'s shell → `ProsePage` extracted and shared; redundant `cn()` wrappers; unused `className` prop and `FeatureSlug` export.
+- Not applied, by ticket decision 9: the `/guide` links ship before the route exists (ticket 55, "first to cut"). See **For Paul**.
+
+**Deviations from the ticket text:** none. The `landing` evidence files are `landing-{light,dark,375}.png` in place of the former `landing.png`.
+
+**For Paul:** merge #68 after 55 or accept that Guide links 404 until 55 lands — if 55 is cut, say so and a one-line PR removes the three links. Seed and publish the three cases on staging and production before promotion (runbook step 0) or the Play link 404s. Then 56.

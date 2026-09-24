@@ -1,15 +1,44 @@
 import { expect, test } from "@playwright/test";
 
+import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
+
 import { evidencePath } from "./setup/evidence";
 
+const FEATURE_HEADINGS = [
+  "Publish immutable versions",
+  "Anonymous runs, no account",
+  "Analytics on the graph",
+  "Prompts with an AI-decided choice",
+  "Themes",
+  "Rich text with images and credits",
+];
+
+/**
+ * Ticket 54: the splash. The recording as the hero, six feature cards each
+ * with a still per theme, "Play a Journey" to the seed Project (a fixed id,
+ * so no configuration), the story teaser to /about, the guide link under
+ * the grid, the About and Guide footer links, and one sign-in call to
+ * action while signed out. Screenshots in both themes and at phone width.
+ */
 test("landing page explains the product and offers a single sign-in link while signed out", async ({
   page,
 }) => {
+  await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
 
   await expect(
     page.getByRole("heading", { name: "Journeys", level: 1 }),
   ).toBeVisible();
+
+  // The hero: the recording of the canvas (ticket 38's block, asserted in
+  // detail by the test below).
+  await expect(page.locator('video[data-scheme="light"]')).toBeVisible();
+
+  // Play a seeded Journey without an account.
+  const play = page.getByRole("link", {
+    name: PLAY_JOURNEY_LABEL,
+  });
+  await expect(play).toHaveAttribute("href", PLAY_JOURNEY_HREF);
 
   // One entry point: the provider choice lives on /sign-in, not here.
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute(
@@ -23,8 +52,45 @@ test("landing page explains the product and offers a single sign-in link while s
   // Signed out: the page never links to /projects.
   await expect(page.locator('a[href="/projects"]')).toHaveCount(0);
 
-  // The site footer: the wordmark, the copyright line, the GitHub link,
-  // and the legal links.
+  // The six feature cards, each with its light and dark still from
+  // `public/demo/`, the light one shown in the light theme.
+  const features = page.getByRole("list", { name: "Features" });
+  for (const heading of FEATURE_HEADINGS) {
+    await expect(
+      features.getByRole("heading", { name: heading, level: 3 }),
+    ).toBeVisible();
+  }
+  await expect(features.getByRole("listitem")).toHaveCount(6);
+  await expect(
+    features.locator('img[data-still-scheme="light"]:visible'),
+  ).toHaveCount(6);
+  await expect(
+    features.locator('img[data-still-scheme="dark"]:visible'),
+  ).toHaveCount(0);
+  for (const slug of [
+    "versions",
+    "run",
+    "analytics",
+    "prompt",
+    "themes",
+    "rich-text",
+  ]) {
+    const still = await page.request.get(`/demo/${slug}-light.png`);
+    expect(still.status(), `${slug}-light.png`).toBe(200);
+    expect(still.headers()["content-type"]).toBe("image/png");
+  }
+
+  // The story teaser and the guide link in the page body.
+  const main = page.getByRole("main");
+  await expect(
+    main.getByRole("link", { name: "Read the story" }),
+  ).toHaveAttribute("href", "/about");
+  await expect(
+    main.getByRole("link", { name: "Read the guide" }),
+  ).toHaveAttribute("href", "/guide");
+
+  // The site footer: the wordmark, the copyright line, About, Guide, the
+  // GitHub link, and the legal links.
   const footer = page.getByRole("contentinfo");
   await expect(footer.getByRole("link", { name: "Journeys" })).toHaveAttribute(
     "href",
@@ -32,6 +98,14 @@ test("landing page explains the product and offers a single sign-in link while s
   );
   await expect(footer).toContainText(
     `© ${new Date().getFullYear()} Paul Macfarlane`,
+  );
+  await expect(footer.getByRole("link", { name: "About" })).toHaveAttribute(
+    "href",
+    "/about",
+  );
+  await expect(footer.getByRole("link", { name: "Guide" })).toHaveAttribute(
+    "href",
+    "/guide",
   );
   await expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute(
     "href",
@@ -49,7 +123,34 @@ test("landing page explains the product and offers a single sign-in link while s
   ).toHaveAttribute("href", "/terms");
 
   await page.screenshot({
-    path: evidencePath("landing", "landing.png"),
+    path: evidencePath("landing", "landing-light.png"),
+    fullPage: true,
+  });
+
+  // Dark: the dark stills stand in for the light ones.
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await expect(
+    features.locator('img[data-still-scheme="dark"]:visible'),
+  ).toHaveCount(6);
+  await expect(
+    features.locator('img[data-still-scheme="light"]:visible'),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: evidencePath("landing", "landing-dark.png"),
+    fullPage: true,
+  });
+
+  // Phone width: one column, nothing wider than the viewport.
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(play).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
+  expect(overflow, "no horizontal scroll at 375px").toBe(false);
+  await page.screenshot({
+    path: evidencePath("landing", "landing-375.png"),
     fullPage: true,
   });
 });
