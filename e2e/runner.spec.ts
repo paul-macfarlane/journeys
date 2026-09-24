@@ -1,4 +1,10 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
@@ -139,6 +145,22 @@ async function expectNoSidewaysScroll(page: Page): Promise<void> {
 /** The Prompt's textbox on a runner screen, found by its question. */
 function promptBox(page: Page, label: string) {
   return page.getByRole("textbox", { name: label });
+}
+
+/** More Tab presses than any runner screen has focusable things before its Choices. */
+const TAB_LIMIT = 10;
+
+/**
+ * Presses Tab until `target` holds focus, or gives up after `TAB_LIMIT`
+ * presses. Keyboard focus, not `locator.focus()`: only a key press makes the
+ * browser treat the focus as `:focus-visible`, which is the state under test.
+ */
+async function tabTo(page: Page, target: Locator): Promise<void> {
+  for (let presses = 0; presses < TAB_LIMIT; presses += 1) {
+    await page.keyboard.press("Tab");
+    if (await target.evaluate((el) => el === document.activeElement)) return;
+  }
+  throw new Error(`Tab never reached ${target}`);
 }
 
 test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
@@ -1235,6 +1257,63 @@ test("runner-unavailable-and-unknown", async ({ page, context, browser }) => {
 
 /** An id no Journey has: every real one is a `crypto.randomUUID()`. */
 const UNKNOWN_JOURNEY_ID = "00000000-0000-4000-8000-000000000000";
+
+/**
+ * Ticket 63: a keyboard user can see which Choice is focused, in both
+ * schemes. The Choice's `focus-visible` treatment is a solid outline in the
+ * Theme's ring colour, so the computed style is what is asserted; the
+ * screenshots are for the eye.
+ */
+test("runner-focus", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Focus ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, `Focus ${suffix}`);
+  const document = runnerDocument();
+  await writeDraftDocument(journeyId, document);
+  await publishDocument(journeyId, document);
+
+  for (const scheme of ["light", "dark"] as const) {
+    const participantContext = await browser.newContext({
+      baseURL: E2E_BASE_URL,
+      colorScheme: scheme,
+    });
+    try {
+      const participant = await participantContext.newPage();
+      await participant.goto(`/j/${journeyId}`);
+      await expect(participant.locator("html")).toHaveClass(
+        new RegExp(`\\b${scheme}\\b`),
+      );
+
+      const firstChoice = participant
+        .getByRole("list", { name: "Choices" })
+        .getByRole("button")
+        .first();
+      await expect(firstChoice).toHaveText("Wait your turn");
+      await tabTo(participant, firstChoice);
+      await expect(firstChoice).toBeFocused();
+
+      // A solid outline of a real width, offset from the edge so it reads
+      // against the page rather than the Choice's own border. Polled, not
+      // read once: the button transitions every property, so the width and
+      // offset grow from zero over the first frames after focus lands.
+      await expect(firstChoice).toHaveCSS("outline-style", "solid");
+      await expect(firstChoice).toHaveCSS("outline-width", "2px");
+      await expect(firstChoice).toHaveCSS("outline-offset", "2px");
+
+      await participant.screenshot({
+        path: evidencePath("runner-focus", `runner-focus-${scheme}.png`),
+        fullPage: true,
+      });
+    } finally {
+      await participantContext.close();
+    }
+  }
+});
 
 test("journey-link-preview", async ({ page, context, browser }) => {
   const author = await signInAs(context);

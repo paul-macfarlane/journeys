@@ -154,7 +154,9 @@ Leave `AI_GATEWAY_API_KEY` empty to hide the AI authoring features.
 | `pnpm db:generate` / `db:migrate`   | Create / apply Drizzle migrations              |
 | `pnpm db:push`                      | Push the schema without a migration (dev only) |
 | `pnpm db:studio`                    | Drizzle Studio                                 |
-| `pnpm seed:journey-stories <email>` | Seed the three legacy cases (see below)        |
+| `pnpm seed:journey-stories <email>` | Seed the legacy cases and the demo (see below) |
+| `pnpm demo:record`                  | Build, then re-make `public/demo/` (see below) |
+| `pnpm demo:record:prebuilt`         | The same over the build already in `.next`     |
 | `pnpm prepare`                      | Installs the husky git hooks (runs on install) |
 
 ### Seeding the legacy Journey Stories cases
@@ -166,6 +168,17 @@ endings, outcomes, and captioned images the legacy case has (the legacy
 credit lines are the captions; alt text is empty until an Author writes it in
 the editor). Each document is
 validated for publish before anything is written.
+
+The same command writes a second project, `The Allotment`, holding one small
+original journey, `A key on the doormat` (ten steps, three endings, two
+outcomes, one image, and one deciding prompt). The image is the committed
+`public/seed/allotment.jpg`, linked at its raw GitHub address on `staging`
+because stored content keeps only absolute http(s) image URLs, so it needs no
+third-party host and no per-environment configuration. It is the journey the landing page's recording and stills
+are made from, so a new author meets a map they can take in at a glance; the
+three cases stay exactly as they are. Its document is
+`scripts/seed/allotment/a-key-on-the-doormat.json`, and its fixed ids sit
+beside the cases' in `scripts/seed/journey-stories-seed.ts`.
 
 **Prerequisite:** the account must already exist. The command never creates
 users; sign in once through Google or Discord with that email (see
@@ -208,11 +221,38 @@ pnpm seed:journey-stories you@example.com    # seed the local dev database
   40+ character alphanumeric run, which the commit-time secret scanner would
   otherwise refuse; the escapes change nothing when parsed — keep them.
 
+### Recording the landing page demo
+
+The landing page shows a silent, looping recording of the canvas in use,
+one per theme, and (from ticket 54 on) six feature stills. None of it is
+captured by hand: `pnpm demo:record` builds the app and then runs
+`scripts/record-landing-demo.ts`, which rewrites every file under
+`public/demo/` — `canvas-{light,dark}.webm`, their posters
+`canvas-{light,dark}.png`, and `versions`, `run`, `analytics`, `prompt`,
+`themes`, and `rich-text` as `<slug>-{light,dark}.png`, all 1280 × 720.
+Rerun it after any change to the canvas or the pages it photographs and
+commit the result. `pnpm demo:record:prebuilt` skips the build when `.next`
+already holds one (remember a stale build records stale UI).
+
+It runs the way the e2e suite runs: over the production build, on its own
+server (port 3138; set `DEMO_PORT` to move it) against the dedicated
+`journeys_e2e` database, which it creates and migrates itself. It mints an
+Author, writes both seed Projects for that Author, publishes and walks the
+recorded Journey with Participants of its own for the analytics still, and
+deletes all of it afterwards — it never touches the dev database, a running
+`pnpm dev`, or any real Run. By default it records the demo Journey in
+`The Allotment`; `pnpm demo:record --source journey-stories` (or the
+`:prebuilt` form) regenerates the same file names from the three legacy
+cases instead, so either set can be committed and the pages need no change. The recording's lead-in is trimmed and both
+files re-encoded with Playwright's own `ffmpeg` (set `DEMO_FFMPEG` to use
+another); without one the raw recordings are kept. The script fails when the
+two recordings exceed 3 MB together or the directory exceeds 4 MB.
+
 ## Environments
 
-Local development runs against the Docker Postgres above. Every branch gets
-an ephemeral Vercel preview deployment; the long-lived `staging` branch
-deploys to a stable domain, and `main` is production. Pull requests target
+Local development runs against the Docker Postgres above. Only two branches
+deploy: the long-lived `staging` branch deploys to a stable staging domain,
+and `main` is production; other branches get no preview deployment. Pull requests target
 `staging`, and a human promotes `staging` to `main`.
 
 Vercel builds never run migrations. The

@@ -11,6 +11,7 @@ import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import { validateForPublish } from "@/lib/graph/validate";
 
+import allotmentDocument from "../../../scripts/seed/allotment/a-key-on-the-doormat.json";
 import case1Document from "../../../scripts/seed/journey-stories/case-1.json";
 import case2Document from "../../../scripts/seed/journey-stories/case-2.json";
 import case3Document from "../../../scripts/seed/journey-stories/case-3.json";
@@ -402,7 +403,9 @@ const journeyStories = [
     choices: 70,
     endings: 6,
     outcomes: 4,
-    images: 20,
+    // 19, not the legacy 20: ticket 61 dropped the "Years go by" screenshot
+    // whose host is gone.
+    images: 19,
   },
   {
     name: "Case 2",
@@ -517,4 +520,64 @@ describe("the seeded Journey Stories documents", () => {
       }
     },
   );
+});
+
+describe("the seeded demo Journey (ticket 58)", () => {
+  const document = () => documentOf(allotmentDocument);
+
+  it("parses as a graph document and is publishable", () => {
+    expect(() => document()).not.toThrow();
+    expect(validateForPublish(document())).toEqual([]);
+  });
+
+  it("is the small map the landing page records: ten Steps, three Endings, two Outcomes, one loop", () => {
+    const steps = Object.values(document().steps);
+    expect(document().startStepId).toBe("doormat");
+    expect(steps).toHaveLength(10);
+    expect(steps.flatMap((step) => step.choices)).toHaveLength(15);
+    expect(steps.filter((step) => isEnding(step))).toHaveLength(3);
+    expect(Object.keys(document().outcomes)).toHaveLength(2);
+    // "Forty replies" sends the Participant back to "Waist-high grass", and
+    // "Ada's advice" back to "Blisters".
+    expect(
+      document().steps.replies.choices.map((choice) => choice.targetStepId),
+    ).toContain("grass");
+    expect(
+      document().steps.ada.choices.map((choice) => choice.targetStepId),
+    ).toContain("blisters");
+  });
+
+  it("carries the one image, at its committed address, with alt text and a caption", () => {
+    const images = Object.values(document().steps).flatMap((step) =>
+      step.content.content.filter((block) => block.type === "image"),
+    );
+    expect(images).toHaveLength(1);
+    expect(images[0]).toMatchObject({
+      attrs: {
+        // Joined, so no 40-character run trips the commit-time secret scrub.
+        src: [
+          "https://raw.githubusercontent.com",
+          "paul-macfarlane",
+          "journeys",
+          "staging",
+          "public",
+          "seed",
+          "allotment.jpg",
+        ].join("/"),
+      },
+    });
+    expect((images[0] as { attrs: { alt: string } }).attrs.alt).not.toBe("");
+    expect(
+      (images[0] as { attrs: { caption: string } }).attrs.caption,
+    ).not.toBe("");
+  });
+
+  it("asks one deciding Prompt, on the Step with three Choices", () => {
+    const deciding = Object.values(document().steps).filter(
+      (step) => step.prompt?.decides,
+    );
+    expect(deciding.map((step) => step.title)).toEqual(["Blisters"]);
+    expect(deciding[0].choices).toHaveLength(3);
+    expect(deciding[0].prompt?.required).toBe(true);
+  });
 });

@@ -1,0 +1,68 @@
+# Ticket 61 DoD chain, 2026-09-24T19:32Z, commit 273f351, worktree .claude/worktrees/61, E2E_PORT=3161, E2E_DATABASE_NAME=journeys_e2e_61, E2E_EVIDENCE=runner-case-3-on-a-phone,runner-case-2-restored-choice
+
+$ pnpm lint
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
+> eslint
+exit 0
+
+$ pnpm typecheck
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
+> tsc --noEmit
+exit 0
+
+$ pnpm test
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
+> vitest run
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys
+ Test Files  36 passed (36)
+      Tests  544 passed (544)
+   Start at  15:33:47
+   Duration  5.21s (transform 5.12s, setup 0ms, import 18.68s, tests 5.98s, environment 6ms)
+exit 0
+
+$ pnpm test:e2e
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/author-settings-author-settings-chromium/trace.zip
+    Usage:
+        pnpm exec playwright show-trace test-results/playwright/author-settings-author-settings-chromium/trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  2) [chromium] › e2e/projects-and-journeys.spec.ts:569:5 › metadata-autosave ──────────────────────
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Locator:  getByRole('tab', { name: 'Settings', exact: true })
+    Expected: "true"
+    Received: "false"
+    Timeout:  10000ms
+    Call log:
+      - Expect "toHaveAttribute" getByRole('tab', { name: 'Settings', exact: true }) with timeout 10000ms
+      - waiting for getByRole('tab', { name: 'Settings', exact: true })
+        5 × locator resolved to <button role="tab" type="button" tabindex="-1" aria-disabled="false" aria-selected="false" data-slot="tabs-trigger" id="base-ui-_R_rlbt5ubtb_" data-orientation="horizontal" data-activation-direction="none" class="relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreg…>Settings</button>
+          - unexpected value "false"
+        17 × locator resolved to <button role="tab" tabindex="0" type="button" aria-disabled="false" aria-selected="false" data-slot="tabs-trigger" id="base-ui-_R_rlbt5ubtb_" data-orientation="horizontal" data-activation-direction="none" class="relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foregr…>Settings</button>
+           - unexpected value "false"
+       at setup/authoring.ts:143
+      141 |   const tab = page.getByRole("tab", { name, exact: true });
+      142 |   await tab.click();
+    > 143 |   await expect(tab).toHaveAttribute("aria-selected", "true");
+          |                     ^
+      144 | }
+      145 |
+      146 | /**
+        at openTab (/Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys/e2e/setup/authoring.ts:143:21)
+        at /Users/paulmacfarlane/Code/journeys/.claude/worktrees/61/journeys/e2e/projects-and-journeys.spec.ts:692:3
+    Error Context: test-results/playwright/projects-and-journeys-metadata-autosave-chromium/error-context.md
+    Error Context: test-results/playwright/projects-and-journeys-metadata-autosave-chromium/error-context.md
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/projects-and-journeys-metadata-autosave-chromium/trace.zip
+    Usage:
+        pnpm exec playwright show-trace test-results/playwright/projects-and-journeys-metadata-autosave-chromium/trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  2 failed
+    [chromium] › e2e/author-settings.spec.ts:50:5 › author-settings ────────────────────────────────
+    [chromium] › e2e/projects-and-journeys.spec.ts:569:5 › metadata-autosave ───────────────────────
+  105 passed (7.4m)
+ ELIFECYCLE  Command failed with exit code 1.
+exit 1
+# RESULT: FAIL at 'pnpm test:e2e'

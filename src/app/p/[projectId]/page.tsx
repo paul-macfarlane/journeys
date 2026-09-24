@@ -39,8 +39,9 @@ export const dynamic = "force-dynamic";
 /**
  * What a link to this page previews as (ticket 37): the Project's title
  * and the opening of its description, with the card `opengraph-image.tsx`
- * beside this file renders in the Project's Theme. The page answers an
- * unknown id with a 404, and its metadata reads as the site root does.
+ * beside this file renders in the Project's Theme. An unknown id is a 404
+ * here too (ticket 60): metadata streams in after the page, so a title
+ * returned for a missing Project would replace the not-found page's own.
  */
 export async function generateMetadata({
   params,
@@ -48,7 +49,9 @@ export async function generateMetadata({
   params: Promise<{ projectId: string }>;
 }): Promise<Metadata> {
   const { projectId } = await params;
-  return projectLinkMetadata(await getPublicProject(projectId), projectId);
+  const project = await getPublicProject(projectId);
+  if (!project) notFound();
+  return projectLinkMetadata(project, projectId);
 }
 
 export default async function PublicProjectPage({

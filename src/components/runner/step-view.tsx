@@ -46,10 +46,25 @@ import { cn } from "@/lib/utils";
  * hover border takes the Theme's primary (ticket 11), which is where a
  * Project's accent shows on the one thing a Participant touches; the focus
  * border already takes the ring, which an accent replaces too.
+ *
+ * Keyboard focus (ticket 63) is a solid 2px outline in the ring colour at
+ * full opacity, offset 2px so it sits on the page around the Choice rather
+ * than over its border. The shared button's own focus treatment — a 3px
+ * ring at half opacity over a pale border — is what the outline is drawn
+ * over, and it was invisible on a themed card in the dark scheme. Every
+ * preset's `--ring` clears 3:1 against its background and card in both
+ * schemes (WCAG 1.4.11 non-text contrast, 2.4.13 focus appearance). An
+ * accent replaces the ring: by night `globals.css` lifts its lightness
+ * first, but by day it is the Author's colour as picked, and a pale accent
+ * on pale paper is theirs to avoid — the hover border has always had the
+ * same latitude. `outline-solid` is explicit because the button's
+ * `outline-none` sets Tailwind's outline-style variable to `none`, which a
+ * bare `outline-2` would inherit.
  */
 export const choiceLinkClassName = cn(
   buttonVariants({ variant: "outline" }),
   "h-auto min-h-11 w-full justify-start py-3 text-left whitespace-normal hover:border-primary dark:hover:border-primary",
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid",
 );
 
 /**
