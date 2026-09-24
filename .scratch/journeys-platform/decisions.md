@@ -287,3 +287,29 @@ public URLs, custom theme editor, manual canvas layout.
 - Delete or Backspace on a focused Step box opens the same confirmation
   the Step actions menu opens; the Start ignores it (ticket 50, agent's
   ruling under Paul's blanket approval).
+
+## Amendment for ticket 52 (2026-09-23, decided by Paul on 2026-09-23)
+
+- Supersedes "Discovery and public pages": discovery is still link-only and
+  the site root still lists nothing, but an Author may turn on a public Author
+  page at `/authors/{user-id}` that lists the Projects they belong to which
+  have a live Journey. No index of Authors; no handle, the id is the address.
+- Off by default (`user.public`, default false); off is a 404, and the OG
+  image falls back to the brand card. Turning it on is the Author's consent
+  to a public name, avatar, bio, and links.
+- The page shows the provider avatar, the display name, a plain-text bio
+  (≤ 1,000 characters), links (one each of LinkedIn, GitHub, Instagram,
+  Facebook, website; `https:` only; platform kinds pinned to their host,
+  stored as one `user.links` jsonb array of `{ kind, url }`), and the
+  Projects, newest activity first. Rendered in the app's own Theme (`trail`)
+  inside the runner frame; metadata and OG card follow ticket 37.
+- The public Project page names, under its title, the Members whose pages
+  are on ("By …", each a link, join order) and nothing otherwise. Not the
+  runner, not the OG card.
+- One Settings page at `/projects/settings` from a "Settings" row in the
+  user menu: display name (1–60 characters, trimmed, blank refused), bio,
+  links, and the Author page switch. Blur-saved fields, switch on change,
+  one server action into `src/db/users.ts` (not better-auth's `updateUser`).
+  No avatar field; images stay URL-only.
+- The privacy page adds one sentence about what turning the page on makes
+  public.
