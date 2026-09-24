@@ -53,6 +53,7 @@ test("members-add-and-edit", async ({ page, context, browser }) => {
     const projectId = await createProject(page, projectTitle);
     await page.goto(`/projects/${projectId}`);
     const journeyId = await createJourney(page, projectId, journeyTitle);
+    await page.goto(`/projects/${projectId}`);
 
     // Members live on their own tab. A's page starts with exactly A's own
     // row.

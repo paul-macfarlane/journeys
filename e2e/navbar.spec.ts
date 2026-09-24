@@ -71,7 +71,10 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   const suffix = uniqueSuffix();
   const titles = [1, 2, 3, 4, 5, 6].map((n) => `Navbar p${n} ${suffix}`);
   const ids: string[] = [];
-  for (const title of titles) ids.push(await createProject(page, title));
+  for (const title of titles) {
+    ids.push(await createProject(page, title));
+    await page.goto("/projects");
+  }
   const [p1, p2, p3, p4, p5, p6] = titles;
   const [p1Id, , p3Id, , , p6Id] = ids;
 
