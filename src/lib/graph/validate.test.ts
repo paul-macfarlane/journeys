@@ -403,7 +403,9 @@ const journeyStories = [
     choices: 70,
     endings: 6,
     outcomes: 4,
-    images: 20,
+    // 19 since ticket 61 dropped the "Years go by" screenshot whose host is
+    // gone; its credit line stays as a paragraph.
+    images: 19,
   },
   {
     name: "Case 2",
