@@ -1,11 +1,10 @@
-# DoD command chain for ticket 58 (Route: polish), run on feat/58-demo-journey after merging origin/staging (#64 and #65 merged) and the autosaved-form fix
-# Base: staging at 5517206. The full e2e run is captured in dod-1-e2e.txt; the earlier failed run in dod-1-e2e-run-1-failed.txt.
-# Environment: local .env.local; the e2e stack provisions journeys_e2e on port 3100 itself; the demo script ran on port 3138 against the same database with --source demo (the default) and cleaned up after itself.
-# E2E_EVIDENCE=landing,landing-canvas-demo so only the two specs this ticket names write into the tracked proof root.
+# DoD command chain for ticket 54 (Route: polish), run on feat/54-splash-about in a worktree branched from origin/staging at 93cb26b (paths scrubbed to <worktree>)
+# Environment: dummy CI-style auth env exported in the shell (no .env.local in the worktree); the e2e stack provisions journeys_e2e_54 on port 3154 itself.
+# E2E_EVIDENCE=landing,about so only the two specs this ticket names write into the tracked proof root. The full e2e output is in dod-1-e2e.txt.
 
 $ pnpm format:check
 
-> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 format:check <worktree>
 > prettier --check .
 
 Checking formatting...
@@ -14,79 +13,110 @@ exit=0
 
 $ pnpm lint
 
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 lint <worktree>
 > eslint
 
 exit=0
 
 $ pnpm typecheck
 
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 typecheck <worktree>
 > tsc --noEmit
 
 exit=0
 
 $ pnpm test
 
-> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 test <worktree>
 > vitest run
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+ RUN  v4.1.11 <worktree>
 
 
  Test Files  36 passed (36)
       Tests  544 passed (544)
-   Start at  11:32:40
-   Duration  1.11s (transform 1.62s, setup 0ms, import 4.35s, tests 894ms, environment 2ms)
+   Start at  12:01:56
+   Duration  1.02s (transform 1.28s, setup 0ms, import 3.90s, tests 787ms, environment 2ms)
 
 exit=0
 
-$ pnpm demo:record:prebuilt
-[e2e] database: journeys_e2e on localhost:5436
-- Network:       http://172.19.9.131:3138
-[demo] seeded 4 Journeys for Demo Author; source: demo
-[demo] ffmpeg: /Users/paulmacfarlane/Library/Caches/ms-playwright/ffmpeg-1011/ffmpeg-mac
-[demo] recording the canvas (light)
-[demo] recording the canvas (dark)
-[demo] preparing the stills' state
-[demo] walk 1/6: 4 choices
-[demo] walk 2/6: 4 choices
-[demo] walk 3/6: 4 choices
-[demo] walk 4/6: 4 choices
-[demo] walk 5/6: 3 choices
-[demo] walk 6/6: 3 choices
-[demo] versions-light.png
-[demo] themes-light.png
-[demo] prompt-light.png
-[demo] rich-text-light.png
-[demo] analytics-light.png
-[demo] run-light.png
-[demo] versions-dark.png
-[demo] themes-dark.png
-[demo] prompt-dark.png
-[demo] rich-text-dark.png
-[demo] analytics-dark.png
-[demo] run-dark.png
-[demo] written to public/demo:
-  analytics-dark.png           75 KB
-  analytics-light.png          75 KB
-  canvas-dark.png             111 KB
-  canvas-dark.webm            543 KB
-  canvas-light.png            111 KB
-  canvas-light.webm           560 KB
-  prompt-dark.png             127 KB
-  prompt-light.png            125 KB
-  rich-text-dark.png          126 KB
-  rich-text-light.png         126 KB
-  run-dark.png                 57 KB
-  run-light.png                57 KB
-  themes-dark.png              74 KB
-  themes-light.png             74 KB
-  versions-dark.png            63 KB
-  versions-light.png           63 KB
-  recordings 1104 KB of 3072 KB; public/demo 2368 KB of 4096 KB
+$ pnpm build
+
+> journeys@0.1.0 build <worktree>
+> next build
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of <main-checkout>/pnpm-workspace.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * <worktree>/pnpm-workspace.yaml
+
+▲ Next.js 16.2.10 (Turbopack)
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./.claude/worktrees/54/journeys
+Failed to find font override values for font `Atkinson Hyperlegible Next`
+Skipping generating a fallback font.
+
+
+✓ Compiled successfully in 5.5s
+  Running TypeScript ...
+  Finished TypeScript in 5.4s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/13) ...
+  Generating static pages using 9 workers (3/13) 
+  Generating static pages using 9 workers (6/13) 
+  Generating static pages using 9 workers (9/13) 
+✓ Generating static pages using 9 workers (13/13) in 233ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /about
+├ ƒ /api/auth/[...all]
+├ ○ /apple-icon.png
+├ ƒ /authors/[userId]
+├ ƒ /authors/-/opengraph-image
+├ ○ /icon.svg
+├ ƒ /j/[journeyId]
+├ ƒ /j/[journeyId]/[stepId]
+├ ƒ /j/-/opengraph-image
+├ ○ /manifest.webmanifest
+├ ○ /opengraph-image
+├ ƒ /p/[projectId]
+├ ƒ /p/-/opengraph-image
+├ ○ /privacy
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+├ ƒ /projects/settings
+├ ƒ /sign-in
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+exit=0
+
+$ E2E_EVIDENCE=landing,about pnpm test:e2e:prebuilt   (the build above is the one it serves; full output in dod-1-e2e.txt)
+  ✓   98 [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget (14.4s)
+  ✓  101 [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish (4.8s)
+  ✓  102 [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls (2.5s)
+  ✓  104 [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart (2.8s)
+  ✓  103 [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice (4.7s)
+  ✓  105 [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll (1.8s)
+
+  105 passed (1.8m)
 exit=0

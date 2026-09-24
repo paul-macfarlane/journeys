@@ -252,7 +252,9 @@ test("public-project-page", async ({ page, context, browser }) => {
       fullPage: true,
     });
 
-    // An unknown id is a 404, and the root still lists nothing.
+    // An unknown id is a 404, and the root still lists nothing of the
+    // Author's: its one /p/ link is the seed Project's "Play a Journey"
+    // (ticket 54), never a Project made in the app.
     const missing = await participant.goto(`/p/${UNKNOWN_PROJECT_ID}`);
     expect(missing?.status()).toBe(404);
 
@@ -262,7 +264,11 @@ test("public-project-page", async ({ page, context, browser }) => {
     ).toBeVisible();
     await expect(participant.getByText(projectTitle)).toHaveCount(0);
     await expect(participant.getByText(publishedTitle)).toHaveCount(0);
-    await expect(participant.locator(`a[href*="/p/"]`)).toHaveCount(0);
+    await expect(participant.locator(`a[href*="/p/"]`)).toHaveCount(1);
+    await expect(participant.locator(`a[href*="/p/"]`)).toHaveAttribute(
+      "href",
+      "/p/00000000-5eed-4000-8000-000000000001",
+    );
     await expect(participant.locator(`a[href*="/j/"]`)).toHaveCount(0);
   } finally {
     await participantContext.close();
