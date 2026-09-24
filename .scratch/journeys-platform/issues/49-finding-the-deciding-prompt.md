@@ -62,3 +62,7 @@ PR: https://github.com/paul-macfarlane/journeys/pull/58 (base `staging`, branche
 **Staging merged in at 8f0e578** (PR #57, ticket 47, landed while this ran; the only conflict was the shared `dod-1-commands.txt`, kept as this ticket's). The chain was rerun on the merged code: every block `exit 0`, unit 510/510, e2e 100 passed in 1.8m, 0 flaky; the committed capture and evidence are from that run.
 
 **Next in Paul's order:** 38 → 50 → 51; 52 in its own thread; post-hackathon sweep 3 (41 → 42 → 44 → 45, 53).
+
+### 2026-09-24 — Claude Opus 5.5, Paul's sign-offs recorded
+
+Paul signed off the privacy sentence as merged in PR #58, including "its question". He also confirmed that `AI_GATEWAY_API_KEY` is set on Vercel. Nothing from this ticket is still waiting on him.
