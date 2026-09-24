@@ -77,7 +77,7 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
   ).toBeVisible();
   await expect(
     page.getByText(
-      "sent, with that step’s text and the labels of its choices, to the Vercel AI Gateway",
+      "sent, with that step’s text, its question, and the labels of its choices, to the Vercel AI Gateway",
     ),
   ).toBeVisible();
   // The legal pages carry the same footer as everywhere else.

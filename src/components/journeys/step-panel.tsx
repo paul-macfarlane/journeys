@@ -347,7 +347,7 @@ function PromptField({
           </p>
           <p className="text-muted-foreground text-xs">
             Participants answer and press Continue; the choices appear only when
-            the judge is unsure.
+            the judge is unsure or unavailable.
           </p>
         </div>
       ) : null}

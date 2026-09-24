@@ -117,8 +117,9 @@ export default function PrivacyPage() {
         Sign-in is handled through Google and Discord; each provider’s own
         privacy policy covers what they do with your sign-in. When a step’s
         question is set to decide the next step, the answer you type is sent,
-        with that step’s text and the labels of its choices, to the Vercel AI
-        Gateway, where a model picks the next step; it is used for nothing else.
+        with that step’s text, its question, and the labels of its choices, to
+        the Vercel AI Gateway, where a model picks the next step; it is used for
+        nothing else.
       </p>
 
       <h2>Deleting things</h2>

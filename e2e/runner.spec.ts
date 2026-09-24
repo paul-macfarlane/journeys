@@ -450,6 +450,7 @@ test("runner-deciding-prompt", async ({ page, context, browser }) => {
       fullPage: true,
     });
     releaseJudge();
+    await participant.unrouteAll();
 
     // No key, so no pick: every Choice offered, none marked.
     await expect(

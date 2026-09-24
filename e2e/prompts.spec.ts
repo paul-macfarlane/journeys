@@ -172,7 +172,7 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
   await expect(page.getByText("Needs two or more choices.")).toBeVisible();
   await expect(
     page.getByText(
-      "Participants answer and press Continue; the choices appear only when the judge is unsure.",
+      "Participants answer and press Continue; the choices appear only when the judge is unsure or unavailable.",
     ),
   ).toBeVisible();
 
