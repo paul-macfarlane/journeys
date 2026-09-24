@@ -63,8 +63,11 @@ test("author-page", async ({ page, context, browser }) => {
   const titleA = `Refugee Health ${suffix}`;
   const titleB = `Empty Project ${suffix}`;
 
+  // The dialog lands on the new Project (ticket 47), so the list is
+  // opened again before the second one is made.
   await page.goto("/projects");
   const projectA = await createProject(page, titleA);
+  await page.goto("/projects");
   const projectB = await createProject(page, titleB);
   await page.goto(`/projects/${projectA}`);
   // Created, not yet published: the Author page starts with no Projects.
