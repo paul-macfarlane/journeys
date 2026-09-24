@@ -61,7 +61,7 @@ test("about", async ({ page }) => {
     "href",
     "/guide",
   );
-  // Ticket 62: the footer spans the page on one row, as on the splash.
+  // Ticket 62: the footer spans the page on one row, as on the landing page.
   await expectFooterOnOneRow(page);
 
   await page.screenshot({
