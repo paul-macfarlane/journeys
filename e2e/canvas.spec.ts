@@ -2912,7 +2912,10 @@ test("canvas-delete-key-step", async ({ page, context }, testInfo) => {
   await expect(clinic).toBeFocused();
 
   // The box's own menu opens the same confirmation — the one the key opens —
-  // and Cancel hands the keyboard back to the button that asked.
+  // and Cancel hands the keyboard back to the button that asked. The lower
+  // box can lie below the fold after the full-page screenshot, and a click
+  // needs it on screen; the key did not.
+  await fitWholeMap(page, 2);
   const toolbar = await expandStepActions(page, "Clinic tent");
   const menuDelete = toolbar.getByRole("button", {
     name: "Delete step",
