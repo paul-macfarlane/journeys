@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 
 import {
   publishJourneyAction,
   unpublishJourneyAction,
 } from "@/app/projects/[projectId]/journeys/actions";
+import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,9 +35,111 @@ import type { PublishProblem } from "@/lib/graph/validate";
  * a Draft that isn't ready comes back with everything wrong with it in a
  * dialog rather than a version. Unpublishing takes a journey away from
  * participants, so it asks first.
+ *
+ * A publish that went through is acknowledged in one line beside the
+ * header's controls (ticket 65): which Published Version it made, that
+ * Participants see it now, and the participant link. The Journey page has
+ * two Publish buttons — the header's and, while there is something to
+ * publish, the Versions tab's Draft row's — and the row goes the moment its
+ * publish lands, so the acknowledgement lives above both of them in
+ * `PublishScope` and is shown by `PublishAcknowledgement`, in the header,
+ * whichever button made it.
  */
 
 type Refusal = { error: string; problems: PublishProblem[] };
+
+/** What a successful publish leaves behind to be acknowledged. */
+type Acknowledgement = {
+  versionNumber: number;
+  /** The ticket-43 warning, when the Journey has a deciding Prompt and no gateway key. */
+  warning: string | null;
+};
+
+type PublishScopeValue = {
+  acknowledgement: Acknowledgement | null;
+  acknowledge: (acknowledgement: Acknowledgement) => void;
+};
+
+const PublishScopeContext = createContext<PublishScopeValue | null>(null);
+
+function usePublishScope(caller: string): PublishScopeValue {
+  const scope = useContext(PublishScopeContext);
+  if (scope === null) {
+    throw new Error(`${caller} must be rendered inside PublishScope`);
+  }
+  return scope;
+}
+
+/**
+ * Holds the acknowledgement of the last publish for everything beneath it.
+ *
+ * The line stays until the Draft changes again — the moment the page says
+ * "Unpublished changes" — or the page is left, which unmounts this. The
+ * reset watches `hasUnpublishedChanges` turn true rather than reading it
+ * live: a publish acknowledges itself in the same breath as the page's
+ * re-render turns the flag off, and the two can land in either order, so
+ * only a later edit's flip clears it. Adjusted during render, the way React
+ * suggests for state that follows a prop, rather than in an effect.
+ */
+export function PublishScope({
+  hasUnpublishedChanges,
+  children,
+}: {
+  /** The header's own: false only while the live version matches the Draft. */
+  hasUnpublishedChanges: boolean;
+  children: ReactNode;
+}) {
+  const [acknowledgement, setAcknowledgement] =
+    useState<Acknowledgement | null>(null);
+  const [wasUnpublished, setWasUnpublished] = useState(hasUnpublishedChanges);
+
+  if (wasUnpublished !== hasUnpublishedChanges) {
+    setWasUnpublished(hasUnpublishedChanges);
+    if (hasUnpublishedChanges) setAcknowledgement(null);
+  }
+
+  return (
+    <PublishScopeContext.Provider
+      value={{
+        // Hidden while the page still shows something to publish: between
+        // a publish landing and the re-render that follows it, and after an
+        // edit the reset above has not yet seen.
+        acknowledgement: hasUnpublishedChanges ? null : acknowledgement,
+        acknowledge: setAcknowledgement,
+      }}
+    >
+      {children}
+    </PublishScopeContext.Provider>
+  );
+}
+
+/**
+ * The line that says a publish went through, in the header beside the
+ * controls: "Published Version N — participants see it now." with the
+ * participant link to copy, and, when it applies, what Participants will
+ * meet instead of a deciding Prompt. One `role="status"` so a screen reader
+ * hears it without being moved; nothing until there is something to say.
+ */
+export function PublishAcknowledgement({ journeyId }: { journeyId: string }) {
+  const { acknowledgement } = usePublishScope("PublishAcknowledgement");
+  if (acknowledgement === null) return null;
+
+  return (
+    <p
+      role="status"
+      className="flex basis-full flex-wrap items-center justify-end gap-x-2 gap-y-1 text-sm"
+    >
+      <span>
+        Published Version {acknowledgement.versionNumber} — participants see it
+        now.
+      </span>
+      {acknowledgement.warning !== null ? (
+        <span className="text-muted-foreground">{acknowledgement.warning}</span>
+      ) : null}
+      <CopyLinkButton path={`/j/${journeyId}`} />
+    </p>
+  );
+}
 
 export function PublishButton({
   projectId,
@@ -48,12 +157,11 @@ export function PublishButton({
   /** `sm` beside the Versions tab's row actions; the page header's is full size. */
   size?: "default" | "sm";
 }) {
+  const { acknowledge } = usePublishScope("PublishButton");
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
 
   function publish() {
-    setWarning(null);
     startTransition(async () => {
       const result = await publishJourneyAction(projectId, journeyId);
 
@@ -61,9 +169,14 @@ export function PublishButton({
         setRefusal({ error: result.error, problems: result.problems ?? [] });
         return;
       }
-      // Published all the same; the Author is told what Participants will
-      // meet (ticket 43: a deciding Prompt with no gateway key).
-      setWarning(result.warning ?? null);
+      // Published: the header's line says which version, and — ticket 43 —
+      // what Participants will meet when a deciding Prompt has no gateway
+      // key. Acknowledged here rather than kept here because the Versions
+      // tab's button is gone by the time its own publish has landed.
+      acknowledge({
+        versionNumber: result.versionNumber,
+        warning: result.warning ?? null,
+      });
       // No router.refresh(): the action revalidates the Journey page, so its
       // response already carries the re-rendered tree. A second refresh
       // landed hundreds of milliseconds later under load and re-rendered
@@ -83,12 +196,6 @@ export function PublishButton({
       >
         Publish
       </Button>
-
-      {warning !== null ? (
-        <p role="status" className="text-muted-foreground max-w-xs text-sm">
-          {warning}
-        </p>
-      ) : null}
 
       <AlertDialog
         open={refusal !== null}

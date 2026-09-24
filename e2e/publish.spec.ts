@@ -446,8 +446,13 @@ test("journey-share-link", async ({ page, context }) => {
   const journeyId = await createJourney(page, projectId, journeyTitle);
 
   // Before anything is live there is no address to hand a Participant.
+  // The badge row's copy control, not the one the acknowledgement of a
+  // publish carries for as long as it shows (ticket 65): the badge row's
+  // is the one that stays as long as the Journey is live.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
-  const copyLink = page.getByRole("button", { name: "Copy participant link" });
+  const copyLink = page
+    .getByRole("button", { name: "Copy participant link" })
+    .and(page.locator(':not([role="status"] *)'));
   await expect(copyLink).toHaveCount(0);
 
   // A brand-new Draft is one Step, an Ending, and publishable as it is.
@@ -480,6 +485,116 @@ test("journey-share-link", async ({ page, context }) => {
   await expect(page.getByRole("alertdialog")).toBeHidden();
   await expect(page.getByText("Unpublished", { exact: true })).toBeVisible();
   await expect(copyLink).toHaveCount(0);
+});
+
+/**
+ * Ticket 65: the moment a Journey is published, the page says so. One line
+ * in the header names the new Published Version, says Participants see it
+ * now, and offers the participant link where the Author wants it. The line
+ * outlives the click and goes when the Draft changes again or the page is
+ * left; it is not a toast.
+ */
+test("publish-acknowledged", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.emulateMedia({ colorScheme: "light" });
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  await writeDraftDocument(journeyId, publishableDocument());
+
+  const header = page.locator("main header");
+  // The header has a status line of its own for the title fields' saves;
+  // the acknowledgement is the one that names a Published Version.
+  const acknowledgement = header
+    .getByRole("status")
+    .filter({ hasText: "Published Version" });
+  const publish = header.getByRole("button", { name: "Publish", exact: true });
+
+  // Nothing to acknowledge before anything has been published.
+  await page.goto(journeyPath);
+  await expect(acknowledgement).toHaveCount(0);
+
+  // Version 1: the line names it, and the badge says "Published" with an
+  // entrance so the change registers.
+  await publish.click();
+  await expect(acknowledgement).toContainText(
+    "Published Version 1 — participants see it now.",
+  );
+  await expect(header.getByText("Published", { exact: true })).toHaveClass(
+    /animate-in/,
+  );
+
+  await page.screenshot({
+    path: evidencePath(
+      "publish-acknowledged",
+      "publish-acknowledged-light.png",
+    ),
+    fullPage: true,
+  });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.screenshot({
+    path: evidencePath("publish-acknowledged", "publish-acknowledged-dark.png"),
+    fullPage: true,
+  });
+  await page.emulateMedia({ colorScheme: "light" });
+
+  // The link is right there in the line, and it is the Participant's.
+  const copyLink = acknowledgement.getByRole("button", {
+    name: "Copy participant link",
+  });
+  await copyLink.click();
+  await expect(copyLink).toHaveText("Copied");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    `${E2E_BASE_URL}/j/${journeyId}`,
+  );
+
+  // A Draft edit is something Participants have not seen, so the line goes
+  // with the "Unpublished changes" it makes way for.
+  await editJourneyField(
+    page,
+    journeyId,
+    "description",
+    "A family waits for the night crossing.",
+  );
+  await expect(header.getByText("Unpublished changes")).toBeVisible();
+  await expect(acknowledgement).toHaveCount(0);
+
+  // Version 2, from the header.
+  await publish.click();
+  await expect(acknowledgement).toContainText(
+    "Published Version 2 — participants see it now.",
+  );
+
+  // Version 3, from the Versions tab's Draft row: the row goes with the
+  // publish, and the header's line acknowledges it all the same.
+  await editJourneyField(page, journeyId, "description", "The night crossing.");
+  await expect(acknowledgement).toHaveCount(0);
+  await openTab(page, "Versions");
+  const draftRow = page
+    .getByRole("list", { name: "Versions" })
+    .getByRole("listitem")
+    .filter({ has: page.getByText("Draft", { exact: true }) });
+  await draftRow.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(draftRow).toHaveCount(0);
+  await expect(acknowledgement).toContainText(
+    "Published Version 3 — participants see it now.",
+  );
+  expect(await readVersionRows(journeyId)).toHaveLength(3);
+
+  // Leaving the page is the other way the line goes.
+  await page.reload();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  await expect(acknowledgement).toHaveCount(0);
 });
 
 test("versions-tab-shows-draft", async ({ page, context }) => {

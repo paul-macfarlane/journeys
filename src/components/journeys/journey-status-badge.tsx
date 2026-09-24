@@ -14,8 +14,29 @@ const labels: Record<PublishState, string> = {
 
 export function JourneyStatusBadge({
   publishState,
+  entrance = false,
 }: {
   publishState: PublishState;
+  /**
+   * On the Journey page, where the badge is what a publish changes
+   * (ticket 65): "Published" fades in when it arrives, so the change
+   * registers without anything moving. Keyed on the state, so the badge
+   * is a new element — and the entrance plays — when the state changes
+   * under a re-render of the page, and otherwise only once, as the page
+   * loads. Off in lists, where a fade on every load would say nothing.
+   */
+  entrance?: boolean;
 }) {
-  return <Badge>{labels[publishState]}</Badge>;
+  return (
+    <Badge
+      key={publishState}
+      className={
+        entrance && publishState === "published"
+          ? "animate-in fade-in duration-500 motion-reduce:animate-none"
+          : undefined
+      }
+    >
+      {labels[publishState]}
+    </Badge>
+  );
 }
