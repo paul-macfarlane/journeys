@@ -143,16 +143,36 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
 
-  // The user menu names the Author and switches the theme from three plain
-  // rows; the choice survives a reload and the menu reports it back.
+  // The user menu names the Author and sets the theme from one row: "Theme"
+  // beside three segments, Light, Dark, and System (ticket 51). A choice
+  // leaves the menu open, so the change is seen at once; it survives a
+  // reload, and the row reports it back.
   const account = page.getByRole("button", { name: "Account: Test Author" });
   await account.click();
   const accountMenu = page.getByRole("menu");
   await expect(accountMenu.getByText("Test Author")).toBeVisible();
   await expect(accountMenu.getByText(author.email)).toBeVisible();
-  await page.getByRole("menuitemradio", { name: "Dark" }).click();
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  const themes = accountMenu.getByRole("radiogroup", { name: "Theme" });
+  await expect(themes.getByRole("radio")).toHaveCount(3);
+  await expect(accountMenu.getByRole("menuitemradio")).toHaveCount(0);
+  // No submenu: nothing in the menu opens a further popup.
+  await expect(accountMenu.locator("[aria-haspopup]")).toHaveCount(0);
+  await themes.getByRole("radio", { name: "Dark" }).click();
+  await expect(accountMenu).toHaveAttribute("data-open", "");
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await expect(themes.getByRole("radio", { name: "Dark" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(themes.getByRole("radio", { name: "Light" })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
+  await page.screenshot({
+    path: evidencePath("navbar-switch-project-and-theme", "theme-row.png"),
+  });
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
 
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
@@ -165,23 +185,42 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
     fullPage: true,
   });
 
-  await account.click();
-  await expect(
-    page.getByRole("menuitemradio", { name: "Dark" }),
-  ).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("menuitemradio", { name: "Light" }).click();
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  // Reached by keyboard: Enter on the trigger opens the menu with focus on
+  // the checked segment, the menu's first tab stop, since the group's one
+  // tab stop is the checked segment and menu items take no tab of their own.
+  // Left moves onto Light and chooses it with the menu still open, and Tab
+  // moves on from the row to Sign out.
+  await account.focus();
+  await page.keyboard.press("Enter");
+  await expect(accountMenu).toHaveAttribute("data-open", "");
+  const dark = themes.getByRole("radio", { name: "Dark" });
+  await expect(dark).toHaveAttribute("aria-checked", "true");
+  await expect(dark).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  const light = themes.getByRole("radio", { name: "Light" });
+  await expect(light).toBeFocused();
+  await expect(light).toHaveAttribute("aria-checked", "true");
+  await expect(dark).toHaveAttribute("aria-checked", "false");
+  await expect(accountMenu).toHaveAttribute("data-open", "");
   await expect(page.locator("html")).toHaveClass(/\blight\b/);
   await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+  await page.keyboard.press("Tab");
+  await expect(
+    accountMenu.getByRole("menuitem", { name: "Sign out" }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
 
   // System follows the OS: with the OS emulated dark, the page goes dark.
   await page.emulateMedia({ colorScheme: "dark" });
   await account.click();
-  await page.getByRole("menuitemradio", { name: "System" }).click();
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  await themes.getByRole("radio", { name: "System" }).click();
+  await expect(accountMenu).toHaveAttribute("data-open", "");
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveClass(/\blight\b/);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
 
   // "All projects" opens the list.
   await appNav(page).getByRole("button", { name: p6 }).click();
@@ -226,9 +265,14 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
       return inside && !sheet && box.width < 375 ? "popover" : "elsewhere";
     })
     .toBe("popover");
-  await menu.getByRole("menuitemradio", { name: "Dark" }).click();
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  await menu
+    .getByRole("radiogroup", { name: "Theme" })
+    .getByRole("radio", { name: "Dark" })
+    .click();
+  await expect(menu).toHaveAttribute("data-open", "");
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(appNav(page).getByRole("button", { name: p1 })).toBeVisible();
   await expect(account).toBeVisible();
   const bar = await page.getByRole("banner").boundingBox();
@@ -345,16 +389,17 @@ test("navbar-sticky-and-phone-menu: the navbar and tab row stick while the heade
     .toBe(phoneTabs!.y - scrolledBy);
   await expect.poll(async () => (await boxOf(banner))?.y).toBe(0);
 
-  // The user menu opens as a popover with every Theme choice and Sign out
-  // inside the viewport.
+  // The user menu opens as a popover with all three Theme segments and Sign
+  // out inside the viewport (ticket 51).
   const account = page.getByRole("button", { name: "Account: Test Author" });
   await account.click();
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
+  const themes = menu.getByRole("radiogroup", { name: "Theme" });
   const rows = [
-    menu.getByRole("menuitemradio", { name: "Light" }),
-    menu.getByRole("menuitemradio", { name: "Dark" }),
-    menu.getByRole("menuitemradio", { name: "System" }),
+    themes.getByRole("radio", { name: "Light" }),
+    themes.getByRole("radio", { name: "Dark" }),
+    themes.getByRole("radio", { name: "System" }),
     menu.getByRole("menuitem", { name: "Sign out" }),
   ];
   for (const row of rows) {
@@ -374,9 +419,20 @@ test("navbar-sticky-and-phone-menu: the navbar and tab row stick while the heade
     path: evidencePath("navbar-sticky-and-phone-menu", "phone-menu.png"),
   });
 
-  await menu.getByRole("menuitemradio", { name: "Dark" }).click();
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  // Choosing Dark leaves the menu open with the segment checked; the phone
+  // tap targets are the menu's larger ones.
+  const dark = themes.getByRole("radio", { name: "Dark" });
+  await dark.click();
+  await expect(menu).toHaveAttribute("data-open", "");
+  await expect(dark).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  // 44px: the height of the menu rows the segments replaced.
+  const segment = await dark.boundingBox();
+  expect(segment).not.toBeNull();
+  expect(segment?.height).toBeGreaterThanOrEqual(44);
+  expect(segment?.width).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
 
   await account.click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
