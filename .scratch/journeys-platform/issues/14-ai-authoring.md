@@ -22,3 +22,7 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 ### [SCOPE CHANGE] 2026-09-22 — Claude Fable 5.1, decided by Paul in the round-3 grilling
 
 Provider wiring moves from the AI SDK's Anthropic provider to the Vercel AI Gateway (Paul, Q14: "I also think we should use the ai gateway for our other ai features"). Model strings are `provider/model` picked from the gateway's list at implementation time, Opus-class for whole-Draft generation (Q19). Authentication is a static `AI_GATEWAY_API_KEY` (Q18), which replaces `ANTHROPIC_API_KEY` in `src/lib/env.ts`, `.env.example`, `README.md`, and `human-prerequisites.md` §6 in the tickets PR; the "absent means hidden" rule is unchanged. Ticket 43 (jev) shares the key and the `ai` package; whichever ticket lands first adds the package. Tag gateway calls `feature:authoring` for cost attribution. Everything else in the ticket stands.
+
+### 2026-09-24 — Claude Opus 5.5, noted for Paul
+
+Paul will try this as a spike in its own thread and worktree, to see how well whole-Draft generation works before deciding whether it ships. The spike does not block 38 or 54, and they do not wait for it. If the spike lands, ticket 54's feature list names it.

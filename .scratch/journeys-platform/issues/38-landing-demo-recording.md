@@ -26,3 +26,7 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `polish`): commit only the screenshot directories of the specs this ticket names; never include participant Responses or real run data (the recording uses seeded content only). Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-22, item 1.
 
 ## Comments
+
+### 2026-09-24 — Claude Opus 5.5, held by Paul
+
+Held until 2026-09-25 (Paul: "I will hold off on the recording until tomorrow in case I have other feedback I want to squeeze in"). Ticket 54's grilling may move the recording to the About page, add stills or clips there made by this script, or both. Read 54's decisions before starting.
