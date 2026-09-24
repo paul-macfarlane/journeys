@@ -172,15 +172,25 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
   await expect
     .poll(async () => (await readProjectTheme(projectId)).accent)
     .toBe("#095b41");
+  // Made until it takes, as `editJourneyField` is: two saves have just
+  // asked for refreshes, and one landing between the fill and the blur can
+  // put the stored accent back over the typed one before it is written.
   const accentField = page.getByLabel("Accent color value");
-  await accentField.fill("#c2410c");
-  await accentField.blur();
-  await expect
-    .poll(() => readProjectTheme(projectId))
-    .toEqual({
-      preset: "tide",
-      accent: "#c2410c",
-    });
+  await expect(async () => {
+    await accentField.fill("#c2410c");
+    await accentField.blur();
+    await expect
+      .poll(() => readProjectTheme(projectId), { timeout: 3_000 })
+      .toEqual({
+        preset: "tide",
+        accent: "#c2410c",
+      });
+  }).toPass({ timeout: 20_000 });
+  // The picker saves as the accent is picked and the moment it is left
+  // (ticket 46), and its own line says when the Theme has landed.
+  await expect(
+    page.getByRole("region", { name: "Theme" }).getByRole("status"),
+  ).toHaveText("Saved");
   await page.screenshot({
     path: evidencePath("themes-settings", "project-settings.png"),
     fullPage: true,

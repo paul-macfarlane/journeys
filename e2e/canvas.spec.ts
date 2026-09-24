@@ -94,7 +94,10 @@ async function readDraft(journeyId: string): Promise<GraphDocument> {
  * through here first.
  */
 async function expectSaved(page: Page): Promise<void> {
-  await expect(page.getByRole("status")).toHaveText("Saved");
+  // The Draft's line, not the title form's above the tabs (ticket 46).
+  await expect(
+    page.getByRole("tabpanel", { name: "Editor" }).getByRole("status"),
+  ).toHaveText("Saved");
 }
 
 /** A signed-in Author on the Journey page of a brand-new Journey. */

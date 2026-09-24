@@ -139,9 +139,10 @@ test("project-rename", async ({ page, context }) => {
     tabs.getByRole("tab", { name: "Journeys", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
 
-  // The title and description are edited on the Settings tab, saved when
-  // the field is left. The id is the address, so a rename never moves the
-  // Project's URL — only the tab is named in it.
+  // The title and description are edited on the Settings tab, saved as they
+  // are typed into and when a field is left (ticket 46). The id is the
+  // address, so a rename never moves the Project's URL — only the tab is
+  // named in it.
   await openTab(page, "Settings");
   await expect(page).toHaveURL(
     `${E2E_BASE_URL}/projects/${projectId}?tab=settings`,
@@ -158,8 +159,9 @@ test("project-rename", async ({ page, context }) => {
   await descriptionField.click();
   await page.keyboard.type(description);
   await descriptionField.blur();
-  // Leaving the editor is the save; the row says when it has landed, and
-  // the heading above the tabs then shows the description's opening.
+  // Leaving the editor writes at once; the row says when it has landed, the
+  // form's line reads "Saved", and the heading above the tabs then shows
+  // the description's opening.
   await expect
     .poll(async () => {
       const [row] = await queryE2eDatabase<{ text: string | null }>(
@@ -169,6 +171,9 @@ test("project-rename", async ({ page, context }) => {
       return row?.text;
     })
     .toBe(description);
+  await expect(
+    page.getByRole("region", { name: "Settings" }).getByRole("status").first(),
+  ).toHaveText("Saved");
   await expect(
     page.locator("main header").getByText(description, { exact: true }),
   ).toBeVisible();
@@ -290,13 +295,18 @@ test("journey-edit-and-delete", async ({ page, context }) => {
   const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
   await page.goto(journeyPath);
 
-  // The title is the field at the top of the page: typed into and left, and
-  // that is the rename. It leaves the Journey's address alone.
+  // The title is the field at the top of the page: typed into and left,
+  // which writes at once (ticket 46), and that is the rename. It leaves the
+  // Journey's address alone.
   await editJourneyField(page, journeyId, "title", renamedTitle);
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}`);
 
-  // The description is the field beneath it.
+  // The description is the field beneath it, and the line under both says
+  // when everything has landed.
   await editJourneyField(page, journeyId, "description", renamedDescription);
+  await expect(page.locator("main header").getByRole("status")).toHaveText(
+    "Saved",
+  );
 
   // Stored: a reload reads both back, and so does the Project's list.
   await page.reload();
@@ -522,6 +532,184 @@ test("author-flow", async ({ page, context, browser }) => {
 
   await page.screenshot({
     path: evidencePath("author-flow", "author-flow.png"),
+    fullPage: true,
+  });
+});
+
+/**
+ * Ticket 46: the metadata forms save as they are typed into, so a field
+ * never has to be left for its text to reach the row. Three surfaces, three
+ * ways of not blurring: the Journey description is typed into and simply
+ * waited on; the Project title and the rich-text Project description are
+ * typed into and the tab is switched at once, which unmounts the form.
+ *
+ * Each edit is made until it takes, for the reason `editJourneyField`
+ * gives: hydration writes the stored value over anything typed before it.
+ */
+test("metadata-autosave", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const renamedProjectTitle = `Refugee Care ${suffix}`;
+  const projectDescription = "Clinics along the northern route.";
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeyDescription = "The family waits for a guide at dusk.";
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // The Journey description: typed into and never left. The line beneath
+  // the fields says when the write has landed, and the row agrees.
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  const journeyStatus = page.locator("main header").getByRole("status");
+  await expect(journeyStatus).toHaveText("Saved");
+  const descriptionField = page.getByLabel("Description", { exact: true });
+  const storedJourneyDescription = async () => {
+    const [row] = await queryE2eDatabase<{ value: string }>(
+      `SELECT description AS value FROM "journey" WHERE id = $1`,
+      [journeyId],
+    );
+    return row?.value;
+  };
+  // Whether the page would ask before it let itself be left: the guard is
+  // asked directly, since a real leave prompt is not something a test can
+  // read, and it must say yes while the edit is in its window and no once
+  // the write has landed.
+  const wouldAskBeforeLeaving = () =>
+    page.evaluate(() => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+  await expect(async () => {
+    await descriptionField.fill(journeyDescription);
+    await expect(descriptionField).toHaveValue(journeyDescription, {
+      timeout: 1_000,
+    });
+    expect(await wouldAskBeforeLeaving()).toBe(true);
+    await expect
+      .poll(storedJourneyDescription, { timeout: 3_000 })
+      .toBe(journeyDescription);
+  }).toPass({ timeout: 20_000 });
+  await expect(descriptionField).toBeFocused();
+  await expect(journeyStatus).toHaveText("Saved");
+  expect(await wouldAskBeforeLeaving()).toBe(false);
+
+  await page.reload();
+  await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+    journeyDescription,
+  );
+
+  // "Saving…" is on screen only as long as the write is in flight, so the
+  // write is held: the Journey title is typed into (the page is hydrated
+  // by now, the description's save proved it), the line reads "Unsaved
+  // changes" while the timer runs and "Saving…" once the action is sent,
+  // and "Saved" only once the action is let through.
+  const renamedJourneyTitle = `Night Crossing ${suffix}`;
+  let releaseWrite = () => {};
+  const writeHeld = new Promise<void>((resolve) => {
+    releaseWrite = resolve;
+  });
+  const isServerAction = (request: {
+    method(): string;
+    headers(): Record<string, string>;
+  }) => request.method() === "POST" && "next-action" in request.headers();
+  await page.route(
+    (url) => url.pathname === `/projects/${projectId}/journeys/${journeyId}`,
+    async (route) => {
+      if (isServerAction(route.request())) await writeHeld;
+      await route.continue();
+    },
+  );
+  const titleField = page.getByLabel("Title", { exact: true });
+  await titleField.fill(renamedJourneyTitle);
+  await expect(journeyStatus).toHaveText("Unsaved changes");
+  await expect(journeyStatus).toHaveText("Saving…");
+  releaseWrite();
+  await expect(journeyStatus).toHaveText("Saved");
+  await page.unrouteAll();
+  await expect
+    .poll(async () => {
+      const [row] = await queryE2eDatabase<{ value: string }>(
+        `SELECT title AS value FROM "journey" WHERE id = $1`,
+        [journeyId],
+      );
+      return row?.value;
+    })
+    .toBe(renamedJourneyTitle);
+
+  // The Project title: typed into, then straight to another tab. Only the
+  // open tab's content is mounted, so the form goes away with the edit
+  // still in its window, and writes it on the way out.
+  await page.goto(`/projects/${projectId}?tab=settings`);
+  const storedProjectTitle = async () => {
+    const [row] = await queryE2eDatabase<{ value: string }>(
+      `SELECT title AS value FROM "project" WHERE id = $1`,
+      [projectId],
+    );
+    return row?.value;
+  };
+  await expect(async () => {
+    await openTab(page, "Settings");
+    const titleField = page.getByLabel("Title", { exact: true });
+    await titleField.fill(renamedProjectTitle);
+    await expect(titleField).toHaveValue(renamedProjectTitle, {
+      timeout: 1_000,
+    });
+    await openTab(page, "Journeys");
+    await expect
+      .poll(storedProjectTitle, { timeout: 3_000 })
+      .toBe(renamedProjectTitle);
+  }).toPass({ timeout: 20_000 });
+  // The refresh after the write is what the heading reads.
+  await expect(
+    page.getByRole("heading", { name: renamedProjectTitle }),
+  ).toBeVisible();
+  await openTab(page, "Settings");
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
+    renamedProjectTitle,
+  );
+
+  // The rich-text Project description, the same way: typed into, tab
+  // switched, read back. The editor is not a form field, so it appears
+  // only once the page is hydrated, and the typing needs no retry.
+  const storedProjectDescription = async () => {
+    const [row] = await queryE2eDatabase<{ text: string | null }>(
+      `SELECT description_content #>> '{content,0,content,0,text}' AS text FROM "project" WHERE id = $1`,
+      [projectId],
+    );
+    return row?.text;
+  };
+  const projectDescriptionField = page.getByLabel("Description", {
+    exact: true,
+  });
+  await projectDescriptionField.click();
+  await page.keyboard.type(projectDescription);
+  await expect(projectDescriptionField).toHaveText(projectDescription);
+  await openTab(page, "Journeys");
+  await expect.poll(storedProjectDescription).toBe(projectDescription);
+  await expect(
+    page.locator("main header").getByText(projectDescription, { exact: true }),
+  ).toBeVisible();
+  await openTab(page, "Settings");
+  await expect(page.getByLabel("Description", { exact: true })).toHaveText(
+    projectDescription,
+  );
+
+  // The Settings form's own line, with both of its surfaces landed. The
+  // Theme picker below has a line of its own, so the form's is the first.
+  const settingsStatus = page
+    .getByRole("region", { name: "Settings" })
+    .getByRole("status")
+    .first();
+  await expect(settingsStatus).toHaveText("Saved");
+
+  await page.screenshot({
+    path: evidencePath("metadata-autosave", "metadata-autosave.png"),
     fullPage: true,
   });
 });

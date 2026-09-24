@@ -55,6 +55,7 @@ import {
 import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
+import { SAVE_DEBOUNCE_MS, STATUS_TEXT, type SaveStatus } from "@/lib/autosave";
 
 /**
  * The Draft editor: the map of the Journey beside a panel on the Step the
@@ -67,9 +68,6 @@ import { cn } from "@/lib/utils";
  * there is to make is "store this document". Last write wins, as the spec
  * says: a Member who saves later overwrites what an earlier one stored.
  */
-
-/** Long enough that a sentence is one save, short enough to feel immediate. */
-const SAVE_DEBOUNCE_MS = 600;
 
 /**
  * The widths at which the Step panel is beside the map: Tailwind's `lg`
@@ -94,14 +92,6 @@ function dialogIsOpen(): boolean {
     null
   );
 }
-
-type SaveStatus = "saved" | "saving" | "unsaved";
-
-const STATUS_TEXT: Record<SaveStatus, string> = {
-  saved: "Saved",
-  saving: "Saving…",
-  unsaved: "Unsaved changes",
-};
 
 export function DraftEditor({
   projectId,
