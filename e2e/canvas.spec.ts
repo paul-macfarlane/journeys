@@ -2835,6 +2835,104 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
   await expectSaved(page);
 });
 
+test("canvas-delete-key-step", async ({ page, context }, testInfo) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+  await addStepFromCanvas(page, "Clinic tent");
+  await expectBoxOnMap(page, "Clinic tent");
+  await fitWholeMap(page, 2);
+
+  await clickBox(page, "Border post");
+  const title = page.getByLabel("Step title");
+  await expect(title).toHaveValue("Border post");
+  await addChoiceToStep(page, "Find the clinic", "Clinic tent");
+  await expect(canvasEdges(page)).toHaveCount(1);
+
+  const confirmation = page.getByRole("alertdialog");
+
+  // Backspace in the panel's title field is typing: a letter goes, and no
+  // Step does.
+  await title.click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Backspace");
+  await expect(title).toHaveValue("Border pos");
+  await expect(canvasNodes(page)).toHaveCount(2);
+  await expect(confirmation).toHaveCount(0);
+
+  // On the Start's box the key does nothing, silently: the Start cannot be
+  // deleted, and its menu offers no delete either.
+  const start = canvasNode(page, "Border pos");
+  await start.focus();
+  await expect(start).toBeFocused();
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("Backspace");
+  await expect(confirmation).toHaveCount(0);
+  await expect(canvasNodes(page)).toHaveCount(2);
+  await expect(start).toBeFocused();
+
+  // With the arrow in hand, Delete on another box is about the box: it opens
+  // the same confirmation the box's menu opens, naming the Choice that would
+  // be left pointing at nothing — and the arrow in hand is not taken as well.
+  const arrow = arrowLabelled(page, "Find the clinic");
+  await clickArrow(page, arrow);
+  await expect(arrow).toHaveAttribute("data-emphasis", "selected");
+  const clinic = canvasNode(page, "Clinic tent");
+  await clinic.focus();
+  await expect(clinic).toBeFocused();
+  await page.keyboard.press("Delete");
+  await expect(confirmation).toBeVisible();
+  await expect(
+    confirmation
+      .getByRole("list", { name: "Affected choices" })
+      .getByRole("listitem"),
+  ).toHaveText(["Find the clinic on Border pos"]);
+  await expect(canvasEdges(page)).toHaveCount(1);
+
+  await page.screenshot({
+    path: evidencePath(testInfo.title, `${testInfo.title}.png`),
+    fullPage: true,
+  });
+
+  // While the confirmation is open the keyboard is its own: neither key
+  // deletes the arrow still in hand behind it.
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("Backspace");
+  await expect(confirmation).toBeVisible();
+  await expect(canvasEdges(page)).toHaveCount(1);
+  await expect(canvasNodes(page)).toHaveCount(2);
+
+  // Cancelled, the keyboard is back on the box it was pressed on.
+  await confirmation
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+  await expect(canvasNodes(page)).toHaveCount(2);
+  await expect(canvasEdges(page)).toHaveCount(1);
+  await expect(clinic).toBeFocused();
+
+  // Backspace is the same key. Confirmed, the Step goes, and the Choice that
+  // reached it is left pointing at a placeholder.
+  await page.keyboard.press("Backspace");
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Delete step", exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+  await expect(canvasNode(page, "Clinic tent")).toHaveCount(0);
+  await expect(canvasNode(page, "Missing step")).toBeVisible();
+  await expect(problemEdges(page)).toHaveCount(1);
+
+  // And one press brings it back, and brings the Author back to it.
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(canvasNode(page, "Clinic tent")).toBeVisible();
+  await expect(canvasNode(page, "Missing step")).toHaveCount(0);
+  await expect(problemEdges(page)).toHaveCount(0);
+  await expect(title).toHaveValue("Clinic tent");
+
+  await expectSaved(page);
+});
+
 test("canvas-arrow-select-second-arrow", async ({ page, context }) => {
   await startJourney(page, context);
 
