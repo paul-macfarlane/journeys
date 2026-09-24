@@ -413,10 +413,9 @@ test("journeys-reorder", async ({ page, context }) => {
   // create lands on the Journey it made, so the Project page is returned to
   // for the next.
   for (const title of titles) {
-    await page.goto(`/projects/${projectId}`);
     await createJourney(page, projectId, title);
+    await page.goto(`/projects/${projectId}`);
   }
-  await page.goto(`/projects/${projectId}`);
   const list = page.getByRole("list", { name: "Journeys" });
   // `toContainText` with an array matches a subset in order, so the count
   // is pinned separately.

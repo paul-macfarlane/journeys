@@ -15,10 +15,9 @@ export const journeyTitleSchema = z
   .max(120, "Use 120 characters or fewer");
 
 /**
- * A short summary. Empty is allowed (the column defaults to `''`) — the
- * form always sends a string, so there is nothing for a schema-level
- * `.default()` to do, and one would only fight react-hook-form's inferred
- * field type.
+ * A short summary. Empty is allowed (the column defaults to `''`). The
+ * Journey page's form always sends one; the New Journey dialog sends none,
+ * so `createJourneySchema` alone defaults it (ticket 47).
  */
 export const journeyDescriptionSchema = z
   .string()

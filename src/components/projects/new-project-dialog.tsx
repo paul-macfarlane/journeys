@@ -63,6 +63,9 @@ export function NewProjectDialog() {
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        // Not while the new page is on its way: closing would let a second
+        // submit in before the first one lands.
+        if (!nextOpen && busy) return;
         setOpen(nextOpen);
         if (!nextOpen) {
           setServerError(null);
