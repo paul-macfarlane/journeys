@@ -51,3 +51,5 @@ PR: https://github.com/paul-macfarlane/journeys/pull/54 (base `staging`, compari
 
 **Deviations.** None from the contract. Not done, by the ticket's own scoping: the Draft editor was not moved onto the shared loop.
 
+**Addendum (2026-09-23, after PR CI).** The first CI run at the closeout commit failed `themes-settings` once: the accent typed right after the toggle never reached the row (the row kept the toggle's `#095b41`), while 97 others passed. The trace shows only two server-action writes on the tab and the color field already back at `#095b41` in the snapshot taken 18 ms after the fill; no local ordering (a held refresh, a held action response, a held first refresh) reproduced it in 15 runs. Paul's call: not worth chasing. The accent edit is now made until it takes, the pattern `editJourneyField` already uses for the same class of race (the commit after the closeout on this PR).
+
