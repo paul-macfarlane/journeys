@@ -4158,9 +4158,14 @@ test("canvas-dark-controls", async ({ page, context }) => {
 
   // The dark theme, chosen as an Author chooses it.
   await page.getByRole("button", { name: "Account: Test Author" }).click();
-  await page.getByRole("menuitemradio", { name: "Dark" }).click();
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  await page
+    .getByRole("menu")
+    .getByRole("radiogroup", { name: "Theme" })
+    .getByRole("radio", { name: "Dark" })
+    .click();
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
 
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
