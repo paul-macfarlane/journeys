@@ -1,8 +1,8 @@
 # 56: The pre-hackathon regression pass on staging
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 54, 55
-Owner:
+Owner: Claude (Fable 5.1), 2026-09-24
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: hackathon presentation (Paul, 2026-09-24, grilled the same evening): runs after 54 and 55 merge to `staging` and before Paul promotes `staging` → `main` for the 10:00 ET 2026-09-25 deadline.
 Route: polish (no code; findings become tickets)
