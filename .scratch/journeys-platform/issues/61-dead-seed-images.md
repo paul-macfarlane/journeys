@@ -25,8 +25,8 @@ The Ending "Wait w/ Broken Leg" is what the first-Choice walk reaches: `test-res
 
 **What to do:**
 
-1. For each dead image, either replace the `src` with a working absolute URL of the same photo (the Wikimedia one is a thumbnail URL; the original file URL serves), or with a re-hosted copy under `public/seed/` when the licence permits (CC BY-SA and public-domain sources), or remove the image node and keep the credit paragraph only when neither is possible (the NYT and rawpixel ones are not redistributable).
-2. Keep the credit paragraphs Medha wrote; edit only the image nodes.
+1. For each dead image, either replace the `src` with a working absolute URL of the same photo (the Wikimedia one is a thumbnail URL; the original file URL serves, but at 5 MB, so a resized copy under `public/seed/` is the better fix for that one), or with a re-hosted copy under `public/seed/` when the licence permits (CC BY-SA and public-domain sources), or remove the image and keep the credit paragraph only when neither is possible (the NYT and rawpixel ones are not redistributable).
+2. Keep the credit paragraphs Medha wrote; edit only the images.
 3. Re-run `pnpm seed:journey-stories <email>` locally to prove the documents still load; Paul re-seeds staging and production from his terminal (the seed is idempotent on the fixed ids, or say so if it is not).
 
 Acceptance criteria:
