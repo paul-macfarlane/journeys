@@ -1,43 +1,44 @@
-Verified at 52e21a3 (feat/43-ai-decided-choices), 2026-09-23T20:49:06Z
-Environment: worktree, CI dummy env, AI_GATEWAY_API_KEY unset, e2e port 3143, database journeys_e2e_t43
-
+# ticket 46 DoD chain — 2026-09-24T00:13:01Z — code at 9295ee4
 $ pnpm lint
 
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys/.claude/worktrees/43-ai-decided-choices/journeys
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
 > eslint
 
 exit=0
-
 $ pnpm format:check
 
-> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys/.claude/worktrees/43-ai-decided-choices/journeys
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
 > prettier --check .
 
 Checking formatting...
+[warn] Round 3 regression feedback.md
+[warn] Code style issues found in the above file. Run Prettier with --write to fix.
+ ELIFECYCLE  Command failed with exit code 1.
+exit=1
+# the only file named above is Paul's untracked notes file at the repo root, which CI never sees; the tracked files are checked on their own:
+$ git ls-files -z | xargs -0 pnpm exec prettier --check --ignore-unknown
+Checking formatting...
 All matched files use Prettier code style!
 exit=0
-
 $ pnpm typecheck
 
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys/.claude/worktrees/43-ai-decided-choices/journeys
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
 > tsc --noEmit
 
 exit=0
-
 $ pnpm test
-> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys/.claude/worktrees/43-ai-decided-choices/journeys
-> vitest run
-
-(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
-  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
-Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
-
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys/.claude/worktrees/43-ai-decided-choices/journeys
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
 
 
- Test Files  32 passed (32)
-      Tests  486 passed (486)
-   Start at  16:49:16
-   Duration  1.06s (transform 1.66s, setup 0ms, import 4.25s, tests 777ms, environment 2ms)
+ Test Files  33 passed (33)
+      Tests  498 passed (498)
+   Start at  20:13:13
+   Duration  1.08s (transform 1.66s, setup 0ms, import 4.35s, tests 750ms, environment 2ms)
 
 exit=0
+$ E2E_EVIDENCE=metadata-autosave,project-rename,journey-edit-and-delete,themes-settings pnpm test:e2e  (full output in dod-1-e2e.txt)
+exit=0
+  ✓  97 [chromium] › e2e/canvas.spec.ts:3547:7 › authoring from the map › canvas-undo-drawn-choice (5.1s)
+  ✓  98 [chromium] › e2e/canvas.spec.ts:3590:7 › authoring from the map › canvas-undo-build-branch-and-walk (8.1s)
+
+  98 passed (1.9m)
