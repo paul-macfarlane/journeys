@@ -26,8 +26,8 @@ export const ID_PATTERN = "[0-9a-f-]{36}";
 
 /**
  * A Project and a Journey are addressed by their id, and a spec cannot know
- * one before the app hands it back: every id here is read out of the href
- * the page rendered.
+ * one before the app hands it back: every id here is read out of an address
+ * the page rendered or landed on.
  */
 export function idFromHref(href: string | null, prefix: string): string {
   const value = href ?? "";
@@ -188,6 +188,20 @@ export async function editJourneyField(
   }).toPass({ timeout: 20_000 });
 }
 
+/**
+ * The id the address bar holds once the app has landed somewhere: the
+ * dialogs land on the thing they made (ticket 47), so the id is read from
+ * the page's own address rather than from a list the page no longer shows.
+ */
+function idFromAddress(page: Page, prefix: string): string {
+  return idFromHref(new URL(page.url()).pathname, prefix);
+}
+
+/**
+ * A Project made from the Projects list. The dialog lands on the new
+ * Project's page, so the page is there when this returns; a spec that wants
+ * the list again goes back to it.
+ */
 export async function createProject(
   page: Page,
   title: string,
@@ -196,16 +210,18 @@ export async function createProject(
   await page.getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create project" }).click();
 
-  await expect(page.getByRole("dialog")).toBeHidden();
-  const item = page.getByRole("listitem").filter({ hasText: title });
-  await expect(item).toHaveCount(1);
+  await expect(page).toHaveURL(new RegExp(`/projects/${ID_PATTERN}$`));
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
-  return idFromHref(
-    await item.getByRole("link").getAttribute("href"),
-    "/projects/",
-  );
+  return idFromAddress(page, "/projects/");
 }
 
+/**
+ * A Journey made from its Project's Journeys tab. The dialog lands on the
+ * new Journey's page, so the page is there when this returns; the
+ * description, which the dialog no longer asks for, is set where it lives,
+ * on that page. A spec that wants the Project page again goes back to it.
+ */
 export async function createJourney(
   page: Page,
   projectId: string,
@@ -214,17 +230,17 @@ export async function createJourney(
 ): Promise<string> {
   await page.getByRole("button", { name: "New journey" }).click();
   await page.getByLabel("Title").fill(title);
-  if (description) {
-    await page.getByLabel("Description").fill(description);
-  }
   await page.getByRole("button", { name: "Create journey" }).click();
 
-  await expect(page.getByRole("dialog")).toBeHidden();
-  const item = page.getByRole("listitem").filter({ hasText: title });
-  await expect(item).toHaveCount(1);
-
-  return idFromHref(
-    await item.getByRole("link").getAttribute("href"),
-    `/projects/${projectId}/journeys/`,
+  await expect(page).toHaveURL(
+    new RegExp(`/projects/${projectId}/journeys/${ID_PATTERN}$`),
   );
+  const journeyId = idFromAddress(page, `/projects/${projectId}/journeys/`);
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(title);
+
+  if (description) {
+    await editJourneyField(page, journeyId, "description", description);
+  }
+
+  return journeyId;
 }
