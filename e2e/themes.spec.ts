@@ -181,6 +181,11 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
       preset: "tide",
       accent: "#c2410c",
     });
+  // The picker saves as the accent is picked and the moment it is left
+  // (ticket 46), and its own line says when the Theme has landed.
+  await expect(
+    page.getByRole("region", { name: "Theme" }).getByRole("status"),
+  ).toHaveText("Saved");
   await page.screenshot({
     path: evidencePath("themes-settings", "project-settings.png"),
     fullPage: true,

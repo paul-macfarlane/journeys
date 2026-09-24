@@ -1,16 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   editProjectDescriptionAction,
   renameProjectAction,
 } from "@/app/projects/actions";
-import { useBlurSavedForm } from "@/components/blur-saved-form";
+import { useAutosave } from "@/components/autosave";
+import { useAutosavedForm } from "@/components/autosaved-form";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { STATUS_TEXT, type SaveStatus } from "@/lib/autosave";
 import type { Content } from "@/lib/graph/content";
 import {
   renameProjectSchema,
@@ -19,11 +21,12 @@ import {
 
 /**
  * A Project's title and description, edited in place on the Settings tab
- * and saved when a field is left. The title is a blur-saved form field (see
- * `useBlurSavedForm`); the description is rich text (ticket 07), written in
- * the same editor a Step's content is and saved by the same rule — on blur,
- * when what it holds differs from what was last stored. The Project is
- * addressed by its id, so a rename never moves the page.
+ * and saved as they are typed into (ticket 46). The title is an autosaved
+ * form field (see `useAutosavedForm`); the description is rich text (ticket
+ * 07), written in the same editor a Step's content is and saved by the same
+ * loop (`useAutosave`), when what it holds differs from what was last
+ * stored. One status line under the two says where the pair stands. The
+ * Project is addressed by its id, so a rename never moves the page.
  */
 export function ProjectSettingsFields({
   projectId,
@@ -36,7 +39,7 @@ export function ProjectSettingsFields({
 }) {
   const router = useRouter();
   const values = useMemo<RenameProjectInput>(() => ({ title }), [title]);
-  const { form, save, handleEnterKeyDown } = useBlurSavedForm({
+  const { form, status, change, flush, handleEnterKeyDown } = useAutosavedForm({
     schema: renameProjectSchema,
     values,
     submit: (next) => renameProjectAction(projectId, next),
@@ -46,6 +49,37 @@ export function ProjectSettingsFields({
   });
   const { errors } = form.formState;
 
+  // The description's own loop. What the editor holds and what the server
+  // last accepted live in the loop, not in state: neither is rendered, and
+  // the loop compares the two whenever it is asked to write. The editor is
+  // never reset from a refresh — its `resetKey` is the Project's id, which
+  // does not change — so another Member's edit arriving mid-typing is
+  // overwritten by this Author's next save, as last write wins on the
+  // title too.
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const { status: descriptionStatus, autosave: descriptionAutosave } =
+    useAutosave<Content>({
+      initial: description,
+      equals: sameContent,
+      write: async (next) => {
+        const result = await editProjectDescriptionAction(
+          projectId,
+          next,
+        ).catch(() => ({
+          ok: false as const,
+          error: "the server could not be reached",
+        }));
+        if (!result.ok) {
+          setDescriptionError(`Couldn't save: ${result.error}`);
+          return false;
+        }
+        setDescriptionError(null);
+        return true;
+      },
+      // The header above the tabs shows the description's opening line.
+      onSettled: () => router.refresh(),
+    });
+
   return (
     <div className="flex max-w-xl flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -54,7 +88,10 @@ export function ProjectSettingsFields({
           id="project-title"
           aria-invalid={errors.title ? true : undefined}
           autoComplete="off"
-          {...form.register("title", { onBlur: () => void save("title") })}
+          {...form.register("title", {
+            onChange: () => change("title"),
+            onBlur: () => void flush("title"),
+          })}
           onKeyDown={handleEnterKeyDown}
         />
         {errors.title ? (
@@ -64,17 +101,53 @@ export function ProjectSettingsFields({
         ) : null}
       </div>
 
-      <ProjectDescriptionField
-        projectId={projectId}
-        description={description}
-      />
+      <div className="flex flex-col gap-2">
+        {/* The editor names itself ("Description") through `label`, so the
+            visible caption above it is for sighted Authors only: a <label>
+            would have nothing to be `for`, since the surface is a
+            contenteditable rather than a form field. */}
+        <p aria-hidden className="text-sm leading-none font-medium select-none">
+          Description
+        </p>
+        <RichTextEditor
+          resetKey={projectId}
+          label="Description"
+          content={description}
+          onChange={(content) => descriptionAutosave.change(content)}
+          onRefused={(message) =>
+            setDescriptionError(`Couldn't save: ${message}`)
+          }
+          onBlur={() => void descriptionAutosave.flush()}
+        />
+        {descriptionError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {descriptionError}
+          </p>
+        ) : null}
+      </div>
 
-      <p className="text-muted-foreground text-xs">
-        Changes save when you leave a field. Every member sees them; the
-        project&apos;s address stays the same.
+      <p className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
+        <span role="status">
+          {STATUS_TEXT[combinedStatus(status, descriptionStatus)]}
+        </span>
+        <span>
+          Every member sees your changes; the project&apos;s address stays the
+          same.
+        </span>
       </p>
     </div>
   );
+}
+
+/**
+ * Two surfaces, one line: anything still unsaved is what the Author needs
+ * to know about, then anything still being written, and "Saved" only when
+ * both have landed.
+ */
+function combinedStatus(a: SaveStatus, b: SaveStatus): SaveStatus {
+  if (a === "unsaved" || b === "unsaved") return "unsaved";
+  if (a === "saving" || b === "saving") return "saving";
+  return "saved";
 }
 
 /**
@@ -84,70 +157,4 @@ export function ProjectSettingsFields({
  */
 function sameContent(a: Content, b: Content): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
-}
-
-/**
- * The description editor and its save. What the editor holds and what the
- * server last accepted are refs, not state: neither is rendered, and a save
- * compares the two the moment the editor is left. The editor is never reset
- * from a refresh — `resetKey` is the Project's id, which does not change —
- * so another Member's edit arriving mid-typing is overwritten by this
- * Author's next blur, as last write wins on the title too.
- */
-function ProjectDescriptionField({
-  projectId,
-  description,
-}: {
-  projectId: string;
-  description: Content;
-}) {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const current = useRef(description);
-  const stored = useRef(description);
-
-  async function saveDescription() {
-    const next = current.current;
-    if (sameContent(next, stored.current)) return;
-
-    const result = await editProjectDescriptionAction(projectId, next).catch(
-      () => ({ ok: false as const, error: "the server could not be reached" }),
-    );
-    if (!result.ok) {
-      setError(`Couldn't save: ${result.error}`);
-      return;
-    }
-
-    stored.current = next;
-    setError(null);
-    // The header above the tabs shows the description's opening line.
-    router.refresh();
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {/* The editor names itself ("Description") through `label`, so the
-          visible caption above it is for sighted Authors only: a <label>
-          would have nothing to be `for`, since the surface is a
-          contenteditable rather than a form field. */}
-      <p aria-hidden className="text-sm leading-none font-medium select-none">
-        Description
-      </p>
-      <RichTextEditor
-        resetKey={projectId}
-        label="Description"
-        content={description}
-        onChange={(content) => {
-          current.current = content;
-        }}
-        onRefused={(message) => setError(`Couldn't save: ${message}`)}
-        onBlur={() => void saveDescription()}
-      />
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  );
 }
