@@ -1,5 +1,5 @@
 # AC 3: a link with the wrong host or a non-https: scheme is refused; at most one link per kind is stored
-# Unit tests over the pure contract in src/lib/author.ts (the server actions re-parse every save through these schemas). HEAD: 33c7554b357e01fa3a25077f497b9e6d5066d4a0
+# Unit tests over the pure contract in src/lib/author.ts (the server actions re-parse every save through these schemas). HEAD: 7062a4a63875c01d95afe40b4c92810b3d15c871
 
 $ pnpm exec vitest run src/lib/author.test.ts --reporter=verbose
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
