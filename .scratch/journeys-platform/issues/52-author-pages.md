@@ -1,6 +1,6 @@
 # 52: Author pages and the display name
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Claude Fable 5.1 (`/atlas-implement`, 2026-09-23, worktree `52-author-pages` on `feat/52-author-pages`)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -79,3 +79,41 @@ Verification map (run surface local + deployed; evidence per `docs/agents/testin
 | Deployed | Human gate, after Paul merges: open `/projects/settings`, turn the page on, open `/authors/<id>` on the staging domain; expected: the page renders with the trail Theme and the Project list; post-check: the OG image at `/authors/<id>/opengraph-image` is a 200 PNG | closeout note | after merge | a later deploy |
 
 Human gates: none actionable now. Announced for later: the staging smoke above (after merge) and the Migrate action applying `0010` on push to `staging` (additive with defaults, so the deploy window is safe). No new dependency, so no lockfile commit is needed.
+
+**2026-09-23 — `[AI CODE REVIEW]` (two fresh reviewers over `f93bdf2..33c7554`, adjudicated by the orchestrator; every fix in `33c7554`).**
+
+Axis 1, technical implementation and spec conformity:
+
+- **Blocking, resolved** — `e2e/author-settings.spec.ts`: the first `fill` after `signInAgain` + `goto` and after `page.reload()` could race hydration (React Hook Form writes the stored value back over an early fill; retries are 0; the repo hit this in tickets 35 and 36). Both edits are now made until they take, as the rename and `editJourneyField` are.
+- **Non-blocking, resolved** — `src/lib/auth.ts`: better-auth's own `/api/auth/update-user` accepted any name or image from a signed-in Author, bypassing the name rules and putting an arbitrary URL on a public page. `disabledPaths: ["/update-user"]`; the spec asserts a 404 and an untouched row.
+- **Non-blocking, resolved** — `src/components/author-settings.tsx`, `src/lib/author.ts`: a link field holding only spaces was refused ("Use an https:// link") instead of clearing the link. The field is trimmed before the choice between "" and a url; `authorLinkUrlSchema` declares its input as `string`.
+- **Non-blocking, accepted** — `src/db/users.ts`, `e2e/author-page.spec.ts`: the Projects-list order, the "By …" order, and the co-Member case are read in review but not exercised by a spec (one Project, one public Author). Both queries mirror `listRecentProjectsForAuthor` and `listMembers` exactly.
+- **Non-blocking, resolved** — `src/app/projects/(list)/settings/actions.ts`: `revalidatePath("/projects", "layout")` states the intent (navbar layouts and Journey pages included) instead of three page paths.
+
+Axis 2, coding standards:
+
+- **Non-blocking, accepted** — "profile picture" in the Settings copy: the privacy sentence Paul dictated uses the same phrase for the provider's image.
+- **Non-blocking, resolved** — a poll in `author-settings.spec.ts` that could never fail, replaced by the single read.
+- **Non-blocking, resolved** — `author-page.spec.ts` found the bio by a Tailwind class; now by its text.
+- **Non-blocking, resolved** — the form schema was built with `as unknown as`; a typed helper builds it.
+- **Non-blocking, accepted** — no `actions.test.ts` for the three Settings actions; the schemas have unit tests and `author-settings` proves refusal and saving end to end.
+- **Non-blocking, resolved** — copy nits: "2,048", "account ids".
+
+Both reviewers confirmed: every action re-parses through the shared schemas and writes only `session.user.id`'s row; off and unknown are the same 404, generic metadata, and brand card; `email` reaches no public surface; the migration is additive with defaults; the privacy sentence is verbatim; the five recorded deviations (`useAutosavedForm` for the ticket's `useBlurSavedForm`, the `(list)` route, `shouldFocusError: false`, the row-set spec, the `Avatar` client component) were applied as recorded.
+
+**2026-09-23 — `[CLOSEOUT]` (Claude Fable 5.1, `/atlas-implement`).** PR: https://github.com/paul-macfarlane/journeys/pull/59 (base `staging`). Repository delivery `journeys`, branch `feat/52-author-pages`, comparison SHA `f93bdf2`, `origin/staging` (`b093869`, PRs #57 and #58) merged in as `da12354`; verified code at `d0384cf`.
+
+Deliverables: D1 schema, contract, data access — `atlas-worker` on sonnet, `94cb6d8`. D2 Settings page, user-menu row, `signInAgain`, `author-settings` spec — `atlas-worker` on opus, `04948f8`. D3 public Author page, card, metadata, "By …" line, privacy, `author-page` spec — `atlas-worker` on opus, `2eb0692`. Orchestrator: review fixes `33c7554`, merge `da12354`, `d0384cf` (the merged `createProject` now lands on the new Project, so the author-page spec reopens the list between two creates), evidence `8da42e1`. Two review subagents on opus. Sequential, one worktree, no worker worktrees; the predicted disjoint file sets held.
+
+Verification (`docs/agents/testing.md`, `contract`), all on `d0384cf`:
+
+- AC 1 — PASS — `test-results/author-settings/author-settings.png`; spec `author-settings` (rename; navbar, "Signed in as", Members tab; `signInAgain`; blank and 61-char refused with the row unchanged).
+- AC 2 — PASS — `test-results/author-page/author-page.png`, `author-card.png`; spec `author-page` (404 and brand card while off; on: avatar, name, two-line bio, LinkedIn and Website links, "No published journeys yet." then the Project once a Journey is live, B absent; meta tags; 1200×630 PNG with the trail background and stripe; off again: 404 and the same brand bytes).
+- AC 3 — PASS — `test-results/ac-3-refused-link.txt` (14 unit tests: host rule, `https:` only, lookalike host, one per kind, at most five) and the on-screen refusals in `author-settings` with the row still holding only the LinkedIn entry; `/api/auth/update-user` is a 404.
+- AC 4 — PASS — `test-results/author-page/project-by-line.png`; spec `author-page` (line absent while off, present and linking back while on, present on the Project with no live Journey, absent from the runner).
+- AC 5 — PASS — `test-results/ac-5-migration.txt` (fresh `journeys_52_fresh`: base migrations, an Author inserted, `pnpm db:migrate` applies `0010`, the row reads `bio` null, `links` `[]`, `public` false).
+- AC 6 — PASS — `test-results/ac-6-privacy-and-spec.txt` (the sentence at `src/app/privacy/page.tsx:39-41`; `[SCOPE CHANGE]` and the amendment on `origin/staging`).
+- AC 7 and DoD chain — PASS — `test-results/dod-1-commands.txt`: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm db:migrate && pnpm test:e2e` with `E2E_EVIDENCE=author-settings,author-page E2E_PORT=3152 E2E_DATABASE_NAME=journeys_e2e_52`; 35 unit files / 528 tests, 102 e2e passed (2.1m), no flake. Earlier full passes on `2eb0692` and `33c7554`; the first run on the merged `da12354` failed on the ticket-47 interaction above and is recorded as FAIL, fixed at its cause in `d0384cf`.
+- Deployed — human gate after merge: on the staging domain, `/projects/settings` → "Public Author page" on → `/authors/<id>` renders in the trail Theme with your Projects; post-check `/authors/<id>/opengraph-image` is a 200 PNG. The Migrate action applies `0010` on push to `staging` (additive, defaults).
+
+Deviations: `useAutosavedForm`/`useAutosave` for the ticket's `useBlurSavedForm` (ticket 46 renamed it); the route under `(list)`; `shouldFocusError: false` on the shared hook; the `author-page` spec sets the row directly; the `Avatar` client component on the public page; `disabledPaths` on better-auth (review). No new dependency; no lockfile change. Paul's dev database needs `pnpm db:migrate`. Follow-up candidates: `CopyLinkButton`'s accessible name ("Copy participant link") on Settings; specs for the two ordering rules.
