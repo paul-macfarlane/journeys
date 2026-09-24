@@ -90,6 +90,9 @@ export function SegmentedControl<V extends string>({
   segmentClassName?: string;
 }) {
   const groupRef = useRef<HTMLDivElement>(null);
+  // A radio group always has one tab stop: the checked segment, or the first
+  // when nothing is checked, so the control never drops out of the tab order.
+  const anyChecked = options.some((option) => option.value === value);
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
     const next = nextSegmentValue(
@@ -121,8 +124,9 @@ export function SegmentedControl<V extends string>({
         className,
       )}
     >
-      {options.map((option) => {
+      {options.map((option, index) => {
         const checked = option.value === value;
+        const tabStop = checked || (!anyChecked && index === 0);
         return (
           <Button
             key={option.value}
@@ -131,7 +135,7 @@ export function SegmentedControl<V extends string>({
             role="radio"
             aria-checked={checked}
             aria-label={option.icon === undefined ? undefined : option.label}
-            tabIndex={checked ? 0 : -1}
+            tabIndex={tabStop ? 0 : -1}
             data-segment={option.value}
             onClick={() => onValueChange(option.value)}
             onKeyDown={handleKeyDown}

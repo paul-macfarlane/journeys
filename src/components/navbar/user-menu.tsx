@@ -128,7 +128,7 @@ function ThemeRow() {
         onValueChange={setTheme}
         options={THEMES}
         size="icon-sm"
-        segmentClassName="max-sm:size-9"
+        segmentClassName="max-sm:size-11"
       />
     </div>
   );

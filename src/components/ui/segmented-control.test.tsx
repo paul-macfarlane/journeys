@@ -78,6 +78,23 @@ describe("SegmentedControl markup", () => {
     expect(html).not.toContain(">Light<");
   });
 
+  it("keeps one tab stop, the first segment, when nothing is checked", () => {
+    const none = renderToStaticMarkup(
+      <SegmentedControl
+        label="Theme"
+        value={"sepia" as "light"}
+        onValueChange={() => {}}
+        options={[
+          { value: "light", label: "Light" },
+          { value: "dark", label: "Dark" },
+        ]}
+      />,
+    );
+    expect(none.match(/aria-checked="true"/g)).toBeNull();
+    expect(none.match(/tabindex="0"/g)).toHaveLength(1);
+    expect(none).toMatch(/<button[^>]*tabindex="0"[^>]*data-segment="light"/);
+  });
+
   it("writes a text segment's label out when it has no icon", () => {
     const text = renderToStaticMarkup(
       <SegmentedControl
