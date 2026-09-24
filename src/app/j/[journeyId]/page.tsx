@@ -1,17 +1,37 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
+  liveDecision,
   ResponseNotice,
+  responseRefusal,
   StepView,
 } from "@/components/runner/step-view";
 import { getPublicJourney, getRunForJourney } from "@/db/runs";
 import { currentStepId } from "@/lib/graph/run";
+import { journeyLinkMetadata } from "@/lib/link-preview";
 import { runCookieName } from "@/lib/run-cookies";
 
 import { chooseFromStartAction, startOverAction } from "./actions";
+
+/**
+ * What a link to this page previews as (ticket 37): the live Published
+ * Version's title and description, with the card `opengraph-image.tsx`
+ * beside this file renders; a Journey that is not live reads as the site
+ * root does. `getPublicJourney` is cached per request, so the page below
+ * pays for no second query.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ journeyId: string }>;
+}): Promise<Metadata> {
+  const { journeyId } = await params;
+  return journeyLinkMetadata(await getPublicJourney(journeyId), journeyId);
+}
 
 /**
  * The participant runner's first screen: the Start Step itself, under the
@@ -34,9 +54,16 @@ export default async function JourneyStartPage({
   searchParams,
 }: {
   params: Promise<{ journeyId: string }>;
-  searchParams: Promise<{ notice?: string | string[] }>;
+  searchParams: Promise<{
+    notice?: string | string[];
+    decide?: string | string[];
+    response?: string | string[];
+  }>;
 }) {
-  const [{ journeyId }, { notice }] = await Promise.all([params, searchParams]);
+  const [{ journeyId }, { notice, decide, response }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   const journey = await getPublicJourney(journeyId);
   // No such Journey at all: a 404, the same answer an unknown id gets
@@ -102,9 +129,11 @@ export default async function JourneyStartPage({
         </div>
       ) : null}
 
-      {/* The one refusal this screen can be sent back with: a required
-          Prompt on the Start left blank by a request the browser's own
-          check did not see. Read by the action's redirect; the address is
+      {/* The one notice this screen can be sent back with is a refusal — a
+          required Prompt on the Start left blank — and `ResponseField`
+          renders that at the field itself, so `ResponseNotice` here renders
+          nothing for it; it stays for symmetry with every other Step, and
+          for a future confirmation this screen might carry. The address is
           not rewritten here, since no Run exists to keep in step with. */}
       <ResponseNotice notice={notice} />
 
@@ -123,6 +152,18 @@ export default async function JourneyStartPage({
             : {
                 kind: "form",
                 action: chooseFromStartAction.bind(null, journeyId),
+                refusal: responseRefusal(notice),
+                // A deciding Prompt's answer (ticket 43): with no Run yet to
+                // hold the Response, it comes back in the address with the
+                // judge's pick, and the box shows it again — but only once
+                // the judge has actually been asked (`decide` present); a
+                // bare `?response=` on its own is never trusted back into
+                // the box (ticket 43 F6).
+                response:
+                  typeof decide === "string" && typeof response === "string"
+                    ? response
+                    : undefined,
+                decision: liveDecision(startStep, decide),
               }
         }
         startOver={null}

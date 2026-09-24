@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 
@@ -10,30 +12,36 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  SegmentedControl,
+  type SegmentOption,
+} from "@/components/ui/segmented-control";
 import { authClient } from "@/lib/auth-client";
 import { initials } from "@/lib/navbar";
 
 /** The three answers next-themes accepts, "system" following the OS. */
-const THEMES = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "system", label: "System" },
-] as const;
+type Theme = "light" | "dark" | "system";
+
+/** The three, in the order the row offers them, each with its icon. */
+const THEMES: readonly SegmentOption<Theme>[] = [
+  { value: "light", label: "Light", icon: <SunIcon /> },
+  { value: "dark", label: "Dark", icon: <MoonIcon /> },
+  { value: "system", label: "System", icon: <MonitorIcon /> },
+];
 
 /**
  * The navbar's account menu: the Author's avatar (their initials when the
- * provider gave no image) opens their name and email, the three Theme
- * choices as plain rows (a fly-out submenu is a desktop idiom that cramps a
- * phone), and Sign out. The name also sits beside the avatar from tablet
+ * provider gave no image) opens their name and email, a link to their
+ * Settings (display name, picture, and Author page, ticket 52), the Theme
+ * as one row with a segmented control of the three choices (ticket 51:
+ * neither three rows of the menu nor a fly-out submenu, a desktop idiom
+ * that cramps a phone), and Sign out. The name also sits beside the avatar from tablet
  * width up and hides at phone width, where the avatar alone is the trigger
- * and the menu opens as a bottom sheet (see `DropdownMenuContent`).
+ * and the menu opens as a popover under it, as at every width (Base UI's
+ * positioner flips and clamps it into the viewport).
  *
  * Sign out is the sign-out button `/projects` used to carry: end the
  * session, then push *and* refresh, because the server components above
@@ -84,10 +92,11 @@ export function UserMenu({
           </span>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Theme</DropdownMenuLabel>
-          <ThemeChoices />
-        </DropdownMenuGroup>
+        <DropdownMenuItem render={<Link href="/projects/settings" />}>
+          Settings
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <ThemeRow />
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={signingOut} onClick={signOut}>
           Sign out
@@ -97,29 +106,36 @@ export function UserMenu({
   );
 }
 
+/** Whether a stored theme is one of the three; anything else reads as System. */
+function isTheme(value: string | undefined): value is Theme {
+  return THEMES.some((option) => option.value === value);
+}
+
 /**
+ * "Theme" on the left and the three segments on the right, each an icon
+ * button named Light, Dark, or System. The segments are not menu items, so
+ * choosing one leaves the menu open and the change is seen at once; the menu
+ * still walks its items with Up and Down, and the segments take Left and
+ * Right. On a phone the segments grow to the menu's larger tap target.
+ *
  * Rendered only once the menu opens, so `useTheme` is read on the client
  * after hydration — during server rendering next-themes has no answer yet,
  * and a radio checked on one side and not the other would mismatch.
  */
-function ThemeChoices() {
+function ThemeRow() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <DropdownMenuRadioGroup
-      aria-label="Theme"
-      value={theme ?? "system"}
-      onValueChange={(value) => {
-        if (typeof value === "string") setTheme(value);
-      }}
-    >
-      {THEMES.map(({ value, label }) => (
-        // closeOnClick: a radio item keeps the menu open by default, but a
-        // theme is chosen once, like every other entry here.
-        <DropdownMenuRadioItem key={value} value={value} closeOnClick>
-          {label}
-        </DropdownMenuRadioItem>
-      ))}
-    </DropdownMenuRadioGroup>
+    <div className="flex items-center justify-between gap-3 px-1.5 py-1 text-sm max-sm:py-1.5 max-sm:text-base">
+      <span>Theme</span>
+      <SegmentedControl
+        label="Theme"
+        value={isTheme(theme) ? theme : "system"}
+        onValueChange={setTheme}
+        options={THEMES}
+        size="icon-sm"
+        segmentClassName="max-sm:size-11"
+      />
+    </div>
   );
 }

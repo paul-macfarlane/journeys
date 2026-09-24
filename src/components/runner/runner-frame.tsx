@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
-import { JourneysMark, LegalLinks } from "@/components/brand";
+import { SiteFooter } from "@/components/site-footer";
 import { themeStyle, type Theme } from "@/lib/theme";
 
 /**
@@ -21,9 +21,12 @@ import { themeStyle, type Theme } from "@/lib/theme";
  * as in `StepView`: the runner's navigations are whole-document by design,
  * and the frame carries no client bundle of its own.
  *
- * The footer is the one place the app names itself to a Participant — the
- * mark, the name, and the two legal pages — kept small and in the muted
- * tone so it never competes with the Step.
+ * The footer is `SiteFooter`, the same one every other page renders (ticket
+ * 34: "consistent throughout") — the wordmark, the copyright line, the
+ * GitHub link, and the two legal pages — in small muted text under a
+ * border, and painted inside this frame so the mark's tile and the text
+ * take the Theme's colours rather than the page's. The Preview pages that
+ * wrap this frame in an Author layout get their footer from here alone.
  *
  * The frame is also where a Theme (ticket 11) is painted, and the only
  * place: `data-theme` names the preset, which `globals.css` turns into the
@@ -92,20 +95,7 @@ export function RunnerFrame({
         {children}
       </main>
 
-      <footer className="border-t">
-        <div className="text-muted-foreground mx-auto flex w-full max-w-prose flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 text-sm sm:px-6">
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a
-              plain anchor on purpose: the frame ships no client bundle. */}
-          <a
-            href="/"
-            className="hover:text-foreground inline-flex items-center gap-1.5"
-          >
-            <JourneysMark variant="line" className="size-4" />
-            <span className="font-display">Made with Journeys</span>
-          </a>
-          <LegalLinks />
-        </div>
-      </footer>
+      <SiteFooter width="prose" />
     </div>
   );
 }

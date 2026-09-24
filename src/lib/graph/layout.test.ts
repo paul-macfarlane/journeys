@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { Point } from "@/lib/graph/crossings";
 import type {
   Choice,
   GraphDocument,
@@ -10,10 +11,12 @@ import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import type { CanvasNode } from "@/lib/graph/layout";
 import {
+  EDGE_LABEL_HEIGHT,
   EDGE_LABEL_MAX_WIDTH,
   LR_RANK_SEPARATION,
   layoutGraph,
   mapOrder,
+  NODE_HEIGHT,
   problemsByAddress,
 } from "@/lib/graph/layout";
 import { validateForPublish } from "@/lib/graph/validate";
@@ -656,10 +659,193 @@ describe("layoutGraph Choice order", () => {
     expect(start && t1).toBeTruthy();
     if (!start || !t1) return;
 
+    // dagre reserves the label's own width between the ranks, and the
+    // separation is the clearance either side of it.
     expect(t1.x - (start.x + start.width)).toBeGreaterThanOrEqual(
-      LR_RANK_SEPARATION,
+      EDGE_LABEL_MAX_WIDTH + LR_RANK_SEPARATION,
     );
-    expect(LR_RANK_SEPARATION).toBeGreaterThan(EDGE_LABEL_MAX_WIDTH);
+  });
+});
+
+describe("layoutGraph edge labels", () => {
+  function twoWayBranch(layoutDirection: LayoutDirection): GraphDocument {
+    return {
+      schemaVersion: 1,
+      startStepId: "s",
+      allowBack: true,
+      steps: byId([
+        step("s", [
+          choice("s-to-a", "Go to A", "a"),
+          choice("s-to-b", "Go to B", "b"),
+        ]),
+        step("a", []),
+        step("b", []),
+      ]),
+      outcomes: {},
+      layoutDirection,
+    };
+  }
+
+  function labelOf(document: GraphDocument, edgeId: string): Point {
+    const edge = layoutGraph(document).edges.find(
+      (candidate) => candidate.id === edgeId,
+    );
+    expect(edge, edgeId).toBeDefined();
+    if (!edge) throw new Error(edgeId);
+    return edge.labelAt;
+  }
+
+  it("keeps two Choices' label centres from one Step at least a label height apart, left to right", () => {
+    const document = twoWayBranch("LR");
+    const a = labelOf(document, "s:s-to-a");
+    const b = labelOf(document, "s:s-to-b");
+    expect(Math.abs(a.y - b.y)).toBeGreaterThanOrEqual(EDGE_LABEL_HEIGHT);
+  });
+
+  it("keeps two Choices' label centres from one Step at least a label width apart, top to bottom", () => {
+    const document = twoWayBranch("TB");
+    const a = labelOf(document, "s:s-to-a");
+    const b = labelOf(document, "s:s-to-b");
+    expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(EDGE_LABEL_MAX_WIDTH);
+  });
+
+  it("puts each label, with its whole box, in the gap between its two boxes, in both directions", () => {
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const document = twoWayBranch(layoutDirection);
+      const { nodes, edges } = layoutGraph(document);
+      const nodeById = new Map(nodes.map((node) => [node.id, node]));
+      for (const edge of edges) {
+        const source = nodeById.get(edge.source);
+        const target = nodeById.get(edge.target);
+        expect(source && target).toBeTruthy();
+        if (!source || !target) return;
+        if (layoutDirection === "LR") {
+          expect(
+            edge.labelAt.x - EDGE_LABEL_MAX_WIDTH / 2,
+          ).toBeGreaterThanOrEqual(source.x + source.width);
+          expect(edge.labelAt.x + EDGE_LABEL_MAX_WIDTH / 2).toBeLessThanOrEqual(
+            target.x,
+          );
+        } else {
+          expect(edge.labelAt.y - EDGE_LABEL_HEIGHT / 2).toBeGreaterThanOrEqual(
+            source.y + source.height,
+          );
+          expect(edge.labelAt.y + EDGE_LABEL_HEIGHT / 2).toBeLessThanOrEqual(
+            target.y,
+          );
+        }
+      }
+    }
+  });
+
+  it("follows the label across when the Choice-order pass moves the boxes it runs between", () => {
+    // Steps made in the order b, a, but the Start's Choices lead to a first:
+    // the pass swaps the two targets, and each label goes with its arrow.
+    const document: GraphDocument = {
+      schemaVersion: 1,
+      startStepId: "s",
+      allowBack: true,
+      steps: byId([
+        step("s", [
+          choice("s-to-a", "Go to A", "a"),
+          choice("s-to-b", "Go to B", "b"),
+        ]),
+        step("b", []),
+        step("a", []),
+      ]),
+      outcomes: {},
+      layoutDirection: "LR",
+    };
+    const { nodes, edges } = layoutGraph(document);
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    for (const edge of edges) {
+      const target = nodeById.get(edge.target);
+      if (!target) throw new Error(edge.target);
+      // Between adjacent ranks the route is straight enough that the label
+      // sits between the source's centre and the target's on the cross axis.
+      const low = Math.min(
+        target.y + target.height / 2,
+        (nodeById.get("s")?.y ?? 0) + NODE_HEIGHT / 2,
+      );
+      const high = Math.max(
+        target.y + target.height / 2,
+        (nodeById.get("s")?.y ?? 0) + NODE_HEIGHT / 2,
+      );
+      expect(edge.labelAt.y).toBeGreaterThanOrEqual(low - 1);
+      expect(edge.labelAt.y).toBeLessThanOrEqual(high + 1);
+    }
+    const a = edges.find((edge) => edge.id === "s:s-to-a");
+    const b = edges.find((edge) => edge.id === "s:s-to-b");
+    expect(a && b).toBeTruthy();
+    if (!a || !b) return;
+    expect(Math.abs(a.labelAt.y - b.labelAt.y)).toBeGreaterThanOrEqual(
+      EDGE_LABEL_HEIGHT,
+    );
+  });
+
+  function parallelChoices(
+    count: number,
+    layoutDirection: LayoutDirection,
+  ): GraphDocument {
+    return {
+      schemaVersion: 1,
+      startStepId: "s",
+      allowBack: true,
+      steps: byId([
+        step(
+          "s",
+          Array.from({ length: count }, (_, index) =>
+            choice(`c${index}`, `Choice ${index}`, "t"),
+          ),
+        ),
+        step("t", []),
+      ]),
+      outcomes: {},
+      layoutDirection,
+    };
+  }
+
+  /** Two label boxes that share any area. */
+  function labelsOverlap(a: Point, b: Point): boolean {
+    return (
+      Math.abs(a.x - b.x) < EDGE_LABEL_MAX_WIDTH &&
+      Math.abs(a.y - b.y) < EDGE_LABEL_HEIGHT
+    );
+  }
+
+  it("gives a third parallel Choice, which never reaches dagre, a label of its own that overlaps neither sibling's, in both directions", () => {
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const { edges } = layoutGraph(parallelChoices(3, layoutDirection));
+      expect(edges).toHaveLength(3);
+      for (let i = 0; i < edges.length; i += 1) {
+        for (let j = i + 1; j < edges.length; j += 1) {
+          expect(
+            labelsOverlap(edges[i].labelAt, edges[j].labelAt),
+            `${layoutDirection}: ${edges[i].id} and ${edges[j].id} overlap`,
+          ).toBe(false);
+        }
+      }
+      for (const edge of edges) {
+        expect(Number.isFinite(edge.labelAt.x)).toBe(true);
+        expect(Number.isFinite(edge.labelAt.y)).toBe(true);
+      }
+    }
+  });
+
+  it("leaves the two Choices dagre routed exactly where they were when a third is added beside them", () => {
+    // The third Choice borrows a sibling's route; making room for its label
+    // must not move dagre's own routes or labels, or the first arrow would
+    // swing out past its box to make way (reviewer's case-3 step-14 find).
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const two = layoutGraph(parallelChoices(2, layoutDirection));
+      const three = layoutGraph(parallelChoices(3, layoutDirection));
+      for (const edge of two.edges) {
+        const same = three.edges.find((candidate) => candidate.id === edge.id);
+        expect(same, `${layoutDirection}: ${edge.id}`).toBeDefined();
+        expect(same?.points).toEqual(edge.points);
+        expect(same?.labelAt).toEqual(edge.labelAt);
+      }
+    }
   });
 });
 

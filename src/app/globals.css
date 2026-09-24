@@ -392,6 +392,17 @@
   html {
     @apply font-sans;
   }
+  /* Scrolling something into view — a focus move, an anchored jump —
+     lands it below the sticky navbar (h-14) and, from tablet width up, the
+     sticky tab row under it (ticket 34), never beneath them. */
+  html:has([data-slot="app-navbar"]) {
+    scroll-padding-top: 3.5rem;
+  }
+  @media (width >= 40rem) {
+    html:has([data-slot="sticky-tabs"]) {
+      scroll-padding-top: 7rem;
+    }
+  }
   /* Headings carry the reading face, everywhere: page titles, dialog
      titles, the Step titles a Participant reads, and the headings inside
      a Step's rich text. Weights stay whatever each heading sets. */
@@ -402,40 +413,48 @@
   }
 }
 
-/* The canvas takes its colours from the same tokens, in both schemes. React
-   Flow's own dark rules sit on `.react-flow.dark`, so both selectors are
-   needed to win in the dark theme. Arrows are muted until selected; the
-   selected one and the connection being dragged take the primary. */
-.react-flow,
-.react-flow.dark {
-  --xy-background-color-default: var(--background);
-  --xy-background-pattern-dots-color-default: var(--border);
-  --xy-edge-stroke-default: var(--muted-foreground);
-  --xy-edge-stroke-selected-default: var(--primary);
-  --xy-connectionline-stroke-default: var(--primary);
-  --xy-edge-label-background-color-default: var(--background);
-  --xy-edge-label-color-default: var(--foreground);
-  --xy-handle-background-color-default: var(--primary);
-  --xy-handle-border-color-default: var(--background);
-  --xy-selection-background-color-default: color-mix(
+/* The two maps take their colours from the same tokens as the rest of the
+   page, in both schemes. React Flow reads every colour as
+   `var(--xy-<name>, var(--xy-<name>-default))`: its own stylesheet sets only
+   the `-default` names, on `.react-flow` and `.react-flow.dark`, so a rule of
+   ours setting the same names on the same selectors won the contest only
+   when this sheet came after React Flow's — and Next.js orders the two
+   differently on a full load and on a client-side navigation, which is how
+   the controls came up in React Flow's own greys in the dark theme (ticket
+   35). The un-suffixed names are read first and set by no React Flow rule,
+   so the order the sheets arrive in no longer comes into it; and the tokens
+   themselves follow `html.dark`, so neither does React Flow's own class.
+   Arrows are muted until selected; the selected one and the connection
+   being dragged take the primary. */
+.react-flow {
+  --xy-background-color: var(--background);
+  --xy-background-pattern-color: var(--border);
+  --xy-edge-stroke: var(--muted-foreground);
+  --xy-edge-stroke-selected: var(--primary);
+  --xy-connectionline-stroke: var(--primary);
+  --xy-edge-label-background-color: var(--background);
+  --xy-edge-label-color: var(--foreground);
+  --xy-handle-background-color: var(--primary);
+  --xy-handle-border-color: var(--background);
+  --xy-selection-background-color: color-mix(
     in oklch,
     var(--primary) 10%,
     transparent
   );
-  --xy-selection-border-default: 1px dotted var(--primary);
-  --xy-controls-button-background-color-default: var(--card);
-  --xy-controls-button-background-color-hover-default: var(--muted);
-  --xy-controls-button-color-default: var(--foreground);
-  --xy-controls-button-color-hover-default: var(--foreground);
-  --xy-controls-button-border-color-default: var(--border);
-  --xy-minimap-background-color-default: var(--card);
-  --xy-minimap-mask-background-color-default: color-mix(
+  --xy-selection-border: 1px dotted var(--primary);
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--muted);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-minimap-background-color: var(--card);
+  --xy-minimap-mask-background-color: color-mix(
     in oklch,
     var(--background) 60%,
     transparent
   );
-  --xy-minimap-node-background-color-default: var(--muted-foreground);
-  --xy-node-color-default: var(--foreground);
-  --xy-node-background-color-default: var(--card);
-  --xy-node-border-default: 1px solid var(--border);
+  --xy-minimap-node-background-color: var(--muted-foreground);
+  --xy-node-color: var(--foreground);
+  --xy-node-background-color: var(--card);
+  --xy-node-border: 1px solid var(--border);
 }

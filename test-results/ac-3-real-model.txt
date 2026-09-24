@@ -1,0 +1,46 @@
+Real-model run at d90631e: pnpm decide:probe against typesafe-ai/jev on the Vercel AI Gateway, 2026-09-23T20:55:27Z.
+Step: the e2e fixture's queue Step (Still waiting; Choices: choice-papers "Show your papers", choice-give-up "Leave the queue"). Responses are the agent's own text.
+
+$ pnpm decide:probe "I keep my eyes down and hold out my papers."
+{
+  "response": "I keep my eyes down and hold out my papers.",
+  "decision": {
+    "kind": "confident",
+    "choiceId": "choice-papers",
+    "probability": 1
+  }
+}
+A live Run would have advanced along "choice-papers" (probability 1 >= 0.5).
+exit=0
+
+$ pnpm decide:probe "I have waited long enough. I turn around and walk back the way I came."
+{
+  "response": "I have waited long enough. I turn around and walk back the way I came.",
+  "decision": {
+    "kind": "confident",
+    "choiceId": "choice-give-up",
+    "probability": 1
+  }
+}
+A live Run would have advanced along "choice-give-up" (probability 1 >= 0.5).
+exit=0
+
+$ pnpm decide:probe "I'm not sure. Maybe I wait a little longer and see."
+{
+  "response": "I'm not sure. Maybe I wait a little longer and see.",
+  "decision": {
+    "kind": "none"
+  }
+}
+A live Run would have asked, with nothing suggested (the judge had no usable answer).
+exit=0
+
+Why the third came back "none": a direct experimental_evaluate call for the same Response, outside the 5 s DECISION_TIMEOUT_MS, answered choice-papers at 0.75 after 12266 ms, so the probe's call was cut off by the timeout and fell back, as designed. Latency over eight direct calls (agent's own Responses, maxRetries 0, no timeout):
+  12266 ms  "I'm not sure. Maybe I wait a little longer and see."  choice-papers 0.75
+  13590 ms  "I keep my eyes down and hold out my papers."          choice-papers 1
+    644 ms  "I show my papers."                                   choice-papers 1
+    452 ms  "I leave."                                            choice-give-up 1
+  13865 ms  "I hand over my papers and wait."                     choice-papers 1
+    609 ms  "I step out of the line."                             choice-give-up 1
+    429 ms  "I'm not sure. Maybe I wait a little longer and see."  choice-papers 0.65
+Bimodal: most calls answer in under a second, about a third take 12-14 s and fall back to the Choices under the 5 s timeout.

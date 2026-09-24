@@ -27,7 +27,11 @@ import {
   tagWithOutcome,
   uniqueSuffix,
 } from "./setup/authoring";
-import { dimmingDocument, writeDraftDocument } from "./setup/documents";
+import {
+  dimmingDocument,
+  publishableDocument,
+  writeDraftDocument,
+} from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
@@ -90,7 +94,10 @@ async function readDraft(journeyId: string): Promise<GraphDocument> {
  * through here first.
  */
 async function expectSaved(page: Page): Promise<void> {
-  await expect(page.getByRole("status")).toHaveText("Saved");
+  // The Draft's line, not the title form's above the tabs (ticket 46).
+  await expect(
+    page.getByRole("tabpanel", { name: "Editor" }).getByRole("status"),
+  ).toHaveText("Saved");
 }
 
 /** A signed-in Author on the Journey page of a brand-new Journey. */
@@ -799,10 +806,39 @@ async function expandStepActions(page: Page, title: string): Promise<Locator> {
   // Clicking the box can have taken the map to it, and a button pressed while
   // the map is still moving is a button pressed where it no longer is.
   await settledTransform(page);
+  await toolbarOntoMap(page, title);
   await opener.click();
   await expect(opener).toHaveAttribute("aria-expanded", "true");
 
   return boxToolbar(page, title);
+}
+
+/**
+ * A box's moves brought inside the map's frame before they are pressed. After
+ * a fit of the whole map at a high zoom the top box sits a few pixels under
+ * the frame's top edge and its moves, drawn above it, hang over the edge,
+ * where the frame clips them beneath the Map controls row: a pointer aimed
+ * there lands on the row. Before the navbar was sticky (ticket 34) the click
+ * went through by accident — Playwright's last-resort scroll put the frame's
+ * top edge on the window's, and the sliver of a button still inside the
+ * frame took the click; with the bar covering the window's top 56px there is
+ * no sliver to take it. So the map is zoomed out a notch, through its own
+ * control, until the moves are inside the frame — what an Author does when a
+ * box's moves are cut off — which never fires the pane click that would fold
+ * them away.
+ */
+async function toolbarOntoMap(page: Page, title: string): Promise<void> {
+  const pane = canvas(page).locator(".react-flow");
+  for (let notch = 0; notch < 3; notch += 1) {
+    const frame = await pane.boundingBox();
+    const moves = await boxToolbar(page, title).boundingBox();
+    if (frame === null || moves === null || moves.y >= frame.y + 4) return;
+
+    await canvas(page)
+      .getByRole("button", { name: /zoom out/i })
+      .click();
+    await settledTransform(page);
+  }
 }
 
 /** What the map is zoomed to, read off the transform it has settled at. */
@@ -1153,7 +1189,7 @@ test("canvas-duplicate-step", async ({ page, context }) => {
   await expect(page.getByLabel("Step title")).toHaveValue("Border post copy");
   await expect(page.getByLabel("Step title")).toBeFocused();
   await expect(page.getByLabel("Step content")).toContainText(sentence);
-  await expect(page.getByLabel("Outcome", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Outcome", { exact: true })).toHaveText(
     "Reached care",
   );
   await expect(canvasNodes(page)).toHaveCount(2);
@@ -2799,6 +2835,130 @@ test("canvas-arrow-select-and-delete", async ({ page, context }) => {
   await expectSaved(page);
 });
 
+test("canvas-delete-key-step", async ({ page, context }, testInfo) => {
+  await startJourney(page, context);
+
+  await renameStep(page, "Border post");
+  await addStepFromCanvas(page, "Clinic tent");
+  await expectBoxOnMap(page, "Clinic tent");
+  await fitWholeMap(page, 2);
+
+  await clickBox(page, "Border post");
+  const title = page.getByLabel("Step title");
+  await expect(title).toHaveValue("Border post");
+  await addChoiceToStep(page, "Find the clinic", "Clinic tent");
+  await expect(canvasEdges(page)).toHaveCount(1);
+
+  const confirmation = page.getByRole("alertdialog");
+
+  // Backspace in the panel's title field is typing: a letter goes, and no
+  // Step does.
+  await title.click();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Backspace");
+  await expect(title).toHaveValue("Border pos");
+  await expect(canvasNodes(page)).toHaveCount(2);
+  await expect(confirmation).toHaveCount(0);
+
+  // On the Start's box the key does nothing, silently: the Start cannot be
+  // deleted, and its menu offers no delete either.
+  const start = canvasNode(page, "Border pos");
+  await start.focus();
+  await expect(start).toBeFocused();
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("Backspace");
+  await expect(confirmation).toHaveCount(0);
+  await expect(canvasNodes(page)).toHaveCount(2);
+  await expect(start).toBeFocused();
+
+  // With the arrow in hand, Delete on another box is about the box: it opens
+  // the same confirmation the box's menu opens, naming the Choice that would
+  // be left pointing at nothing — and the arrow in hand is not taken as well.
+  const arrow = arrowLabelled(page, "Find the clinic");
+  await clickArrow(page, arrow);
+  await expect(arrow).toHaveAttribute("data-emphasis", "selected");
+  const clinic = canvasNode(page, "Clinic tent");
+  await clinic.focus();
+  await expect(clinic).toBeFocused();
+  await page.keyboard.press("Delete");
+  await expect(confirmation).toBeVisible();
+  await expect(
+    confirmation
+      .getByRole("list", { name: "Affected choices" })
+      .getByRole("listitem"),
+  ).toHaveText(["Find the clinic on Border pos"]);
+  await expect(canvasEdges(page)).toHaveCount(1);
+
+  await page.screenshot({
+    path: evidencePath(testInfo.title, `${testInfo.title}.png`),
+    fullPage: true,
+  });
+
+  // While the confirmation is open the keyboard is its own: neither key
+  // deletes the arrow still in hand behind it.
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("Backspace");
+  await expect(confirmation).toBeVisible();
+  await expect(canvasEdges(page)).toHaveCount(1);
+  await expect(canvasNodes(page)).toHaveCount(2);
+
+  // Cancelled, the keyboard is back on the box it was pressed on.
+  await confirmation
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+  await expect(canvasNodes(page)).toHaveCount(2);
+  await expect(canvasEdges(page)).toHaveCount(1);
+  await expect(clinic).toBeFocused();
+
+  // The box's own menu opens the same confirmation — the one the key opens —
+  // and Cancel hands the keyboard back to the button that asked. The lower
+  // box can lie below the fold after the full-page screenshot, and a click
+  // needs it on screen; the key did not.
+  await fitWholeMap(page, 2);
+  const toolbar = await expandStepActions(page, "Clinic tent");
+  const menuDelete = toolbar.getByRole("button", {
+    name: "Delete step",
+    exact: true,
+  });
+  await menuDelete.click();
+  await expect(confirmation).toBeVisible();
+  await expect(
+    confirmation
+      .getByRole("list", { name: "Affected choices" })
+      .getByRole("listitem"),
+  ).toHaveText(["Find the clinic on Border pos"]);
+  await confirmation
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+  await expect(menuDelete).toBeFocused();
+  await expect(canvasNodes(page)).toHaveCount(2);
+
+  // Backspace is the same key. Confirmed, the Step goes, and the Choice that
+  // reached it is left pointing at a placeholder.
+  await clinic.focus();
+  await expect(clinic).toBeFocused();
+  await page.keyboard.press("Backspace");
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Delete step", exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+  await expect(canvasNode(page, "Clinic tent")).toHaveCount(0);
+  await expect(canvasNode(page, "Missing step")).toBeVisible();
+  await expect(problemEdges(page)).toHaveCount(1);
+
+  // And one press brings it back, and brings the Author back to it.
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(canvasNode(page, "Clinic tent")).toBeVisible();
+  await expect(canvasNode(page, "Missing step")).toHaveCount(0);
+  await expect(problemEdges(page)).toHaveCount(0);
+  await expect(title).toHaveValue("Clinic tent");
+
+  await expectSaved(page);
+});
+
 test("canvas-arrow-select-second-arrow", async ({ page, context }) => {
   await startJourney(page, context);
 
@@ -3993,5 +4153,281 @@ test.describe("undo and redo", () => {
       path: evidencePath(testInfo.title, `${testInfo.title}.png`),
       fullPage: true,
     });
+  });
+});
+
+/**
+ * The 8-bit sRGB Chromium paints one colour as, read the way
+ * `themes.spec.ts` reads luminance: painted onto a one-pixel canvas, so a
+ * token written in oklch and a button's computed colour compare as the same
+ * pixel. `source` is either a CSS custom property read off `<html>` (`--card`)
+ * or a selector and the property to read off the first element it matches.
+ */
+async function paintedRgb(
+  page: Page,
+  source:
+    | { token: `--${string}` }
+    | { selector: string; property: "background-color" | "color" },
+): Promise<string> {
+  const value = await page.evaluate((source) => {
+    const style =
+      "token" in source
+        ? window
+            .getComputedStyle(window.document.documentElement)
+            .getPropertyValue(source.token)
+        : (() => {
+            const element = window.document.querySelector(source.selector);
+            return element === null
+              ? null
+              : window
+                  .getComputedStyle(element)
+                  .getPropertyValue(source.property);
+          })();
+    if (style === null || style.trim() === "") return null;
+
+    const canvas = window.document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext("2d");
+    if (context === null) return null;
+    context.fillStyle = style.trim();
+    context.fillRect(0, 0, 1, 1);
+    const [r, g, b] = Array.from(context.getImageData(0, 0, 1, 1).data);
+    return `${r},${g},${b}`;
+  }, source);
+  expect(value, `${JSON.stringify(source)} painted`).not.toBeNull();
+  return value as string;
+}
+
+/**
+ * The zoom and fit-view buttons beside the map, read against the theme's
+ * own tokens: their background is the card and their glyphs the foreground,
+ * whichever theme the page is in. The tokens are read off `<html>`, where
+ * the theme class puts them, so the check follows the theme rather than
+ * naming a colour.
+ */
+async function expectControlsThemed(page: Page, where: string): Promise<void> {
+  const button = '[aria-label="Canvas"] .react-flow__controls-button';
+  await expect(
+    canvas(page).locator(".react-flow__controls-button").first(),
+  ).toBeVisible();
+  // The map itself is told which theme it is in: the class React Flow
+  // stamps for its own dark rules is the dark one, whichever way the page
+  // was reached.
+  await expect(
+    canvas(page).locator(".react-flow"),
+    `${where}: the map carries React Flow's dark class`,
+  ).toHaveClass(/\bdark\b/);
+  await expect
+    .poll(
+      () =>
+        paintedRgb(page, { selector: button, property: "background-color" }),
+      { message: `${where}: the controls' background is the card` },
+    )
+    .toBe(await paintedRgb(page, { token: "--card" }));
+  await expect
+    .poll(() => paintedRgb(page, { selector: button, property: "color" }), {
+      message: `${where}: the controls' glyphs are the foreground`,
+    })
+    .toBe(await paintedRgb(page, { token: "--foreground" }));
+}
+
+/**
+ * The direction control's checked answer painted apart from its unchecked
+ * one (ticket 48, item 9): the two radios' backgrounds read as the pixels
+ * Chromium paints them, the way the controls above are read, and the checked
+ * one must not be the unchecked one's colour — in the light theme, where the
+ * old accent was a shade off the background, and in the dark, where the
+ * outline button's own dark background used to paint over the mark.
+ */
+async function expectCheckedDirectionMarked(
+  page: Page,
+  where: string,
+): Promise<void> {
+  const group =
+    '[aria-label="Canvas"] [role="radiogroup"][aria-label="Layout direction"]';
+  await expect(
+    canvas(page).getByRole("radio", { checked: true }),
+    `${where}: one direction is checked`,
+  ).toHaveCount(1);
+  const checked = await paintedRgb(page, {
+    selector: `${group} [role="radio"][aria-checked="true"]`,
+    property: "background-color",
+  });
+  const unchecked = await paintedRgb(page, {
+    selector: `${group} [role="radio"][aria-checked="false"]`,
+    property: "background-color",
+  });
+  expect(
+    checked,
+    `${where}: the checked direction is painted apart from the unchecked (${unchecked})`,
+  ).not.toBe(unchecked);
+}
+
+/**
+ * Ticket 35, item 19: in the dark theme the zoom and fit-view controls
+ * sometimes came up white. Reproduced the way Paul met it — the dark theme
+ * chosen from the user menu, then the Journey page reached by a full load and
+ * again by clicking through from the Projects list, with the OS light and
+ * with it dark — and read against the theme's tokens on every one of those
+ * four arrivals.
+ */
+test("canvas-dark-controls", async ({ page, context }) => {
+  const { projectId, journeyId } = await startJourney(page, context);
+  const journeyUrl = `/projects/${projectId}/journeys/${journeyId}`;
+
+  // Before the theme is touched: the page is light, and the checked
+  // direction already has to read as the checked one.
+  await expectCheckedDirectionMarked(page, "light theme");
+
+  // The dark theme, chosen as an Author chooses it.
+  await page.getByRole("button", { name: "Account: Test Author" }).click();
+  await page
+    .getByRole("menu")
+    .getByRole("radiogroup", { name: "Theme" })
+    .getByRole("radio", { name: "Dark" })
+    .click();
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+
+    // By a full load.
+    await page.goto(journeyUrl);
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(canvasNodes(page)).toHaveCount(1);
+    await expectControlsThemed(page, `OS ${colorScheme}, full load`);
+    await expectCheckedDirectionMarked(
+      page,
+      `dark theme, OS ${colorScheme}, full load`,
+    );
+
+    // By client-side navigation from the Projects list: the list, the
+    // Project, the Journey, each a link rather than a load.
+    await page.goto("/projects");
+    await page.locator(`a[href="/projects/${projectId}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`/projects/${projectId}$`));
+    await page.locator(`a[href="${journeyUrl}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`${journeyUrl}$`));
+    await expect(canvasNodes(page)).toHaveCount(1);
+    await expectControlsThemed(page, `OS ${colorScheme}, client navigation`);
+
+    if (colorScheme === "dark") {
+      await page.screenshot({
+        path: evidencePath("canvas-dark-controls", "canvas-dark-controls.png"),
+        fullPage: true,
+      });
+    }
+  }
+});
+
+/**
+ * Ticket 48, item 11: left to right, with two Choices out of one Step, the
+ * two labels used to lie on top of each other — dagre had no room reserved
+ * for them, and the Choice-order pass then brought both routes' halfway
+ * points to the same place. The layout now hands dagre each label's box and
+ * hangs the label where dagre made room for it, so the two chips read as
+ * two: their boxes on the screen share no area, in either direction.
+ */
+test("canvas-lr-labels-apart", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+
+  // The smallest Journey with two Choices out of one Step.
+  await expectSaved(page);
+  await writeDraftDocument(journeyId, publishableDocument());
+  await page.reload();
+  await expect(canvasNodes(page)).toHaveCount(3);
+  await expect(canvasEdges(page)).toHaveCount(2);
+
+  async function labelBoxes(): Promise<[Box, Box]> {
+    await settledTransform(page);
+    const boxes: Box[] = [];
+    for (const label of ["Wait your turn", "Walk away"]) {
+      const chip = arrowLabelled(page, label).locator("[data-edge-label]");
+      await expect(chip).toBeVisible();
+      const box = await chip.boundingBox();
+      expect(
+        box,
+        `the label "${label}" has a box on the screen`,
+      ).not.toBeNull();
+      if (box === null) throw new Error(label);
+      boxes.push(box);
+    }
+    return [boxes[0], boxes[1]];
+  }
+
+  const [topA, topB] = await labelBoxes();
+  expect(
+    rectsOverlap(topA, topB),
+    "top to bottom, the two labels overlap",
+  ).toBe(false);
+
+  await setDirection(page, "Left to right");
+  const [leftA, leftB] = await labelBoxes();
+  expect(
+    rectsOverlap(leftA, leftB),
+    `left to right, the two labels overlap: ${JSON.stringify(leftA)} and ${JSON.stringify(leftB)}`,
+  ).toBe(false);
+
+  await page.screenshot({
+    path: evidencePath("canvas-lr-labels-apart", "canvas-lr-labels-apart.png"),
+    fullPage: true,
+  });
+});
+
+/**
+ * Ticket 48, item 7: on a phone, or any page narrower than the `lg`
+ * breakpoint, the Step panel is stacked under the map, and the map is tall
+ * enough that the panel starts below the fold; clicking a box opened the
+ * Step and left the Author to scroll down and find it. Now the click brings
+ * the panel's top into view, under the sticky rows.
+ */
+test("canvas-stacked-panel-scroll", async ({ page, context }) => {
+  // Narrower than `lg` (1024), so the panel is stacked; tall enough that the
+  // map alone does not fill the page.
+  await page.setViewportSize({ width: 800, height: 900 });
+  await startJourney(page, context);
+  await renameStep(page, "Border post");
+
+  // Back at the top of the page, where an Author arrives: the panel is
+  // below the fold, which is the inconvenience.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  const panel = stepPanel(page);
+  const before = await panel.boundingBox();
+  expect(before, "the panel has a box").not.toBeNull();
+  if (before === null) throw new Error("panel");
+  expect(before.y, "the panel starts below the fold").toBeGreaterThanOrEqual(
+    900,
+  );
+
+  await clickBox(page, "Border post");
+
+  // The panel's top on the screen, and under the sticky rows rather than
+  // beneath them.
+  const tabs = page.locator('[data-slot="sticky-tabs"]');
+  await expect
+    .poll(async () => (await panel.boundingBox())?.y ?? Number.NaN, {
+      message: "the panel's top is inside the viewport",
+    })
+    .toBeLessThan(900);
+  const after = await panel.boundingBox();
+  const tabsBox = await tabs.boundingBox();
+  expect(after && tabsBox).toBeTruthy();
+  if (after === null || tabsBox === null) throw new Error("boxes");
+  expect(
+    after.y,
+    "the panel's top is under the sticky tab row",
+  ).toBeGreaterThanOrEqual(tabsBox.y + tabsBox.height - 1);
+
+  // The viewport as the Author sees it, not the whole page: what is in view
+  // is the proof.
+  await page.screenshot({
+    path: evidencePath(
+      "canvas-stacked-panel-scroll",
+      "canvas-stacked-panel-scroll.png",
+    ),
   });
 });

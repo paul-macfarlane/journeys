@@ -22,6 +22,11 @@ describe("formatShortcut", () => {
     expect(formatShortcut("Mod-Shift-8", false)).toBe("Ctrl+Shift+8");
   });
 
+  it("reads Shift with a letter, as strikethrough and quote bind it", () => {
+    expect(formatShortcut("Mod-Shift-s", true)).toBe("⌘⇧S");
+    expect(formatShortcut("Mod-Shift-b", false)).toBe("Ctrl+Shift+B");
+  });
+
   it("upper-cases the letter key", () => {
     expect(formatShortcut("Mod-k", true)).toBe("⌘K");
     expect(formatShortcut("Mod-k", false)).toBe("Ctrl+K");

@@ -23,6 +23,31 @@ test("landing page explains the product and offers a single sign-in link while s
   // Signed out: the page never links to /projects.
   await expect(page.locator('a[href="/projects"]')).toHaveCount(0);
 
+  // The site footer: the wordmark, the copyright line, the GitHub link,
+  // and the legal links.
+  const footer = page.getByRole("contentinfo");
+  await expect(footer.getByRole("link", { name: "Journeys" })).toHaveAttribute(
+    "href",
+    "/",
+  );
+  await expect(footer).toContainText(
+    `© ${new Date().getFullYear()} Paul Macfarlane`,
+  );
+  await expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute(
+    "href",
+    "https://github.com/paul-macfarlane/journeys",
+  );
+  await expect(
+    footer.getByRole("navigation", { name: "Legal" }).getByRole("link", {
+      name: "Privacy",
+    }),
+  ).toHaveAttribute("href", "/privacy");
+  await expect(
+    footer.getByRole("navigation", { name: "Legal" }).getByRole("link", {
+      name: "Terms",
+    }),
+  ).toHaveAttribute("href", "/terms");
+
   await page.screenshot({
     path: evidencePath("landing", "landing.png"),
     fullPage: true,

@@ -4,8 +4,9 @@
 import { useId, useMemo } from "react";
 import { z } from "zod";
 
-import { useBlurSavedForm } from "@/components/blur-saved-form";
+import { useAutosavedForm } from "@/components/autosaved-form";
 import type { ActionResult } from "@/lib/action-result";
+import { STATUS_TEXT } from "@/lib/autosave";
 import { BRAND_COLORS } from "@/lib/brand";
 import {
   accentColorSchema,
@@ -33,9 +34,10 @@ const FIRST_ACCENT = BRAND_COLORS.spruce;
 /**
  * A Theme picker (ticket 11): the six presets as a radio group, each with a
  * swatch painted by the preset's own tokens, and an optional accent color.
- * Saved the way every other Settings field is — when a control is left, or
- * as soon as a radio or the checkbox changes, through `useBlurSavedForm` —
- * so it needs no Save button and a refused save says so under the group.
+ * Saved the way every other Settings field is — as soon as a radio or the
+ * checkbox changes, and as the accent is picked, through `useAutosavedForm`
+ * — so it needs no Save button, a refused save says so under the group,
+ * and the line beneath says where the Theme stands.
  *
  * Shared by the Project's Settings tab and the Journey's: the caller says
  * what the Theme currently is and where the next one goes.
@@ -57,7 +59,7 @@ export function ThemeFields({
     () => ({ preset: theme.preset, accent: theme.accent ?? "" }),
     [theme.preset, theme.accent],
   );
-  const { form, save } = useBlurSavedForm({
+  const { form, status, change, flush } = useAutosavedForm({
     schema: themeFormSchema,
     values,
     submit: (next) =>
@@ -72,7 +74,7 @@ export function ThemeFields({
 
   function toggleAccent(on: boolean) {
     form.setValue("accent", on ? FIRST_ACCENT : "", { shouldDirty: true });
-    void save("accent");
+    void flush("accent");
   }
 
   return (
@@ -94,7 +96,7 @@ export function ThemeFields({
                 value={preset.id}
                 className="accent-primary mt-1 size-4 shrink-0"
                 {...form.register("preset", {
-                  onChange: () => void save("preset"),
+                  onChange: () => void flush("preset"),
                 })}
               />
               <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -138,7 +140,10 @@ export function ThemeFields({
               aria-label="Accent color value"
               className="border-input h-9 w-14 cursor-pointer rounded-md border bg-transparent p-0.5"
               {...form.register("accent", {
-                onBlur: () => void save("accent"),
+                // A color picker fires a change per drag of the wheel: each
+                // restarts the timer, and leaving the picker writes now.
+                onChange: () => change("accent"),
+                onBlur: () => void flush("accent"),
               })}
             />
             <span className="text-muted-foreground font-mono text-xs">
@@ -156,6 +161,10 @@ export function ThemeFields({
           </p>
         ) : null}
       </div>
+
+      <p role="status" className="text-muted-foreground text-xs">
+        {STATUS_TEXT[status]}
+      </p>
     </div>
   );
 }

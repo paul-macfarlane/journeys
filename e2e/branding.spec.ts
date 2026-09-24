@@ -70,6 +70,20 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
     page.getByRole("heading", { name: "Privacy policy", level: 1 }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cookies" })).toBeVisible();
+  // Since ticket 43 a deciding Prompt's Response goes to an AI judge; the
+  // page says so, and says what travels with it (ticket 49).
+  await expect(
+    page.getByRole("heading", { name: "Where it lives" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "sent, with that step’s text, its question, and the labels of its choices, to the Vercel AI Gateway",
+    ),
+  ).toBeVisible();
+  // The legal pages carry the same footer as everywhere else.
+  await expect(
+    page.getByRole("contentinfo").getByRole("link", { name: "GitHub" }),
+  ).toHaveAttribute("href", "https://github.com/paul-macfarlane/journeys");
   await page.screenshot({
     path: evidencePath("legal-pages", "privacy.png"),
     fullPage: true,
@@ -103,9 +117,17 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
   await participant.goto(`/j/${journeyId}`);
   await expect(participant.getByRole("banner")).toContainText("Legal journey");
   const footer = participant.getByRole("contentinfo");
-  await expect(
-    footer.getByRole("link", { name: "Made with Journeys" }),
-  ).toHaveAttribute("href", "/");
+  await expect(footer.getByRole("link", { name: "Journeys" })).toHaveAttribute(
+    "href",
+    "/",
+  );
+  await expect(footer).toContainText(
+    `© ${new Date().getFullYear()} Paul Macfarlane`,
+  );
+  await expect(footer.getByRole("link", { name: "GitHub" })).toHaveAttribute(
+    "href",
+    "https://github.com/paul-macfarlane/journeys",
+  );
   await expect(
     legalLinks(footer).getByRole("link", { name: "Privacy" }),
   ).toHaveAttribute("href", "/privacy");

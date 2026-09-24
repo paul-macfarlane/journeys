@@ -21,6 +21,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed:journey-stories": "tsx scripts/seed/journey-stories.ts",
+    "decide:probe": "tsx scripts/decide-probe.ts",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -43,6 +44,7 @@
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "@xyflow/react": "^12.11.6",
+    "ai": "^7.0.112",
     "better-auth": "^1.6.23",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

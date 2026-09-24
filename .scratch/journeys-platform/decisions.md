@@ -224,3 +224,92 @@ public URLs, custom theme editor, manual canvas layout.
   Stored documents are read with `credit` as `caption`; Published Versions
   are never rewritten. The sanitizer no longer refuses an image for anything.
   Supersedes "image node with a required `credit` attribute" above.
+
+## Amendment for ticket 40 (2026-09-23, decided by Paul on 2026-09-22)
+
+- Rich-text contract: `underline` and `strike` marks, a top-level
+  `blockquote` of paragraphs, and the `hardBreak` inline node (Shift+Enter)
+  join the allowed set. Inline code, horizontal rules, alignment, and
+  highlight stay out. A quote where the contract does not allow one is
+  dropped with its contents, never refused. Additive: stored Drafts and
+  Published Versions still parse unchanged. Supersedes the node and mark
+  list under "Rich text" and the ticket 15 `hardBreak` gap.
+
+## Amendment for ticket 43 (2026-09-23, decided by Paul on 2026-09-22)
+
+- Graph contract: a Prompt gains `decides` (zod default `false`); a deciding
+  Prompt is required. Additive: stored Drafts and Published Versions still
+  parse unchanged, and Published Versions are never rewritten.
+- The judge is jev (`typesafe-ai/jev`) on the Vercel AI Gateway with the
+  static `AI_GATEWAY_API_KEY`, called through the AI SDK's
+  `experimental_evaluate` as a `choice` question over the Step's Choices,
+  tagged `feature:decide`. The judge sees the Step only: its title and plain
+  text, the Prompt label, each Choice's id and label, and the Response —
+  never Endings, Outcomes, other Steps, or other Participants' Responses.
+- Threshold 0.5: at or above it the Run advances along the judged Choice,
+  recorded exactly as a pressed Choice plus the Response; below it the
+  Choices are shown with the pick marked, under "Choose for yourself".
+- Fallback: no key, a failed call, a call inside the rate limit (one
+  decision per Run per second), or an answer naming no Choice of the Step
+  shows the Choices with nothing marked. A Run is never stuck.
+- Preview judges the same way, records nothing, never advances on its own,
+  and shows the pick and its probability so an Author can tune labels.
+- A deciding Prompt published with no key is a publish-time warning, never
+  a refusal.
+- Supersedes "Vercel AI SDK (`ai` v6) for AI features." (decisions still use
+  `ai`, but the judge is jev on the Gateway, not a model chosen per feature);
+  "AI: Anthropic `claude-opus-5` via Vercel AI SDK Anthropic provider; key is
+  an env var populated out of band; features hidden when absent" for
+  decisions only (AI authoring keeps its own Anthropic line until ticket
+  14); and "MVP: AI *authoring* only" (the runner now also uses AI, to judge
+  a deciding Prompt's Response).
+
+## Amendment for feedback round 4 (2026-09-23, decided by Paul on 2026-09-23)
+
+- A Journey's description stays plain text (ticket 47): it is a blurb read
+  by the public Project page card, the runner header, the link-preview
+  description, and the OG image, none of which can take rich text. A
+  Project's description is a page body and stays rich text (ticket 07).
+  Both create dialogs ask for a title only and land on the new Project or
+  Journey.
+- The metadata forms (titles, descriptions, Theme) autosave on the Draft
+  editor's model: debounce, flush on blur, save on unmount, an unload
+  guard, and a status line (ticket 46). Last write wins between Members
+  stays until ticket 15.
+- The authoring UI stays un-themed and the app keeps one brand (Trail);
+  the Theme presets are the Participant's experience and are never a
+  preference for the app itself (ticket 15, reaffirms ticket 11's story 75
+  and ticket 31).
+- The judge's timeout rises from 5 s to 20 s with a pending state on the
+  deciding form, the runner's first client island (ticket 49). Threshold
+  0.5 stays. A Response to a deciding Prompt is disclosed on the privacy
+  page as sent to the AI Gateway.
+- Delete or Backspace on a focused Step box opens the same confirmation
+  the Step actions menu opens; the Start ignores it (ticket 50, agent's
+  ruling under Paul's blanket approval).
+
+## Amendment for ticket 52 (2026-09-23, decided by Paul on 2026-09-23)
+
+- Supersedes "Discovery and public pages": discovery is still link-only and
+  the site root still lists nothing, but an Author may turn on a public Author
+  page at `/authors/{user-id}` that lists the Projects they belong to which
+  have a live Journey. No index of Authors; no handle, the id is the address.
+- Off by default (`user.public`, default false); off is a 404, and the OG
+  image falls back to the brand card. Turning it on is the Author's consent
+  to a public name, avatar, bio, and links.
+- The page shows the provider avatar, the display name, a plain-text bio
+  (≤ 1,000 characters), links (one each of LinkedIn, GitHub, Instagram,
+  Facebook, website; `https:` only; platform kinds pinned to their host,
+  stored as one `user.links` jsonb array of `{ kind, url }`), and the
+  Projects, newest activity first. Rendered in the app's own Theme (`trail`)
+  inside the runner frame; metadata and OG card follow ticket 37.
+- The public Project page names, under its title, the Members whose pages
+  are on ("By …", each a link, join order) and nothing otherwise. Not the
+  runner, not the OG card.
+- One Settings page at `/projects/settings` from a "Settings" row in the
+  user menu: display name (1–60 characters, trimmed, blank refused), bio,
+  links, and the Author page switch. Blur-saved fields, switch on change,
+  one server action into `src/db/users.ts` (not better-auth's `updateUser`).
+  No avatar field; images stay URL-only.
+- The privacy page adds one sentence about what turning the page on makes
+  public.

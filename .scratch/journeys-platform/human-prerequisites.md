@@ -50,10 +50,15 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 - [x] Set `BETTER_AUTH_URL` to `http://localhost:3000` locally and the production URL in Vercel Production.
 - [x] Set `BETTER_AUTH_URL` for **Preview** to the staging URL (see §9).
 
-## 6. Anthropic API key (AI authoring — priority 11, can wait)
+## 6. Vercel AI Gateway key (AI authoring, ticket 14; jev decisions, ticket 43)
 
-- [ ] Create an API key at console.anthropic.com and set `ANTHROPIC_API_KEY` in Vercel (Production) and `.env.local`.
-- [ ] Without it, AI features are hidden and everything else works — safe to defer until ticket 14.
+Decided 2026-09-22 (Paul): every model call goes through the Vercel AI Gateway with a static key, not a provider key.
+
+- [ ] In Vercel → `journeys` → Settings → AI Gateway, enable the gateway and create an API key.
+- [ ] Set `AI_GATEWAY_API_KEY` in Vercel (Production and Preview) and `.env.local`. Optional: a budget alert in the same settings page; the team's free monthly credit covers hackathon use.
+- [ ] Without it, AI features are hidden and everything else works — safe to defer until ticket 14 or 43 starts.
+- [ ] Confirm the Vercel project runs on Fluid compute (the default; Settings → Functions), so a server action may wait the judge's full 20 s (ticket 49). A non-Fluid function is cut off at 10 s, before the judge's fallback, and a Participant would see an error page instead of the Choices.
+- Expected result: after ticket 14, the AI controls render on a Journey page; after ticket 43, a deciding Prompt advances a Run.
 
 ## 7. Local machine
 
@@ -97,7 +102,7 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 DISCORD_CLIENT_ID=
 DISCORD_CLIENT_SECRET=
-ANTHROPIC_API_KEY=
+AI_GATEWAY_API_KEY=
 ```
 
 ## 11. GitHub secrets for deployed migrations (added 2026-09-19 by the Foundation work package)
@@ -114,3 +119,11 @@ Ticket 01 installs husky, which takes over `core.hooksPath` and chains to the At
 
 - [x] After merging ticket 01, rerun `/atlas:setup-atlas` and record the hook activation decision as `chain` (approved by Paul on 2026-09-19 in the ticket 01 session). The same rerun records the lint/test/build commands as `verified` (AC-9).
 - Expected result: Atlas verification reports the `.githooks` checks active through husky rather than displaced.
+
+## 13. OAuth branding and legal links (added 2026-09-22, Paul's item 6)
+
+Paul does this himself. `/privacy` and `/terms` are live on staging and production since PR #36.
+
+- [ ] Google Cloud Console → OAuth consent screen: app name, logo, home page, privacy policy URL (`/privacy`), terms URL (`/terms`).
+- [ ] Discord Developer Portal → the application: name, icon, terms of service URL, privacy policy URL.
+- Expected result: both sign-in buttons show the app name and logo; ticket 31's remaining human gate closes. Post-check: a fresh sign-in on staging with each provider. If ticket 44 renames the app, repeat.

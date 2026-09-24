@@ -18,6 +18,7 @@ import {
 import { ResponseList } from "@/components/journeys/response-list";
 import { VersionList } from "@/components/journeys/version-list";
 import { buttonVariants } from "@/components/ui/button";
+import { SiteFooter } from "@/components/site-footer";
 import { UrlTabs } from "@/components/url-tabs";
 import { getAnalyticsForMember } from "@/db/analytics";
 import { getDraftForMember } from "@/db/drafts";
@@ -29,17 +30,7 @@ import { analyticsForVersion, chooseVersionId } from "@/lib/analytics";
 import { documentsEqual } from "@/lib/graph/document";
 import { groupResponsesByStep } from "@/lib/response-list";
 import { requireSession } from "@/lib/session";
-import { readTab } from "@/lib/tabs";
 import { cn } from "@/lib/utils";
-
-/** The page's sections, the first being what the plain address opens on. */
-const JOURNEY_TABS = [
-  "editor",
-  "versions",
-  "analytics",
-  "responses",
-  "settings",
-] as const;
 
 export default async function JourneyPage({
   params,
@@ -47,13 +38,13 @@ export default async function JourneyPage({
 }: {
   params: Promise<{ projectId: string; journeyId: string }>;
   searchParams: Promise<{
-    tab?: string | string[];
+    // The open tab is `?tab=<name>` too, read by `UrlTabs` itself.
     /** The Published Version the Analytics tab reads; see `chooseVersionId`. */
     version?: string | string[];
   }>;
 }) {
   const session = await requireSession();
-  const [{ projectId, journeyId }, { tab, version }] = await Promise.all([
+  const [{ projectId, journeyId }, { version }] = await Promise.all([
     params,
     searchParams,
   ]);
@@ -75,8 +66,9 @@ export default async function JourneyPage({
   // Every Journey has a Draft, created with it — a missing one is a Journey
   // that cannot be authored, so it gets the same 404 rather than a page with
   // a hole in it.
-  const draft = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!draft) notFound();
+  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  if (!stored) notFound();
+  const draft = stored.document;
 
   // Null only for a non-Member, which the check above already answered; an
   // empty list is a Journey that has never been published.
@@ -127,124 +119,146 @@ export default async function JourneyPage({
   // the Draft, the title, and the description. An unpublished or
   // never-published Journey always has something to publish.
   const live = await getLiveVersion(projectId, journeyId, session.user.id);
-  const hasUnpublishedChanges =
+  const titleOrDescriptionPending =
     live === null ||
     live.title !== journey.title ||
-    live.description !== journey.description ||
-    !documentsEqual(draft, live.document);
+    live.description !== journey.description;
+  const hasUnpublishedChanges =
+    titleOrDescriptionPending || !documentsEqual(draft, live.document);
+
+  // When the Draft was last edited, for its row on the Versions tab: the
+  // document's own save, or the title's and description's when they are
+  // what is pending and were edited later. The Journey row's timestamp
+  // also moves on publish, unpublish, and a Theme change, so it counts
+  // only while the title or description differs from the live version.
+  const draftEditedAt =
+    titleOrDescriptionPending && journey.updatedAt > stored.updatedAt
+      ? journey.updatedAt
+      : stored.updatedAt;
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-12">
-      <div>
-        <Link
-          href={`/projects/${projectId}`}
-          className="text-muted-foreground text-sm hover:text-foreground"
-        >
-          ← Back to project
-        </Link>
-      </div>
-
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
-          <JourneyTitleFields
-            projectId={projectId}
-            journeyId={journey.id}
-            title={journey.title}
-            description={journey.description}
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <JourneyStatusBadge publishState={journey.publishState} />
-            {/* Only a live Journey has an address to hand out, or changes
-                participants are not yet seeing, or anything to take back. */}
-            {live !== null ? (
-              <>
-                {hasUnpublishedChanges ? (
-                  <span className="text-muted-foreground text-xs">
-                    Unpublished changes
-                  </span>
-                ) : null}
-                <CopyLinkButton path={`/j/${journey.id}`} />
-                <UnpublishButton projectId={projectId} journeyId={journey.id} />
-              </>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
+    <>
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-12">
+        <div>
           <Link
-            href={`/projects/${projectId}/journeys/${journey.id}/preview`}
-            className={cn(buttonVariants({ variant: "outline" }))}
+            href={`/projects/${projectId}`}
+            className="text-muted-foreground text-sm hover:text-foreground"
           >
-            Preview
+            ← Back to project
           </Link>
-          <PublishButton
-            projectId={projectId}
-            journeyId={journey.id}
-            hasUnpublishedChanges={hasUnpublishedChanges}
-          />
-          <DeleteJourneyDialog
-            projectId={projectId}
-            journeyId={journey.id}
-            title={journey.title}
-          />
         </div>
-      </header>
 
-      <UrlTabs
-        label="Journey"
-        initialTab={readTab(JOURNEY_TABS, tab)}
-        tabs={[
-          {
-            value: "editor",
-            label: "Editor",
-            content: (
-              <DraftEditor
-                projectId={projectId}
-                journeyId={journey.id}
-                draft={draft}
-              />
-            ),
-          },
-          {
-            value: "versions",
-            label: "Versions",
-            content: (
-              <VersionList
-                projectId={projectId}
-                journeyId={journey.id}
-                versions={versions}
-              />
-            ),
-          },
-          {
-            value: "analytics",
-            label: "Analytics",
-            content: (
-              <AnalyticsTab versions={versions} selected={selectedAnalytics} />
-            ),
-          },
-          {
-            value: "responses",
-            label: "Responses",
-            content: <ResponseList groups={responseGroups} />,
-          },
-          {
-            value: "settings",
-            label: "Settings",
-            content: (
-              <section aria-label="Settings" className="flex flex-col gap-8">
-                <JourneyThemeSettings
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
+            <JourneyTitleFields
+              projectId={projectId}
+              journeyId={journey.id}
+              title={journey.title}
+              description={journey.description}
+            />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <JourneyStatusBadge publishState={journey.publishState} />
+              {/* Only a live Journey has an address to hand out, or changes
+                participants are not yet seeing, or anything to take back. */}
+              {live !== null ? (
+                <>
+                  {hasUnpublishedChanges ? (
+                    <span className="text-muted-foreground text-xs">
+                      Unpublished changes
+                    </span>
+                  ) : null}
+                  <CopyLinkButton path={`/j/${journey.id}`} />
+                  <UnpublishButton
+                    projectId={projectId}
+                    journeyId={journey.id}
+                  />
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/projects/${projectId}/journeys/${journey.id}/preview`}
+              className={cn(buttonVariants({ variant: "outline" }))}
+            >
+              Preview
+            </Link>
+            <PublishButton
+              projectId={projectId}
+              journeyId={journey.id}
+              hasUnpublishedChanges={hasUnpublishedChanges}
+            />
+            <DeleteJourneyDialog
+              projectId={projectId}
+              journeyId={journey.id}
+              title={journey.title}
+            />
+          </div>
+        </header>
+
+        <UrlTabs
+          label="Journey"
+          sticky
+          tabs={[
+            {
+              value: "editor",
+              label: "Editor",
+              content: (
+                <DraftEditor
                   projectId={projectId}
                   journeyId={journey.id}
-                  projectTheme={project.theme}
-                  theme={journey.theme}
+                  draft={draft}
                 />
-              </section>
-            ),
-          },
-        ]}
-      />
-    </main>
+              ),
+            },
+            {
+              value: "versions",
+              label: "Versions",
+              content: (
+                <VersionList
+                  projectId={projectId}
+                  journeyId={journey.id}
+                  versions={versions}
+                  hasUnpublishedChanges={hasUnpublishedChanges}
+                  draftUpdatedAt={draftEditedAt}
+                />
+              ),
+            },
+            {
+              value: "analytics",
+              label: "Analytics",
+              content: (
+                <AnalyticsTab
+                  versions={versions}
+                  selected={selectedAnalytics}
+                />
+              ),
+            },
+            {
+              value: "responses",
+              label: "Responses",
+              content: <ResponseList groups={responseGroups} />,
+            },
+            {
+              value: "settings",
+              label: "Settings",
+              content: (
+                <section aria-label="Settings" className="flex flex-col gap-8">
+                  <JourneyThemeSettings
+                    projectId={projectId}
+                    journeyId={journey.id}
+                    projectTheme={project.theme}
+                    theme={journey.theme}
+                  />
+                </section>
+              ),
+            },
+          ]}
+        />
+      </main>
+      <SiteFooter />
+    </>
   );
 }

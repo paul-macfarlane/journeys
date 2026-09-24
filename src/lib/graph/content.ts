@@ -13,23 +13,43 @@ import { z } from "zod";
  * "marks". Step, Choice, Start, Ending, and Outcome are the graph's words.
  */
 
-/** Inline emphasis and links carried by a run of text. */
+/**
+ * Inline emphasis and links carried by a run of text. Underline and strike
+ * joined in ticket 40.
+ */
 export type Mark =
   | { type: "bold" }
   | { type: "italic" }
+  | { type: "underline" }
+  | { type: "strike" }
   | { type: "link"; attrs: { href: string; rel: "noopener noreferrer" } };
 
-/** The only inline element: a run of text with optional marks. */
+/** A run of text with optional marks. */
 export type TextElement = { type: "text"; text: string; marks?: Mark[] };
 
-export type Paragraph = { type: "paragraph"; content?: TextElement[] };
+/**
+ * A line break inside a block (Shift+Enter), admitted in ticket 40. It
+ * carries nothing: no marks, no attrs.
+ */
+export type HardBreak = { type: "hardBreak" };
+
+/** What a paragraph or heading holds. */
+export type InlineElement = TextElement | HardBreak;
+
+export type Paragraph = { type: "paragraph"; content?: InlineElement[] };
 
 /** `level` is constrained to 1–6 by the schema; the sanitizer coerces. */
 export type Heading = {
   type: "heading";
   attrs: { level: number };
-  content?: TextElement[];
+  content?: InlineElement[];
 };
+
+/**
+ * A quotation (ticket 40): paragraphs only — no headings, lists, images,
+ * or quotes inside it — and only at the top level of a document.
+ */
+export type Blockquote = { type: "blockquote"; content: Paragraph[] };
 
 export type ListItem = {
   type: "listItem";
@@ -56,13 +76,16 @@ export type ImageBlock = {
   attrs: { src: string; alt: string; caption: string };
 };
 
-export type Block = Paragraph | Heading | BulletList | OrderedList | ImageBlock;
+export type Block =
+  Paragraph | Heading | Blockquote | BulletList | OrderedList | ImageBlock;
 
 export type Content = { type: "doc"; content: Block[] };
 
 const markSchema: z.ZodType<Mark> = z.union([
   z.object({ type: z.literal("bold") }),
   z.object({ type: z.literal("italic") }),
+  z.object({ type: z.literal("underline") }),
+  z.object({ type: z.literal("strike") }),
   z.object({
     type: z.literal("link"),
     attrs: z.object({
@@ -79,15 +102,25 @@ const textSchema: z.ZodType<TextElement> = z.object({
   marks: z.array(markSchema).optional(),
 });
 
+const inlineSchema: z.ZodType<InlineElement> = z.union([
+  textSchema,
+  z.object({ type: z.literal("hardBreak") }),
+]);
+
 const paragraphSchema: z.ZodType<Paragraph> = z.object({
   type: z.literal("paragraph"),
-  content: z.array(textSchema).optional(),
+  content: z.array(inlineSchema).optional(),
 });
 
 const headingSchema: z.ZodType<Heading> = z.object({
   type: z.literal("heading"),
   attrs: z.object({ level: z.number().int().min(1).max(6) }),
-  content: z.array(textSchema).optional(),
+  content: z.array(inlineSchema).optional(),
+});
+
+const blockquoteSchema: z.ZodType<Blockquote> = z.object({
+  type: z.literal("blockquote"),
+  content: z.array(paragraphSchema).min(1),
 });
 
 // Lists and list items refer to each other, so the inner schemas are reached
@@ -155,6 +188,7 @@ const imageSchema: z.ZodType<ImageBlock> = z.object({
 const blockSchema: z.ZodType<Block> = z.union([
   paragraphSchema,
   headingSchema,
+  blockquoteSchema,
   bulletListSchema,
   orderedListSchema,
   imageSchema,
@@ -200,7 +234,12 @@ function sanitizeMarks(input: unknown): Mark[] {
     if (!isRecord(candidate)) {
       continue;
     }
-    if (candidate.type === "bold" || candidate.type === "italic") {
+    if (
+      candidate.type === "bold" ||
+      candidate.type === "italic" ||
+      candidate.type === "underline" ||
+      candidate.type === "strike"
+    ) {
       marks.push({ type: candidate.type });
       continue;
     }
@@ -220,16 +259,24 @@ function sanitizeMarks(input: unknown): Mark[] {
   return marks;
 }
 
-function sanitizeInline(input: unknown): TextElement[] {
+function sanitizeInline(input: unknown): InlineElement[] {
   if (!Array.isArray(input)) {
     return [];
   }
 
-  const inline: TextElement[] = [];
+  const inline: InlineElement[] = [];
   for (const candidate of input) {
-    // Anything that is not a run of text — a hardBreak, say — is removed
-    // together with whatever it contains.
-    if (!isRecord(candidate) || candidate.type !== "text") {
+    if (!isRecord(candidate)) {
+      continue;
+    }
+    // A line break keeps its place and loses anything written on it.
+    if (candidate.type === "hardBreak") {
+      inline.push({ type: "hardBreak" });
+      continue;
+    }
+    // Anything else that is not a run of text is removed together with
+    // whatever it contains.
+    if (candidate.type !== "text") {
       continue;
     }
     if (typeof candidate.text !== "string" || candidate.text.length === 0) {
@@ -304,19 +351,45 @@ function sanitizeListItems(input: unknown): ListItem[] {
   return items;
 }
 
-/** Returns the cleaned block, or null when the block itself is not allowed. */
+function sanitizeParagraph(input: Record<string, unknown>): Paragraph {
+  const inline = sanitizeInline(input.content);
+  return inline.length > 0
+    ? { type: "paragraph", content: inline }
+    : { type: "paragraph" };
+}
+
+/**
+ * A quote keeps its paragraphs and nothing else: a heading, list, image, or
+ * quote inside it goes with everything it holds, and a quote left with no
+ * paragraph goes too.
+ */
+function sanitizeBlockquote(input: Record<string, unknown>): Blockquote | null {
+  const paragraphs = Array.isArray(input.content)
+    ? input.content
+        .filter(
+          (child): child is Record<string, unknown> =>
+            isRecord(child) && child.type === "paragraph",
+        )
+        .map(sanitizeParagraph)
+    : [];
+  return paragraphs.length > 0
+    ? { type: "blockquote", content: paragraphs }
+    : null;
+}
+
+/**
+ * Returns the cleaned block, or null when the block itself is not allowed.
+ * A blockquote is a top-level block only, so it is read here and not by the
+ * list-item path that shares this function.
+ */
 function sanitizeBlock(input: unknown): Block | null {
   if (!isRecord(input)) {
     return null;
   }
 
   switch (input.type) {
-    case "paragraph": {
-      const inline = sanitizeInline(input.content);
-      return inline.length > 0
-        ? { type: "paragraph", content: inline }
-        : { type: "paragraph" };
-    }
+    case "paragraph":
+      return sanitizeParagraph(input);
     case "heading": {
       const attrs = { level: headingLevel(input.attrs) };
       const inline = sanitizeInline(input.content);
@@ -370,7 +443,11 @@ export function sanitizeContent(input: unknown): SanitizeContentResult {
   }
 
   const blocks = input.content
-    .map((block) => sanitizeBlock(block))
+    .map((block) =>
+      isRecord(block) && block.type === "blockquote"
+        ? sanitizeBlockquote(block)
+        : sanitizeBlock(block),
+    )
     .filter((block): block is Block => block !== null);
   return { ok: true, content: { type: "doc", content: blocks } };
 }
@@ -381,13 +458,23 @@ export const PREVIEW_LIMIT = 140;
 /** The mark a cut preview ends with, so a glance reads as an opening. */
 const ELLIPSIS = "…";
 
+/** A block's words, a line break reading as the space it leaves. */
+function inlineText(inline: InlineElement[] | undefined): string {
+  return (inline ?? [])
+    .map((element) => (element.type === "text" ? element.text : " "))
+    .join("");
+}
+
 /** Every block's words, in the order the Step is written. */
 function collectText(blocks: Array<Block | ListItem>, into: string[]): void {
   for (const block of blocks) {
     switch (block.type) {
       case "paragraph":
       case "heading":
-        into.push((block.content ?? []).map((run) => run.text).join(""));
+        into.push(inlineText(block.content));
+        break;
+      case "blockquote":
+        collectText(block.content, into);
         break;
       case "bulletList":
       case "orderedList":
@@ -410,7 +497,9 @@ function showsAnything(blocks: Array<Block | ListItem>): boolean {
     switch (block.type) {
       case "paragraph":
       case "heading":
-        return (block.content ?? []).some((run) => run.text.trim() !== "");
+        return inlineText(block.content).trim() !== "";
+      case "blockquote":
+        return showsAnything(block.content);
       case "bulletList":
       case "orderedList":
         return showsAnything(block.content);
@@ -439,9 +528,10 @@ export function isBlankContent(content: Content): boolean {
  * when an Author hovers or focuses it, so the map can be skimmed without
  * opening every Step.
  *
- * Every paragraph, heading, and list item in document order, joined by single
- * spaces with the whitespace collapsed; content longer than `limit` is cut
- * there and marked with an ellipsis. Pure — no DOM — so the map and a test
+ * Every paragraph, heading, quote, and list item in document order, joined
+ * by single spaces with the whitespace collapsed (a line break reads as a
+ * space); content longer than `limit` is cut there and marked with an
+ * ellipsis. Pure — no DOM — so the map and a test
  * read the same thing.
  */
 export function contentPreview(
@@ -450,7 +540,18 @@ export function contentPreview(
 ): string {
   const pieces: string[] = [];
   collectText(content.content, pieces);
+  return textPreview(pieces.join(" "), limit);
+}
 
-  const text = pieces.join(" ").replace(/\s+/g, " ").trim();
-  return text.length > limit ? `${text.slice(0, limit)}${ELLIPSIS}` : text;
+/**
+ * The same cut for text that is already plain — a Journey's description,
+ * which is one line of text rather than rich content — so a link preview
+ * of a Journey and one of a Project are cut alike: whitespace collapsed,
+ * anything past `limit` cut there and marked with an ellipsis.
+ */
+export function textPreview(text: string, limit: number): string {
+  const collapsed = text.replace(/\s+/g, " ").trim();
+  return collapsed.length > limit
+    ? `${collapsed.slice(0, limit)}${ELLIPSIS}`
+    : collapsed;
 }

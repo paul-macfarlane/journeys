@@ -56,13 +56,8 @@ test("journey-draft", async ({ page, context }) => {
   await page.goto("/projects");
   const projectId = await createProject(page, projectTitle);
   await page.goto(`/projects/${projectId}`);
+  // Creating lands on the Journey page (ticket 47).
   const journeyId = await createJourney(page, projectId, journeyTitle);
-
-  await page
-    .getByRole("listitem")
-    .filter({ hasText: journeyTitle })
-    .getByRole("link")
-    .click();
   await expect(page).toHaveURL(
     `${E2E_BASE_URL}/projects/${projectId}/journeys/${journeyId}`,
   );

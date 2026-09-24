@@ -1,8 +1,9 @@
 // Drizzle schema. The first four tables are Better Auth's own, managed
 // through its Drizzle adapter — column names and types are the adapter's
-// contract, not ours, so nothing there is extended. Journeys' own domain
-// tables follow, each landing with its ticket; Project, Member, Journey,
-// Draft, Published Version, Run, and Response are here.
+// contract, not ours, so nothing there is extended except for the three
+// Journeys-owned columns `user` carries beside the adapter's own (ticket 52).
+// Journeys' own domain tables follow, each landing with its ticket; Project,
+// Member, Journey, Draft, Published Version, Run, and Response are here.
 
 import {
   boolean,
@@ -19,6 +20,7 @@ import {
 
 import type { Content } from "@/lib/graph/content";
 import type { GraphDocument } from "@/lib/graph/document";
+import type { AuthorLink } from "@/lib/author";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -26,6 +28,14 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
+  // Author page (ticket 52). `bio` is plain text, null when never written;
+  // `links` is the closed `{ kind, url }` list `src/lib/author.ts` defines,
+  // at most five, one per kind; `public` is the Author's opt-in — off, the
+  // page at `/authors/<id>` is a 404 like an unknown id. All three carry
+  // defaults so a build older than migration 0010 still inserts.
+  bio: text("bio"),
+  links: jsonb("links").$type<AuthorLink[]>().notNull().default([]),
+  public: boolean("public").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

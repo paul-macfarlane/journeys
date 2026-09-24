@@ -26,8 +26,8 @@ export const ID_PATTERN = "[0-9a-f-]{36}";
 
 /**
  * A Project and a Journey are addressed by their id, and a spec cannot know
- * one before the app hands it back: every id here is read out of the href
- * the page rendered.
+ * one before the app hands it back: every id here is read out of an address
+ * the page rendered or landed on.
  */
 export function idFromHref(href: string | null, prefix: string): string {
   const value = href ?? "";
@@ -104,7 +104,10 @@ export function arrowLabelled(page: Page, label: string): Locator {
  */
 export async function tagWithOutcome(page: Page, label: string): Promise<void> {
   const field = page.getByRole("combobox", { name: "Outcome", exact: true });
-  await field.fill(label);
+  await field.click();
+  await page
+    .getByRole("combobox", { name: "Filter outcomes", exact: true })
+    .fill(label);
 
   const list = page.getByRole("listbox", { name: "Outcomes" });
   const option = list.getByRole("option", { name: label, exact: true }).or(
@@ -116,7 +119,7 @@ export async function tagWithOutcome(page: Page, label: string): Promise<void> {
   await expect(option).toHaveCount(1);
   await option.click();
 
-  await expect(field).toHaveValue(label);
+  await expect(field).toHaveText(label);
 }
 
 /**
@@ -142,8 +145,18 @@ export async function openTab(
 
 /**
  * The Journey's title or description, edited where it sits at the top of
- * the page: typed into the field and left, which is the save. Waits for the
- * row, since the save is a write the page shows nothing for on its own.
+ * the page: typed into and left, which is the save. Waits for the row, since
+ * the save is a write the page shows nothing for on its own.
+ *
+ * Made until it takes. The field is React Hook Form's once the page has
+ * hydrated, and becoming so writes the stored value into the input (the
+ * ref attaching calls `setFieldValue`), over anything typed before it: on a
+ * slow machine `fill`'s select and its insert have landed either side of
+ * that write and the two titles came out concatenated (CI, tickets 35 and
+ * 36). Nothing on the page says when hydration is done, so the edit is
+ * typed, read back off the field, saved, and read back off the row, and a
+ * typing that hydration wrote over — which saves nothing, because the
+ * field then holds what it held — is made again.
  */
 export async function editJourneyField(
   page: Page,
@@ -155,22 +168,40 @@ export async function editJourneyField(
   const input = page.getByLabel(field === "title" ? "Title" : "Description", {
     exact: true,
   });
-  await input.fill(value);
-  if (field === "title") await input.press("Enter");
-  else await input.blur();
-
   const column = { title: "title", description: "description" }[field];
-  await expect
-    .poll(async () => {
-      const [row] = await queryE2eDatabase<{ value: string }>(
-        `SELECT ${column} AS value FROM "journey" WHERE id = $1`,
-        [journeyId],
-      );
-      return row?.value;
-    })
-    .toBe(value);
+  const stored = async () => {
+    const [row] = await queryE2eDatabase<{ value: string }>(
+      `SELECT ${column} AS value FROM "journey" WHERE id = $1`,
+      [journeyId],
+    );
+    return row?.value;
+  };
+
+  await expect(async () => {
+    await input.fill(value);
+    await expect(input, `${field} holds what was typed`).toHaveValue(value, {
+      timeout: 1_000,
+    });
+    if (field === "title") await input.press("Enter");
+    else await input.blur();
+    await expect.poll(stored, { timeout: 3_000 }).toBe(value);
+  }).toPass({ timeout: 20_000 });
 }
 
+/**
+ * The id the address bar holds once the app has landed somewhere: the
+ * dialogs land on the thing they made (ticket 47), so the id is read from
+ * the page's own address rather than from a list the page no longer shows.
+ */
+function idFromAddress(page: Page, prefix: string): string {
+  return idFromHref(new URL(page.url()).pathname, prefix);
+}
+
+/**
+ * A Project made from the Projects list. The dialog lands on the new
+ * Project's page, so the page is there when this returns; a spec that wants
+ * the list again goes back to it.
+ */
 export async function createProject(
   page: Page,
   title: string,
@@ -179,16 +210,18 @@ export async function createProject(
   await page.getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create project" }).click();
 
-  await expect(page.getByRole("dialog")).toBeHidden();
-  const item = page.getByRole("listitem").filter({ hasText: title });
-  await expect(item).toHaveCount(1);
+  await expect(page).toHaveURL(new RegExp(`/projects/${ID_PATTERN}$`));
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
-  return idFromHref(
-    await item.getByRole("link").getAttribute("href"),
-    "/projects/",
-  );
+  return idFromAddress(page, "/projects/");
 }
 
+/**
+ * A Journey made from its Project's Journeys tab. The dialog lands on the
+ * new Journey's page, so the page is there when this returns; the
+ * description, which the dialog no longer asks for, is set where it lives,
+ * on that page. A spec that wants the Project page again goes back to it.
+ */
 export async function createJourney(
   page: Page,
   projectId: string,
@@ -197,17 +230,17 @@ export async function createJourney(
 ): Promise<string> {
   await page.getByRole("button", { name: "New journey" }).click();
   await page.getByLabel("Title").fill(title);
-  if (description) {
-    await page.getByLabel("Description").fill(description);
-  }
   await page.getByRole("button", { name: "Create journey" }).click();
 
-  await expect(page.getByRole("dialog")).toBeHidden();
-  const item = page.getByRole("listitem").filter({ hasText: title });
-  await expect(item).toHaveCount(1);
-
-  return idFromHref(
-    await item.getByRole("link").getAttribute("href"),
-    `/projects/${projectId}/journeys/`,
+  await expect(page).toHaveURL(
+    new RegExp(`/projects/${projectId}/journeys/${ID_PATTERN}$`),
   );
+  const journeyId = idFromAddress(page, `/projects/${projectId}/journeys/`);
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(title);
+
+  if (description) {
+    await editJourneyField(page, journeyId, "description", description);
+  }
+
+  return journeyId;
 }

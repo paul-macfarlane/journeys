@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
 import {
+  chooseStep,
   createJourney,
   createProject,
   openTab,
@@ -81,9 +82,34 @@ async function startJourney(page: Page): Promise<{
   return { projectId, journeyId };
 }
 
+/** The Step panel's deciding option (ticket 49), named for what it does. */
+const DECIDES_LABEL = "AI decides the next step from the response";
+
 /** The Prompt's textbox on a runner or Preview screen, found by its question. */
 function promptBox(page: Page, label: string) {
   return page.getByRole("textbox", { name: label });
+}
+
+/**
+ * Waits until React is running on a runner step page before a box that
+ * already shows an answer is typed into. React DOM's hydration of a
+ * `<textarea>` with a non-empty default sets its value back to that default
+ * (`react-dom-client`: `element.value = textContent`), so anything typed
+ * before the bundle ran is lost — and under load the bundle lands a second
+ * or more after the page is readable. A step page arrives with `?at` (after
+ * Back) or `?notice` (after a save), and `RunHistory` strips them in its
+ * first effect, so the bare step address is the page saying React is up. A
+ * box whose default is empty needs no wait: the reset only restores a
+ * non-empty default.
+ */
+async function hydrated(
+  participant: Page,
+  journeyId: string,
+  stepId: string,
+): Promise<void> {
+  await expect(participant).toHaveURL(
+    `${E2E_BASE_URL}/j/${journeyId}/${stepId}`,
+  );
 }
 
 test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
@@ -115,7 +141,12 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
       const draft = await readDraft(journeyId);
       return draft.steps[draft.startStepId].prompt;
     })
-    .toEqual({ type: "free_text", label: START_PROMPT, required: false });
+    .toEqual({
+      type: "free_text",
+      label: START_PROMPT,
+      required: false,
+      decides: false,
+    });
 
   await required.check();
   await expect
@@ -123,7 +154,67 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
       const draft = await readDraft(journeyId);
       return draft.steps[draft.startStepId].prompt;
     })
-    .toEqual({ type: "free_text", label: START_PROMPT, required: true });
+    .toEqual({
+      type: "free_text",
+      label: START_PROMPT,
+      required: true,
+      decides: false,
+    });
+
+  // The deciding option (ticket 49) is offered as soon as the Step has a
+  // Prompt, and says why it cannot be turned on yet: a judge needs two
+  // Choices to pick between, and the Start has none. The copy says what a
+  // Participant will meet.
+  const decides = page.getByLabel(DECIDES_LABEL);
+  await expect(decides).toBeVisible();
+  await expect(decides).toBeDisabled();
+  await expect(decides).not.toBeChecked();
+  await expect(page.getByText("Needs two or more choices.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Participants answer and press Continue; the choices appear only when the judge is unsure or unavailable.",
+    ),
+  ).toBeVisible();
+
+  // One Choice is not yet a choice: the option stays off. The Choice is
+  // pointed at a new Step, which the panel then opens on, so the Start is
+  // found again by name.
+  await page.getByRole("button", { name: "Add choice", exact: true }).click();
+  await page.getByLabel("Label", { exact: true }).fill("Wait your turn");
+  await page
+    .getByLabel("Target", { exact: true })
+    .selectOption({ label: "New step" });
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await chooseStep(page, "Start");
+  await expect(page.getByLabel(DECIDES_LABEL)).toBeDisabled();
+  await expect(page.getByText("Needs two or more choices.")).toBeVisible();
+
+  // A second Choice, and the option can be turned on.
+  await page.getByRole("button", { name: "Add choice", exact: true }).click();
+  await page.getByLabel("Label", { exact: true }).fill("Walk away");
+  await page
+    .getByLabel("Target", { exact: true })
+    .selectOption({ label: "Untitled step" });
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Add", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel(DECIDES_LABEL)).toBeEnabled();
+  await expect(page.getByText("Needs two or more choices.")).toHaveCount(0);
+
+  await page.getByLabel(DECIDES_LABEL).check();
+  await expect
+    .poll(async () => {
+      const draft = await readDraft(journeyId);
+      return draft.steps[draft.startStepId].prompt;
+    })
+    .toEqual({
+      type: "free_text",
+      label: START_PROMPT,
+      required: true,
+      decides: true,
+    });
 
   await page.screenshot({
     path: evidencePath(
@@ -141,11 +232,13 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
   await expect(startSection.getByText(START_PROMPT)).toBeVisible();
   await expect(startSection.getByText("No responses yet.")).toBeVisible();
 
-  // Blanking the question takes the Prompt away, "Required" with it.
+  // Blanking the question takes the Prompt away, "Required" and the
+  // deciding option with it.
   await openTab(page, "Editor");
   await expect(page.getByLabel("Step title")).toHaveValue("Start");
   await page.getByLabel("Prompt", { exact: true }).fill("");
   await expect(page.getByLabel(/^Required/)).toHaveCount(0);
+  await expect(page.getByLabel(DECIDES_LABEL)).toHaveCount(0);
   await expect
     .poll(async () => {
       const draft = await readDraft(journeyId);
@@ -186,7 +279,7 @@ test("prompts-participant-answers-and-author-reads", async ({
     ).toBeVisible();
     const startBox = promptBox(participant, `${START_PROMPT} (optional)`);
     await expect(startBox).toBeVisible();
-    await expect(startBox).not.toHaveAttribute("required", /.*/);
+    await expect(startBox).toHaveAttribute("aria-required", "false");
 
     await participant.getByRole("button", { name: "Wait your turn" }).click();
     await expect(participant).toHaveURL(
@@ -195,32 +288,19 @@ test("prompts-participant-answers-and-author-reads", async ({
     expect(await readRuns(versionId)).toHaveLength(1);
     expect(await readResponses(versionId)).toEqual([]);
 
-    // The middle Step's Prompt is required: the browser refuses the Choice
-    // while the box is blank, and the Run has not moved.
+    // The middle Step's Prompt is required: the server refuses the Choice
+    // while the box is blank, refusing at the field itself, and the Run has
+    // not moved.
     const queueBox = promptBox(participant, QUEUE_PROMPT);
     await expect(queueBox).toBeVisible();
-    await expect(queueBox).toHaveAttribute("required", "");
+    await expect(queueBox).toHaveAttribute("aria-required", "true");
     await participant.getByRole("button", { name: "Show your papers" }).click();
-    await expect(queueBox).toHaveJSProperty("validity.valueMissing", true);
-    expect((await readRuns(versionId))[0].path).toEqual([
-      START_STEP_ID,
-      QUEUE_STEP_ID,
-    ]);
-
-    // The same form posted past the browser's check — what a crafted
-    // request looks like — is refused by the server with the notice, and
-    // still moves nothing.
-    await queueBox.evaluate((box) => {
-      const form = (box as HTMLTextAreaElement).form;
-      if (!form) throw new Error("the Prompt's box is outside its form");
-      form.noValidate = true;
-      form.requestSubmit(
-        form.querySelector<HTMLButtonElement>('button[value="waved-through"]'),
-      );
-    });
-    await expect(participant.getByRole("status")).toHaveText(
-      "This step needs a response before you go on.",
-    );
+    await expect(queueBox).toHaveAttribute("aria-invalid", "true");
+    await expect(
+      participant
+        .getByRole("alert")
+        .filter({ hasText: "This step needs a response before you go on." }),
+    ).toBeVisible();
     await expect(
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
@@ -271,6 +351,7 @@ test("prompts-participant-answers-and-author-reads", async ({
 
     // Emptied and saved again, the Ending's optional answer is taken back:
     // the box showed it, and the Participant chose not to keep it.
+    await hydrated(participant, journeyId, "waved-through");
     await promptBox(participant, `${ENDING_PROMPT} (optional)`).fill("");
     await participant.getByRole("button", { name: "Save response" }).click();
     await expect(participant.getByRole("status")).toHaveText(
@@ -294,6 +375,7 @@ test("prompts-participant-answers-and-author-reads", async ({
       participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
     ).toBeVisible();
     await expect(promptBox(participant, QUEUE_PROMPT)).toHaveValue(queueAnswer);
+    await hydrated(participant, journeyId, QUEUE_STEP_ID);
     await promptBox(participant, QUEUE_PROMPT).fill(startAnswer);
     await participant.getByRole("button", { name: "Show your papers" }).click();
     await expect(
@@ -386,11 +468,16 @@ test("prompts-preview-stores-nothing", async ({ page, context }) => {
   );
 
   // The required Prompt is required here too — the same box, the same
-  // browser check — and then walks on to the Ending.
+  // server refusal — and then walks on to the Ending.
   const queueBox = promptBox(page, QUEUE_PROMPT);
-  await expect(queueBox).toHaveAttribute("required", "");
+  await expect(queueBox).toHaveAttribute("aria-required", "true");
   await page.getByRole("button", { name: "Show your papers" }).click();
-  await expect(queueBox).toHaveJSProperty("validity.valueMissing", true);
+  await expect(queueBox).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "This step needs a response before you go on." }),
+  ).toBeVisible();
   await queueBox.fill("Whether I will be believed.");
   await page.getByRole("button", { name: "Show your papers" }).click();
   await expect(

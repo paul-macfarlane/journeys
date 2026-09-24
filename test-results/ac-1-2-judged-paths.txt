@@ -1,0 +1,41 @@
+Verified at 52e21a3. The judged path, against a stub judge (the e2e suite never calls the gateway).
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys/.claude/worktrees/43-ai-decided-choices/journeys
+ ✓ src/lib/ai/rate-limit.test.ts > decisionAllowed > allows a key's first decision 1ms
+ ✓ src/lib/ai/rate-limit.test.ts > decisionAllowed > refuses a second decision for the same key inside the window 0ms
+ ✓ src/lib/ai/rate-limit.test.ts > decisionAllowed > allows the same key again once the window has passed 0ms
+ ✓ src/lib/ai/rate-limit.test.ts > decisionAllowed > does not let a refused decision restart the window 0ms
+ ✓ src/lib/ai/rate-limit.test.ts > decisionAllowed > keeps each key's window to itself 0ms
+ ✓ src/lib/ai/decide.test.ts > decideChoice > is confident at or above the threshold 1ms
+ ✓ src/lib/ai/decide.test.ts > decideChoice > is weak below the threshold, still naming the judge's pick 0ms
+ ✓ src/lib/ai/decide.test.ts > decideChoice > is none when the judge returns null 0ms
+ ✓ src/lib/ai/decide.test.ts > decideChoice > is none when the judge throws, and never rejects itself 0ms
+ ✓ src/lib/ai/decide.test.ts > decideChoice > is none when the judge names a Choice the Step does not have 0ms
+ ✓ src/lib/ai/decide.test.ts > buildDecision > carries the Step's title, content, Prompt label, Choices, and the Response, and nothing else 0ms
+ ✓ src/lib/ai/decide.test.ts > buildDecision > never carries a target step id, an outcome, or any other Step 0ms
+ ✓ src/lib/ai/decide.test.ts > buildDecision > names the question as a choice over the Choice ids 0ms
+ ✓ src/lib/ai/decide.test.ts > gatewayJudge > asks jev on the gateway with no retry and a bounded timeout, tagged for usage reporting 2ms
+ ✓ src/lib/ai/decide.test.ts > gatewayJudge > is null when the answer carries no probabilities 0ms
+ ✓ src/lib/ai/decide.test.ts > gatewayJudge > is null when the choice is empty 0ms
+ ✓ src/lib/ai/decide.test.ts > gatewayJudge > is null when the answer is not a choice 0ms
+ ✓ src/app/projects/[projectId]/journeys/actions.test.ts > publishJourneyAction > publishes a deciding Prompt with no key, and warns that Participants will choose for themselves 0ms
+ ✓ src/app/projects/[projectId]/journeys/actions.test.ts > publishJourneyAction > does not warn when the key is set 0ms
+ ✓ src/app/projects/[projectId]/journeys/actions.test.ts > publishJourneyAction > does not warn when no Prompt decides 0ms
+ ✓ src/app/projects/[projectId]/journeys/[journeyId]/preview/actions.test.ts > previewChooseAction on a deciding Prompt > floors the probability, so 0.496 never reads as the 50 a live Run needs (ticket 43 F4) 11ms
+ ✓ src/app/projects/[projectId]/journeys/[journeyId]/preview/actions.test.ts > previewChooseAction on a deciding Prompt > comes back with no pick and the Response when there is no gateway key 0ms
+ ✓ src/app/projects/[projectId]/journeys/[journeyId]/preview/actions.test.ts > previewChooseAction on a deciding Prompt > follows a pressed Choice as before, without asking the judge 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > respondAndChooseAction on a deciding Prompt > advances the Run along a confident answer and records the Response, as a pressed Choice would 1ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > respondAndChooseAction on a deciding Prompt > comes back with the judge's pick when its answer is weak, and moves nothing 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > respondAndChooseAction on a deciding Prompt > comes back with no pick when the judge fails 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > respondAndChooseAction on a deciding Prompt > comes back with no pick when the judge names a Choice the Step does not have 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > respondAndChooseAction on a deciding Prompt > never calls the judge without a gateway key 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > respondAndChooseAction on a deciding Prompt > judges a Run at most once a second, and falls back rather than failing 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > respondAndChooseAction on a deciding Prompt > follows a pressed Choice as before, without asking the judge 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction on a deciding Prompt > creates the Run along a confident answer, holding the Response 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction on a deciding Prompt > comes back to the Start with the pick and the Response when the answer is weak, and creates no Run 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction on a deciding Prompt > comes back with no pick and the Response when there is no key 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction on a deciding Prompt > refuses a blank Response before asking the judge 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction on a deciding Prompt > mints a Participant id before judging and keys the rate limit on it, so two first-time visitors judged in the same second are each judged (ticket 43 S8/F2) 0ms
+ ✓ src/app/j/[journeyId]/actions.test.ts > chooseFromStartAction on a deciding Prompt > rate-limits a returning Participant re-submitting within a second, on their own id — never the Journey's 0ms
+ Test Files  6 passed (6)
+      Tests  61 passed (61)
+exit=0

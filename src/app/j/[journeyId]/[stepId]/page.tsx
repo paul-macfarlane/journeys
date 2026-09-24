@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -6,15 +7,33 @@ import { RunHistory } from "@/components/runner/run-history";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
+  liveDecision,
   ResponseNotice,
+  responseRefusal,
   StepView,
 } from "@/components/runner/step-view";
 import { getResponse } from "@/db/responses";
-import { getRunForJourney, saveRunState } from "@/db/runs";
+import { getPublicJourney, getRunForJourney, saveRunState } from "@/db/runs";
 import { navigateTo, parsePathIndex } from "@/lib/graph/run";
+import { journeyLinkMetadata } from "@/lib/link-preview";
 import { runCookieName } from "@/lib/run-cookies";
 
 import { respondAndChooseAction, startOverAction } from "../actions";
+
+/**
+ * A Step URL pasted into a chat previews as the Journey does (ticket 37):
+ * the live version's title and description and the Journey's card, never
+ * the Step's own content, and `og:url` names the Journey — which is where
+ * anyone but the Participant holding the Run cookie lands.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ journeyId: string; stepId: string }>;
+}): Promise<Metadata> {
+  const { journeyId } = await params;
+  return journeyLinkMetadata(await getPublicJourney(journeyId), journeyId);
+}
 
 /**
  * One Step of a Run. Every Step has a URL of its own so the browser's back
@@ -35,6 +54,8 @@ import { respondAndChooseAction, startOverAction } from "../actions";
  * a Back on a loop-closing Step from a Choice to that same Step, and `notice`
  * carries the refusals and confirmations a Participant is told about — the
  * path being full, and since ticket 12 what became of an answer to a Prompt.
+ * A deciding Prompt's answer (ticket 43) comes back as `decide`, the
+ * judge's pick or "none", and the page offers the Choices with it marked.
  * `RunHistoryScript` and `RunHistory` between them write the index into
  * `history.state` for the next Back, correct a Back the server read as a
  * Choice, and strip both parameters from the address bar.
@@ -51,10 +72,11 @@ export default async function RunStepPage({
   searchParams: Promise<{
     at?: string | string[];
     notice?: string | string[];
+    decide?: string | string[];
   }>;
 }) {
   const { journeyId, stepId } = await params;
-  const { at, notice } = await searchParams;
+  const { at, notice, decide } = await searchParams;
 
   const cookieStore = await cookies();
   const runId = cookieStore.get(runCookieName(journeyId))?.value;
@@ -159,6 +181,8 @@ export default async function RunStepPage({
                 kind: "form",
                 action: respondAndChooseAction.bind(null, journeyId, stepId),
                 response,
+                refusal: responseRefusal(notice),
+                decision: liveDecision(step, decide),
               }
             : {
                 kind: "links",

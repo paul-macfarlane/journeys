@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
+  previewDecision,
   ResponseNotice,
+  responseRefusal,
   StepView,
 } from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
@@ -28,13 +30,18 @@ export default async function PreviewStepPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string; journeyId: string; stepId: string }>;
-  searchParams: Promise<{ notice?: string | string[] }>;
+  searchParams: Promise<{
+    notice?: string | string[];
+    decide?: string | string[];
+    confidence?: string | string[];
+    response?: string | string[];
+  }>;
 }) {
   const session = await requireSession();
-  const [{ projectId, journeyId, stepId }, { notice }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const [
+    { projectId, journeyId, stepId },
+    { notice, decide, confidence, response },
+  ] = await Promise.all([params, searchParams]);
 
   const journey = await getJourneyForMember(
     projectId,
@@ -43,8 +50,9 @@ export default async function PreviewStepPage({
   );
   if (!journey) notFound();
 
-  const draft = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!draft) notFound();
+  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  if (!stored) notFound();
+  const draft = stored.document;
 
   // Own property only: `steps` is a plain object parsed from JSON, and a
   // URL naming "toString" must 404 rather than find a prototype method.
@@ -85,6 +93,18 @@ export default async function PreviewStepPage({
                   journeyId,
                   stepId,
                 ),
+                refusal: responseRefusal(notice),
+                // Preview stores nothing, so a deciding Prompt's Response
+                // travels back in the address with the judge's pick and
+                // probability (ticket 43) — but only once the judge has
+                // actually been asked (`decide` present); a bare
+                // `?response=` on its own is never trusted back into the
+                // box (ticket 43 F6).
+                response:
+                  typeof decide === "string" && typeof response === "string"
+                    ? response
+                    : undefined,
+                decision: previewDecision(step, decide, confidence),
               }
             : {
                 kind: "links",

@@ -59,6 +59,15 @@ export type SelectStepOptions = {
   zoom?: boolean;
   keepView?: boolean;
   reveal?: boolean;
+  /**
+   * The opening came from a click on the map — a box, an arrow — so where
+   * the panel is stacked under the map, narrower than the `lg` breakpoint,
+   * the page is scrolled to bring the panel's top under the sticky rows:
+   * on a phone the map fills the screen and the panel starts below the
+   * fold. Never set for the keyboard walking between boxes, which opens
+   * nothing, nor for openings the panel itself makes.
+   */
+  scrollToPanel?: boolean;
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
@@ -83,3 +92,19 @@ export function choiceLabel(label: string): string {
  */
 export const SELECT_CLASS =
   "h-8 min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30";
+
+/**
+ * Whether anything on the page has the keyboard to itself. The editor's
+ * shortcuts and the map's delete keys ask before they claim a press: while a
+ * dialog is open the keyboard belongs to the dialog, and a key answering from
+ * behind it would act on something the Author cannot see.
+ *
+ * `window.document`: the Draft is what `document` names in the modules that
+ * ask this.
+ */
+export function dialogIsOpen(): boolean {
+  return (
+    window.document.querySelector('[role="dialog"], [role="alertdialog"]') !==
+    null
+  );
+}

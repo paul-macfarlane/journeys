@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 import { updateJourneyAction } from "@/app/projects/[projectId]/journeys/actions";
-import { useBlurSavedForm } from "@/components/blur-saved-form";
+import { useAutosavedForm } from "@/components/autosaved-form";
+import { STATUS_TEXT } from "@/lib/autosave";
 import { cn } from "@/lib/utils";
 import {
   updateJourneySchema,
@@ -14,8 +15,9 @@ import {
 /**
  * A Journey's title and description are the whole of its metadata, so they
  * are the page's heading rather than a form behind an Edit button: two
- * borderless fields that read as headings until focused, saved when a
- * field is left (see `useBlurSavedForm`).
+ * borderless fields that read as headings until focused, saved as they are
+ * typed into (see `useAutosavedForm`), with the line beneath them saying
+ * where the record stands.
  *
  * The Journey is addressed by its id, so a rename never moves the page.
  */
@@ -35,7 +37,7 @@ export function JourneyTitleFields({
     () => ({ title, description }),
     [title, description],
   );
-  const { form, save, handleEnterKeyDown } = useBlurSavedForm({
+  const { form, status, change, flush, handleEnterKeyDown } = useAutosavedForm({
     schema: updateJourneySchema,
     values,
     submit: (next) => updateJourneyAction(projectId, journeyId, next),
@@ -54,7 +56,10 @@ export function JourneyTitleFields({
         aria-label="Title"
         aria-invalid={errors.title ? true : undefined}
         autoComplete="off"
-        {...form.register("title", { onBlur: () => void save("title") })}
+        {...form.register("title", {
+          onChange: () => change("title"),
+          onBlur: () => void flush("title"),
+        })}
         onKeyDown={handleEnterKeyDown}
         className={cn(
           fieldClassName,
@@ -73,7 +78,8 @@ export function JourneyTitleFields({
         placeholder="Add a description"
         rows={1}
         {...form.register("description", {
-          onBlur: () => void save("description"),
+          onChange: () => change("description"),
+          onBlur: () => void flush("description"),
         })}
         className={cn(
           fieldClassName,
@@ -86,9 +92,12 @@ export function JourneyTitleFields({
         </p>
       ) : null}
 
-      <p className="text-muted-foreground text-xs">
-        Participants see the title and description from the last published
-        version.
+      <p className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
+        <span role="status">{STATUS_TEXT[status]}</span>
+        <span>
+          Participants see the title and description from the last published
+          version.
+        </span>
       </p>
     </div>
   );

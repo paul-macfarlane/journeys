@@ -1,0 +1,26 @@
+Verified at 52e21a3. Existing documents parse unchanged with decides: false; Prompt contract round trips.
+ ✓ src/lib/graph/prompt.test.ts > readResponse > is skipped on a Step with no Prompt, whatever was posted 1ms
+ ✓ src/lib/graph/prompt.test.ts > readResponse > is skipped for a blank or absent answer to an optional Prompt 0ms
+ ✓ src/lib/graph/prompt.test.ts > readResponse > is missing for a blank or absent answer to a required Prompt 0ms
+ ✓ src/lib/graph/prompt.test.ts > readResponse > is missing for a blank answer to a deciding Prompt with two or more Choices, even when required is stored false 0ms
+ ✓ src/lib/graph/prompt.test.ts > readResponse > is skipped for a blank answer to a Step with `decides: true` but fewer than two Choices — an Ending or a single-Choice Step, where it is not really deciding 0ms
+ ✓ src/lib/graph/prompt.test.ts > isDeciding > is true only when the Prompt decides and the Step has two or more Choices 0ms
+ ✓ src/lib/graph/prompt.test.ts > isDeciding > is false on an Ending (zero Choices) even when the Prompt decides 0ms
+ ✓ src/lib/graph/edit.test.ts > duplicateStep > does not share the copy's Prompt object identity with the original's 0ms
+ ✓ src/lib/graph/edit.test.ts > setStepPrompt > attaches a free-text Prompt to a Step 0ms
+ ✓ src/lib/graph/edit.test.ts > setStepPrompt > keeps the label as typed, spaces and all, while it is not blank 0ms
+ ✓ src/lib/graph/edit.test.ts > setStepPrompt > removes the Prompt when the label is blank 0ms
+ ✓ src/lib/graph/edit.test.ts > setStepPrompt > returns the document unchanged for an unknown Step 0ms
+ ✓ src/lib/graph/edit.test.ts > setStepPrompt > forces required when decides is true, whatever required was passed 0ms
+ ✓ src/lib/graph/edit.test.ts > setStepPrompt > forces nothing from a stale decides on a Step with one Choice 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > rejects a Prompt of any type other than free text 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > accepts a free-text Prompt 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > defaults a Prompt's decides to false when the stored shape does not carry it (ticket 43) 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > round-trips a Prompt with decides: true 0ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > large-journey fixture still parses, with decides: false on every Prompt 1ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > legacy case-1.json still parses, with decides: false on every Prompt 1ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > legacy case-2.json still parses, with decides: false on every Prompt 1ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > legacy case-3.json still parses, with decides: false on every Prompt 0ms
+ Test Files  3 passed (3)
+      Tests  119 passed (119)
+exit=0

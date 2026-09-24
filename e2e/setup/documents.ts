@@ -168,8 +168,8 @@ export const START_PROMPT = "How are you feeling as you arrive?";
 export const QUEUE_PROMPT = "What is going through your mind while you wait?";
 export const ENDING_PROMPT = "What would you do differently?";
 
-function prompt(label: string, required: boolean): Prompt {
-  return { type: "free_text", label, required };
+function prompt(label: string, required: boolean, decides = false): Prompt {
+  return { type: "free_text", label, required, decides };
 }
 
 /**
@@ -184,6 +184,21 @@ export function promptDocument(): GraphDocument {
   document.steps[START_STEP_ID].prompt = prompt(START_PROMPT, false);
   document.steps[QUEUE_STEP_ID].prompt = prompt(QUEUE_PROMPT, true);
   document.steps["waved-through"].prompt = prompt(ENDING_PROMPT, false);
+  return document;
+}
+
+/** The deciding Prompt `decidingDocument()` asks on the queue Step. */
+export const DECIDING_PROMPT = "What do you do when the officer looks up?";
+
+/**
+ * `runnerDocument()` with a deciding Prompt (ticket 43) on the queue Step:
+ * its Response, not a button, picks between "Show your papers" and "Leave
+ * the queue". The e2e server runs with no gateway key, so the judge never
+ * answers here and the runner always falls back to the Choices.
+ */
+export function decidingDocument(): GraphDocument {
+  const document = runnerDocument();
+  document.steps[QUEUE_STEP_ID].prompt = prompt(DECIDING_PROMPT, true, true);
   return document;
 }
 

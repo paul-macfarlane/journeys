@@ -1,7 +1,10 @@
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 
 import { ChoiceList } from "@/components/journeys/choice-list";
-import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
+import {
+  SelectCombobox,
+  type ComboboxOption,
+} from "@/components/journeys/combobox";
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import {
   counted,
@@ -23,6 +26,7 @@ import {
   setStepPrompt,
   updateStep,
 } from "@/lib/graph/edit";
+import { isDeciding } from "@/lib/graph/prompt";
 import type { PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -44,8 +48,10 @@ const CREATE_OUTCOME = "__create__";
 
 /**
  * The Outcome an Ending is grouped by, made, chosen, and renamed from the
- * Ending itself: every Outcome the Journey defines with the Endings it holds,
- * "No outcome" to let go of one, and — for a label no Outcome answers to yet
+ * Ending itself, on a control that reads as a select: what the Ending carries
+ * (or "No outcome") until it is opened, and then a filter over every Outcome
+ * the Journey defines with the Endings it holds, "No outcome" to let go of
+ * one, and — for a label no Outcome answers to yet
  * — "Create outcome “…”", which defines it and tags this Ending in one edit.
  * An Outcome the last Ending drops goes with it; there is nothing to remove
  * by hand.
@@ -83,7 +89,6 @@ function OutcomeField({
   const options = useMemo<ComboboxOption[]>(() => {
     const counts = endingCountsByOutcome(document);
     return [
-      { id: NO_OUTCOME, name: "No outcome" },
       ...Object.values(document.outcomes).map((entry) => ({
         id: entry.id,
         name: entry.label,
@@ -96,6 +101,7 @@ function OutcomeField({
           </>
         ),
       })),
+      { id: NO_OUTCOME, name: "No outcome" },
     ];
   }, [document]);
 
@@ -189,14 +195,17 @@ function OutcomeField({
 
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <Combobox
+      <SelectCombobox
         label="Outcome"
         listLabel="Outcomes"
+        filterLabel="Filter outcomes"
+        filterPlaceholder="Filter or create…"
         emptyMessage="No outcomes match"
         className="w-64"
         options={options}
         action={createOption}
         value={outcome?.label ?? "No outcome"}
+        chosenId={outcome?.id ?? NO_OUTCOME}
         onChoose={choose}
       />
 
@@ -238,7 +247,13 @@ function PromptField({
 }) {
   const labelFieldId = useId();
   const requiredFieldId = useId();
+  const decidesFieldId = useId();
+  const decidesReasonId = useId();
   const required = step.prompt?.required ?? false;
+  const decides = step.prompt?.decides ?? false;
+  // Deciding needs a Choice to land on, and a choice between them: one
+  // Choice is already where a Response leads without any judging.
+  const canDecide = step.choices.length >= 2;
 
   return (
     <div className="flex flex-col gap-2">
@@ -255,6 +270,7 @@ function PromptField({
             setStepPrompt(document, step.id, {
               label: event.target.value,
               required,
+              decides,
             }),
             { field: `prompt-label:${step.id}` },
           )
@@ -270,12 +286,14 @@ function PromptField({
             id={requiredFieldId}
             type="checkbox"
             className="size-4 accent-primary"
-            checked={required}
+            checked={decides || required}
+            disabled={isDeciding(step)}
             onChange={(event) =>
               onChange(
                 setStepPrompt(document, step.id, {
                   label: step.prompt?.label ?? "",
                   required: event.target.checked,
+                  decides,
                 }),
               )
             }
@@ -283,6 +301,54 @@ function PromptField({
           <Label htmlFor={requiredFieldId} className="font-normal">
             Required — participants must answer before choosing
           </Label>
+        </div>
+      ) : null}
+      {/*
+       * Always offered once there is a Prompt (ticket 49), so an Author who
+       * writes the question before the Choices still sees what a Prompt can
+       * do: off and unavailable until there are two Choices to pick between,
+       * with the reason beside it. Turned on and then left with too few (a
+       * Choice removed after the fact) it stays enabled, so it can be turned
+       * off, and the same reason says it is not deciding meanwhile.
+       */}
+      {step.prompt !== null ? (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <input
+              id={decidesFieldId}
+              type="checkbox"
+              className="peer size-4 accent-primary"
+              checked={decides}
+              disabled={!canDecide && !decides}
+              aria-describedby={canDecide ? undefined : decidesReasonId}
+              onChange={(event) =>
+                onChange(
+                  setStepPrompt(document, step.id, {
+                    label: step.prompt?.label ?? "",
+                    required,
+                    decides: event.target.checked,
+                  }),
+                )
+              }
+            />
+            <Label htmlFor={decidesFieldId} className="font-normal">
+              AI decides the next step from the response
+            </Label>
+          </div>
+          {canDecide ? null : (
+            <p id={decidesReasonId} className="text-muted-foreground text-xs">
+              Needs two or more choices.
+            </p>
+          )}
+          <p className="text-muted-foreground text-xs">
+            An AI judge reads the response and picks the choice it fits.
+            Participants choose for themselves when it&apos;s unsure or
+            unavailable.
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Participants answer and press Continue; the choices appear only when
+            the judge is unsure or unavailable.
+          </p>
         </div>
       ) : null}
     </div>

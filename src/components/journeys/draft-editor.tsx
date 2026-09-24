@@ -10,6 +10,7 @@ import {
 } from "@/app/projects/[projectId]/journeys/actions";
 import {
   counted,
+  dialogIsOpen,
   type ApplyEdit,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
@@ -19,6 +20,11 @@ import {
   type CanvasArrow,
 } from "@/components/journeys/journey-canvas";
 import { StepPanel } from "@/components/journeys/step-panel";
+import {
+  PANEL_STORAGE_KEY,
+  readPreference,
+  writePreference,
+} from "@/lib/browser-preferences";
 import type { Content } from "@/lib/graph/content";
 import {
   documentsEqual,
@@ -50,6 +56,7 @@ import {
 import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
+import { SAVE_DEBOUNCE_MS, STATUS_TEXT, type SaveStatus } from "@/lib/autosave";
 
 /**
  * The Draft editor: the map of the Journey beside a panel on the Step the
@@ -63,39 +70,14 @@ import { cn } from "@/lib/utils";
  * says: a Member who saves later overwrites what an earlier one stored.
  */
 
-/** Long enough that a sentence is one save, short enough to feel immediate. */
-const SAVE_DEBOUNCE_MS = 600;
-
 /**
- * Where the browser remembers whether the panel is put away. Reading the map
- * with the panel out of the way is how one Author is looking at the Journey
- * right now, not something about the Journey: it belongs here rather than in
- * the document, where it would follow every other Member around.
+ * The widths at which the Step panel is beside the map: Tailwind's `lg`
+ * (64rem), the very query the editor's grid below goes to two columns on.
+ * Read as that query and not its complement so an engine that cannot read
+ * the range syntax answers the same way for both: no side-by-side grid, so
+ * a stacked panel, so the scroll.
  */
-const PANEL_STORAGE_KEY = "journeys:step-panel";
-
-/**
- * Whether anything on the page has the keyboard to itself. Both of the page's
- * shortcuts ask before they claim a press: while a dialog is open the
- * keyboard belongs to the dialog, and a shortcut answering from behind it
- * would act on something the Author cannot see.
- *
- * `window.document`: the Draft is what `document` names inside this module.
- */
-function dialogIsOpen(): boolean {
-  return (
-    window.document.querySelector('[role="dialog"], [role="alertdialog"]') !==
-    null
-  );
-}
-
-type SaveStatus = "saved" | "saving" | "unsaved";
-
-const STATUS_TEXT: Record<SaveStatus, string> = {
-  saved: "Saved",
-  saving: "Saving…",
-  unsaved: "Unsaved changes",
-};
+const SIDE_BY_SIDE_QUERY = "(width >= 64rem)";
 
 export function DraftEditor({
   projectId,
@@ -481,16 +463,11 @@ export function DraftEditor({
       setPanelShown(shown);
       if (!remember) return true;
 
-      try {
-        window.localStorage.setItem(
-          PANEL_STORAGE_KEY,
-          shown ? "shown" : "hidden",
-        );
-      } catch {
-        // A browser that refuses storage — a private window, storage blocked
-        // — is one where the choice lasts as long as the page. That is no
-        // reason to refuse the click.
-      }
+      // Reading the map with the panel out of the way is how one Author is
+      // looking at the Journey right now, not something about the Journey:
+      // the browser keeps it, never the document, where it would follow
+      // every other Member around.
+      writePreference(PANEL_STORAGE_KEY, shown ? "shown" : "hidden");
       return true;
     },
     [],
@@ -529,17 +506,25 @@ export function DraftEditor({
   // the render the server sent. Nothing is written back — this is what is
   // already stored.
   useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = window.localStorage.getItem(PANEL_STORAGE_KEY);
-    } catch {
-      // As above: unreadable storage is a browser with nothing to remember.
+    if (readPreference(PANEL_STORAGE_KEY) === "hidden") {
+      applyPanelShown(false, { remember: false });
     }
-    if (stored === "hidden") applyPanelShown(false, { remember: false });
   }, [applyPanelShown]);
+
+  /**
+   * The panel's column, and a count of the openings that asked for it to be
+   * scrolled to. An opening from a click on the map asks; the effect below
+   * answers once the panel is rendered, and only where the panel is stacked
+   * under the map.
+   */
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelScrollRequest, setPanelScrollRequest] = useState(0);
 
   const selectStep: SelectStep = useCallback(
     (stepId, options) => {
+      if (options?.scrollToPanel) {
+        setPanelScrollRequest((current) => current + 1);
+      }
       // Opening a Step is asking to edit it, from wherever the Author asked:
       // a box, an arrow, a problem, "Open" on a Choice, "Find step",
       // any of the moves that make a Step, or a save the server refused over
@@ -582,6 +567,21 @@ export function DraftEditor({
   useEffect(() => {
     selectStepRef.current = selectStep;
   }, [selectStep]);
+
+  // Where the panel is stacked under the map — the page narrower than the
+  // `lg` breakpoint the editor's grid puts the two side by side from — a
+  // click on the map is followed by the page scrolling the panel's top into
+  // view, under the sticky rows: the map is at least 36rem tall, so the
+  // panel starts below the fold and nothing else brings it on. The panel is
+  // rendered by the time this runs, brought back for the opening if it was
+  // away. Read as a media query, the same one the grid answers to, never as
+  // a width. `scroll-padding-top` on the page (`globals.css`) is what keeps
+  // the panel's top from landing under the navbar and the tab row.
+  useEffect(() => {
+    if (panelScrollRequest === 0) return;
+    if (window.matchMedia(SIDE_BY_SIDE_QUERY).matches) return;
+    panelRef.current?.scrollIntoView({ block: "start" });
+  }, [panelScrollRequest]);
 
   /**
    * A move taken off the history put into effect. The document is set through
@@ -1045,7 +1045,7 @@ export function DraftEditor({
 
         {/* Nothing of a panel that is away is left behind to be tabbed into
             or read out: the column closes over it and it is not rendered. */}
-        <div className="min-w-0 overflow-hidden">
+        <div ref={panelRef} className="min-w-0 overflow-hidden">
           {selectedStep && panelShown ? (
             <StepPanel
               document={document}

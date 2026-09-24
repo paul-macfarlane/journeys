@@ -35,32 +35,33 @@ import {
   type RefObject,
 } from "react";
 
-import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
+import { DeleteStepConfirmation } from "@/components/journeys/delete-step-dialog";
+import { DirectionControl } from "@/components/journeys/direction-control";
 import {
+  ARROW_DIRECTIONS,
   arrowPoints,
-  EDGE_LABEL_HEIGHT,
   handleOffset,
-  midwayAlong,
+  labelPoint,
   NODE_BOX_CLASS,
   smoothPath,
   sourceSide,
   targetSide,
   useCanvasColorMode,
+  type ArrowDirection,
 } from "@/components/journeys/canvas-shared";
 import {
   choiceLabel,
+  dialogIsOpen,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { contentPreview } from "@/lib/graph/content";
 import type { Point } from "@/lib/graph/crossings";
-import type {
-  GraphDocument,
-  LayoutDirection,
-  Step,
-} from "@/lib/graph/document";
+import type { GraphDocument, LayoutDirection } from "@/lib/graph/document";
 import {
+  EDGE_LABEL_HEIGHT,
   EDGE_LABEL_MAX_WIDTH,
   problemsByAddress,
   type GraphLayout,
@@ -119,9 +120,11 @@ import "@xyflow/react/dist/style.css";
  * arrow in hand is dragged to move where its Choice leads, and a clicked
  * arrow is the Choice in hand: its Step opened in the panel with that Choice's
  * row marked, nothing scrolled, the keyboard left on the map, and the Delete
- * key removing it. Nothing here edits the document: each of those is handed
- * back to the editor in the document's own words (a Step, a Choice), and the
- * map redraws from whatever the editor makes of it.
+ * key removing it — as the Delete key on a box asks, through the same
+ * confirmation as its toolbar, to remove that Step. Nothing here edits the
+ * document: each of those is handed back to the editor in the document's own
+ * words (a Step, a Choice), and the map redraws from whatever the editor
+ * makes of it.
  *
  * And it is a map to be read: hovering or focusing a box peeks at what the
  * Step says without opening it, and the arrow keys walk from box to nearest
@@ -155,7 +158,13 @@ type CanvasActions = {
   onAddNextStep: (stepId: string) => void;
   onDuplicateStep: (stepId: string) => void;
   onSetStart: (stepId: string) => void;
-  onDeleteStep: (stepId: string) => void;
+  /**
+   * The delete confirmation asked for, from the toolbar's button or from
+   * Delete or Backspace on the box: the canvas holds the one dialog, so a key
+   * and the button open the same instance and the dialog is never inside a
+   * node the delete then removes.
+   */
+  onRequestDeleteStep: (stepId: string) => void;
   /**
    * "Step actions" on a box, which opens onto the moves above and closes
    * again — and Escape inside the group, which only ever closes it.
@@ -167,31 +176,28 @@ type CanvasActions = {
    * box in a direction is a question about every box, which is something the
    * canvas knows and a box does not.
    */
-  onMoveFocus: (fromNodeId: string, direction: Direction) => void;
+  onMoveFocus: (fromNodeId: string, direction: ArrowDirection) => void;
   /** Out of the boxes and back to the map itself. */
   onEscape: () => void;
 };
 
-/** Which way an arrow key asks to go. */
-type Direction = "up" | "down" | "left" | "right";
-
-const ARROW_DIRECTIONS: Record<string, Direction | undefined> = {
-  ArrowUp: "up",
-  ArrowDown: "down",
-  ArrowLeft: "left",
-  ArrowRight: "right",
-};
+/** Delete and Backspace both. React Flow ignores either inside an input. */
+const DELETE_KEYS = ["Delete", "Backspace"];
 
 /**
  * The keyboard on a box, the same for a Step's and for a placeholder's: an
- * arrow key moves to the nearest box that way, and Escape leaves the boxes for
- * the map. Enter and Space are the button's own — they click it, and a click
- * is what opens a Step in the panel.
+ * arrow key moves to the nearest box that way, Escape leaves the boxes for
+ * the map, and Delete or Backspace asks to delete the Step the box is —
+ * `deletes` names it, or is null on a box that has none to delete: the
+ * Start, which cannot go while it is the Start, and a placeholder, which is
+ * not a Step at all. Enter and Space are the button's own — they click it,
+ * and a click is what opens a Step in the panel.
  */
 function boxKeyDown(
   event: KeyboardEvent<HTMLButtonElement>,
   nodeId: string,
   actions: CanvasActions,
+  deletes: string | null,
 ): void {
   const direction = ARROW_DIRECTIONS[event.key];
   if (direction !== undefined) {
@@ -205,6 +211,18 @@ function boxKeyDown(
   if (event.key === "Escape") {
     event.preventDefault();
     actions.onEscape();
+    return;
+  }
+
+  if (DELETE_KEYS.includes(event.key)) {
+    // The key is about the box it was pressed on and nothing else. The map's
+    // own delete, which takes whichever arrow is in hand, listens on the
+    // document, so the press is stopped here before it gets there — on a box
+    // with nothing to delete as much as on one with a Step, so the key never
+    // does something other than what the box it landed on says.
+    event.preventDefault();
+    event.stopPropagation();
+    if (deletes !== null) actions.onRequestDeleteStep(deletes);
   }
 }
 
@@ -222,9 +240,6 @@ type StepNodeData = {
   title: string;
   isStart: boolean;
   isEnding: boolean;
-  /** The Draft and this box's Step, for the toolbar's delete confirmation. */
-  document: GraphDocument;
-  step: Step;
   outcomeLabel: string | null;
   problems: string[];
   /**
@@ -266,9 +281,6 @@ type MissingNodeData = {
 /** One Choice, named the way the document names it. */
 export type CanvasArrow = { stepId: string; choiceId: string };
 
-/** Delete and Backspace both. React Flow ignores either inside an input. */
-const DELETE_KEYS = ["Delete", "Backspace"];
-
 type StepFlowNode = Node<StepNodeData, "step">;
 type MissingFlowNode = Node<MissingNodeData, "missing">;
 type CanvasFlowNode = StepFlowNode | MissingFlowNode;
@@ -291,6 +303,12 @@ type ChoiceEdgeData = {
    * with the anchor positions it hands the edge; only the interior is route.
    */
   points: Point[];
+  /**
+   * Where the layout made room for the label: on the route, halfway between
+   * the ranks, clear of every other label between them. A loop is routed
+   * here rather than by the layout, so its label hangs halfway along that.
+   */
+  labelAt: Point;
   emphasis: Emphasis;
   /** Which way the map runs, which is which way a loop is routed around. */
   direction: LayoutDirection;
@@ -329,14 +347,15 @@ function ChoiceEdge({
   markerEnd,
   data,
 }: EdgeProps<ChoiceFlowEdge>) {
+  const isLoop = source === target;
   const points = arrowPoints(
     data?.direction ?? "TB",
-    source === target,
+    isLoop,
     data?.points,
     { x: sourceX, y: sourceY },
     { x: targetX, y: targetY },
   );
-  const middle = midwayAlong(points);
+  const middle = labelPoint(isLoop, data?.labelAt, points);
 
   return (
     // Marked so a spec can read the opacity the arrow is actually drawn at,
@@ -512,13 +531,19 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
               Make this the start
             </Button>
             {/* The Start cannot be deleted while it is the Start, so it is
-                not offered a delete that would only refuse. */}
+                not offered a delete that would only refuse. The
+                confirmation is the canvas's, the same one the Delete key
+                on the box opens. */}
             {data.isStart ? null : (
-              <DeleteStepDialog
-                document={data.document}
-                step={data.step}
-                onDeleteStep={actions.onDeleteStep}
-              />
+              <Button
+                variant="destructive"
+                size="sm"
+                // What a dialog's own trigger would say of itself.
+                aria-haspopup="dialog"
+                onClick={() => actions.onRequestDeleteStep(data.opens)}
+              >
+                Delete step
+              </Button>
             )}
           </div>
         ) : null}
@@ -573,7 +598,9 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
         onMouseLeave={() => setHovered(false)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        onKeyDown={(event) => boxKeyDown(event, id, actions)}
+        onKeyDown={(event) =>
+          boxKeyDown(event, id, actions, data.isStart ? null : data.opens)
+        }
         className={cn(
           NODE_BUTTON_CLASS,
           data.isSelected ? "ring-4" : "ring-2",
@@ -667,8 +694,9 @@ function MissingNode({ id, data }: NodeProps<MissingFlowNode>) {
         type="button"
         {...data.marks}
         aria-label="Missing step"
-        // A placeholder is a box like any other to walk across.
-        onKeyDown={(event) => boxKeyDown(event, id, actions)}
+        // A placeholder is a box like any other to walk across, and one
+        // with no Step to delete.
+        onKeyDown={(event) => boxKeyDown(event, id, actions, null)}
         className={cn(
           NODE_BUTTON_CLASS,
           "items-center border-2 border-dashed border-destructive",
@@ -724,79 +752,6 @@ const CLICK_AFTER_CONNECT_MS = 250;
  * frames covers the measuring pass with room to spare.
  */
 const MEASURE_FRAMES = 30;
-
-/** The two ways the map can be drawn, in the order the control offers them. */
-const LAYOUT_DIRECTIONS: { direction: LayoutDirection; label: string }[] = [
-  { direction: "TB", label: "Top to bottom" },
-  { direction: "LR", label: "Left to right" },
-];
-
-/**
- * Which way the map runs, beside the "Add step" it shares the corner with: a
- * radio group, because the two are one choice with one answer, and the answer
- * is the Draft's — switching it is an edit like any other, stored on the
- * Journey and seen by every Member of the project.
- *
- * One tab stop, as a radio group is: the checked direction is the tab stop and
- * the other is skipped, and an arrow key moves onto the other and chooses it,
- * which is what arrow keys do in a radio group.
- */
-function DirectionControl({
-  direction,
-  onSetLayoutDirection,
-}: {
-  direction: LayoutDirection;
-  onSetLayoutDirection: (direction: LayoutDirection) => void;
-}) {
-  const groupRef = useRef<HTMLDivElement>(null);
-
-  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
-    if (ARROW_DIRECTIONS[event.key] === undefined) return;
-    // Otherwise the browser scrolls the page and React Flow pans the map.
-    event.preventDefault();
-
-    const other = LAYOUT_DIRECTIONS.find(
-      (entry) => entry.direction !== direction,
-    );
-    if (other === undefined) return;
-
-    onSetLayoutDirection(other.direction);
-    groupRef.current
-      ?.querySelector<HTMLButtonElement>(
-        `[data-direction="${other.direction}"]`,
-      )
-      ?.focus();
-  }
-
-  return (
-    <div
-      ref={groupRef}
-      role="radiogroup"
-      aria-label="Layout direction"
-      className="flex items-center gap-1"
-    >
-      {LAYOUT_DIRECTIONS.map((entry) => {
-        const checked = entry.direction === direction;
-        return (
-          <Button
-            key={entry.direction}
-            variant="outline"
-            size="sm"
-            role="radio"
-            aria-checked={checked}
-            tabIndex={checked ? 0 : -1}
-            data-direction={entry.direction}
-            onClick={() => onSetLayoutDirection(entry.direction)}
-            onKeyDown={handleKeyDown}
-            className={cn(checked && "bg-accent")}
-          >
-            {entry.label}
-          </Button>
-        );
-      })}
-    </div>
-  );
-}
 
 export type JourneyCanvasProps = {
   document: GraphDocument;
@@ -1002,8 +957,6 @@ function CanvasFlow({
           title: node.title,
           isStart: node.isStart,
           isEnding: node.isEnding,
-          document,
-          step,
           preview: contentPreview(step.content),
           sourceAnchors: node.sourceAnchors,
           direction: layout.direction,
@@ -1081,7 +1034,12 @@ function CanvasFlow({
         label,
         ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`,
         markerEnd: { type: MarkerType.ArrowClosed },
-        data: { points: edge.points, emphasis, direction: layout.direction },
+        data: {
+          points: edge.points,
+          labelAt: edge.labelAt,
+          emphasis,
+          direction: layout.direction,
+        },
         domAttributes,
         style: isSelected
           ? { ...marks, strokeWidth: SELECTED_STROKE_WIDTH }
@@ -1218,7 +1176,7 @@ function CanvasFlow({
   // Enter is what opens one — but a box walked onto off the map is brought
   // onto it, exactly as opening one by name does.
   const moveFocus = useCallback(
-    (fromNodeId: string, direction: Direction) => {
+    (fromNodeId: string, direction: ArrowDirection) => {
       const boxes = nodesRef.current;
       const from = boxes.find((node) => node.id === fromNodeId);
       if (from === undefined) return;
@@ -1293,12 +1251,43 @@ function CanvasFlow({
     );
   }, []);
 
+  /**
+   * The one delete confirmation on the map, and the Step it is asking about.
+   * `open` is kept apart from the Step so the dialog can close over the Step
+   * it named, and go on naming it while the closing plays: after a confirm
+   * that Step is already gone from the document.
+   */
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    stepId: string;
+    open: boolean;
+  } | null>(null);
+
+  const requestDeleteStep = useCallback((stepId: string) => {
+    // A key pressed with a dialog already open is that dialog's: the box's
+    // own handler cannot hear one from behind a modal, but a second dialog
+    // over the first is never the answer to anything.
+    if (dialogIsOpen()) return;
+    setDeleteConfirmation({ stepId, open: true });
+  }, []);
+
+  const closeDeleteConfirmation = useCallback(() => {
+    setDeleteConfirmation((current) =>
+      current === null ? null : { ...current, open: false },
+    );
+  }, []);
+
+  // The Delete key with an arrow in hand, pressed while a dialog is open —
+  // on the delete confirmation's own buttons, say — is the dialog's press,
+  // not the map's: React Flow listens on the document and would otherwise
+  // take the arrow from behind it.
+  const beforeDelete = useCallback(async () => !dialogIsOpen(), []);
+
   const actions = useMemo<CanvasActions>(
     () => ({
       onAddNextStep,
       onDuplicateStep,
       onSetStart,
-      onDeleteStep,
+      onRequestDeleteStep: requestDeleteStep,
       onToggleToolbar: toggleToolbar,
       onCollapseToolbar: collapseToolbar,
       onMoveFocus: moveFocus,
@@ -1308,7 +1297,7 @@ function CanvasFlow({
       onAddNextStep,
       onDuplicateStep,
       onSetStart,
-      onDeleteStep,
+      requestDeleteStep,
       toggleToolbar,
       collapseToolbar,
       moveFocus,
@@ -1464,6 +1453,7 @@ function CanvasFlow({
         // above is `selectable: false`.
         elementsSelectable
         deleteKeyCode={DELETE_KEYS}
+        onBeforeDelete={beforeDelete}
         fitView
         // Low enough that the whole of a real-sized Journey fits the map:
         // case-3 running left to right, with its ranks spread for labels,
@@ -1532,7 +1522,10 @@ function CanvasFlow({
           // all are. Nothing is scrolled to do it: the arrow was clicked, so
           // it is already in front of them.
           canvasRef.current?.focus({ preventScroll: true });
-          onSelectStep(arrow.stepId, { markChoiceId: arrow.choiceId });
+          onSelectStep(arrow.stepId, {
+            markChoiceId: arrow.choiceId,
+            scrollToPanel: true,
+          });
         }}
         // React Flow's own account of what the Author did to the arrows,
         // turned back into the Choices they draw: a click selects one (and a
@@ -1598,10 +1591,12 @@ function CanvasFlow({
               opening: locate.request + 1,
               expanded: false,
             });
-            onSelectStep(node.data.opens);
+            onSelectStep(node.data.opens, { scrollToPanel: true });
             return;
           }
-          if (node.data.opens !== null) onSelectStep(node.data.opens);
+          if (node.data.opens !== null) {
+            onSelectStep(node.data.opens, { scrollToPanel: true });
+          }
         }}
         // A click on bare map is done with the moves, not with the box: they
         // fold back to the one button, where the next click on that box
@@ -1611,6 +1606,32 @@ function CanvasFlow({
         <Background />
         <Controls showInteractive={false} />
       </ReactFlow>
+
+      {/* The delete confirmation, one for the whole map: opened by the
+          toolbar's button or by Delete or Backspace on a box, and never
+          rendered inside the node it is about. Cancelled, Base UI hands the
+          keyboard back to whatever held it — the box the key was pressed on,
+          or the button. */}
+      <AlertDialog
+        open={deleteConfirmation?.open ?? false}
+        onOpenChange={(open) => {
+          if (!open) closeDeleteConfirmation();
+        }}
+        // Once the closing has played there is nothing left to name, and
+        // nothing left to keep recomputing on every edit.
+        onOpenChangeComplete={(open) => {
+          if (!open) setDeleteConfirmation(null);
+        }}
+      >
+        {deleteConfirmation !== null ? (
+          <DeleteStepConfirmation
+            document={document}
+            stepId={deleteConfirmation.stepId}
+            onDeleteStep={onDeleteStep}
+            onClose={closeDeleteConfirmation}
+          />
+        ) : null}
+      </AlertDialog>
     </CanvasActionsContext.Provider>
   );
 }

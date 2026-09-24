@@ -1,7 +1,12 @@
 import { notFound } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
-import { StepView } from "@/components/runner/step-view";
+import {
+  previewDecision,
+  ResponseNotice,
+  responseRefusal,
+  StepView,
+} from "@/components/runner/step-view";
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
@@ -22,11 +27,19 @@ import { previewChooseAction } from "./actions";
  */
 export default async function PreviewStartPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projectId: string; journeyId: string }>;
+  searchParams: Promise<{
+    notice?: string | string[];
+    decide?: string | string[];
+    confidence?: string | string[];
+    response?: string | string[];
+  }>;
 }) {
   const session = await requireSession();
-  const { projectId, journeyId } = await params;
+  const [{ projectId, journeyId }, { notice, decide, confidence, response }] =
+    await Promise.all([params, searchParams]);
 
   const journey = await getJourneyForMember(
     projectId,
@@ -35,8 +48,9 @@ export default async function PreviewStartPage({
   );
   if (!journey) notFound();
 
-  const draft = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!draft) notFound();
+  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  if (!stored) notFound();
+  const draft = stored.document;
 
   // Preview paints the Theme a Participant will see (the Journey's
   // override, else the Project's), so an Author sees the look along with
@@ -59,31 +73,49 @@ export default async function PreviewStartPage({
       theme={theme}
     >
       {hasStart ? (
-        // No "Start over" on an Ending here: this is the start. The live
-        // Start offers no Prompt while it is an Ending either, so neither
-        // does this one — links, then, exactly as the runner chooses.
-        <StepView
-          step={draft.steps[draft.startStepId]}
-          document={draft}
-          choices={
-            draft.steps[draft.startStepId].prompt !== null &&
-            draft.steps[draft.startStepId].choices.length > 0
-              ? {
-                  kind: "form",
-                  action: previewChooseAction.bind(
-                    null,
-                    projectId,
-                    journeyId,
-                    draft.startStepId,
-                  ),
-                }
-              : {
-                  kind: "links",
-                  href: (stepId) => `${journeyHref}/preview/${stepId}`,
-                }
-          }
-          startOver={null}
-        />
+        <>
+          <ResponseNotice notice={notice} />
+          {/* No "Start over" on an Ending here: this is the start. The live
+              Start offers no Prompt while it is an Ending either, so neither
+              does this one — links, then, exactly as the runner chooses. */}
+          <StepView
+            step={draft.steps[draft.startStepId]}
+            document={draft}
+            choices={
+              draft.steps[draft.startStepId].prompt !== null &&
+              draft.steps[draft.startStepId].choices.length > 0
+                ? {
+                    kind: "form",
+                    action: previewChooseAction.bind(
+                      null,
+                      projectId,
+                      journeyId,
+                      draft.startStepId,
+                    ),
+                    refusal: responseRefusal(notice),
+                    // Preview stores nothing, so a deciding Prompt's
+                    // Response travels back in the address (ticket 43) —
+                    // but only once the judge has actually been asked
+                    // (`decide` present); a bare `?response=` on its own is
+                    // never trusted back into the box (ticket 43 F6).
+                    response:
+                      typeof decide === "string" && typeof response === "string"
+                        ? response
+                        : undefined,
+                    decision: previewDecision(
+                      draft.steps[draft.startStepId],
+                      decide,
+                      confidence,
+                    ),
+                  }
+                : {
+                    kind: "links",
+                    href: (stepId) => `${journeyHref}/preview/${stepId}`,
+                  }
+            }
+            startOver={null}
+          />
+        </>
       ) : (
         <p className="text-muted-foreground">This draft has no start step.</p>
       )}

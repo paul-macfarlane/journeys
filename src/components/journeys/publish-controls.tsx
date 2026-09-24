@@ -36,6 +36,7 @@ export function PublishButton({
   projectId,
   journeyId,
   hasUnpublishedChanges,
+  size = "default",
 }: {
   projectId: string;
   journeyId: string;
@@ -44,11 +45,15 @@ export function PublishButton({
    * document and the Journey's title and description.
    */
   hasUnpublishedChanges: boolean;
+  /** `sm` beside the Versions tab's row actions; the page header's is full size. */
+  size?: "default" | "sm";
 }) {
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   function publish() {
+    setWarning(null);
     startTransition(async () => {
       const result = await publishJourneyAction(projectId, journeyId);
 
@@ -56,6 +61,9 @@ export function PublishButton({
         setRefusal({ error: result.error, problems: result.problems ?? [] });
         return;
       }
+      // Published all the same; the Author is told what Participants will
+      // meet (ticket 43: a deciding Prompt with no gateway key).
+      setWarning(result.warning ?? null);
       // No router.refresh(): the action revalidates the Journey page, so its
       // response already carries the re-rendered tree. A second refresh
       // landed hundreds of milliseconds later under load and re-rendered
@@ -68,9 +76,19 @@ export function PublishButton({
   return (
     <>
       {/* Nothing to publish while participants already see this Draft. */}
-      <Button disabled={pending || !hasUnpublishedChanges} onClick={publish}>
+      <Button
+        size={size}
+        disabled={pending || !hasUnpublishedChanges}
+        onClick={publish}
+      >
         Publish
       </Button>
+
+      {warning !== null ? (
+        <p role="status" className="text-muted-foreground max-w-xs text-sm">
+          {warning}
+        </p>
+      ) : null}
 
       <AlertDialog
         open={refusal !== null}

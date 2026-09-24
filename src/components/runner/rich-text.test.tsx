@@ -54,6 +54,39 @@ describe("RichText", () => {
     expect(html).not.toContain("<script>");
   });
 
+  it("renders underline, strike, a line break, and a quote (ticket 40)", () => {
+    const content: Content = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "under", marks: [{ type: "underline" }] },
+            { type: "text", text: "struck", marks: [{ type: "strike" }] },
+            { type: "hardBreak" },
+            { type: "text", text: "next line" },
+          ],
+        },
+        {
+          type: "blockquote",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Keep the light." }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(<RichText content={content} />);
+
+    expect(html).toContain("<u>under</u>");
+    expect(html).toContain("<s>struck</s>");
+    expect(html).toContain("<br>next line");
+    expect(html).toContain("<blockquote><p>Keep the light.</p></blockquote>");
+  });
+
   it("renders a heading at its level", () => {
     const content: Content = {
       type: "doc",

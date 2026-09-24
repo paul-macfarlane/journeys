@@ -55,6 +55,12 @@ export default defineConfig({
       // `E2E_PORT` instead of the app's usual port.
       DATABASE_URL: databaseUrl,
       BETTER_AUTH_URL: E2E_BASE_URL,
+      // Blank whatever the developer's own environment holds (ticket 43):
+      // the app's env parser reads an empty value as absent, so a deciding
+      // Prompt always falls back to its Choices here, the suite proves that
+      // fallback, and no run of it ever calls the AI Gateway or spends a
+      // token.
+      AI_GATEWAY_API_KEY: "",
     },
   },
 });

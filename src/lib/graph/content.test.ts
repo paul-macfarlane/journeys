@@ -6,8 +6,15 @@ import {
   isBlankContent,
   PREVIEW_LIMIT,
   sanitizeContent,
+  textPreview,
   type Content,
 } from "@/lib/graph/content";
+import { graphDocumentSchema } from "@/lib/graph/document";
+import { largeJourney } from "@/lib/graph/fixtures/large-journey";
+
+import case1Document from "../../../scripts/seed/journey-stories/case-1.json";
+import case2Document from "../../../scripts/seed/journey-stories/case-2.json";
+import case3Document from "../../../scripts/seed/journey-stories/case-3.json";
 
 /**
  * A Step's rich text that already satisfies every rule. The sanitizer has
@@ -27,6 +34,30 @@ const cleanContent = {
         { type: "text", text: "The wick is ", marks: [{ type: "bold" }] },
         { type: "text", text: "already", marks: [{ type: "italic" }] },
         { type: "text", text: " trimmed." },
+      ],
+    },
+    {
+      type: "paragraph",
+      content: [
+        { type: "text", text: "Never", marks: [{ type: "underline" }] },
+        { type: "text", text: " leave it", marks: [{ type: "strike" }] },
+        { type: "hardBreak" },
+        { type: "text", text: "unattended." },
+      ],
+    },
+    {
+      type: "blockquote",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Keep the light." }],
+        },
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "The keeper", marks: [{ type: "italic" }] },
+          ],
+        },
       ],
     },
     {
@@ -114,17 +145,108 @@ describe("sanitizeContent", () => {
     expect(sanitizeContent({ type: "doc" }).ok).toBe(false);
   });
 
-  it("removes a blockquote block together with everything inside it", () => {
-    const input = docOf(
-      {
+  it("removes a blockquote nested inside a blockquote, keeping the outer one", () => {
+    const input = docOf({
+      type: "blockquote",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Outer" }] },
+        {
+          type: "blockquote",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Inner" }] },
+          ],
+        },
+      ],
+    });
+
+    expect(sanitized(input)).toEqual(
+      docOf({
         type: "blockquote",
         content: [
+          { type: "paragraph", content: [{ type: "text", text: "Outer" }] },
+        ],
+      }),
+    );
+  });
+
+  it("removes a blockquote nested inside a list item", () => {
+    const input = docOf({
+      type: "bulletList",
+      content: [
+        {
+          type: "listItem",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Oil" }] },
+            {
+              type: "blockquote",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Not here" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(sanitized(input)).toEqual(
+      docOf({
+        type: "bulletList",
+        content: [
           {
-            type: "paragraph",
-            content: [{ type: "text", text: "Hidden quote" }],
+            type: "listItem",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "Oil" }] },
+            ],
           },
         ],
-      },
+      }),
+    );
+  });
+
+  it("removes anything but paragraphs from a blockquote", () => {
+    const input = docOf({
+      type: "blockquote",
+      content: [
+        {
+          type: "heading",
+          attrs: { level: 2 },
+          content: [{ type: "text", text: "Not here" }],
+        },
+        { type: "paragraph", content: [{ type: "text", text: "Kept" }] },
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Nor here" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(sanitized(input)).toEqual(
+      docOf({
+        type: "blockquote",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Kept" }] },
+        ],
+      }),
+    );
+  });
+
+  it("removes a blockquote left with no paragraphs", () => {
+    const input = docOf(
+      { type: "blockquote", content: [{ type: "codeBlock" }] },
+      { type: "blockquote" },
       { type: "paragraph", content: [{ type: "text", text: "Kept" }] },
     );
 
@@ -144,12 +266,56 @@ describe("sanitizeContent", () => {
     );
   });
 
-  it("removes a hardBreak from inside a paragraph and keeps the text", () => {
+  it("keeps a hardBreak in a paragraph or heading, dropping anything on it", () => {
+    const input = docOf(
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Before" },
+          { type: "hardBreak", marks: [{ type: "bold" }], attrs: { x: 1 } },
+          { type: "text", text: "After" },
+        ],
+      },
+      {
+        type: "heading",
+        attrs: { level: 2 },
+        content: [
+          { type: "text", text: "Lamp" },
+          { type: "hardBreak" },
+          { type: "text", text: "room" },
+        ],
+      },
+    );
+
+    expect(sanitized(input)).toEqual(
+      docOf(
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Before" },
+            { type: "hardBreak" },
+            { type: "text", text: "After" },
+          ],
+        },
+        {
+          type: "heading",
+          attrs: { level: 2 },
+          content: [
+            { type: "text", text: "Lamp" },
+            { type: "hardBreak" },
+            { type: "text", text: "room" },
+          ],
+        },
+      ),
+    );
+  });
+
+  it("removes inline elements other than text and line breaks", () => {
     const input = docOf({
       type: "paragraph",
       content: [
         { type: "text", text: "Before" },
-        { type: "hardBreak" },
+        { type: "mention", attrs: { id: "keeper" } },
         { type: "text", text: "After" },
       ],
     });
@@ -165,7 +331,7 @@ describe("sanitizeContent", () => {
     );
   });
 
-  it("drops strike, underline, and code marks but keeps the text", () => {
+  it("keeps strike and underline marks, drops code, and keeps the text", () => {
     const input = docOf({
       type: "paragraph",
       content: [
@@ -174,7 +340,7 @@ describe("sanitizeContent", () => {
           text: "Struck through",
           marks: [
             { type: "strike" },
-            { type: "underline" },
+            { type: "underline", attrs: { color: "red" } },
             { type: "code" },
             { type: "bold" },
           ],
@@ -186,7 +352,15 @@ describe("sanitizeContent", () => {
       docOf({
         type: "paragraph",
         content: [
-          { type: "text", text: "Struck through", marks: [{ type: "bold" }] },
+          {
+            type: "text",
+            text: "Struck through",
+            marks: [
+              { type: "strike" },
+              { type: "underline" },
+              { type: "bold" },
+            ],
+          },
         ],
       }),
     );
@@ -619,7 +793,7 @@ describe("contentPreview", () => {
     // The whole of `cleanContent`, in the order it is written, with the image
     // contributing nothing: what an Author peeking at the box would read.
     expect(contentPreview(contentSchema.parse(cleanContent))).toBe(
-      "The lamp room The wick is already trimmed. Oil Climb the stair The keeper's log",
+      "The lamp room The wick is already trimmed. Never leave it unattended. Keep the light. The keeper Oil Climb the stair The keeper's log",
     );
   });
 
@@ -637,6 +811,19 @@ describe("contentPreview", () => {
     );
 
     expect(contentPreview(content)).toBe("The wick is already trimmed.");
+  });
+
+  it("reads a line break as a space, so the words either side stay apart", () => {
+    const content = contentOf({
+      type: "paragraph",
+      content: [
+        { type: "text", text: "The lamp is lit." },
+        { type: "hardBreak" },
+        { type: "text", text: "The wind is west." },
+      ],
+    });
+
+    expect(contentPreview(content)).toBe("The lamp is lit. The wind is west.");
   });
 
   it("has nothing to show for a Step whose content is only an image", () => {
@@ -675,6 +862,24 @@ describe("contentPreview", () => {
   });
 });
 
+describe("textPreview", () => {
+  it("collapses whitespace and leaves text within the limit whole", () => {
+    expect(textPreview("  Goal:\n cross   the border. ", 160)).toBe(
+      "Goal: cross the border.",
+    );
+  });
+
+  it("cuts text past the limit and marks the cut, as contentPreview does", () => {
+    expect(textPreview("The lamp room is dark", 10)).toBe("The lamp r…");
+    expect(textPreview("x".repeat(160), 160)).toHaveLength(160);
+    expect(textPreview("x".repeat(161), 160)).toBe(`${"x".repeat(160)}…`);
+  });
+
+  it("is empty for blank text", () => {
+    expect(textPreview("   \n", 160)).toBe("");
+  });
+});
+
 describe("isBlankContent", () => {
   it("is blank with no blocks at all, which is what a new Project holds", () => {
     expect(isBlankContent({ type: "doc", content: [] })).toBe(true);
@@ -694,9 +899,26 @@ describe("isBlankContent", () => {
             type: "bulletList",
             content: [{ type: "listItem" }, { type: "listItem", content: [] }],
           },
+          {
+            type: "blockquote",
+            content: [{ type: "paragraph", content: [{ type: "hardBreak" }] }],
+          },
         ),
       ),
     ).toBe(true);
+  });
+
+  it("is not blank once a quote holds a word", () => {
+    expect(
+      isBlankContent(
+        contentOf({
+          type: "blockquote",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Wick" }] },
+          ],
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("is not blank once there is a word anywhere, even inside a list", () => {
@@ -740,5 +962,28 @@ describe("isBlankContent", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+/**
+ * Ticket 40 widened the contract additively: every document stored before
+ * it — the three legacy cases the seed writes and the large fixture the
+ * canvas specs use — must still parse, and the sanitizer must hand each
+ * Step's content back exactly as it is, so no Draft changes on its next save
+ * and no Published Version reads differently.
+ */
+describe("documents stored before ticket 40", () => {
+  it.each([
+    ["case 1", case1Document],
+    ["case 2", case2Document],
+    ["case 3", case3Document],
+    ["the large fixture", largeJourney],
+  ])("%s parses and every Step's content sanitizes unchanged", (_name, raw) => {
+    const document = graphDocumentSchema.parse(raw);
+    const steps = Object.values(document.steps);
+    expect(steps.length).toBeGreaterThan(0);
+    for (const step of steps) {
+      expect(sanitized(step.content)).toEqual(step.content);
+    }
   });
 });

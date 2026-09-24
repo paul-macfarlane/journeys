@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Fragment } from "react";
 
 import { RichText } from "@/components/runner/rich-text";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import { choiceLinkClassName } from "@/components/runner/step-view";
 import { listPublicJourneysForProject } from "@/db/journeys";
 import { getPublicProject } from "@/db/projects";
-import { contentPreview, isBlankContent } from "@/lib/graph/content";
+import { listPublicAuthorsForProject } from "@/db/users";
+import { isBlankContent } from "@/lib/graph/content";
+import { projectLinkMetadata } from "@/lib/link-preview";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,6 +25,10 @@ import { cn } from "@/lib/utils";
  * or was taken down; the page is rendered on every request, so unpublishing
  * shows the moment it happens and needs no deploy. Titles and descriptions
  * are the live Published Version's, as the runner shows them.
+ *
+ * Under the title, a "By …" line (ticket 52) names the Project's Members
+ * whose Author page is on, in Members-tab order, each a link to that page;
+ * nothing shows when none is.
  */
 
 // Nothing here reads a cookie or a header, so without this Next would
@@ -29,28 +36,19 @@ import { cn } from "@/lib/utils";
 // unpublished after the first visit would stay listed until the next deploy.
 export const dynamic = "force-dynamic";
 
-/** How much of the description a link preview gets. */
-const METADATA_DESCRIPTION_LIMIT = 160;
-
+/**
+ * What a link to this page previews as (ticket 37): the Project's title
+ * and the opening of its description, with the card `opengraph-image.tsx`
+ * beside this file renders in the Project's Theme. The page answers an
+ * unknown id with a 404, and its metadata reads as the site root does.
+ */
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }): Promise<Metadata> {
   const { projectId } = await params;
-  const project = await getPublicProject(projectId);
-  // The page itself answers an unknown id with a 404; there is no title to
-  // give it here.
-  if (!project) return {};
-
-  const description = contentPreview(
-    project.description,
-    METADATA_DESCRIPTION_LIMIT,
-  );
-  return {
-    title: project.title,
-    description: description.length > 0 ? description : undefined,
-  };
+  return projectLinkMetadata(await getPublicProject(projectId), projectId);
 }
 
 export default async function PublicProjectPage({
@@ -64,7 +62,10 @@ export default async function PublicProjectPage({
   // An unknown id is a 404, the same answer it gets anywhere else.
   if (!project) notFound();
 
-  const journeys = await listPublicJourneysForProject(project.id);
+  const [journeys, authors] = await Promise.all([
+    listPublicJourneysForProject(project.id),
+    listPublicAuthorsForProject(project.id),
+  ]);
 
   return (
     // The Project's own Theme: a Journey's override is the Journey's, and
@@ -74,6 +75,23 @@ export default async function PublicProjectPage({
         <h1 className="text-2xl font-semibold tracking-tight">
           {project.title}
         </h1>
+
+        {authors.length > 0 ? (
+          <p className="text-muted-foreground">
+            By{" "}
+            {authors.map((author, index) => (
+              <Fragment key={author.id}>
+                {index > 0 ? ", " : null}
+                <a
+                  href={`/authors/${author.id}`}
+                  className="underline underline-offset-4 hover:text-foreground"
+                >
+                  {author.name}
+                </a>
+              </Fragment>
+            ))}
+          </p>
+        ) : null}
 
         {/* A blank description — none written, or one cleared back to an
             empty paragraph — shows nothing rather than an empty block. */}

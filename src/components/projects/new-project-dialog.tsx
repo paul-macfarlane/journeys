@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 
 import { createProjectAction } from "@/app/projects/actions";
@@ -25,14 +25,18 @@ import {
 } from "@/lib/validation/project";
 
 /**
- * Creating a Project takes a title and nothing else. The Project is
- * addressed by the id it is given, so the Author can rename it later from
- * its own page without moving it.
+ * Creating a Project takes a title and nothing else, and lands the Author on
+ * the new Project's page (ticket 47). The Project is addressed by the id it
+ * is given, so the Author can rename it later from its own page without
+ * moving it.
  */
 export function NewProjectDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  // The dialog stays up, with its button held, until the Project page has
+  // taken over: closing it first would flash the list the Author is leaving.
+  const [isNavigating, startNavigating] = useTransition();
 
   const form = useForm<CreateProjectInput>({
     resolver: zodResolver(createProjectSchema),
@@ -48,16 +52,20 @@ export function NewProjectDialog() {
       return;
     }
 
-    setOpen(false);
-    form.reset({ title: "" });
-    // The list above is a Server Component; the action revalidated it.
-    router.refresh();
+    startNavigating(() => {
+      router.push(`/projects/${result.id}`);
+    });
   }
+
+  const busy = form.formState.isSubmitting || isNavigating;
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        // Not while the new page is on its way: closing would let a second
+        // submit in before the first one lands.
+        if (!nextOpen && busy) return;
         setOpen(nextOpen);
         if (!nextOpen) {
           setServerError(null);
@@ -69,6 +77,7 @@ export function NewProjectDialog() {
       <DialogContent>
         <form
           className="flex flex-col gap-4"
+          noValidate
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <DialogHeader>
@@ -101,7 +110,7 @@ export function NewProjectDialog() {
             <DialogClose render={<Button type="button" variant="outline" />}>
               Cancel
             </DialogClose>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button type="submit" disabled={busy}>
               Create project
             </Button>
           </DialogFooter>
