@@ -1,44 +1,88 @@
-# ticket 46 DoD chain — 2026-09-24T00:13:01Z — code at 9295ee4
+# Ticket 49 — Definition of Done chain
+# Route: polish. Code at fe2ceb5ae6ff1d69e933c7b67d23d5d5c76150b3. 2026-09-24T02:28:38Z
+# Env: CI dummy values, AI_GATEWAY_API_KEY unset, E2E_PORT=3149, E2E_DATABASE_NAME=journeys_e2e_49
+
 $ pnpm lint
 
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys/.claude/worktrees/49-deciding-prompt/journeys
 > eslint
 
-exit=0
+exit 0
+
 $ pnpm format:check
 
-> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys/.claude/worktrees/49-deciding-prompt/journeys
 > prettier --check .
 
 Checking formatting...
-[warn] Round 3 regression feedback.md
-[warn] Code style issues found in the above file. Run Prettier with --write to fix.
- ELIFECYCLE  Command failed with exit code 1.
-exit=1
-# the only file named above is Paul's untracked notes file at the repo root, which CI never sees; the tracked files are checked on their own:
-$ git ls-files -z | xargs -0 pnpm exec prettier --check --ignore-unknown
-Checking formatting...
 All matched files use Prettier code style!
-exit=0
+exit 0
+
 $ pnpm typecheck
 
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys/.claude/worktrees/49-deciding-prompt/journeys
 > tsc --noEmit
 
-exit=0
+exit 0
+
 $ pnpm test
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys/.claude/worktrees/49-deciding-prompt/journeys
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys/.claude/worktrees/49-deciding-prompt/journeys
 
 
  Test Files  33 passed (33)
-      Tests  498 passed (498)
-   Start at  20:13:13
-   Duration  1.08s (transform 1.66s, setup 0ms, import 4.35s, tests 750ms, environment 2ms)
+      Tests  506 passed (506)
+   Start at  22:28:49
+   Duration  1.06s (transform 1.66s, setup 0ms, import 4.21s, tests 865ms, environment 2ms)
 
-exit=0
-$ E2E_EVIDENCE=metadata-autosave,project-rename,journey-edit-and-delete,themes-settings pnpm test:e2e  (full output in dod-1-e2e.txt)
-exit=0
-  ✓  97 [chromium] › e2e/canvas.spec.ts:3547:7 › authoring from the map › canvas-undo-drawn-choice (5.1s)
-  ✓  98 [chromium] › e2e/canvas.spec.ts:3590:7 › authoring from the map › canvas-undo-build-branch-and-walk (8.1s)
+exit 0
 
-  98 passed (1.9m)
+$ E2E_EVIDENCE=prompts-author-attaches-a-prompt,legal-pages,runner-deciding-prompt pnpm test:e2e   (full suite; only the three named evidence directories are rewritten)
+contrast slate light step: 11 elements pass, 0 fail
+contrast slate light project: 9 elements pass, 0 fail
+contrast slate dark start: 11 elements pass, 0 fail
+contrast slate dark step: 11 elements pass, 0 fail
+  ✓   71 [chromium] › e2e/canvas.spec.ts:3297:7 › authoring from the map › canvas-drop-choice-on-empty-map (6.3s)
+contrast slate dark project: 9 elements pass, 0 fail
+  ✓   72 [chromium] › e2e/canvas.spec.ts:2022:7 › the seeded map › canvas-find-step (4.7s)
+  ✓   59 [chromium] › e2e/themes.spec.ts:389:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark (32.9s)
+  ✓   70 [chromium] › e2e/canvas.spec.ts:1169:5 › canvas-duplicate-step (9.9s)
+  ✓   75 [chromium] › e2e/canvas.spec.ts:2142:7 › the seeded map › canvas-find-step-lists-map-order (2.4s)
+  ✓   73 [chromium] › e2e/canvas.spec.ts:2838:5 › canvas-arrow-select-second-arrow (7.0s)
+  ✓   74 [chromium] › e2e/canvas.spec.ts:3338:7 › authoring from the map › canvas-build-by-dragging-and-walk (8.7s)
+  ✓   76 [chromium] › e2e/canvas.spec.ts:1241:5 › canvas-content-peek (6.7s)
+  ✓   79 [chromium] › e2e/canvas.spec.ts:2913:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (7.2s)
+  ✓   78 [chromium] › e2e/canvas.spec.ts:3692:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (10.9s)
+  ✓   82 [chromium] › e2e/canvas.spec.ts:2990:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (5.5s)
+  ✓   77 [chromium] › e2e/canvas.spec.ts:2182:7 › the seeded map › canvas-view-stays-put (15.4s)
+  ✓   81 [chromium] › e2e/canvas.spec.ts:1305:5 › canvas-keyboard-navigation (10.7s)
+  ✓   83 [chromium] › e2e/canvas.spec.ts:3792:7 › undo and redo › canvas-undo-title-typing (9.1s)
+  ✓   80 [chromium] › e2e/canvas.spec.ts:3377:7 › authoring from the map › canvas-build-by-dropping-and-walk (14.9s)
+  ✓   85 [chromium] › e2e/canvas.spec.ts:2311:7 › the seeded map › canvas-endings-uncolored (7.7s)
+  ✓   87 [chromium] › e2e/canvas.spec.ts:3845:7 › undo and redo › canvas-undo-rich-text (5.9s)
+  ✓   84 [chromium] › e2e/canvas.spec.ts:3033:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (14.5s)
+  ✓   89 [chromium] › e2e/canvas.spec.ts:2362:5 › canvas-validation-marks (5.7s)
+  ✓   86 [chromium] › e2e/canvas.spec.ts:1384:5 › canvas-hide-and-show-panel (12.4s)
+  ✓   92 [chromium] › e2e/canvas.spec.ts:2476:5 › canvas-problems-readable (4.7s)
+  ✓   88 [chromium] › e2e/canvas.spec.ts:3415:7 › authoring from the map › canvas-build-left-to-right-and-walk (13.4s)
+  ✓   93 [chromium] › e2e/canvas.spec.ts:1485:5 › canvas-step-actions (7.0s)
+  ✓   91 [chromium] › e2e/canvas.spec.ts:3033:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (10.3s)
+case-3 crossing pairs: f24a106 baseline=15 now=14
+  ✓   95 [chromium] › e2e/canvas.spec.ts:1624:7 › the seeded map › canvas-case-3-map (2.1s)
+  ✓   94 [chromium] › e2e/canvas.spec.ts:3492:7 › authoring from the map › canvas-build-branch-and-publish (5.0s)
+  ✓   90 [chromium] › e2e/canvas.spec.ts:3895:7 › undo and redo › canvas-undo-delete-direction-retarget (14.9s)
+  ✓   97 [chromium] › e2e/canvas.spec.ts:4151:5 › canvas-dark-controls (2.6s)
+  ✓   96 [chromium] › e2e/canvas.spec.ts:3551:7 › authoring from the map › canvas-undo-drawn-choice (4.8s)
+  ✓   98 [chromium] › e2e/canvas.spec.ts:4205:5 › canvas-lr-labels-apart (2.9s)
+  ✓  100 [chromium] › e2e/canvas.spec.ts:4258:5 › canvas-stacked-panel-scroll (1.9s)
+  ✓   99 [chromium] › e2e/canvas.spec.ts:3594:7 › authoring from the map › canvas-undo-build-branch-and-walk (8.1s)
+
+  100 passed (2.4m)
+exit 0
