@@ -10,10 +10,13 @@ import { cn } from "@/lib/utils";
 export function Badge({
   children,
   tone = "default",
+  className,
 }: {
   children: ReactNode;
   /** `destructive` for a label about something wrong — a problem count. */
   tone?: "default" | "destructive";
+  /** For an entrance or a placement, never for a look of its own. */
+  className?: string;
 }) {
   return (
     <span
@@ -22,6 +25,7 @@ export function Badge({
         tone === "destructive"
           ? "border-destructive/50 text-destructive"
           : "text-muted-foreground",
+        className,
       )}
     >
       {children}

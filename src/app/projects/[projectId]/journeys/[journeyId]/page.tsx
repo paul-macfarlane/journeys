@@ -12,7 +12,9 @@ import { JourneyStatusBadge } from "@/components/journeys/journey-status-badge";
 import { JourneyThemeSettings } from "@/components/journeys/journey-theme-settings";
 import { JourneyTitleFields } from "@/components/journeys/journey-title-fields";
 import {
+  PublishAcknowledgement,
   PublishButton,
+  PublishScope,
   UnpublishButton,
 } from "@/components/journeys/publish-controls";
 import { ResponseList } from "@/components/journeys/response-list";
@@ -138,126 +140,140 @@ export default async function JourneyPage({
 
   return (
     <>
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-12">
-        <div>
-          <Link
-            href={`/projects/${projectId}`}
-            className="text-muted-foreground text-sm hover:text-foreground"
-          >
-            ← Back to project
-          </Link>
-        </div>
-
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
-            <JourneyTitleFields
-              projectId={projectId}
-              journeyId={journey.id}
-              title={journey.title}
-              description={journey.description}
-            />
-
-            <div className="flex flex-wrap items-center gap-2">
-              <JourneyStatusBadge publishState={journey.publishState} />
-              {/* Only a live Journey has an address to hand out, or changes
-                participants are not yet seeing, or anything to take back. */}
-              {live !== null ? (
-                <>
-                  {hasUnpublishedChanges ? (
-                    <span className="text-muted-foreground text-xs">
-                      Unpublished changes
-                    </span>
-                  ) : null}
-                  <CopyLinkButton path={`/j/${journey.id}`} />
-                  <UnpublishButton
-                    projectId={projectId}
-                    journeyId={journey.id}
-                  />
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
+      {/* Holds the acknowledgement of a publish for both Publish buttons;
+          see PublishScope for why it is not the header button's own. */}
+      <PublishScope hasUnpublishedChanges={hasUnpublishedChanges}>
+        <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-12">
+          <div>
             <Link
-              href={`/projects/${projectId}/journeys/${journey.id}/preview`}
-              className={cn(buttonVariants({ variant: "outline" }))}
+              href={`/projects/${projectId}`}
+              className="text-muted-foreground text-sm hover:text-foreground"
             >
-              Preview
+              ← Back to project
             </Link>
-            <PublishButton
-              projectId={projectId}
-              journeyId={journey.id}
-              hasUnpublishedChanges={hasUnpublishedChanges}
-            />
-            <DeleteJourneyDialog
-              projectId={projectId}
-              journeyId={journey.id}
-              title={journey.title}
-            />
           </div>
-        </header>
 
-        <UrlTabs
-          label="Journey"
-          sticky
-          tabs={[
-            {
-              value: "editor",
-              label: "Editor",
-              content: (
-                <DraftEditor
-                  projectId={projectId}
-                  journeyId={journey.id}
-                  draft={draft}
+          <header className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
+              <JourneyTitleFields
+                projectId={projectId}
+                journeyId={journey.id}
+                title={journey.title}
+                description={journey.description}
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <JourneyStatusBadge
+                  publishState={journey.publishState}
+                  entrance
                 />
-              ),
-            },
-            {
-              value: "versions",
-              label: "Versions",
-              content: (
-                <VersionList
-                  projectId={projectId}
-                  journeyId={journey.id}
-                  versions={versions}
-                  hasUnpublishedChanges={hasUnpublishedChanges}
-                  draftUpdatedAt={draftEditedAt}
-                />
-              ),
-            },
-            {
-              value: "analytics",
-              label: "Analytics",
-              content: (
-                <AnalyticsTab
-                  versions={versions}
-                  selected={selectedAnalytics}
-                />
-              ),
-            },
-            {
-              value: "responses",
-              label: "Responses",
-              content: <ResponseList groups={responseGroups} />,
-            },
-            {
-              value: "settings",
-              label: "Settings",
-              content: (
-                <section aria-label="Settings" className="flex flex-col gap-8">
-                  <JourneyThemeSettings
+                {/* Only a live Journey has an address to hand out, or changes
+                participants are not yet seeing, or anything to take back. */}
+                {live !== null ? (
+                  <>
+                    {hasUnpublishedChanges ? (
+                      <span className="text-muted-foreground text-xs">
+                        Unpublished changes
+                      </span>
+                    ) : null}
+                    <CopyLinkButton path={`/j/${journey.id}`} />
+                    <UnpublishButton
+                      projectId={projectId}
+                      journeyId={journey.id}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Wraps so the acknowledgement of a publish takes the line
+              beneath the controls, flush with them, rather than squeezing
+              in beside them. */}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Link
+                href={`/projects/${projectId}/journeys/${journey.id}/preview`}
+                className={cn(buttonVariants({ variant: "outline" }))}
+              >
+                Preview
+              </Link>
+              <PublishButton
+                projectId={projectId}
+                journeyId={journey.id}
+                hasUnpublishedChanges={hasUnpublishedChanges}
+              />
+              <DeleteJourneyDialog
+                projectId={projectId}
+                journeyId={journey.id}
+                title={journey.title}
+              />
+              <PublishAcknowledgement journeyId={journey.id} />
+            </div>
+          </header>
+
+          <UrlTabs
+            label="Journey"
+            sticky
+            tabs={[
+              {
+                value: "editor",
+                label: "Editor",
+                content: (
+                  <DraftEditor
                     projectId={projectId}
                     journeyId={journey.id}
-                    projectTheme={project.theme}
-                    theme={journey.theme}
+                    draft={draft}
                   />
-                </section>
-              ),
-            },
-          ]}
-        />
-      </main>
+                ),
+              },
+              {
+                value: "versions",
+                label: "Versions",
+                content: (
+                  <VersionList
+                    projectId={projectId}
+                    journeyId={journey.id}
+                    versions={versions}
+                    hasUnpublishedChanges={hasUnpublishedChanges}
+                    draftUpdatedAt={draftEditedAt}
+                  />
+                ),
+              },
+              {
+                value: "analytics",
+                label: "Analytics",
+                content: (
+                  <AnalyticsTab
+                    versions={versions}
+                    selected={selectedAnalytics}
+                  />
+                ),
+              },
+              {
+                value: "responses",
+                label: "Responses",
+                content: <ResponseList groups={responseGroups} />,
+              },
+              {
+                value: "settings",
+                label: "Settings",
+                content: (
+                  <section
+                    aria-label="Settings"
+                    className="flex flex-col gap-8"
+                  >
+                    <JourneyThemeSettings
+                      projectId={projectId}
+                      journeyId={journey.id}
+                      projectTheme={project.theme}
+                      theme={journey.theme}
+                    />
+                  </section>
+                ),
+              },
+            ]}
+          />
+        </main>
+      </PublishScope>
       <SiteFooter />
     </>
   );

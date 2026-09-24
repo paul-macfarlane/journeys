@@ -1,0 +1,53 @@
+# AC 1 — seed image sources, 2026-09-24T19:32Z, commit 7d384ae
+# curl -sS -o /dev/null -L -A '<desktop Chrome UA>' -w '%{http_code} %{content_type}' <src>
+# The raw.githubusercontent.com sources name the staging branch, which
+# carries public/seed only after this PR merges; until then the same path
+# is probed on this PR's branch and printed on a second line as (branch).
+# Both lines are the same committed file.
+
+200 image/jpeg | case-1 | https://live.staticflickr.com/7319/16278777167_5cd18daea8_b.jpg
+200 image/jpeg | case-1 | https://www.migrationpolicy.org/sites/default/files/source_images/Source-Smugglers-2020.jpg
+200 image/jpeg | case-1 | https://birdinflight.com/wp-content/uploads/2016/05/dannermiller_31.jpg
+200 image/jpeg | case-1 | https://d1ldvf68ux039x.cloudfront.net/thumbs/photos/1909/5786490/1000w_q95.jpg
+200 image/jpeg | case-1 | https://live.staticflickr.com/65535/50992152086_673bc2e9d2_4k.jpg
+200 image/jpeg | case-1 | https://juarez.gob.mx/docs/624db89223901__624db89223903.jpeg
+200 image/jpeg | case-1 | https://live.staticflickr.com/4810/45139943425_687208240a_b.jpg
+200 image/jpeg | case-1 | https://live.staticflickr.com/65535/53602975892_5e1c7b30a6_h.jpg
+200 image/jpeg | case-1 | https://live.staticflickr.com/65535/53604269289_2aefcdec71_k.jpg
+200 image/jpeg | case-1 | https://static01.nyt.com/images/2023/02/15/multimedia/00childlabor-border-klzc/00childlabor-border-klzc-superJumbo.jpg?quality=75&auto=webp
+200 image/jpeg | case-1 | https://arkansasworker.com/wp-content/uploads/2022/03/imperialism_and_weaponization_of_empathy_arkansasworker.jpg
+200 image/jpeg | case-1 | https://cdn.kpbs.org/img/photos/2012/01/16/ALISA2.JPG
+200 image/jpeg | case-1 | https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIzLTAzL2ZsNDgwOTIwMzA4NzgtaW1hZ2UuanBn.jpg
+404 text/plain; charset=utf-8 | case-1 | https://raw.githubusercontent.com/paul-macfarlane/journeys/staging/public/seed/external-fixator.jpg
+200 image/jpeg | case-1 | (branch) https://raw.githubusercontent.com/paul-macfarlane/journeys/feat/61-dead-seed-images/public/seed/external-fixator.jpg
+200 image/jpeg | case-1 | https://www.migrationpolicy.org/sites/default/files/source_images/Source-Smugglers-2020.jpg
+200 image/jpeg | case-1 | https://birdinflight.com/wp-content/uploads/2016/05/dannermiller_31.jpg
+200 image/jpeg | case-1 | https://live.staticflickr.com/65535/49044615882_66b195767b_b.jpg
+200 image/jpeg | case-1 | https://live.staticflickr.com/4886/45796818221_bfe6463453_b.jpg
+200 image/jpeg | case-1 | https://live.staticflickr.com/4817/46002073372_1d6046047d_b.jpg
+200 image/jpeg | case-2 | https://www.mottodistribution.com/shop/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/d/e/detainee-handbook-pablo-allison-undocumented-press-9781999379742-5.jpeg
+404 text/plain; charset=utf-8 | case-2 | https://raw.githubusercontent.com/paul-macfarlane/journeys/staging/public/seed/caroline-phone.jpg
+200 image/jpeg | case-2 | (branch) https://raw.githubusercontent.com/paul-macfarlane/journeys/feat/61-dead-seed-images/public/seed/caroline-phone.jpg
+404 text/plain; charset=utf-8 | case-2 | https://raw.githubusercontent.com/paul-macfarlane/journeys/staging/public/seed/caroline-common-area.jpg
+200 image/jpeg | case-2 | (branch) https://raw.githubusercontent.com/paul-macfarlane/journeys/feat/61-dead-seed-images/public/seed/caroline-common-area.jpg
+200 image/webp | case-2 | https://img.assets-d.propublica.org/v5/images/202100401-unaccompanied-minors-1.jpg?crop=focalpoint&fit=crop&fm=webp&fp-x=0.5&fp-y=0.5&h=1333&q=75&w=2000&s=b4597dcc01ad5cee3057f6054632d1bd
+404 text/plain; charset=utf-8 | case-2 | https://raw.githubusercontent.com/paul-macfarlane/journeys/staging/public/seed/bluebonnet-cell.jpg
+200 image/jpeg | case-2 | (branch) https://raw.githubusercontent.com/paul-macfarlane/journeys/feat/61-dead-seed-images/public/seed/bluebonnet-cell.jpg
+200 image/webp | case-2 | https://www.crimemuseum.org/wp-content/uploads/2024/03/Solitary-Confinement.webp
+200 image/jpeg | case-2 | https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZnJsYXVuZGVyZXR0ZV93YXNoaW5nX21hY2hpbmVzX3dhc2gtaW1hZ2Uta3liZGN5dHUuanBn.jpg
+200 image/jpeg | case-2 | https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZnJsYXVuZGVyZXR0ZV93YXNoaW5nX21hY2hpbmVzX3dhc2gtaW1hZ2Uta3liZGN5dHUuanBn.jpg
+200 image/jpeg | case-2 | https://static01.nyt.com/images/2013/03/24/us/sub-solitary/sub-solitary-articleLarge.jpg?quality=75&auto=webp&disable=upscale
+200 image/jpeg | case-2 | https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTExL2ZsNDI4MzE3NDAwMTItaW1hZ2UuanBn.jpg
+200 image/webp | case-2 | https://www.crimemuseum.org/wp-content/uploads/2024/03/Solitary-Confinement.webp
+200 image/jpeg | case-2 | https://static01.nyt.com/images/2023/02/17/multimedia/00childlabor-hearthside3/00childlabor-hearthside3-superJumbo.jpg?quality=75&auto=webp
+200 image/jpeg | case-2 | https://static01.nyt.com/images/2023/02/15/multimedia/00childlabor-hearthside2/00childlabor-hearthside2-superJumbo.jpg?quality=75&auto=webp
+200 image/jpeg | case-2 | https://upload.wikimedia.org/wikipedia/commons/8/8e/Sleeping_on_the_Sidewalk_in_Atlanta.jpg
+200 image/webp | case-2 | https://cdn.houstonpublicmedia.org/wp-content/uploads/2019/08/06183213/ICE-SERVICE-HEALTH-CORP.jpg.webp
+200 image/jpeg | case-3 | https://jumpernation.com/wp-content/uploads/2016/05/4607801339_ca63c2ae9b_o-759x500.jpg
+200 image/jpeg | case-3 | https://live.staticflickr.com/65535/49065345096_1646e391d6_b.jpg
+200 image/jpeg | case-3 | https://live.staticflickr.com/2853/11058888783_26b9144071_b.jpg
+200 image/jpeg | case-3 | https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIzLTAzL2ZsNTEwNjYxODUxOTYtaW1hZ2UuanBn.jpg
+200 image/jpeg | case-3 | https://images.pexels.com/photos/13106979/pexels-photo-13106979.jpeg
+
+# 39 sources; 4 point at the staging branch and answer 404 until this PR merges (their committed file answers 200 on the PR branch, the (branch) lines); 0 not serving an image anywhere
+# RESULT: PASS
