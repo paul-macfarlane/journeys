@@ -22,7 +22,9 @@ import { chooseFromStartAction, startOverAction } from "./actions";
  * Version's title and description, with the card `opengraph-image.tsx`
  * beside this file renders; a Journey that is not live reads as the site
  * root does. `getPublicJourney` is cached per request, so the page below
- * pays for no second query.
+ * pays for no second query. No Journey at all is a 404 here too (ticket
+ * 60): metadata streams in after the page, so a title returned for a
+ * missing Journey would replace the not-found page's own.
  */
 export async function generateMetadata({
   params,
@@ -30,7 +32,9 @@ export async function generateMetadata({
   params: Promise<{ journeyId: string }>;
 }): Promise<Metadata> {
   const { journeyId } = await params;
-  return journeyLinkMetadata(await getPublicJourney(journeyId), journeyId);
+  const journey = await getPublicJourney(journeyId);
+  if (!journey) notFound();
+  return journeyLinkMetadata(journey, journeyId);
 }
 
 /**
