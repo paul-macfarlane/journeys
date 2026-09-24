@@ -172,6 +172,7 @@ test("public-project-page", async ({ page, context, browser }) => {
     publishedTitle,
     publishedDescription,
   );
+  await page.goto(`/projects/${projectId}`);
   const draftOnlyId = await createJourney(page, projectId, draftOnlyTitle);
   await writeDraftDocument(publishedId, publishableDocument());
 

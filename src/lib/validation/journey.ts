@@ -15,20 +15,24 @@ export const journeyTitleSchema = z
   .max(120, "Use 120 characters or fewer");
 
 /**
- * A short summary. Empty is allowed (the column defaults to `''`) — the
- * form always sends a string, so there is nothing for a schema-level
- * `.default()` to do, and one would only fight react-hook-form's inferred
- * field type.
+ * A short summary. Empty is allowed (the column defaults to `''`). The
+ * Journey page's form always sends one; the New Journey dialog sends none,
+ * so `createJourneySchema` alone defaults it (ticket 47).
  */
 export const journeyDescriptionSchema = z
   .string()
   .trim()
   .max(500, "Use 500 characters or fewer");
 
-/** The Author supplies a title and description; the id is the address. */
+/**
+ * The Author supplies a title; the id is the address. The description is
+ * edited on the Journey page the Author lands on (ticket 47), so the dialog
+ * no longer sends one: it defaults to empty here so the action still hands
+ * `createJourney` a string.
+ */
 export const createJourneySchema = z.object({
   title: journeyTitleSchema,
-  description: journeyDescriptionSchema,
+  description: journeyDescriptionSchema.default(""),
 });
 
 /** Title and description are the whole of a Journey's metadata. */
@@ -57,6 +61,7 @@ export const journeyThemeSchema = z
     accent: preset === null ? null : accent,
   }));
 
-export type CreateJourneyInput = z.infer<typeof createJourneySchema>;
+/** What the New Journey dialog sends: the title alone. */
+export type CreateJourneyInput = z.input<typeof createJourneySchema>;
 export type UpdateJourneyInput = z.infer<typeof updateJourneySchema>;
 export type JourneyThemeInput = z.infer<typeof journeyThemeSchema>;

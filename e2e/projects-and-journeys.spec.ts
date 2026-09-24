@@ -50,23 +50,25 @@ test("project-create", async ({ page, context }) => {
 
   const projectId = await createProject(page, title);
 
+  // Creating lands on the new Project's page (ticket 47), headed by the
+  // title just typed, with nothing in it yet.
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByText("No journeys yet")).toBeVisible();
+
+  await page.screenshot({
+    path: evidencePath("project-create", "project-create.png"),
+    fullPage: true,
+  });
+
   // Listed for the Author who created it, as a link to its id.
+  await page.goto("/projects");
   const projectLink = page.getByRole("link").filter({ hasText: title });
   await expect(projectLink).toHaveAttribute(
     "href",
     new RegExp(`^/projects/${ID_PATTERN}$`),
   );
   await expect(projectLink).toHaveAttribute("href", `/projects/${projectId}`);
-
-  await projectLink.click();
-  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
-  await expect(page.getByRole("heading", { name: title })).toBeVisible();
-
-  await page.goto("/projects");
-  await page.screenshot({
-    path: evidencePath("project-create", "project-create.png"),
-    fullPage: true,
-  });
 });
 
 test("project-non-member", async ({ page, context, browser }) => {
@@ -253,14 +255,32 @@ test("journey-create", async ({ page, context }) => {
   const projectId = await createProject(page, projectTitle);
   await page.goto(`/projects/${projectId}`);
 
+  // The dialog asks for the title alone and lands on the new Journey's page
+  // (ticket 47); the description is set there, at the top of the page.
   const journeyId = await createJourney(
     page,
     projectId,
     journeyTitle,
     description,
   );
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}/projects/${projectId}/journeys/${journeyId}`,
+  );
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
+    journeyTitle,
+  );
+  await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
+    description,
+  );
 
-  // Listed for its Project, as a link to its id under the Project's own.
+  await page.screenshot({
+    path: evidencePath("journey-create", "journey-create.png"),
+    fullPage: true,
+  });
+
+  // Listed for its Project, as a link to its id under the Project's own,
+  // with the description set on its page.
+  await page.goto(`/projects/${projectId}`);
   const journeyItem = page
     .getByRole("listitem")
     .filter({ hasText: journeyTitle });
@@ -270,11 +290,6 @@ test("journey-create", async ({ page, context }) => {
   );
   await expect(journeyItem.getByText(description)).toBeVisible();
   await expect(journeyItem.getByText("Never published")).toBeVisible();
-
-  await page.screenshot({
-    path: evidencePath("journey-create", "journey-create.png"),
-    fullPage: true,
-  });
 });
 
 test("journey-edit-and-delete", async ({ page, context }) => {
@@ -356,6 +371,7 @@ test("project-delete-cascade", async ({ page, context }) => {
   await page.goto(`/projects/${projectId}`);
   const journeyId = await createJourney(page, projectId, journeyTitle);
 
+  await page.goto(`/projects/${projectId}`);
   await openTab(page, "Settings");
   await page.getByRole("button", { name: "Delete project" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
@@ -393,9 +409,12 @@ test("journeys-reorder", async ({ page, context }) => {
   const projectId = await createProject(page, projectTitle);
   await page.goto(`/projects/${projectId}`);
 
-  // A new Journey goes last, so three made in turn read in that order.
+  // A new Journey goes last, so three made in turn read in that order. Each
+  // create lands on the Journey it made, so the Project page is returned to
+  // for the next.
   for (const title of titles) {
     await createJourney(page, projectId, title);
+    await page.goto(`/projects/${projectId}`);
   }
   const list = page.getByRole("list", { name: "Journeys" });
   // `toContainText` with an array matches a subset in order, so the count
@@ -436,6 +455,7 @@ test("journeys-reorder", async ({ page, context }) => {
   // And a Journey made now still goes last.
   const fourth = `Second Opinion ${suffix}`;
   await createJourney(page, projectId, fourth);
+  await page.goto(`/projects/${projectId}`);
   await expect(rowTitles()).toHaveCount(4);
   await expect(rowTitles()).toContainText([
     titles[2],

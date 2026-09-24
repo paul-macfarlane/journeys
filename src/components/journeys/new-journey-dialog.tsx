@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 
 import { createJourneyAction } from "@/app/projects/[projectId]/journeys/actions";
@@ -19,23 +19,26 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   createJourneySchema,
   type CreateJourneyInput,
 } from "@/lib/validation/journey";
 
-const DEFAULT_VALUES: CreateJourneyInput = { title: "", description: "" };
+const DEFAULT_VALUES: CreateJourneyInput = { title: "" };
 
 /**
- * Creating a Journey takes a title and a short description. The Journey is
- * addressed by the id it is given, so the Author can edit both later from
- * its own page without moving it.
+ * Creating a Journey takes a title and nothing else, and lands the Author on
+ * the new Journey's page (ticket 47), where its description and everything
+ * else about it are edited. The Journey is addressed by the id it is given,
+ * so the Author can rename it later without moving it.
  */
 export function NewJourneyDialog({ projectId }: { projectId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  // The dialog stays up, with its button held, until the Journey page has
+  // taken over: closing it first would flash the list the Author is leaving.
+  const [isNavigating, startNavigating] = useTransition();
 
   const form = useForm<CreateJourneyInput>({
     resolver: zodResolver(createJourneySchema),
@@ -51,16 +54,20 @@ export function NewJourneyDialog({ projectId }: { projectId: string }) {
       return;
     }
 
-    setOpen(false);
-    form.reset(DEFAULT_VALUES);
-    // The list above is a Server Component; the action revalidated it.
-    router.refresh();
+    startNavigating(() => {
+      router.push(`/projects/${projectId}/journeys/${result.id}`);
+    });
   }
+
+  const busy = form.formState.isSubmitting || isNavigating;
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        // Not while the new page is on its way: closing would let a second
+        // submit in before the first one lands.
+        if (!nextOpen && busy) return;
         setOpen(nextOpen);
         if (!nextOpen) {
           setServerError(null);
@@ -79,7 +86,7 @@ export function NewJourneyDialog({ projectId }: { projectId: string }) {
             <DialogTitle>New journey</DialogTitle>
             <DialogDescription>
               A journey is the graph of steps and choices participants walk. Its
-              title and description can be changed later.
+              title and description can be changed on its page.
             </DialogDescription>
           </DialogHeader>
 
@@ -95,19 +102,6 @@ export function NewJourneyDialog({ projectId }: { projectId: string }) {
                 {form.formState.errors.title.message}
               </p>
             ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="new-journey-description">Description</Label>
-            <Textarea
-              id="new-journey-description"
-              {...form.register("description")}
-            />
-            {form.formState.errors.description ? (
-              <p role="alert" className="text-sm text-destructive">
-                {form.formState.errors.description.message}
-              </p>
-            ) : null}
             {serverError ? (
               <p role="alert" className="text-sm text-destructive">
                 {serverError}
@@ -119,7 +113,7 @@ export function NewJourneyDialog({ projectId }: { projectId: string }) {
             <DialogClose render={<Button type="button" variant="outline" />}>
               Cancel
             </DialogClose>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button type="submit" disabled={busy}>
               Create journey
             </Button>
           </DialogFooter>
