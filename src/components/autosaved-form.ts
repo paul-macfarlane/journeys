@@ -60,6 +60,10 @@ export function useAutosavedForm<T extends FieldValues>({
     // schema parses to, which is what every caller's fields are typed as.
     resolver: zodResolver(schema) as Resolver<T, unknown, T>,
     defaultValues: values as DefaultValues<T>,
+    // A save runs as a field is left, so a refused one must not pull focus
+    // back to the first invalid field: the Author has already moved on to
+    // the next one, and what they type there would land in the old one.
+    shouldFocusError: false,
   });
 
   // The field a refused save is blamed on: the one last typed into, since

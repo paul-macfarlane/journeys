@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState } from "react";
@@ -29,7 +30,8 @@ const THEMES = [
 
 /**
  * The navbar's account menu: the Author's avatar (their initials when the
- * provider gave no image) opens their name and email, the three Theme
+ * provider gave no image) opens their name and email, a link to their
+ * Settings (display name and Author page, ticket 52), the three Theme
  * choices as plain rows (a fly-out submenu is a desktop idiom that cramps a
  * phone), and Sign out. The name also sits beside the avatar from tablet
  * width up and hides at phone width, where the avatar alone is the trigger
@@ -84,6 +86,10 @@ export function UserMenu({
             {user.email}
           </span>
         </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href="/projects/settings" />}>
+          Settings
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Theme</DropdownMenuLabel>

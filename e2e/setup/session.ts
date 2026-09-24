@@ -140,6 +140,28 @@ export async function signInAs(
 }
 
 /**
+ * A second session for an existing Author, the way a later OAuth sign-in
+ * lands one, replacing whatever the context held. Lets a spec prove an edit
+ * lives on the account's row rather than in the session it was made in.
+ */
+export async function signInAgain(
+  context: BrowserContext,
+  userId: string,
+): Promise<void> {
+  const ctx = await getAuth().$context;
+  const session = await ctx.internalAdapter.createSession(userId);
+  await context.clearCookies();
+  await context.addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: signSessionToken(session.token, ctx.secret),
+      domain: "localhost",
+      path: "/",
+    },
+  ]);
+}
+
+/**
  * Specs must remove what they create — the e2e database persists between
  * runs rather than being torn down after each. Cascades to session rows via
  * the schema's `ON DELETE CASCADE`.
