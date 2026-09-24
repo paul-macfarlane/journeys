@@ -40,7 +40,6 @@ import { DirectionControl } from "@/components/journeys/direction-control";
 import {
   ARROW_DIRECTIONS,
   arrowPoints,
-  EDGE_LABEL_HEIGHT,
   handleOffset,
   midwayAlong,
   NODE_BOX_CLASS,
@@ -64,6 +63,7 @@ import type {
   Step,
 } from "@/lib/graph/document";
 import {
+  EDGE_LABEL_HEIGHT,
   EDGE_LABEL_MAX_WIDTH,
   problemsByAddress,
   type GraphLayout,
@@ -284,6 +284,12 @@ type ChoiceEdgeData = {
    * with the anchor positions it hands the edge; only the interior is route.
    */
   points: Point[];
+  /**
+   * Where the layout made room for the label: on the route, halfway between
+   * the ranks, clear of every other label between them. A loop is routed
+   * here rather than by the layout, so its label hangs halfway along that.
+   */
+  labelAt: Point;
   emphasis: Emphasis;
   /** Which way the map runs, which is which way a loop is routed around. */
   direction: LayoutDirection;
@@ -322,14 +328,16 @@ function ChoiceEdge({
   markerEnd,
   data,
 }: EdgeProps<ChoiceFlowEdge>) {
+  const isLoop = source === target;
   const points = arrowPoints(
     data?.direction ?? "TB",
-    source === target,
+    isLoop,
     data?.points,
     { x: sourceX, y: sourceY },
     { x: targetX, y: targetY },
   );
-  const middle = midwayAlong(points);
+  const middle =
+    isLoop || data?.labelAt === undefined ? midwayAlong(points) : data.labelAt;
 
   return (
     // Marked so a spec can read the opacity the arrow is actually drawn at,
@@ -1001,7 +1009,12 @@ function CanvasFlow({
         label,
         ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`,
         markerEnd: { type: MarkerType.ArrowClosed },
-        data: { points: edge.points, emphasis, direction: layout.direction },
+        data: {
+          points: edge.points,
+          labelAt: edge.labelAt,
+          emphasis,
+          direction: layout.direction,
+        },
         domAttributes,
         style: isSelected
           ? { ...marks, strokeWidth: SELECTED_STROKE_WIDTH }
@@ -1452,7 +1465,10 @@ function CanvasFlow({
           // all are. Nothing is scrolled to do it: the arrow was clicked, so
           // it is already in front of them.
           canvasRef.current?.focus({ preventScroll: true });
-          onSelectStep(arrow.stepId, { markChoiceId: arrow.choiceId });
+          onSelectStep(arrow.stepId, {
+            markChoiceId: arrow.choiceId,
+            scrollToPanel: true,
+          });
         }}
         // React Flow's own account of what the Author did to the arrows,
         // turned back into the Choices they draw: a click selects one (and a
@@ -1518,10 +1534,12 @@ function CanvasFlow({
               opening: locate.request + 1,
               expanded: false,
             });
-            onSelectStep(node.data.opens);
+            onSelectStep(node.data.opens, { scrollToPanel: true });
             return;
           }
-          if (node.data.opens !== null) onSelectStep(node.data.opens);
+          if (node.data.opens !== null) {
+            onSelectStep(node.data.opens, { scrollToPanel: true });
+          }
         }}
         // A click on bare map is done with the moves, not with the box: they
         // fold back to the one button, where the next click on that box

@@ -161,9 +161,6 @@ export const ARROW_DIRECTIONS: Record<string, ArrowDirection | undefined> = {
   ArrowRight: "right",
 };
 
-/** How tall the label on an arrow is drawn, in flow units. */
-export const EDGE_LABEL_HEIGHT = 24;
-
 /**
  * Where a Choice's arrow leaves the node: spread evenly along the side of the
  * box the arrows travel towards — along its bottom running top to bottom,

@@ -24,12 +24,13 @@ import type { PublishProblem } from "@/lib/graph/validate";
  * same document always lays out the same way.
  *
  * dagre runs as a multigraph: every Choice gets its own named dagre edge
- * (`graph.setEdge(source, target, {}, edge.id)`), so parallel Choices
+ * (`graph.setEdge(source, target, label box, edge.id)`), so parallel Choices
  * between the same two Steps and self-loop Choices each get their own
  * routed path instead of collapsing onto one. Each `CanvasEdge` carries the
  * routed `points` dagre produced for that Choice, read back with
  * `graph.edge({ v, w, name })`, in the same coordinate space as the node
- * positions. Each Step `CanvasNode` carries `sourceAnchors`: its Choice ids
+ * positions, and `labelAt`, the centre of the label box dagre made room for
+ * on that route. Each Step `CanvasNode` carries `sourceAnchors`: its Choice ids
  * ordered by the centre of the box each Choice leads to along the cross axis
  * — x in `"TB"`, y in `"LR"` — so the canvas can spread the anchors along the
  * side of the box that faces the direction the arrows actually travel,
@@ -60,14 +61,22 @@ export const NODE_HEIGHT = 72;
  */
 export const EDGE_LABEL_MAX_WIDTH = 160;
 
+/** How tall the label on an arrow is drawn, in flow units. */
+export const EDGE_LABEL_HEIGHT = 24;
+
 /**
- * The gap between one rank of boxes and the next. Top to bottom a label sits
- * in the gap sideways-on, so its width is no concern of the gap's; left to
- * right the label lies along the arrow, so the gap has to be wider than the
- * label is, with room to spare on either side of it.
+ * The clearance between a rank of boxes and the labels hung between it and
+ * the next. Every arrow's label is given to dagre as a box of its own
+ * (`EDGE_LABEL_MAX_WIDTH` by `EDGE_LABEL_HEIGHT`), which dagre keeps in a
+ * rank of its own halfway between the two ranks of boxes with half this
+ * separation on either side of it — so the gap between two ranks of boxes is
+ * this plus whichever side of the label lies along the arrow: its height top
+ * to bottom, its width left to right. Two labels between the same two ranks
+ * are kept apart along the cross axis the way any two boxes in a rank are,
+ * which is what stops two Choices from one Step reading as one.
  */
-export const TB_RANK_SEPARATION = 96;
-export const LR_RANK_SEPARATION = EDGE_LABEL_MAX_WIDTH + 48;
+export const TB_RANK_SEPARATION = 72;
+export const LR_RANK_SEPARATION = 48;
 
 /**
  * One box on the canvas: either a Step, or a placeholder standing in for a
@@ -109,6 +118,13 @@ export type CanvasEdge = {
    * the node positions. Always at least two points.
    */
   points: Point[];
+  /**
+   * The centre of the label's box, where dagre made room for it on the
+   * route: halfway between the two ranks, and clear of every other label
+   * between them. A loop's is dagre's too, but the canvas routes a loop
+   * itself and hangs its label halfway along its own route.
+   */
+  labelAt: Point;
 };
 
 /**
@@ -157,26 +173,34 @@ function pairKey(source: string, target: string): string {
 }
 
 /**
- * Nudges the interior of a routed path sideways so a Choice that shares its
- * dagre pair with an already-routed sibling still draws its own visible
- * path. Endpoints are left untouched so the arrow still starts and ends at
- * the box edges dagre computed for the sibling; with only two points (no
- * interior point to nudge), a synthetic midpoint is inserted instead so the
- * path still bends away from the shared one.
+ * Nudges the interior of a routed path sideways — across the way the map
+ * runs, so the nudged arrow sits beside the sibling's rather than further
+ * along it — so a Choice that shares its dagre pair with an already-routed
+ * sibling still draws its own visible path. Endpoints are left untouched so
+ * the arrow still starts and ends at the box edges dagre computed for the
+ * sibling; with only two points (no interior point to nudge), a synthetic
+ * midpoint is inserted instead so the path still bends away from the shared
+ * one.
  */
-function offsetInteriorPoints(points: Point[], offset: number): Point[] {
+function offsetInteriorPoints(
+  points: Point[],
+  offset: number,
+  direction: LayoutDirection,
+): Point[] {
+  const nudge = (point: Point): Point =>
+    direction === "LR"
+      ? { x: point.x, y: point.y + offset }
+      : { x: point.x + offset, y: point.y };
   if (points.length <= 2) {
     const [start, end] = points;
     return [
       start,
-      { x: (start.x + end.x) / 2 + offset, y: (start.y + end.y) / 2 },
+      nudge({ x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }),
       end,
     ];
   }
   return points.map((point, index) =>
-    index === 0 || index === points.length - 1
-      ? point
-      : { x: point.x + offset, y: point.y },
+    index === 0 || index === points.length - 1 ? point : nudge(point),
   );
 }
 
@@ -388,30 +412,123 @@ function orderTargetsByChoice(
  * neighbouring ranks is three points, and its midpoint lands on the new
  * midpoint; a longer route keeps dagre's bends and leans over rank by rank.
  * A route whose boxes did not move is returned as it was.
+ *
+ * An interior point dagre lined up with one of the two boxes — its centre on
+ * the cross axis exactly the box's, which is how dagre draws a route
+ * straight into a box — goes with that box instead, by the whole of its
+ * move: two Choices whose targets swap places keep their routes going
+ * straight into their own targets, where leaning each route over by half
+ * the swap would bring both to the same point halfway, one label on top of
+ * the other. A point lined up with neither leans as above.
+ *
+ * What is returned is the move itself, for any point on the route by its
+ * index — the label's centre is one of them, and goes where the route goes.
  */
 function followMovedBoxes(
   points: Point[],
-  sourceShift: number,
-  targetShift: number,
+  source: { shift: number; cross: number },
+  target: { shift: number; cross: number },
   direction: LayoutDirection,
-): Point[] {
-  if (sourceShift === 0 && targetShift === 0) return points;
+): (point: Point, index: number) => Point {
+  if (source.shift === 0 && target.shift === 0) return (point) => point;
 
   const first = points[0];
   const last = points[points.length - 1];
   const along = (point: Point) => (direction === "LR" ? point.x : point.y);
+  const across = (point: Point) => (direction === "LR" ? point.y : point.x);
   const span = along(last) - along(first);
+  const isInterior = (index: number) => index > 0 && index < points.length - 1;
 
-  return points.map((point) => {
-    const progress =
-      span === 0
-        ? 0.5
-        : Math.min(1, Math.max(0, (along(point) - along(first)) / span));
-    const shift = sourceShift + (targetShift - sourceShift) * progress;
+  return (point, index) => {
+    let shift: number;
+    if (isInterior(index) && Math.abs(across(point) - target.cross) <= 1) {
+      shift = target.shift;
+    } else if (
+      isInterior(index) &&
+      Math.abs(across(point) - source.cross) <= 1
+    ) {
+      shift = source.shift;
+    } else {
+      const progress =
+        span === 0
+          ? 0.5
+          : Math.min(1, Math.max(0, (along(point) - along(first)) / span));
+      shift = source.shift + (target.shift - source.shift) * progress;
+    }
     return direction === "LR"
       ? { x: point.x, y: point.y + shift }
       : { x: point.x + shift, y: point.y };
-  });
+  };
+}
+
+/** The middle of a route's bounding box: where a label goes when dagre gave it no place. */
+function midpointOf(points: Point[]): Point {
+  if (points.length === 0) return { x: 0, y: 0 };
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  return {
+    x: (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: (Math.min(...ys) + Math.max(...ys)) / 2,
+  };
+}
+
+/** A routed edge with the index of its label among its own points, kept only while routing. */
+type RoutedEdge = CanvasEdge & {
+  /** Which of `points` is the label's centre; -1 when the label is not on the route. */
+  labelIndex: number;
+};
+
+/**
+ * The least room two labels between the same two ranks are given on the
+ * cross axis, centre to centre: the label's own size that way, and a gap.
+ * dagre keeps its own labels further apart than this, so only labels the
+ * deal or an overflow nudge brought together are moved.
+ */
+const LABEL_GAP = 8;
+
+/**
+ * Labels in the same rank kept from one another: the labels between one rank
+ * of boxes and the next are sorted along the cross axis and any that would
+ * overlap the one before it is moved on past it, its route's own point going
+ * with it so the label stays on its arrow. A loop's label is left alone; the
+ * canvas routes a loop itself.
+ */
+function spreadLabels(edges: RoutedEdge[], direction: LayoutDirection): void {
+  const rankOf = (point: Point) => (direction === "LR" ? point.x : point.y);
+  const crossOf = (point: Point) => (direction === "LR" ? point.y : point.x);
+  const minimum =
+    (direction === "LR" ? EDGE_LABEL_HEIGHT : EDGE_LABEL_MAX_WIDTH) + LABEL_GAP;
+
+  const byRank = new Map<number, RoutedEdge[]>();
+  for (const edge of edges) {
+    if (edge.source === edge.target) continue;
+    const rank = Math.round(rankOf(edge.labelAt));
+    const group = byRank.get(rank) ?? [];
+    group.push(edge);
+    byRank.set(rank, group);
+  }
+
+  for (const group of byRank.values()) {
+    group.sort((a, b) => crossOf(a.labelAt) - crossOf(b.labelAt));
+    let floor = Number.NEGATIVE_INFINITY;
+    for (const edge of group) {
+      const wanted = crossOf(edge.labelAt);
+      const placed = Math.max(wanted, floor);
+      if (placed !== wanted) {
+        const labelAt =
+          direction === "LR"
+            ? { x: edge.labelAt.x, y: placed }
+            : { x: placed, y: edge.labelAt.y };
+        edge.labelAt = labelAt;
+        if (edge.labelIndex >= 0 && edge.labelIndex < edge.points.length) {
+          edge.points = edge.points.map((point, index) =>
+            index === edge.labelIndex ? labelAt : point,
+          );
+        }
+      }
+      floor = placed + minimum;
+    }
+  }
 }
 
 /**
@@ -423,7 +540,7 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
   const nodes: CanvasNode[] = [];
   const missingTargets: string[] = [];
   const seenMissingTargets = new Set<string>();
-  const edges: Array<Omit<CanvasEdge, "points">> = [];
+  const edges: Array<Omit<CanvasEdge, "points" | "labelAt">> = [];
 
   const stepIds = Object.keys(document.steps);
   for (const stepId of stepIds) {
@@ -478,7 +595,18 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
     const countSoFar = pairCounts.get(key) ?? 0;
     pairCounts.set(key, countSoFar + 1);
     if (countSoFar < MAX_DAGRE_EDGES_PER_PAIR) {
-      graph.setEdge(edge.source, edge.target, {}, edge.id);
+      // The label's box goes to dagre with the edge, centred on it, so the
+      // layout makes room for it rather than the canvas finding some after.
+      graph.setEdge(
+        edge.source,
+        edge.target,
+        {
+          width: EDGE_LABEL_MAX_WIDTH,
+          height: EDGE_LABEL_HEIGHT,
+          labelpos: "c",
+        },
+        edge.id,
+      );
     } else {
       overflowEdgeIds.add(edge.id);
     }
@@ -486,16 +614,28 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
 
   dagre.layout(graph);
 
+  const dagrePositioned = nodes.map((node) => {
+    const { x: centerX, y: centerY } = graph.node(node.id);
+    return {
+      ...node,
+      x: centerX - node.width / 2,
+      y: centerY - node.height / 2,
+    };
+  });
   const { nodes: positioned, shiftById } = orderTargetsByChoice(
     document,
-    nodes.map((node) => {
-      const { x: centerX, y: centerY } = graph.node(node.id);
-      return {
-        ...node,
-        x: centerX - node.width / 2,
-        y: centerY - node.height / 2,
-      };
-    }),
+    dagrePositioned,
+  );
+  // Where each box's centre was on the cross axis before the deal, which is
+  // what a route's interior points are read against to see which box each
+  // one was lined up with.
+  const crossBeforeById = new Map<string, number>(
+    dagrePositioned.map((node) => [
+      node.id,
+      document.layoutDirection === "LR"
+        ? node.y + node.height / 2
+        : node.x + node.width / 2,
+    ]),
   );
 
   // The cross axis `sourceAnchors` orders targets along: x in "TB" (arrows
@@ -512,27 +652,71 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
 
   const lastRoutedPointsByPair = new Map<string, Point[]>();
   const overflowCountByPair = new Map<string, number>();
-  const routedEdges = edges.map((edge) => {
+  const lastLabelIndexByPair = new Map<string, number>();
+  const routedEdges: RoutedEdge[] = edges.map((edge) => {
     const key = pairKey(edge.source, edge.target);
     if (!overflowEdgeIds.has(edge.id)) {
-      const points = followMovedBoxes(
-        graph.edge({ v: edge.source, w: edge.target, name: edge.id }).points,
-        shiftById.get(edge.source) ?? 0,
-        shiftById.get(edge.target) ?? 0,
+      const routed = graph.edge({
+        v: edge.source,
+        w: edge.target,
+        name: edge.id,
+      });
+      // dagre puts the label's centre on the route, at the dummy it kept
+      // the label's rank for, so the label is one of the route's own points
+      // and goes wherever that point goes; the route's middle stands in
+      // only if dagre gave it no place.
+      const dagrePoints: Point[] = routed.points;
+      const labelIndex =
+        typeof routed.x === "number" && typeof routed.y === "number"
+          ? dagrePoints.findIndex(
+              (point) => point.x === routed.x && point.y === routed.y,
+            )
+          : -1;
+      const follow = followMovedBoxes(
+        dagrePoints,
+        {
+          shift: shiftById.get(edge.source) ?? 0,
+          cross: crossBeforeById.get(edge.source) ?? 0,
+        },
+        {
+          shift: shiftById.get(edge.target) ?? 0,
+          cross: crossBeforeById.get(edge.target) ?? 0,
+        },
         document.layoutDirection,
       );
+      const points = dagrePoints.map(follow);
+      const labelAt =
+        labelIndex >= 0
+          ? points[labelIndex]
+          : follow(midpointOf(dagrePoints), -1);
       lastRoutedPointsByPair.set(key, points);
-      return { ...edge, points };
+      lastLabelIndexByPair.set(key, labelIndex);
+      return { ...edge, points, labelAt, labelIndex };
     }
     const siblingPoints = lastRoutedPointsByPair.get(key) ?? [];
+    const labelIndex = lastLabelIndexByPair.get(key) ?? -1;
     const overflowIndex = overflowCountByPair.get(key) ?? 0;
     overflowCountByPair.set(key, overflowIndex + 1);
     const offset =
       OVERFLOW_ARROW_OFFSET *
       (overflowIndex + 1) *
       (overflowIndex % 2 === 0 ? 1 : -1);
-    return { ...edge, points: offsetInteriorPoints(siblingPoints, offset) };
+    const points = offsetInteriorPoints(
+      siblingPoints,
+      offset,
+      document.layoutDirection,
+    );
+    return {
+      ...edge,
+      points,
+      labelAt:
+        labelIndex >= 0 && labelIndex < points.length
+          ? points[labelIndex]
+          : midpointOf(points),
+      labelIndex,
+    };
   });
+  spreadLabels(routedEdges, document.layoutDirection);
 
   const withAnchors = positioned.map((node) => {
     if (node.kind !== "step") {
@@ -557,7 +741,18 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
 
   return {
     nodes: withAnchors,
-    edges: routedEdges,
+    edges: routedEdges.map(
+      ({ id, stepId, choiceId, source, target, label, points, labelAt }) => ({
+        id,
+        stepId,
+        choiceId,
+        source,
+        target,
+        label,
+        points,
+        labelAt,
+      }),
+    ),
     direction: document.layoutDirection,
   };
 }

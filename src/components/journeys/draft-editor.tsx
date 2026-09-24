@@ -72,6 +72,13 @@ import { cn } from "@/lib/utils";
 const SAVE_DEBOUNCE_MS = 600;
 
 /**
+ * The widths at which the Step panel is stacked under the map rather than
+ * beside it: everything under Tailwind's `lg` (64rem), which is where the
+ * editor's grid below goes to two columns.
+ */
+const STACKED_PANEL_QUERY = "(width < 64rem)";
+
+/**
  * Whether anything on the page has the keyboard to itself. Both of the page's
  * shortcuts ask before they claim a press: while a dialog is open the
  * keyboard belongs to the dialog, and a shortcut answering from behind it
@@ -526,8 +533,20 @@ export function DraftEditor({
     }
   }, [applyPanelShown]);
 
+  /**
+   * The panel's column, and a count of the openings that asked for it to be
+   * scrolled to. An opening from a click on the map asks; the effect below
+   * answers once the panel is rendered, and only where the panel is stacked
+   * under the map.
+   */
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelScrollRequest, setPanelScrollRequest] = useState(0);
+
   const selectStep: SelectStep = useCallback(
     (stepId, options) => {
+      if (options?.scrollToPanel) {
+        setPanelScrollRequest((current) => current + 1);
+      }
       // Opening a Step is asking to edit it, from wherever the Author asked:
       // a box, an arrow, a problem, "Open" on a Choice, "Find step",
       // any of the moves that make a Step, or a save the server refused over
@@ -570,6 +589,21 @@ export function DraftEditor({
   useEffect(() => {
     selectStepRef.current = selectStep;
   }, [selectStep]);
+
+  // Where the panel is stacked under the map — the page narrower than the
+  // `lg` breakpoint the editor's grid puts the two side by side from — a
+  // click on the map is followed by the page scrolling the panel's top into
+  // view, under the sticky rows: the map is at least 36rem tall, so the
+  // panel starts below the fold and nothing else brings it on. The panel is
+  // rendered by the time this runs, brought back for the opening if it was
+  // away. Read as a media query, the same one the grid answers to, never as
+  // a width. `scroll-padding-top` on the page (`globals.css`) is what keeps
+  // the panel's top from landing under the navbar and the tab row.
+  useEffect(() => {
+    if (panelScrollRequest === 0) return;
+    if (!window.matchMedia(STACKED_PANEL_QUERY).matches) return;
+    panelRef.current?.scrollIntoView({ block: "start" });
+  }, [panelScrollRequest]);
 
   /**
    * A move taken off the history put into effect. The document is set through
@@ -1033,7 +1067,7 @@ export function DraftEditor({
 
         {/* Nothing of a panel that is away is left behind to be tabbed into
             or read out: the column closes over it and it is not rendered. */}
-        <div className="min-w-0 overflow-hidden">
+        <div ref={panelRef} className="min-w-0 overflow-hidden">
           {selectedStep && panelShown ? (
             <StepPanel
               document={document}

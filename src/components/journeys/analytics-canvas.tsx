@@ -20,7 +20,6 @@ import { useEffect, useMemo, useRef } from "react";
 
 import {
   arrowPoints,
-  EDGE_LABEL_HEIGHT,
   handleOffset,
   midwayAlong,
   NODE_BOX_CLASS,
@@ -44,7 +43,11 @@ import {
   type GraphDocument,
   type LayoutDirection,
 } from "@/lib/graph/document";
-import { EDGE_LABEL_MAX_WIDTH, layoutGraph } from "@/lib/graph/layout";
+import {
+  EDGE_LABEL_HEIGHT,
+  EDGE_LABEL_MAX_WIDTH,
+  layoutGraph,
+} from "@/lib/graph/layout";
 import { cn } from "@/lib/utils";
 
 import "@xyflow/react/dist/style.css";
@@ -86,6 +89,8 @@ type AnalyticsFlowNode = Node<AnalyticsNodeData, "step">;
 
 type AnalyticsEdgeData = {
   points: Point[];
+  /** Where the layout made room for the label; a loop hangs its own halfway along its route. */
+  labelAt: Point;
   direction: LayoutDirection;
   label: string;
   share: number | null;
@@ -125,14 +130,16 @@ function AnalyticsEdge({
   markerEnd,
   data,
 }: EdgeProps<AnalyticsFlowEdge>) {
+  const isLoop = source === target;
   const points = arrowPoints(
     data?.direction ?? "TB",
-    source === target,
+    isLoop,
     data?.points,
     { x: sourceX, y: sourceY },
     { x: targetX, y: targetY },
   );
-  const middle = midwayAlong(points);
+  const middle =
+    isLoop || data?.labelAt === undefined ? midwayAlong(points) : data.labelAt;
   const share = data?.share ?? null;
   const figure = `${formatShare(share)} · ${counted(data?.traversals ?? 0, "time")}`;
 
@@ -315,6 +322,7 @@ function AnalyticsFlow({
         markerEnd: { type: MarkerType.ArrowClosed },
         data: {
           points: edge.points,
+          labelAt: edge.labelAt,
           direction: layout.direction,
           label,
           share,
