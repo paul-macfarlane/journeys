@@ -9,7 +9,7 @@ Route: polish (no code; a human checklist)
 
 **Why:** 56 found that the splash's "Play a Journey — no account needed" link only works where the seed Project exists *and* its cases are published. On staging, before Paul seeded, `/p/00000000-5eed-4000-8000-000000000001` was a bare Next 404 (`test-results/56-regression-pass/1280-light-keyboard-project.png`); after the seed but before publishing, it reads "No journeys are available right now" (`test-results/56-regression-pass/1280-light-seed-project.png`). Production (`journeys-ten-virid.vercel.app`, `main` at `c0fc678`) has the three cases published today, but that is the *old* build; the splash and About ship with the promotion.
 
-**What is true today (2026-09-24, 15:00 ET):**
+**What is true today (2026-09-24, 15:00 ET; Paul re-ran the production seed that evening, the domain move is still pending):**
 
 - `journeys.paul-macfarlane.com` resolves in DNS (216.198.79.195) but is not attached to the Vercel project (only the two `vercel.app` domains are), so it never connects. `journeys-staging.paul-macfarlane.com` has no DNS record at all.
 - `metadataBase` is `BETTER_AUTH_URL` (`src/app/layout.tsx`), so the link-preview image follows that variable; on staging it points at the protected git-branch alias, so no crawler can fetch it there. Production's preview works today at the `vercel.app` origin (`test-results/56-regression-pass/preview-home-production.png`, 1200 × 630).
