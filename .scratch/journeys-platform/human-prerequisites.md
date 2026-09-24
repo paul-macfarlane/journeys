@@ -6,8 +6,8 @@ Check items off here; ticket 01 references this file as its human-gated criteria
 Never paste secret values into this file or any tracked file — they go into
 `.env.local` (git-ignored) and the Vercel dashboard only.
 
-Production URL: `https://journeys-ten-virid.vercel.app`
-Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
+Production URL: `https://journeys-mvp-prod.vercel.app` (renamed 2026-09-24; the old `journeys-ten-virid.vercel.app` still serves until removed)
+Staging URL: `https://journeys-mvp-staging.vercel.app` (renamed 2026-09-24 from `staging-journeys-ten-virid.vercel.app`)
 
 ## 1. Vercel
 
@@ -28,8 +28,8 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 - [x] In Google Cloud Console → APIs & Services → Credentials, create an **OAuth client ID** (Web application) named `journeys`.
 - [x] Authorized redirect URIs:
   - `http://localhost:3000/api/auth/callback/google`
-  - `https://journeys-ten-virid.vercel.app/api/auth/callback/google`
-  - [x] `https://staging-journeys-ten-virid.vercel.app/api/auth/callback/google` (add after §9)
+  - `https://journeys-mvp-prod.vercel.app/api/auth/callback/google` (renamed 2026-09-24; keep the `journeys-ten-virid` entry while the old domain serves)
+  - [ ] `https://journeys-mvp-staging.vercel.app/api/auth/callback/google` (renamed 2026-09-24)
 - [x] Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Vercel (Production) and `.env.local`.
 - [x] Also set them for **Preview** (see §9).
 - Note: Google does not accept wildcard redirect URIs, so ephemeral PR preview URLs will never have working Google sign-in. Staging (a fixed domain) does. Accept this for the hackathon.
@@ -39,8 +39,8 @@ Staging URL: `https://staging-journeys-ten-virid.vercel.app` (fill in after §9)
 - [x] In the Discord Developer Portal, create an application `journeys` → OAuth2.
 - [x] Redirects:
   - `http://localhost:3000/api/auth/callback/discord`
-  - `https://journeys-ten-virid.vercel.app/api/auth/callback/discord`
-  - [x] `https://staging-journeys-ten-virid.vercel.app/api/auth/callback/discord` (add after §9)
+  - `https://journeys-mvp-prod.vercel.app/api/auth/callback/discord` (renamed 2026-09-24; keep the `journeys-ten-virid` entry while the old domain serves)
+  - [ ] `https://journeys-mvp-staging.vercel.app/api/auth/callback/discord` (renamed 2026-09-24)
 - [x] Set `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` in Vercel (Production) and `.env.local`.
 - [x] Also set them for **Preview** (see §9).
 
@@ -79,7 +79,7 @@ of values. Rather than placeholders, give the Preview environment real values
 that point at a fixed staging domain.
 
 - [x] Create and push a long-lived `staging` branch from `main`: `git checkout -b staging main && git push -u origin staging`.
-- [x] In Vercel → `journeys` → Settings → Domains, add a domain (`staging-journeys-ten-virid.vercel.app`) and assign it to the git branch `staging`. Record it at the top of this file.
+- [x] In Vercel → `journeys` → Settings → Domains, add a domain (`journeys-mvp-staging.vercel.app`, formerly `staging-journeys-ten-virid.vercel.app`) and assign it to the git branch `staging`. Record it at the top of this file.
 - [x] In Vercel → Settings → Environment Variables, set for the **Preview** environment: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` (same values as Production), `BETTER_AUTH_URL` = the staging URL, and confirm `BETTER_AUTH_SECRET` and `DATABASE_URL` are already present for Preview (§2, §5).
 - [x] Add the staging callback URLs to Google (§3) and Discord (§4).
 - Expected result: PR preview deployments build green; sign-in works on the staging domain; it is not expected to work on ephemeral PR preview URLs.
