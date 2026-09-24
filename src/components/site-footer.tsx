@@ -28,34 +28,46 @@ export function SiteFooter({
           width === "prose" ? "max-w-prose" : "max-w-7xl",
         )}
       >
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a
-            plain anchor on purpose: this component renders inside
-            RunnerFrame, which ships no client bundle. */}
-        <a href="/" className="hover:text-foreground inline-flex items-center">
-          <Wordmark />
-        </a>
-        <span>
-          © {COPYRIGHT_YEAR} {COPYRIGHT_HOLDER}
-        </span>
-        <a
-          href="/about"
-          className="hover:text-foreground underline-offset-4 hover:underline"
-        >
-          About
-        </a>
-        <a
-          href="/guide"
-          className="hover:text-foreground underline-offset-4 hover:underline"
-        >
-          Guide
-        </a>
-        <a
-          href={REPOSITORY_URL}
-          className="hover:text-foreground underline-offset-4 hover:underline"
-        >
-          GitHub
-        </a>
-        <LegalLinks />
+        {/* Two groups, not seven loose items (ticket 67): where the row is
+            too narrow for everything — a phone, or the runner's prose
+            column — the links group drops under the mark and copyright as
+            one tidy second row, instead of `justify-between` scattering
+            whichever items wrapped across the width. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a
+              plain anchor on purpose: this component renders inside
+              RunnerFrame, which ships no client bundle. */}
+          <a
+            href="/"
+            className="hover:text-foreground inline-flex items-center"
+          >
+            <Wordmark />
+          </a>
+          <span>
+            © {COPYRIGHT_YEAR} {COPYRIGHT_HOLDER}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <a
+            href="/about"
+            className="hover:text-foreground underline-offset-4 hover:underline"
+          >
+            About
+          </a>
+          <a
+            href="/guide"
+            className="hover:text-foreground underline-offset-4 hover:underline"
+          >
+            Guide
+          </a>
+          <a
+            href={REPOSITORY_URL}
+            className="hover:text-foreground underline-offset-4 hover:underline"
+          >
+            GitHub
+          </a>
+          <LegalLinks />
+        </div>
       </div>
     </footer>
   );
