@@ -53,6 +53,26 @@ export const authorBioSchema = z
 
 export const authorPublicSchema = z.boolean();
 
+/**
+ * The profile picture as a link (Paul, 2026-09-24: Authors may change it;
+ * images stay URL-only per the spec): an absolute `http:` or `https:` URL,
+ * the same rule a Step's image `src` is held to, or blank for none, which
+ * shows the Author's initials instead. Trimmed, at most 2,048 characters.
+ */
+export const authorImageSchema = z
+  .string()
+  .trim()
+  .max(2048, "Use 2,048 characters or fewer")
+  .refine((value) => {
+    if (value === "") return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch {
+      return false;
+    }
+  }, "Use a link that starts with https:// or http://");
+
 const hostByKind = new Map<AuthorLinkKind, string | null>(
   AUTHOR_LINK_KINDS.map((entry) => [entry.kind, entry.host]),
 );

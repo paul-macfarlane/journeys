@@ -6,16 +6,16 @@ import { updateAuthorSettings } from "@/db/users";
 import { firstIssue, type ActionResult } from "@/lib/action-result";
 import { requireSession } from "@/lib/session";
 import {
+  authorIdentitySchema,
   authorPageSchema,
   authorPageVisibilitySchema,
-  renameAuthorSchema,
 } from "@/lib/validation/author";
 
 /**
  * Server actions behind the Settings page (ticket 52): the signed-in
- * Author's display name, their bio and links, and the switch that makes
- * their Author page public. Not better-auth's `updateUser`: the four fields
- * share this one validated path into `@/db/users`.
+ * Author's display name and profile picture, their bio and links, and the
+ * switch that makes their Author page public. Not better-auth's `updateUser`:
+ * every field shares this one validated path into `@/db/users`.
  *
  * Each one is a public endpoint, so each re-reads the session and re-parses
  * its input rather than trusting the form that called it. An Author only
@@ -44,12 +44,12 @@ async function saveAuthorSettings(
   return { ok: true, id: userId };
 }
 
-export async function renameAuthorAction(
+export async function editAuthorIdentityAction(
   input: unknown,
 ): Promise<ActionResult> {
   const session = await requireSession();
 
-  const parsed = renameAuthorSchema.safeParse(input);
+  const parsed = authorIdentitySchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }

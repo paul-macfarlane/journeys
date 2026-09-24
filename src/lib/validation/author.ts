@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   authorBioSchema,
+  authorImageSchema,
   authorLinksSchema,
   authorNameSchema,
   authorPublicSchema,
@@ -15,8 +16,14 @@ import {
  * themselves live in `@/lib/author`, which the public page reads too.
  */
 
-/** The display name, the one field of the "Display name" section. */
-export const renameAuthorSchema = z.object({ name: authorNameSchema });
+/**
+ * The "Display name" section: the name, and the profile picture as a link
+ * (blank for the initials), saved together as one record.
+ */
+export const authorIdentitySchema = z.object({
+  name: authorNameSchema,
+  image: authorImageSchema,
+});
 
 /** The bio and links, saved together from the "Author page" section. */
 export const authorPageSchema = z.object({
@@ -29,7 +36,7 @@ export const authorPageVisibilitySchema = z.object({
   public: authorPublicSchema,
 });
 
-export type RenameAuthorInput = z.infer<typeof renameAuthorSchema>;
+export type AuthorIdentityInput = z.infer<typeof authorIdentitySchema>;
 export type AuthorPageInput = z.infer<typeof authorPageSchema>;
 export type AuthorPageVisibilityInput = z.infer<
   typeof authorPageVisibilitySchema

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTHOR_LINK_KINDS,
   authorBioSchema,
+  authorImageSchema,
   authorLinkLabel,
   authorLinksSchema,
   authorLinkUrlSchema,
@@ -147,5 +148,46 @@ describe("authorLinkLabel", () => {
   it("labels every kind", () => {
     expect(authorLinkLabel("linkedin")).toBe("LinkedIn");
     expect(authorLinkLabel("website")).toBe("Website");
+  });
+});
+
+describe("authorImageSchema", () => {
+  it("accepts an absolute https: or http: link, trimmed", () => {
+    expect(authorImageSchema.parse(" https://example.com/ada.png ")).toBe(
+      "https://example.com/ada.png",
+    );
+    expect(authorImageSchema.parse("http://example.com/ada.png")).toBe(
+      "http://example.com/ada.png",
+    );
+  });
+
+  it("accepts blank, which means the initials are shown", () => {
+    expect(authorImageSchema.parse("")).toBe("");
+    expect(authorImageSchema.parse("   ")).toBe("");
+  });
+
+  it("refuses other schemes, relative paths, and nonsense", () => {
+    for (const bad of [
+      "javascript:alert(1)",
+      "data:image/png;base64,AAAA",
+      "/ada.png",
+      "ada.png",
+      "not a url",
+    ]) {
+      const result = authorImageSchema.safeParse(bad);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe(
+          "Use a link that starts with https:// or http://",
+        );
+      }
+    }
+  });
+
+  it("refuses a link over 2,048 characters", () => {
+    const result = authorImageSchema.safeParse(
+      `https://example.com/${"a".repeat(2048)}`,
+    );
+    expect(result.success).toBe(false);
   });
 });

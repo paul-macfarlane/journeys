@@ -77,13 +77,15 @@ export async function getAuthorSettings(
  * Applies one Settings-page edit. The caller has already parsed the patch
  * through `src/lib/author.ts`'s schemas; this stores what it is given. A
  * bio of `""` is stored as `null` and read back as `""` again, matching
- * `AuthorSettings.bio`'s never-null shape. Returns null when `userId` names
+ * `AuthorSettings.bio`'s never-null shape; a blank image is stored as
+ * `null` too, which is "show the initials". Returns null when `userId` names
  * no account.
  */
 export async function updateAuthorSettings(
   userId: string,
   patch: Partial<{
     name: string;
+    image: string;
     bio: string;
     links: AuthorLink[];
     public: boolean;
@@ -91,6 +93,7 @@ export async function updateAuthorSettings(
 ): Promise<AuthorSettings | null> {
   const changes: Partial<{
     name: string;
+    image: string | null;
     bio: string | null;
     links: AuthorLink[];
     public: boolean;
@@ -98,6 +101,9 @@ export async function updateAuthorSettings(
   }> = { updatedAt: new Date() };
 
   if (patch.name !== undefined) changes.name = patch.name;
+  if (patch.image !== undefined) {
+    changes.image = patch.image === "" ? null : patch.image;
+  }
   if (patch.bio !== undefined) {
     changes.bio = patch.bio === "" ? null : patch.bio;
   }

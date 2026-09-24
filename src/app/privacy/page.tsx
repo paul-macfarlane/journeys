@@ -34,12 +34,13 @@ export default function PrivacyPage() {
       <ul>
         <li>
           Your name, email address, and profile picture, as Google or Discord
-          shares them when you sign in. We use them to show you who you are
-          signed in as and to let the other members of a project recognise you.
-          If you turn on your Author page, your name, profile picture, bio, and
-          links are public at that page, together with the projects you belong
-          to that have a published journey, until you turn it off. We never see
-          or store your password.
+          shares them when you sign in; you can change the name and the picture
+          link on your Settings page. We use them to show you who you are signed
+          in as and to let the other members of a project recognise you. If you
+          turn on your Author page, your name, profile picture, bio, and links
+          are public at that page, together with the projects you belong to that
+          have a published journey, until you turn it off. We never see or store
+          your password.
         </li>
         <li>
           A sign-in session record, holding the browser and IP address the

@@ -5,8 +5,8 @@ import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { z } from "zod";
 
 import {
+  editAuthorIdentityAction,
   editAuthorPageAction,
-  renameAuthorAction,
   setAuthorPageVisibilityAction,
 } from "@/app/projects/(list)/settings/actions";
 import { useAutosavedForm } from "@/components/autosaved-form";
@@ -26,8 +26,8 @@ import {
 import { STATUS_TEXT } from "@/lib/autosave";
 import { initials } from "@/lib/navbar";
 import {
-  renameAuthorSchema,
-  type RenameAuthorInput,
+  authorIdentitySchema,
+  type AuthorIdentityInput,
 } from "@/lib/validation/author";
 
 /**
@@ -75,7 +75,8 @@ const LINK_PLACEHOLDERS: Record<AuthorLinkKind, string> = {
  * "Author page" holds the switch that makes `/authors/<id>` public —
  * applied the moment it is flipped, like a Journey's Theme override — and
  * the bio and links that page shows, saved together as one record. The
- * profile picture is the provider's and is only shown here.
+ * profile picture is a link beside the name, the provider's until the Author
+ * changes it (Paul, 2026-09-24).
  */
 export function AuthorSettings({
   settings,
@@ -92,15 +93,17 @@ export function AuthorSettings({
 
 function DisplayNameSection({ settings }: { settings: AuthorSettingsValues }) {
   const router = useRouter();
-  const values = useMemo<RenameAuthorInput>(
-    () => ({ name: settings.name }),
-    [settings.name],
+  // The picture is a link, blank for none: a form field always holds a
+  // string, and the action stores a blank as "show the initials".
+  const values = useMemo<AuthorIdentityInput>(
+    () => ({ name: settings.name, image: settings.image ?? "" }),
+    [settings.name, settings.image],
   );
   const { form, status, change, flush, handleEnterKeyDown } = useAutosavedForm({
-    schema: renameAuthorSchema,
+    schema: authorIdentitySchema,
     values,
-    submit: renameAuthorAction,
-    // The navbar above reads the name off the session's own row.
+    submit: editAuthorIdentityAction,
+    // The navbar above reads the name and picture off the session's own row.
     onSaved: () => router.refresh(),
   });
   const { errors } = form.formState;
@@ -113,16 +116,6 @@ function DisplayNameSection({ settings }: { settings: AuthorSettingsValues }) {
         </h2>
         <p className="text-muted-foreground text-sm">
           How you appear to the other members of your projects.
-        </p>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Avatar size="lg" aria-hidden>
-          {settings.image ? <AvatarImage src={settings.image} alt="" /> : null}
-          <AvatarFallback>{initials(settings.name)}</AvatarFallback>
-        </Avatar>
-        <p className="text-muted-foreground text-sm">
-          Your profile picture comes from Google or Discord.
         </p>
       </div>
 
@@ -141,6 +134,40 @@ function DisplayNameSection({ settings }: { settings: AuthorSettingsValues }) {
         {errors.name ? (
           <p role="alert" className="text-sm text-destructive">
             {errors.name.message}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="author-image">Profile picture</Label>
+        <div className="flex items-center gap-3">
+          <Avatar size="lg" aria-hidden>
+            {settings.image ? (
+              <AvatarImage src={settings.image} alt="" />
+            ) : null}
+            <AvatarFallback>{initials(settings.name)}</AvatarFallback>
+          </Avatar>
+          <Input
+            id="author-image"
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            placeholder="https://…"
+            aria-invalid={errors.image ? true : undefined}
+            {...form.register("image", {
+              onChange: () => change("image"),
+              onBlur: () => void flush("image"),
+            })}
+            onKeyDown={handleEnterKeyDown}
+          />
+        </div>
+        <p className="text-muted-foreground text-xs">
+          A link to an image. Google or Discord filled this in when you signed
+          in; leave it empty to show your initials instead.
+        </p>
+        {errors.image ? (
+          <p role="alert" className="text-sm text-destructive">
+            {errors.image.message}
           </p>
         ) : null}
       </div>

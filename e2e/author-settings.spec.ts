@@ -14,7 +14,8 @@ import {
  * Ticket 52, AC 1 and the on-screen half of AC 3: an Author opens Settings
  * from the user menu, renames themselves — the navbar, the Projects list,
  * and a Project's Members tab follow, and a later sign-in keeps the name —
- * has a blank or over-long name refused with the previous one kept, writes
+ * sets, has refused, and clears their profile picture link, has a blank or
+ * over-long name refused with the previous one kept, writes
  * a bio and a LinkedIn link, has a link on the wrong host and a plain
  * `http:` one refused without anything stored, and turns their Author page
  * on. Every save is proved against the `user` row as well as the screen.
@@ -32,6 +33,7 @@ test.afterAll(async () => {
 
 type AuthorRow = {
   name: string;
+  image: string | null;
   bio: string | null;
   links: { kind: string; url: string }[];
   public: boolean;
@@ -39,7 +41,7 @@ type AuthorRow = {
 
 async function readAuthor(userId: string): Promise<AuthorRow> {
   const [row] = await queryE2eDatabase<AuthorRow>(
-    'SELECT name, bio, links, "public" FROM "user" WHERE id = $1',
+    'SELECT name, image, bio, links, "public" FROM "user" WHERE id = $1',
     [userId],
   );
   return row;
@@ -94,6 +96,37 @@ test("author-settings", async ({ page, context }) => {
   await signInAgain(context, author.id);
   await page.goto("/projects/settings");
   await expect(nameField).toHaveValue(newName);
+
+  // The profile picture is a link the Author may change (Paul, 2026-09-24):
+  // saved on blur, read back after a reload; a link that is not http(s) is
+  // refused with the row untouched; blank clears it to the initials. The
+  // first edit after the navigation is made until it takes, as the rename.
+  const imageField = page.getByRole("textbox", { name: "Profile picture" });
+  const imageUrl = `https://example.com/ada-${suffix}.png`;
+  await expect(async () => {
+    await imageField.fill(imageUrl);
+    await expect(imageField).toHaveValue(imageUrl, { timeout: 1_000 });
+    await imageField.press("Enter");
+    await expect
+      .poll(async () => (await readAuthor(author.id)).image, {
+        timeout: 3_000,
+      })
+      .toBe(imageUrl);
+  }).toPass({ timeout: 20_000 });
+  await page.reload();
+  await expect(imageField).toHaveValue(imageUrl);
+  await imageField.fill("javascript:alert(1)");
+  await imageField.blur();
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("alert")
+      .filter({ hasText: "Use a link that starts with https:// or http://" }),
+  ).toBeVisible();
+  expect((await readAuthor(author.id)).image).toBe(imageUrl);
+  await imageField.fill("");
+  await imageField.blur();
+  await expect.poll(async () => (await readAuthor(author.id)).image).toBeNull();
 
   // Scoped to the page body: Next's route announcer is an empty alert too.
   const alerts = page.getByRole("main").getByRole("alert");
