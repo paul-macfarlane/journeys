@@ -2911,8 +2911,31 @@ test("canvas-delete-key-step", async ({ page, context }, testInfo) => {
   await expect(canvasEdges(page)).toHaveCount(1);
   await expect(clinic).toBeFocused();
 
+  // The box's own menu opens the same confirmation — the one the key opens —
+  // and Cancel hands the keyboard back to the button that asked.
+  const toolbar = await expandStepActions(page, "Clinic tent");
+  const menuDelete = toolbar.getByRole("button", {
+    name: "Delete step",
+    exact: true,
+  });
+  await menuDelete.click();
+  await expect(confirmation).toBeVisible();
+  await expect(
+    confirmation
+      .getByRole("list", { name: "Affected choices" })
+      .getByRole("listitem"),
+  ).toHaveText(["Find the clinic on Border pos"]);
+  await confirmation
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+  await expect(menuDelete).toBeFocused();
+  await expect(canvasNodes(page)).toHaveCount(2);
+
   // Backspace is the same key. Confirmed, the Step goes, and the Choice that
   // reached it is left pointing at a placeholder.
+  await clinic.focus();
+  await expect(clinic).toBeFocused();
   await page.keyboard.press("Backspace");
   await expect(confirmation).toBeVisible();
   await confirmation

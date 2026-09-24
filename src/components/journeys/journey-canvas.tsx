@@ -538,6 +538,8 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
               <Button
                 variant="destructive"
                 size="sm"
+                // What a dialog's own trigger would say of itself.
+                aria-haspopup="dialog"
                 onClick={() => actions.onRequestDeleteStep(data.opens)}
               >
                 Delete step
@@ -1614,6 +1616,11 @@ function CanvasFlow({
         open={deleteConfirmation?.open ?? false}
         onOpenChange={(open) => {
           if (!open) closeDeleteConfirmation();
+        }}
+        // Once the closing has played there is nothing left to name, and
+        // nothing left to keep recomputing on every edit.
+        onOpenChangeComplete={(open) => {
+          if (!open) setDeleteConfirmation(null);
         }}
       >
         {deleteConfirmation !== null ? (
