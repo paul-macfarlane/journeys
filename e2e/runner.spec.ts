@@ -450,7 +450,10 @@ test("runner-deciding-prompt", async ({ page, context, browser }) => {
       fullPage: true,
     });
     releaseJudge();
-    await participant.unrouteAll();
+    // "wait", not the default: the handler above is still finishing its
+    // `route.continue()` for the released POST, and unrouting under it
+    // would hand the request to the network and make that call throw.
+    await participant.unrouteAll({ behavior: "wait" });
 
     // No key, so no pick: every Choice offered, none marked.
     await expect(
