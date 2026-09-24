@@ -9,8 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { listProjectsForAuthor } from "@/db/projects";
 import { requireSession } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Your projects",
@@ -31,7 +33,17 @@ export default async function ProjectsPage() {
             Signed in as {session.user.name}
           </p>
         </div>
-        <NewProjectDialog />
+        <div className="flex items-center gap-3">
+          {/* The user guide (ticket 55): the one place a signed-in Author is
+              pointed at it until in-app help exists. */}
+          <Link
+            href="/guide"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+          >
+            Guide
+          </Link>
+          <NewProjectDialog />
+        </div>
       </header>
 
       {projects.length === 0 ? (

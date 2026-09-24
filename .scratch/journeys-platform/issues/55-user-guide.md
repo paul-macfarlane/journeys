@@ -1,8 +1,8 @@
 # 55: The user guide
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 38
-Owner:
+Owner: Claude (Fable 5.1), 2026-09-24
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: hackathon presentation (Paul, 2026-09-24, grilled the same evening): runs in a worktree parallel to 54 after 38 merges; the first ticket to cut if the night runs late. In-app help is ticket 57, post-hackathon.
 Route: polish
