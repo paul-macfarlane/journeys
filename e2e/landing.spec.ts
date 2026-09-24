@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import { evidencePath } from "./setup/evidence";
+import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 
-const SEED_PROJECT_HREF = "/p/00000000-5eed-4000-8000-000000000001";
+import { evidencePath } from "./setup/evidence";
 
 const FEATURE_HEADINGS = [
   "Publish immutable versions",
@@ -36,9 +36,9 @@ test("landing page explains the product and offers a single sign-in link while s
 
   // Play a seeded Journey without an account.
   const play = page.getByRole("link", {
-    name: "Play a Journey — no account needed",
+    name: PLAY_JOURNEY_LABEL,
   });
-  await expect(play).toHaveAttribute("href", SEED_PROJECT_HREF);
+  await expect(play).toHaveAttribute("href", PLAY_JOURNEY_HREF);
 
   // One entry point: the provider choice lives on /sign-in, not here.
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute(

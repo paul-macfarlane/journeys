@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import { evidencePath } from "./setup/evidence";
+import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 
-const SEED_PROJECT_HREF = "/p/00000000-5eed-4000-8000-000000000001";
+import { evidencePath } from "./setup/evidence";
 
 /**
  * Ticket 54: the About page, first person from Paul. The heading, the
@@ -15,7 +15,7 @@ test("about", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/about");
 
-  await expect(page).toHaveTitle(/About Journeys/);
+  await expect(page).toHaveTitle("About · Journeys");
   await expect(
     page.getByRole("heading", { name: "About Journeys", level: 1 }),
   ).toBeVisible();
@@ -40,8 +40,8 @@ test("about", async ({ page }) => {
 
   // Play the three cases, and the guide for new Authors.
   await expect(
-    main.getByRole("link", { name: "Play a Journey — no account needed" }),
-  ).toHaveAttribute("href", SEED_PROJECT_HREF);
+    main.getByRole("link", { name: PLAY_JOURNEY_LABEL }),
+  ).toHaveAttribute("href", PLAY_JOURNEY_HREF);
   await expect(main.getByRole("link", { name: "guide" })).toHaveAttribute(
     "href",
     "/guide",

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { APP_NAME } from "@/lib/brand";
+import { PLAY_JOURNEY_HREF } from "@/lib/demo";
 import type { Content } from "@/lib/graph/content";
 import { linkPreviewPalette } from "@/lib/link-preview";
 
@@ -267,7 +268,7 @@ test("public-project-page", async ({ page, context, browser }) => {
     await expect(participant.locator(`a[href*="/p/"]`)).toHaveCount(1);
     await expect(participant.locator(`a[href*="/p/"]`)).toHaveAttribute(
       "href",
-      "/p/00000000-5eed-4000-8000-000000000001",
+      PLAY_JOURNEY_HREF,
     );
     await expect(participant.locator(`a[href*="/j/"]`)).toHaveCount(0);
   } finally {

@@ -31,7 +31,7 @@ const FEATURES = [
   {
     slug: "themes",
     title: "Themes",
-    text: "Give each journey its own look for participants: palette and type chosen by the author, applied to every published version.",
+    text: "Give each journey its own look for participants: a palette preset and an accent colour, set for the project and overridable per journey.",
   },
   {
     slug: "rich-text",
@@ -40,15 +40,12 @@ const FEATURES = [
   },
 ] as const;
 
-export type FeatureSlug = (typeof FEATURES)[number]["slug"];
+type FeatureSlug = (typeof FEATURES)[number]["slug"];
 
-export function FeatureGrid({ className }: { className?: string }) {
+export function FeatureGrid() {
   return (
     <ul
-      className={cn(
-        "grid list-none gap-6 p-0 sm:grid-cols-2 lg:grid-cols-3",
-        className,
-      )}
+      className="grid list-none gap-6 p-0 sm:grid-cols-2 lg:grid-cols-3"
       aria-label="Features"
     >
       {FEATURES.map((feature) => (

@@ -7,14 +7,14 @@ import { SiteFooter } from "@/components/site-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 import { getSession } from "@/lib/session";
-import { cn } from "@/lib/utils";
 
 // The splash page (ticket 54): the recording of the canvas as the hero, six
 // feature cards, a way to play a seeded Journey without an account, and one
 // call to action. It deliberately lists no projects and no journeys:
 // discovery is link-only. Provider choice lives on /sign-in. The entrance
-// fade is `animate-in` from tw-animate-css, which respects
-// `prefers-reduced-motion` by itself.
+// fade is tw-animate-css's `animate-in`, which knows nothing of
+// `prefers-reduced-motion`; `motion-reduce:animate-none` is what turns it
+// off for visitors who asked for no motion (decision 8).
 export default async function LandingPage() {
   const session = await getSession();
 
@@ -33,7 +33,7 @@ export default async function LandingPage() {
           <div className="flex flex-wrap items-center gap-4">
             <Link
               href={PLAY_JOURNEY_HREF}
-              className={cn(buttonVariants({ size: "lg" }))}
+              className={buttonVariants({ size: "lg" })}
             >
               {PLAY_JOURNEY_LABEL}
             </Link>
@@ -50,9 +50,7 @@ export default async function LandingPage() {
               // anchor.
               <Link
                 href="/sign-in"
-                className={cn(
-                  buttonVariants({ size: "lg", variant: "outline" }),
-                )}
+                className={buttonVariants({ size: "lg", variant: "outline" })}
               >
                 Sign in
               </Link>

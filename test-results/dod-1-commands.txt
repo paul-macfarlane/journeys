@@ -39,8 +39,8 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  Test Files  36 passed (36)
       Tests  544 passed (544)
-   Start at  12:01:56
-   Duration  1.02s (transform 1.28s, setup 0ms, import 3.90s, tests 787ms, environment 2ms)
+   Start at  12:08:45
+   Duration  1.04s (transform 1.41s, setup 0ms, import 3.97s, tests 783ms, environment 2ms)
 
 exit=0
 
@@ -65,7 +65,7 @@ Failed to find font override values for font `Atkinson Hyperlegible Next`
 Skipping generating a fallback font.
 
 
-✓ Compiled successfully in 5.5s
+✓ Compiled successfully in 5.3s
   Running TypeScript ...
   Finished TypeScript in 5.4s ...
   Collecting page data using 9 workers ...
@@ -73,7 +73,7 @@ Skipping generating a fallback font.
   Generating static pages using 9 workers (3/13) 
   Generating static pages using 9 workers (6/13) 
   Generating static pages using 9 workers (9/13) 
-✓ Generating static pages using 9 workers (13/13) in 233ms
+✓ Generating static pages using 9 workers (13/13) in 242ms
   Finalizing page optimization ...
 
 Route (app)
@@ -112,11 +112,11 @@ exit=0
 
 $ E2E_EVIDENCE=landing,about pnpm test:e2e:prebuilt   (the build above is the one it serves; full output in dod-1-e2e.txt)
   ✓   98 [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget (14.4s)
+  ✓  102 [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls (2.4s)
   ✓  101 [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish (4.8s)
-  ✓  102 [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls (2.5s)
-  ✓  104 [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart (2.8s)
-  ✓  103 [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice (4.7s)
+  ✓  103 [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart (2.7s)
   ✓  105 [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll (1.8s)
+  ✓  104 [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice (4.8s)
 
   105 passed (1.8m)
 exit=0
