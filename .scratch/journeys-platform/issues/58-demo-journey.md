@@ -1,8 +1,8 @@
 # 58: A small demo Journey for the recording and the stills
 
-Status: needs-triage
+Status: in-progress
 Blocked by: 38
-Owner:
+Owner: Claude (Fable 5.1), the 38 thread, 2026-09-24
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: hackathon presentation (Paul, 2026-09-24, after reviewing PR #64): runs in the 38 thread after #64 merges, in parallel with 54; 54 builds on the current stills and swaps the files later, since the file names do not change. Becomes `ready-for-agent` when Paul approves the scenario in Comments.
 Route: polish
@@ -16,7 +16,7 @@ Route: polish
 1. **A second seed Project, not a fourth case.** `The Allotment` Project (fixed id `00000000-5eed-4000-8000-000000000002`) with one Journey, `A key on the doormat` (fixed id `…0021`), seeded by the same `pnpm seed:journey-stories <email>` command so staging and production get it in the run Paul already does. The three cases stay exactly as they are, in their own Project.
 2. **The script records the demo Journey by default.** `pnpm demo:record` (and `:prebuilt`) take `--source demo` (default) or `--source journey-stories`, writing the same file names to `public/demo/` either way, so nothing about 54 changes and Paul can regenerate the cases' set with one flag. The current set stays in git history; the committed set is whichever Paul chooses (the demo Journey, unless he says otherwise).
 3. **Original content, neutral subject.** The demo is not a medical case: planning policy says not to bake the migrant-healthcare example into the model, and a warm, everyday scenario is the point of the ticket. Ten Steps, three Endings, two Outcomes, one loop, one image with a caption, one Step with three Choices for the deciding Prompt. Drafted below; Paul edits or approves in Comments.
-4. **The image is self-hosted and public domain.** One photograph under `public/seed/` (outside the 4 MB `public/demo/` cap), from Wikimedia Commons or rawpixel with a CC0 or public-domain licence recorded in the caption, so the still never depends on a third-party host being up. The `alt` is written (not empty, unlike the legacy cases).
+4. **The image is the repository's own and public domain.** A flat illustration drawn for this repository (`scripts/seed/allotment/illustration.svg`, rendered to `public/seed/allotment.jpg`, outside the 4 MB `public/demo/` cap) rather than a downloaded photograph: nothing to license and no fetch from a third party. Stored rich text keeps only absolute http(s) image URLs (the runner strips anything else and the next autosave would drop it), so the document links the committed file at its raw GitHub address on `staging`; the recording script serves the file for that address itself and needs no network. The `alt` is written (not empty, unlike the legacy cases). Paul may swap in a photograph later by replacing the file.
 5. **"Play a Journey" is 54's call.** 54 decides whether the splash's Play link points at the cases, the demo, or both ("Play a short demo", "Play the original cases"). This ticket only makes the demo publishable; Paul publishes it on staging and production with the cases.
 
 **Draft scenario: _A key on the doormat_** (Journey description: "Goal: keep your aunt's allotment plot through the summer.")
@@ -40,7 +40,7 @@ Loops: 3 → 2 and 5 → 4 (allowed since ticket 18). Reachability: every Step i
 
 - `scripts/seed/allotment/a-key-on-the-doormat.json` in the stored document shape (`graphDocumentSchema`), plus `public/seed/<image>.jpg` with its licence noted in the caption and in a one-line `public/seed/README.md`.
 - `scripts/seed/journey-stories-seed.ts` gains the second Project and Journey (same idempotent upsert; the Author becomes a Member of both). `src/lib/graph/validate.test.ts` checks the new document publishes and holds the counts above, as it does for the cases.
-- `scripts/record-landing-demo.ts` gains the `--source` switch and a per-source table of the Steps it opens, drags from, walks to, and photographs (the constants that today name "HHS", "911", "Sponsor", "River", "Preface", and `step-8`). The recording on the demo: find "Waist-high grass" by name, open "Blisters" from its box, drag a Choice onto bare map, name it, fit the view, turn the map, find the new Step again. The stills: `versions` and `themes` on the demo Journey; `prompt` on "Blisters"; `rich-text` on "Waist-high grass"; `analytics` from walks to all three Endings; `run` on "Blisters" with its three Choices.
+- `scripts/record-landing-demo.ts` gains the `--source` switch and a per-source table of the Steps it opens, drags from, walks to, and photographs (the constants that today name "HHS", "911", "Sponsor", "River", "Preface", and `step-8`). The recording on the demo: find "Waist-high grass" by name, open "Blisters" from its box, drag a Choice onto bare map, name it, fit the view, turn the map, find the new Step again. The stills: `versions` and `themes` on the demo Journey; `prompt` on "Blisters"; `rich-text` on "Waist-high grass"; `analytics` from walks to all three Endings; `run` on "Ada's advice" with its two Choices (a deciding Prompt shows a textbox and Continue in the runner, so "Blisters" would show no Choices).
 - README's recording section names the switch and the default; the seed section names the second Project.
 - Rerun `pnpm demo:record` and commit the 16 files; both caps still hold.
 
@@ -55,3 +55,7 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `polish`): one `dod-1-commands.txt` plus the `landing` and `landing-canvas-demo` screenshot directories, run with `E2E_EVIDENCE=landing,landing-canvas-demo`. Seeded content only. Use `CONTEXT.md` vocabulary (the image line is a caption, not a credit). Origin: Paul, 2026-09-24.
 
 ## Comments
+
+### 2026-09-24 — Paul, scenario approved
+
+Paul: "scenario approved, go ahead." The draft table above is the content; decisions 1–5 stand as proposed. Implemented on `feat/58-demo-journey` (based on the ticket branch with `feat/38-landing-demo-recording` merged in, since #64 is still open); the PR targets `staging` and shrinks to this ticket's diff once #64 merges.

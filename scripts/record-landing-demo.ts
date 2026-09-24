@@ -1,6 +1,8 @@
 /**
- * Records the landing page's canvas demo and the feature stills, from the
- * seeded Journey Stories Project only (ticket 38, and 54's stills).
+ * Records the landing page's canvas demo and the feature stills, from seeded
+ * content only (ticket 38, 54's stills, and 58's demo Journey): by default
+ * from `The Allotment`, the ten-Step Journey made for it, or with
+ * `--source journey-stories` from Medha's three cases.
  *
  * The whole thing is reproducible: run it again after any canvas or page
  * change and every file under `public/demo/` is rewritten. Per theme it
@@ -60,6 +62,8 @@ import {
   type MintedCookie,
 } from "../e2e/setup/session";
 import {
+  DEMO_JOURNEY_ID,
+  DEMO_PROJECT_ID,
   parseSeedJourneys,
   SEED_PROJECT_ID,
   seedJourneyStories,
@@ -80,33 +84,139 @@ const VIDEO_BUDGET = 3 * 1024 * 1024;
 const DIRECTORY_BUDGET = 4 * 1024 * 1024;
 
 /**
- * The Journeys each file is made from. The recording and the analytics use
- * Case 3, the smallest map; the Prompt goes on a short Case 2 Step with two
- * Choices and no image, so the panel shows the Prompt itself; the Versions,
- * the Theme, and the rich text are Case 1's, which nothing else changes.
+ * What the script records and photographs, per source (ticket 58): which
+ * seed Project, which Journey each file comes from, and the Steps it opens,
+ * drags from, walks to, and frames — by title, as an Author would name them.
+ * `demo` is the default: `The Allotment`'s ten-Step Journey, made for this.
+ * `journey-stories` regenerates the same files from Medha's three cases.
  */
+type Source = {
+  projectId: string;
+  recording: {
+    journeyId: string;
+    /** Found by name, which zooms the map to it: the first frame. */
+    firstStep: string;
+    /** Where the first Step's first Choice leads; opened from its box. */
+    secondStep: string;
+    /** What the Step made by the drop is called. */
+    newStepTitle: string;
+  };
+  versions: { journeyId: string; descriptionEdit: string };
+  themes: { journeyId: string };
+  prompt: {
+    journeyId: string;
+    step: string;
+    /** Written in the panel; null when the seed already asks a deciding Prompt there. */
+    text: string | null;
+  };
+  richText: { journeyId: string; step: string };
+  analytics: { journeyId: string; startStep: string; zoomNotches: number };
+  run: { journeyId: string; stepId: string };
+};
+
 const CASE_1 = "00000000-5eed-4000-8000-000000000011";
 const CASE_2 = "00000000-5eed-4000-8000-000000000012";
 const CASE_3 = "00000000-5eed-4000-8000-000000000013";
 
-/** Steps of the seed, by title, as the script opens or walks to them. */
-const RECORDING_FIRST_STEP = "HHS";
-const RECORDING_SECOND_STEP = "911"; // Where HHS's first Choice leads.
-const RECORDING_NEW_STEP_TITLE = "Follow-up visit";
-const RUN_STEP_ID = "step-8"; // Case 3's "HHS": two Choices, mid-Journey.
-const PROMPT_STEP = "Sponsor"; // Case 2: two Choices, short text, no image.
-const PROMPT_TEXT = "What do you tell the lawyer first?";
-const RICH_TEXT_STEP = "River"; // Case 1: a short Step with an image and its caption.
+const SOURCES: Record<"demo" | "journey-stories", Source> = {
+  demo: {
+    projectId: DEMO_PROJECT_ID,
+    recording: {
+      journeyId: DEMO_JOURNEY_ID,
+      firstStep: "Waist-high grass",
+      secondStep: "Blisters",
+      newStepTitle: "Rain stops play",
+    },
+    versions: {
+      journeyId: DEMO_JOURNEY_ID,
+      descriptionEdit:
+        "Goal: keep your aunt's allotment plot through the summer. Second edition.",
+    },
+    themes: { journeyId: DEMO_JOURNEY_ID },
+    prompt: { journeyId: DEMO_JOURNEY_ID, step: "Blisters", text: null },
+    richText: { journeyId: DEMO_JOURNEY_ID, step: "Waist-high grass" },
+    analytics: {
+      journeyId: DEMO_JOURNEY_ID,
+      startStep: "A key on the doormat",
+      zoomNotches: 2,
+    },
+    run: { journeyId: DEMO_JOURNEY_ID, stepId: "ada" },
+  },
+  // The recording and the analytics use Case 3, the smallest map; the
+  // Prompt goes on a short Case 2 Step with two Choices and no image; the
+  // Versions, the Theme, and the rich text are Case 1's.
+  "journey-stories": {
+    projectId: SEED_PROJECT_ID,
+    recording: {
+      journeyId: CASE_3,
+      firstStep: "HHS",
+      secondStep: "911",
+      newStepTitle: "Follow-up visit",
+    },
+    versions: {
+      journeyId: CASE_1,
+      descriptionEdit: "Goal: Cross the border. Second edition.",
+    },
+    themes: { journeyId: CASE_1 },
+    prompt: {
+      journeyId: CASE_2,
+      step: "Sponsor",
+      text: "What do you tell the lawyer first?",
+    },
+    richText: { journeyId: CASE_1, step: "River" },
+    analytics: { journeyId: CASE_3, startStep: "Preface", zoomNotches: 11 },
+    run: { journeyId: CASE_3, stepId: "step-8" },
+  },
+};
 
-/** Case 3's Start, which the analytics still zooms in around. */
-const ANALYTICS_START_STEP = "Preface";
-const ANALYTICS_ZOOM_NOTCHES = 11;
+type SourceName = keyof typeof SOURCES;
+
+function isSourceName(name: string): name is SourceName {
+  return Object.hasOwn(SOURCES, name);
+}
+
+/** `--source demo` (the default) or `--source journey-stories`. */
+function chooseSource(argv: string[]): { name: SourceName; source: Source } {
+  const at = argv.indexOf("--source");
+  const name = at === -1 ? "demo" : (argv[at + 1] ?? "");
+  if (!isSourceName(name)) {
+    throw new Error(
+      `Unknown --source "${name}": expected ${Object.keys(SOURCES).join(" or ")}`,
+    );
+  }
+  return { name, source: SOURCES[name] };
+}
+
+/**
+ * The demo Journey's image is stored at its raw GitHub address (stored
+ * content keeps only absolute http(s) image URLs), which does not exist
+ * until this branch lands on `staging`; every page here is served the
+ * committed file for it instead, so the recording needs no network.
+ */
+const SEED_IMAGE_PATH = "/public/seed/";
+async function serveSeedImages(context: BrowserContext): Promise<void> {
+  await context.route(
+    (url) =>
+      url.hostname === "raw.githubusercontent.com" &&
+      url.pathname.includes(SEED_IMAGE_PATH),
+    async (route) => {
+      const file = path.resolve(
+        "public/seed",
+        path.basename(new URL(route.request().url()).pathname),
+      );
+      await route.fulfill({ path: file, contentType: "image/jpeg" });
+    },
+  );
+}
+
+/** What a Participant of this script writes into a deciding Prompt. */
+const FIXTURE_RESPONSE = "I'll come back at the weekend and bring gloves.";
 
 /** The Step panel's deciding option (ticket 49), by its label. */
 const DECIDES_LABEL = "AI decides the next step from the response";
 
-function journeyPath(journeyId: string): string {
-  return `/projects/${SEED_PROJECT_ID}/journeys/${journeyId}`;
+function journeyPath(source: Source, journeyId: string): string {
+  return `/projects/${source.projectId}/journeys/${journeyId}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -315,6 +425,7 @@ async function newContext(
     recordVideo: videoDir ? { dir: videoDir, size: SIZE } : undefined,
   });
   if (cookie) await context.addCookies([cookie]);
+  await serveSeedImages(context);
   return context;
 }
 
@@ -344,9 +455,11 @@ async function imagesSettled(page: Page): Promise<void> {
 async function recordCanvas(
   browser: Browser,
   cookie: MintedCookie,
+  source: Source,
   scheme: Scheme,
   videoDir: string,
 ): Promise<{ rawVideo: string; leadMs: number }> {
+  const take = source.recording;
   const context = await newContext(browser, scheme, cookie, videoDir);
   const page = await context.newPage();
   const video = page.video();
@@ -354,16 +467,21 @@ async function recordCanvas(
   const startedAt = Date.now();
 
   try {
-    await page.goto(journeyPath(CASE_3));
+    await page.goto(journeyPath(source, take.journeyId));
     await expectScheme(page, scheme);
-    await expect(canvasNode(page, RECORDING_FIRST_STEP)).toBeVisible();
+    await expect(canvasNode(page, take.firstStep)).toBeVisible();
     await imagesSettled(page);
 
     // The first Step is found by name, which zooms the map to its box: a
-    // 36-Step map fitted whole into this frame is a thumbnail, and the
-    // recording is of boxes an Author can read. The first frame is that
-    // zoom, settled, with the map framed; the poster is this moment.
-    await chooseStep(page, RECORDING_FIRST_STEP);
+    // map fitted whole into this frame can be a thumbnail (the 36-Step case
+    // is), and the recording is of boxes an Author can read. The first
+    // frame is that zoom, settled, with the map framed; the poster is this
+    // moment.
+    await chooseStep(page, take.firstStep);
+    // Opening a Step whose content ends in an image can leave that image
+    // selected, with its floating toolbar over the text; the caret goes
+    // into the first paragraph instead, and the framing lets go of it.
+    await page.getByLabel("Step content").locator("p").first().click();
     await frameCanvas(page);
     await pause(page, 400);
     const leadMs = Date.now() - startedAt;
@@ -377,12 +495,12 @@ async function recordCanvas(
     // box on the map. (The panel's Choice row has an Open button too, but
     // that row sits far down a Step this long, and scrolling the page there
     // and back is not what the recording is of.)
-    await clickBox(page, RECORDING_SECOND_STEP);
+    await clickBox(page, take.secondStep);
     await pause(page, 1_800);
 
     // A Choice dropped on bare map makes the Step it leads to, and the map
     // zooms to it; the new Step is named where the panel is waiting.
-    await dropChoiceOnEmptyMap(page, RECORDING_SECOND_STEP);
+    await dropChoiceOnEmptyMap(page, take.secondStep);
     await settledTransform(page);
     await pause(page, 600);
     // Typed over the placeholder title key by key, so the name appears on
@@ -391,9 +509,9 @@ async function recordCanvas(
     const title = page.getByLabel("Step title");
     await title.click();
     await title.press("ControlOrMeta+a");
-    await title.pressSequentially(RECORDING_NEW_STEP_TITLE, { delay: 70 });
-    await expect(title).toHaveValue(RECORDING_NEW_STEP_TITLE);
-    await expect(canvasNode(page, RECORDING_NEW_STEP_TITLE)).toBeVisible();
+    await title.pressSequentially(take.newStepTitle, { delay: 70 });
+    await expect(title).toHaveValue(take.newStepTitle);
+    await expect(canvasNode(page, take.newStepTitle)).toBeVisible();
     await pause(page, 1_400);
 
     // The whole map back, turned the other way round, and the new Step
@@ -404,7 +522,7 @@ async function recordCanvas(
     await setDirection(page, "Left to right");
     await settledTransform(page);
     await pause(page, 1_800);
-    await chooseStep(page, RECORDING_NEW_STEP_TITLE);
+    await chooseStep(page, take.newStepTitle);
     await frameCanvas(page);
     await pause(page, 2_200);
 
@@ -558,7 +676,33 @@ function choiceControl(page: Page, label: string, index: number): Locator {
   const main = page.getByRole("main");
   return index === 0
     ? main.getByRole("button", { name: label, exact: true })
-    : main.getByRole("link", { name: label, exact: true });
+    : main
+        .getByRole("link", { name: label, exact: true })
+        // After a deciding Prompt falls back to the Choices (no gateway key
+        // here, so the judge never answers), they are offered as buttons.
+        .or(main.getByRole("button", { name: label, exact: true }));
+}
+
+/**
+ * A deciding Prompt on the current Step answered, if there is one: the
+ * fixture Response typed and Continue pressed, after which the judge —
+ * unavailable on this server — hands the Participant the Choices to pick
+ * from themselves. A Step that asks nothing deciding is left alone.
+ */
+async function answerDecidingPrompt(participant: Page): Promise<void> {
+  const main = participant.getByRole("main");
+  const submit = main.getByRole("button", { name: "Continue", exact: true });
+  // The Step has arrived once it offers either its deciding form or its
+  // Choices; asked before that, "no Continue here" would be a race.
+  await expect(
+    submit.or(main.locator('[aria-label="Choices"]')).first(),
+  ).toBeVisible();
+  if ((await submit.count()) === 0) return;
+  await main.getByRole("textbox").fill(FIXTURE_RESPONSE);
+  await submit.click();
+  await expect(
+    main.getByRole("heading", { name: "Choose for yourself" }),
+  ).toBeVisible();
 }
 
 /**
@@ -576,6 +720,7 @@ async function walk(
     const participant = await context.newPage();
     await participant.goto(`/j/${journeyId}`);
     for (const [index, label] of choices.entries()) {
+      await answerDecidingPrompt(participant);
       const control = choiceControl(participant, label, index);
       await control.click();
       await expect(control).toBeHidden();
@@ -611,25 +756,51 @@ async function publishFromHeader(
 async function prepareStillsState(
   browser: Browser,
   cookie: MintedCookie,
+  source: Source,
   journeys: SeedJourney[],
 ): Promise<void> {
   const context = await newContext(browser, "light", cookie);
   const page = await context.newPage();
   try {
-    // Versions: Case 1 published twice, with a description edit between —
-    // the second version is the live one, the first restorable.
-    await page.goto(journeyPath(CASE_1));
-    await publishFromHeader(page, CASE_1, 1);
+    // Prompt first, so a Prompt the panel writes is in what gets published
+    // below. Written in the panel unless the seed already asks a deciding
+    // Prompt on that Step, which is then only checked.
+    await page.goto(journeyPath(source, source.prompt.journeyId));
+    await chooseStep(page, source.prompt.step);
+    if (source.prompt.text !== null) {
+      await page.getByLabel("Prompt", { exact: true }).fill(source.prompt.text);
+      await page.getByLabel(DECIDES_LABEL).check();
+    }
+    await expect(page.getByLabel(DECIDES_LABEL)).toBeChecked();
+    await expect
+      .poll(async () => {
+        const [row] = await queryE2eDatabase<{ document: GraphDocument }>(
+          'SELECT document FROM "draft" WHERE journey_id = $1',
+          [source.prompt.journeyId],
+        );
+        const step = Object.values(row.document.steps).find(
+          (candidate) => candidate.title === source.prompt.step,
+        );
+        return step?.prompt?.decides ?? false;
+      })
+      .toBe(true);
+
+    // Versions: one Journey published twice, with a description edit
+    // between — the second version is the live one, the first restorable.
+    await page.goto(journeyPath(source, source.versions.journeyId));
+    await publishFromHeader(page, source.versions.journeyId, 1);
     await editJourneyField(
       page,
-      CASE_1,
+      source.versions.journeyId,
       "description",
-      "Goal: Cross the border. Second edition.",
+      source.versions.descriptionEdit,
     );
-    await publishFromHeader(page, CASE_1, 2);
+    await publishFromHeader(page, source.versions.journeyId, 2);
 
-    // Themes: Case 1 given a Theme of its own, Dusk.
-    await page.goto(`${journeyPath(CASE_1)}?tab=settings`);
+    // Themes: a Journey given a Theme of its own, Dusk.
+    await page.goto(
+      `${journeyPath(source, source.themes.journeyId)}?tab=settings`,
+    );
     await page
       .getByRole("checkbox", { name: "Use a different theme for this journey" })
       .check();
@@ -639,46 +810,33 @@ async function prepareStillsState(
       .poll(async () => {
         const [row] = await queryE2eDatabase<{ theme_preset: string | null }>(
           'SELECT theme_preset FROM "journey" WHERE id = $1',
-          [CASE_1],
+          [source.themes.journeyId],
         );
         return row.theme_preset;
       })
       .toBe("dusk");
 
-    // Prompt: a deciding Prompt on a Case 2 Step, written in the panel.
-    await page.goto(journeyPath(CASE_2));
-    await chooseStep(page, PROMPT_STEP);
-    await page.getByLabel("Prompt", { exact: true }).fill(PROMPT_TEXT);
-    await page.getByLabel(DECIDES_LABEL).check();
-    await expect
-      .poll(async () => {
-        const [row] = await queryE2eDatabase<{ document: GraphDocument }>(
-          'SELECT document FROM "draft" WHERE journey_id = $1',
-          [CASE_2],
-        );
-        const step = Object.values(row.document.steps).find(
-          (candidate) => candidate.title === PROMPT_STEP,
-        );
-        return step?.prompt?.decides ?? false;
-      })
-      .toBe(true);
-
-    // Run and analytics: Case 3 published once, then walked by this
-    // script's own Participants — one to every Ending, the happiest twice,
-    // and two who stop three Choices in.
-    await page.goto(journeyPath(CASE_3));
-    await publishFromHeader(page, CASE_3, 1);
+    // Run and analytics: their Journeys published (once each, unless one
+    // is the versions Journey, already live), then the analytics Journey
+    // walked by this script's own Participants — one to every Ending, the
+    // last twice, and two who stop three Choices in.
+    for (const journeyId of new Set([
+      source.analytics.journeyId,
+      source.run.journeyId,
+    ])) {
+      if (source.versions.journeyId === journeyId) continue;
+      await page.goto(journeyPath(source, journeyId));
+      await publishFromHeader(page, journeyId, 1);
+    }
   } finally {
     await context.close();
   }
 
-  const caseThree = seedJourney(journeys, CASE_3);
-  const endings = Object.values(caseThree.document.steps).filter((step) =>
+  const walked = seedJourney(journeys, source.analytics.journeyId);
+  const endings = Object.values(walked.document.steps).filter((step) =>
     isEnding(step),
   );
-  const routes = endings.map((ending) =>
-    routeTo(caseThree.document, ending.id),
-  );
+  const routes = endings.map((ending) => routeTo(walked.document, ending.id));
   const longest = routes.reduce((a, b) => (b.length > a.length ? b : a));
   const walks = [
     ...routes,
@@ -690,7 +848,7 @@ async function prepareStillsState(
     console.log(
       `[demo] walk ${index + 1}/${walks.length}: ${route.length} choices`,
     );
-    await walk(browser, CASE_3, route);
+    await walk(browser, source.analytics.journeyId, route);
   }
 }
 
@@ -709,6 +867,7 @@ async function still(page: Page, slug: string, scheme: Scheme): Promise<void> {
 async function captureStills(
   browser: Browser,
   cookie: MintedCookie,
+  source: Source,
   journeys: SeedJourney[],
   scheme: Scheme,
 ): Promise<void> {
@@ -717,7 +876,9 @@ async function captureStills(
   try {
     // versions: two Published Versions, the live one marked, the other
     // restorable.
-    await page.goto(`${journeyPath(CASE_1)}?tab=versions`);
+    await page.goto(
+      `${journeyPath(source, source.versions.journeyId)}?tab=versions`,
+    );
     await expectScheme(page, scheme);
     const versions = page
       .getByRole("list", { name: "Versions" })
@@ -729,14 +890,16 @@ async function captureStills(
     await still(page, "versions", scheme);
 
     // themes: the Theme row with Dusk chosen.
-    await page.goto(`${journeyPath(CASE_1)}?tab=settings`);
+    await page.goto(
+      `${journeyPath(source, source.themes.journeyId)}?tab=settings`,
+    );
     await expect(page.getByRole("radio", { name: /^Dusk/ })).toBeChecked();
     await frameElement(page.getByRole("region", { name: "Theme" }));
     await still(page, "themes", scheme);
 
     // prompt: the Step panel on the deciding Prompt.
-    await page.goto(journeyPath(CASE_2));
-    await chooseStep(page, PROMPT_STEP);
+    await page.goto(journeyPath(source, source.prompt.journeyId));
+    await chooseStep(page, source.prompt.step);
     const decides = page.getByLabel(DECIDES_LABEL);
     await expect(decides).toBeChecked();
     await frameCanvas(page);
@@ -754,10 +917,10 @@ async function captureStills(
     // figure is brought up by as little as it takes, so the map keeps most
     // of the frame's left; the caption's long URL can overflow the panel,
     // so the page is put back on its left edge afterwards.
-    await page.goto(journeyPath(CASE_1));
-    await chooseStep(page, RICH_TEXT_STEP);
+    await page.goto(journeyPath(source, source.richText.journeyId));
+    await chooseStep(page, source.richText.step);
     const figure = page.getByLabel("Step content").locator("figure").first();
-    await expect(figure.locator("figcaption")).toContainText("Photo");
+    await expect(figure.locator("figcaption")).not.toBeEmpty();
     // Opening the Step can leave the image selected, with its floating
     // toolbar over the text; a click into the first paragraph puts the
     // caret there instead, and the framing below lets go of the focus.
@@ -775,7 +938,9 @@ async function captureStills(
     // analytics: the map with the walks' numbers on it, zoomed in around
     // the Start with the wheel — the whole map fitted into this frame is a
     // thumbnail, and the numbers are the point.
-    await page.goto(`${journeyPath(CASE_3)}?tab=analytics`);
+    await page.goto(
+      `${journeyPath(source, source.analytics.journeyId)}?tab=analytics`,
+    );
     const analyticsMap = page.getByRole("region", { name: "Analytics map" });
     await expect(
       analyticsMap.locator("[data-step-figure]").first(),
@@ -783,14 +948,13 @@ async function captureStills(
     await frameElement(analyticsMap);
     await page.waitForTimeout(600);
     const startBox = await analyticsMap
-      .getByRole("group", { name: ANALYTICS_START_STEP, exact: true })
+      .getByRole("group", { name: source.analytics.startStep, exact: true })
       .boundingBox();
     if (!startBox) throw new Error("the Start is not on the analytics map");
-    await page.mouse.move(
-      startBox.x + startBox.width / 2,
-      startBox.y + startBox.height / 2 + 80,
-    );
-    for (let notch = 0; notch < ANALYTICS_ZOOM_NOTCHES; notch += 1) {
+    // The wheel zooms around the pointer, so the Start's top edge stays
+    // where it is and the map grows downwards from it.
+    await page.mouse.move(startBox.x + startBox.width / 2, startBox.y + 4);
+    for (let notch = 0; notch < source.analytics.zoomNotches; notch += 1) {
       await page.mouse.wheel(0, -100);
       await page.waitForTimeout(120);
     }
@@ -800,20 +964,23 @@ async function captureStills(
     await context.close();
   }
 
-  // run: a Participant of their own, no session, two Choices in.
-  const caseThree = seedJourney(journeys, CASE_3);
-  const route = routeTo(caseThree.document, RUN_STEP_ID);
+  // run: a Participant of their own, no session, a few Choices in.
+  const played = seedJourney(journeys, source.run.journeyId);
+  const route = routeTo(played.document, source.run.stepId);
   const participant = await newContext(browser, scheme, null);
   try {
     const runner = await participant.newPage();
-    await runner.goto(`/j/${CASE_3}`);
+    await runner.goto(`/j/${source.run.journeyId}`);
     await expectScheme(runner, scheme);
     for (const [index, label] of route.entries()) {
+      await answerDecidingPrompt(runner);
       const control = choiceControl(runner, label, index);
       await control.click();
       await expect(control).toBeHidden();
     }
-    await expect(runner).toHaveURL(`${BASE_URL}/j/${CASE_3}/${RUN_STEP_ID}`);
+    await expect(runner).toHaveURL(
+      `${BASE_URL}/j/${source.run.journeyId}/${source.run.stepId}`,
+    );
     // Its Choices are the point: brought up to the bottom edge of the frame,
     // once the image above them has its height and cannot push them back
     // down.
@@ -861,6 +1028,8 @@ async function reportSizes(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  const { name, source } = chooseSource(process.argv.slice(2));
+
   // The e2e database, created and migrated if need be; `loadE2eEnv` inside
   // it swaps the database name and never touches the dev one.
   await globalSetup();
@@ -882,7 +1051,9 @@ async function main(): Promise<void> {
     authorIds.push(user.id);
     const journeys = parseSeedJourneys();
     await seedJourneyStories(db, user.id, journeys);
-    console.log(`[demo] seeded ${journeys.length} Journeys for ${user.name}`);
+    console.log(
+      `[demo] seeded ${journeys.length} Journeys for ${user.name}; source: ${name}`,
+    );
 
     browser = await chromium.launch();
     const ffmpeg = findFfmpeg();
@@ -893,6 +1064,7 @@ async function main(): Promise<void> {
       const { rawVideo, leadMs } = await recordCanvas(
         browser,
         cookie,
+        source,
         scheme,
         videoDir,
       );
@@ -908,9 +1080,9 @@ async function main(): Promise<void> {
     }
 
     console.log("[demo] preparing the stills' state");
-    await prepareStillsState(browser, cookie, journeys);
+    await prepareStillsState(browser, cookie, source, journeys);
     for (const scheme of SCHEMES) {
-      await captureStills(browser, cookie, journeys, scheme);
+      await captureStills(browser, cookie, source, journeys, scheme);
     }
 
     console.log("[demo] written to public/demo:");
