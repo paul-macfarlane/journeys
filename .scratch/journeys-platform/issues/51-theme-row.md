@@ -47,3 +47,5 @@ PR: https://github.com/paul-macfarlane/journeys/pull/61 (base `staging`, branche
 **Queued for Paul.** The worktree at `.claude/worktrees/51-theme-row/journeys` and its `journeys_e2e_51` database are left for removal after the merge. No lockfile change.
 
 **Next in Paul's order:** 38 → 50 (52 grilled, PR #56 merged, implement in its own thread); post-hackathon sweep 3 (41 → 42 → 44 → 45, 53).
+
+**Staging merged in at 3a18e3a** (PR #60, ticket 50, landed while this PR was open; the only conflict was the shared `dod-1-commands.txt`, kept as this ticket's). The chain was rerun on the merged code: every block `exit 0`, unit 518/518, e2e 101 passed in 2.5m, 0 flaky; the committed capture and evidence are from that run.
