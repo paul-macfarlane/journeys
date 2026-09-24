@@ -1491,7 +1491,7 @@
           {
             "type": "image",
             "attrs": {
-              "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78\u002fPatient_with_external_fixator_in_the_leg.jpg/1599px-Patient_with_external_fixator_in_the_leg.jpg?20200321044627",
+              "src": "https://raw.githubusercontent.com\u002fpaul-macfarlane\u002fjourneys/staging/public\u002fseed/external-fixator.jpg",
               "caption": "Photo - Image by Wikemedia Commons, retrieved from: https://commons.wikimedia.org/wiki/File:Patient_with_external_fixator_in_the_leg.jpg on March 17, 2024. Creative Commons License associated: CC BY-SA 4.0",
               "alt": ""
             }
@@ -2274,12 +2274,13 @@
             ]
           },
           {
-            "type": "image",
-            "attrs": {
-              "src": "https://sienaamcvoices.files.wordpress.com/2021/01/screen-shot-2021-01-21-at-4.42.47-pm.png?w=730&h=730&crop=1",
-              "caption": "Photo - Image is author owned.",
-              "alt": ""
-            }
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Photo - Image is author owned."
+              }
+            ]
           }
         ]
       },
