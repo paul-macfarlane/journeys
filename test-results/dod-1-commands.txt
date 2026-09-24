@@ -1,5 +1,5 @@
-# DoD command chain for ticket 58 (Route: polish), run on feat/58-demo-journey (ticket 38's branch merged in; #64 still open)
-# Base: staging at 4a17371; the ticket's working tree before its closeout commit. The full e2e run is captured in dod-1-e2e.txt.
+# DoD command chain for ticket 58 (Route: polish), run on feat/58-demo-journey after merging origin/staging (#64 and #65 merged) and the autosaved-form fix
+# Base: staging at 5517206. The full e2e run is captured in dod-1-e2e.txt; the earlier failed run in dod-1-e2e-run-1-failed.txt.
 # Environment: local .env.local; the e2e stack provisions journeys_e2e on port 3100 itself; the demo script ran on port 3138 against the same database with --source demo (the default) and cleaned up after itself.
 # E2E_EVIDENCE=landing,landing-canvas-demo so only the two specs this ticket names write into the tracked proof root.
 
@@ -40,8 +40,8 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
  Test Files  36 passed (36)
       Tests  544 passed (544)
-   Start at  11:10:57
-   Duration  1.10s (transform 1.62s, setup 0ms, import 4.32s, tests 881ms, environment 2ms)
+   Start at  11:32:40
+   Duration  1.11s (transform 1.62s, setup 0ms, import 4.35s, tests 894ms, environment 2ms)
 
 exit=0
 
