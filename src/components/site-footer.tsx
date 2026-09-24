@@ -14,8 +14,10 @@ import { cn } from "@/lib/utils";
 export function SiteFooter({
   width = "page",
 }: {
-  /** `"prose"` for the runner and the legal pages; `"page"` (default) for
-   * Author pages, the landing page, and sign-in. */
+  /** `"prose"` for the runner, whose whole frame is a prose column;
+   * `"page"` (default) everywhere else, including the prose pages (About,
+   * the guide, and the two legal pages), where the six items no longer fit
+   * the prose column at desktop widths (ticket 62). */
   width?: "prose" | "page";
 }) {
   return (

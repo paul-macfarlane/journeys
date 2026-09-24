@@ -1,8 +1,8 @@
 # 62: The footer wraps onto two lines on the prose pages
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 56
-Owner:
+Owner: Claude (Fable 5.1), /implement, worktree .claude/worktrees/62/journeys
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: fix-tonight (56's regression pass, 2026-09-24): About and Guide are the two pages the judges read after the splash, and their footers look broken next to the splash's.
 Route: polish

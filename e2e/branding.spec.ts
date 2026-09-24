@@ -9,6 +9,7 @@ import {
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
+import { expectFooterOnOneRow } from "./setup/footer";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
 /**
@@ -80,14 +81,24 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
       "sent, with that step’s text, its question, and the labels of its choices, to the Vercel AI Gateway",
     ),
   ).toBeVisible();
-  // The legal pages carry the same footer as everywhere else.
+  // The legal pages carry the same footer as everywhere else, on one row
+  // across the page like the sign-in page's (ticket 62), in both schemes.
   await expect(
     page.getByRole("contentinfo").getByRole("link", { name: "GitHub" }),
   ).toHaveAttribute("href", "https://github.com/paul-macfarlane/journeys");
+  await expectFooterOnOneRow(page);
   await page.screenshot({
     path: evidencePath("legal-pages", "privacy.png"),
     fullPage: true,
   });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await expectFooterOnOneRow(page);
+  await page.screenshot({
+    path: evidencePath("legal-pages", "privacy-dark.png"),
+    fullPage: true,
+  });
+  await page.emulateMedia({ colorScheme: null });
 
   // Each legal page links to the other from its own footer.
   await legalLinks(page).getByRole("link", { name: "Terms" }).click();
@@ -98,6 +109,7 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
   await expect(
     page.getByRole("heading", { name: "Your journeys" }),
   ).toBeVisible();
+  await expectFooterOnOneRow(page);
   await page.screenshot({
     path: evidencePath("legal-pages", "terms.png"),
     fullPage: true,
