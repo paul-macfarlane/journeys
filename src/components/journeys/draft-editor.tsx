@@ -72,11 +72,13 @@ import { cn } from "@/lib/utils";
 const SAVE_DEBOUNCE_MS = 600;
 
 /**
- * The widths at which the Step panel is stacked under the map rather than
- * beside it: everything under Tailwind's `lg` (64rem), which is where the
- * editor's grid below goes to two columns.
+ * The widths at which the Step panel is beside the map: Tailwind's `lg`
+ * (64rem), the very query the editor's grid below goes to two columns on.
+ * Read as that query and not its complement so an engine that cannot read
+ * the range syntax answers the same way for both: no side-by-side grid, so
+ * a stacked panel, so the scroll.
  */
-const STACKED_PANEL_QUERY = "(width < 64rem)";
+const SIDE_BY_SIDE_QUERY = "(width >= 64rem)";
 
 /**
  * Whether anything on the page has the keyboard to itself. Both of the page's
@@ -601,7 +603,7 @@ export function DraftEditor({
   // the panel's top from landing under the navbar and the tab row.
   useEffect(() => {
     if (panelScrollRequest === 0) return;
-    if (!window.matchMedia(STACKED_PANEL_QUERY).matches) return;
+    if (window.matchMedia(SIDE_BY_SIDE_QUERY).matches) return;
     panelRef.current?.scrollIntoView({ block: "start" });
   }, [panelScrollRequest]);
 

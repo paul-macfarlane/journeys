@@ -159,14 +159,6 @@ function targetNodeId(document: GraphDocument, choice: Choice): string {
  */
 const MAX_DAGRE_EDGES_PER_PAIR = 2;
 
-/**
- * How far sideways each overflow Choice's route is nudged from the sibling's
- * it borrows: wide enough that the two arrows read as two at fit-to-view,
- * narrow enough that the nudged one stays beside its boxes rather than
- * wandering across the map.
- */
-const OVERFLOW_ARROW_OFFSET = 28;
-
 /** A stable, collision-safe key for a `(source, target)` pair. */
 function pairKey(source: string, target: string): string {
   return JSON.stringify([source, target]);
@@ -437,14 +429,18 @@ function followMovedBoxes(
   const along = (point: Point) => (direction === "LR" ? point.x : point.y);
   const across = (point: Point) => (direction === "LR" ? point.y : point.x);
   const span = along(last) - along(first);
-  const isInterior = (index: number) => index > 0 && index < points.length - 1;
+  // Only a route between neighbouring ranks has the one interior point that
+  // is its label, and only there does "lined up with the box" mean the route
+  // runs straight into it; a longer route's dummies lean rank by rank as
+  // before, where a whole shift could carry one into a box dealt beside it.
+  const isTheBend = (index: number) => points.length === 3 && index === 1;
 
   return (point, index) => {
     let shift: number;
-    if (isInterior(index) && Math.abs(across(point) - target.cross) <= 1) {
+    if (isTheBend(index) && Math.abs(across(point) - target.cross) <= 1) {
       shift = target.shift;
     } else if (
-      isInterior(index) &&
+      isTheBend(index) &&
       Math.abs(across(point) - source.cross) <= 1
     ) {
       shift = source.shift;
@@ -487,11 +483,26 @@ type RoutedEdge = CanvasEdge & {
 const LABEL_GAP = 8;
 
 /**
- * Labels in the same rank kept from one another: the labels between one rank
- * of boxes and the next are sorted along the cross axis and any that would
- * overlap the one before it is moved on past it, its route's own point going
- * with it so the label stays on its arrow. A loop's label is left alone; the
- * canvas routes a loop itself.
+ * How far sideways each overflow Choice's route is nudged from the sibling's
+ * it borrows: wide enough that the two arrows read as two at fit-to-view,
+ * and left to right exactly the room its label needs beside the sibling's,
+ * so nothing dagre placed has to move for it; narrow enough that the nudged
+ * one stays beside its boxes rather than wandering across the map.
+ */
+const OVERFLOW_ARROW_OFFSET = EDGE_LABEL_HEIGHT + LABEL_GAP;
+
+/**
+ * Labels in the same rank kept from one another. dagre kept its labels
+ * apart, but the Choice-order deal moves routes after dagre has spoken, and
+ * a label lined up with its source can then meet one lined up with a target
+ * dealt under that source: this is the safety net for what the deal undoes,
+ * and nothing more — a label dagre placed and the deal did not disturb is
+ * never moved. The labels between one rank of boxes and the next are sorted
+ * along the cross axis; a run of them that would overlap is spread evenly
+ * about the run's own middle, so each moves by the least, and a run grown
+ * into its neighbour is joined with it and spread again. A moved label's
+ * route point goes with it so the label stays on its arrow. A loop's label
+ * is left alone; the canvas routes a loop itself.
  */
 function spreadLabels(edges: RoutedEdge[], direction: LayoutDirection): void {
   const rankOf = (point: Point) => (direction === "LR" ? point.x : point.y);
@@ -510,23 +521,51 @@ function spreadLabels(edges: RoutedEdge[], direction: LayoutDirection): void {
 
   for (const group of byRank.values()) {
     group.sort((a, b) => crossOf(a.labelAt) - crossOf(b.labelAt));
-    let floor = Number.NEGATIVE_INFINITY;
-    for (const edge of group) {
-      const wanted = crossOf(edge.labelAt);
-      const placed = Math.max(wanted, floor);
-      if (placed !== wanted) {
+    const wanted = group.map((edge) => crossOf(edge.labelAt));
+
+    // Runs of labels too close to stand where they want, each spread about
+    // its own middle; two runs that then touch become one run.
+    type Run = { start: number; end: number; centre: number };
+    const runs: Run[] = [];
+    for (let index = 0; index < wanted.length; index += 1) {
+      let run: Run = { start: index, end: index, centre: wanted[index] };
+      while (runs.length > 0) {
+        const previous = runs[runs.length - 1];
+        const previousLast =
+          previous.centre + ((previous.end - previous.start) / 2) * minimum;
+        const runFirst = run.centre - ((run.end - run.start) / 2) * minimum;
+        if (runFirst - previousLast >= minimum) break;
+        runs.pop();
+        const count = run.end - previous.start + 1;
+        const previousCount = previous.end - previous.start + 1;
+        const runCount = run.end - run.start + 1;
+        run = {
+          start: previous.start,
+          end: run.end,
+          centre:
+            (previous.centre * previousCount + run.centre * runCount) / count,
+        };
+      }
+      runs.push(run);
+    }
+
+    for (const run of runs) {
+      const first = run.centre - ((run.end - run.start) / 2) * minimum;
+      for (let index = run.start; index <= run.end; index += 1) {
+        const placed = first + (index - run.start) * minimum;
+        if (placed === wanted[index]) continue;
+        const edge = group[index];
         const labelAt =
           direction === "LR"
             ? { x: edge.labelAt.x, y: placed }
             : { x: placed, y: edge.labelAt.y };
         edge.labelAt = labelAt;
         if (edge.labelIndex >= 0 && edge.labelIndex < edge.points.length) {
-          edge.points = edge.points.map((point, index) =>
-            index === edge.labelIndex ? labelAt : point,
+          edge.points = edge.points.map((point, at) =>
+            at === edge.labelIndex ? labelAt : point,
           );
         }
       }
-      floor = placed + minimum;
     }
   }
 }
@@ -653,6 +692,10 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
   const lastRoutedPointsByPair = new Map<string, Point[]>();
   const overflowCountByPair = new Map<string, number>();
   const lastLabelIndexByPair = new Map<string, number>();
+  /** How far the labels between one pair of boxes reach along the cross axis. */
+  const labelExtentByPair = new Map<string, { min: number; max: number }>();
+  const crossOf = (point: Point) =>
+    document.layoutDirection === "LR" ? point.y : point.x;
   const routedEdges: RoutedEdge[] = edges.map((edge) => {
     const key = pairKey(edge.source, edge.target);
     if (!overflowEdgeIds.has(edge.id)) {
@@ -669,7 +712,9 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
       const labelIndex =
         typeof routed.x === "number" && typeof routed.y === "number"
           ? dagrePoints.findIndex(
-              (point) => point.x === routed.x && point.y === routed.y,
+              (point) =>
+                Math.abs(point.x - routed.x) < 0.5 &&
+                Math.abs(point.y - routed.y) < 0.5,
             )
           : -1;
       const follow = followMovedBoxes(
@@ -691,6 +736,12 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
           : follow(midpointOf(dagrePoints), -1);
       lastRoutedPointsByPair.set(key, points);
       lastLabelIndexByPair.set(key, labelIndex);
+      const cross = crossOf(labelAt);
+      const extent = labelExtentByPair.get(key);
+      labelExtentByPair.set(key, {
+        min: Math.min(extent?.min ?? cross, cross),
+        max: Math.max(extent?.max ?? cross, cross),
+      });
       return { ...edge, points, labelAt, labelIndex };
     }
     const siblingPoints = lastRoutedPointsByPair.get(key) ?? [];
@@ -706,14 +757,52 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
       offset,
       document.layoutDirection,
     );
+    const onRoute =
+      labelIndex >= 0 && labelIndex < points.length
+        ? points[labelIndex]
+        : midpointOf(points);
+    const extent = labelExtentByPair.get(key) ?? {
+      min: crossOf(onRoute),
+      max: crossOf(onRoute),
+    };
+    // Nothing dagre placed moves for an overflow label. Left to right the
+    // label, and the bend of its arrow with it, goes past the outermost of
+    // the pair's labels — below the lower one, then above the upper — by
+    // exactly the room a label needs, never between the two. Top to bottom
+    // a label is wide, and room that wide would swing the arrow across the
+    // map: the label goes just below (then above) the sibling's instead, in
+    // the clearance dagre left, off its nudged route by that much and no
+    // more, and in a rank of its own so the spread below never moves
+    // dagre's labels to make way for it.
+    const outward = overflowIndex % 2 === 0 ? 1 : -1;
+    if (document.layoutDirection === "LR") {
+      const y =
+        outward > 0
+          ? extent.max + OVERFLOW_ARROW_OFFSET
+          : extent.min - OVERFLOW_ARROW_OFFSET;
+      labelExtentByPair.set(key, {
+        min: Math.min(extent.min, y),
+        max: Math.max(extent.max, y),
+      });
+      const labelAt = { x: onRoute.x, y };
+      return {
+        ...edge,
+        points:
+          labelIndex >= 0 && labelIndex < points.length
+            ? points.map((point, at) => (at === labelIndex ? labelAt : point))
+            : points,
+        labelAt,
+        labelIndex,
+      };
+    }
     return {
       ...edge,
       points,
-      labelAt:
-        labelIndex >= 0 && labelIndex < points.length
-          ? points[labelIndex]
-          : midpointOf(points),
-      labelIndex,
+      labelAt: {
+        x: onRoute.x,
+        y: onRoute.y + (EDGE_LABEL_HEIGHT + LABEL_GAP) * outward,
+      },
+      labelIndex: -1,
     };
   });
   spreadLabels(routedEdges, document.layoutDirection);

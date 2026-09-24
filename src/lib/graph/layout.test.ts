@@ -783,28 +783,68 @@ describe("layoutGraph edge labels", () => {
     );
   });
 
-  it("gives a third parallel Choice, which never reaches dagre, its own label point beside its sibling's", () => {
-    const document: GraphDocument = {
+  function parallelChoices(
+    count: number,
+    layoutDirection: LayoutDirection,
+  ): GraphDocument {
+    return {
       schemaVersion: 1,
       startStepId: "s",
       allowBack: true,
       steps: byId([
-        step("s", [
-          choice("one", "One", "t"),
-          choice("two", "Two", "t"),
-          choice("three", "Three", "t"),
-        ]),
+        step(
+          "s",
+          Array.from({ length: count }, (_, index) =>
+            choice(`c${index}`, `Choice ${index}`, "t"),
+          ),
+        ),
         step("t", []),
       ]),
       outcomes: {},
-      layoutDirection: "TB",
+      layoutDirection,
     };
-    const { edges } = layoutGraph(document);
-    const points = edges.map((edge) => `${edge.labelAt.x},${edge.labelAt.y}`);
-    expect(new Set(points).size).toBe(3);
-    for (const edge of edges) {
-      expect(Number.isFinite(edge.labelAt.x)).toBe(true);
-      expect(Number.isFinite(edge.labelAt.y)).toBe(true);
+  }
+
+  /** Two label boxes that share any area. */
+  function labelsOverlap(a: Point, b: Point): boolean {
+    return (
+      Math.abs(a.x - b.x) < EDGE_LABEL_MAX_WIDTH &&
+      Math.abs(a.y - b.y) < EDGE_LABEL_HEIGHT
+    );
+  }
+
+  it("gives a third parallel Choice, which never reaches dagre, a label of its own that overlaps neither sibling's, in both directions", () => {
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const { edges } = layoutGraph(parallelChoices(3, layoutDirection));
+      expect(edges).toHaveLength(3);
+      for (let i = 0; i < edges.length; i += 1) {
+        for (let j = i + 1; j < edges.length; j += 1) {
+          expect(
+            labelsOverlap(edges[i].labelAt, edges[j].labelAt),
+            `${layoutDirection}: ${edges[i].id} and ${edges[j].id} overlap`,
+          ).toBe(false);
+        }
+      }
+      for (const edge of edges) {
+        expect(Number.isFinite(edge.labelAt.x)).toBe(true);
+        expect(Number.isFinite(edge.labelAt.y)).toBe(true);
+      }
+    }
+  });
+
+  it("leaves the two Choices dagre routed exactly where they were when a third is added beside them", () => {
+    // The third Choice borrows a sibling's route; making room for its label
+    // must not move dagre's own routes or labels, or the first arrow would
+    // swing out past its box to make way (reviewer's case-3 step-14 find).
+    for (const layoutDirection of ["TB", "LR"] as const) {
+      const two = layoutGraph(parallelChoices(2, layoutDirection));
+      const three = layoutGraph(parallelChoices(3, layoutDirection));
+      for (const edge of two.edges) {
+        const same = three.edges.find((candidate) => candidate.id === edge.id);
+        expect(same, `${layoutDirection}: ${edge.id}`).toBeDefined();
+        expect(same?.points).toEqual(edge.points);
+        expect(same?.labelAt).toEqual(edge.labelAt);
+      }
     }
   });
 });

@@ -41,7 +41,7 @@ import {
   ARROW_DIRECTIONS,
   arrowPoints,
   handleOffset,
-  midwayAlong,
+  labelPoint,
   NODE_BOX_CLASS,
   smoothPath,
   sourceSide,
@@ -336,8 +336,7 @@ function ChoiceEdge({
     { x: sourceX, y: sourceY },
     { x: targetX, y: targetY },
   );
-  const middle =
-    isLoop || data?.labelAt === undefined ? midwayAlong(points) : data.labelAt;
+  const middle = labelPoint(isLoop, data?.labelAt, points);
 
   return (
     // Marked so a spec can read the opacity the arrow is actually drawn at,

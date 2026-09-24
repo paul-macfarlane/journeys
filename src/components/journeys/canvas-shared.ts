@@ -227,3 +227,16 @@ export function useCanvasColorMode(): ColorMode {
   const hydrated = useSyncExternalStore(subscribeToNothing, isClient, isServer);
   return hydrated && resolvedTheme === "dark" ? "dark" : "light";
 }
+
+/**
+ * Where a Choice's label hangs: where the layout made room for it on the
+ * route, or halfway along the arrow for a loop — which is routed here, not by
+ * the layout — and for an arrow the layout gave no place to.
+ */
+export function labelPoint(
+  isLoop: boolean,
+  labelAt: Point | undefined,
+  points: Point[],
+): Point {
+  return isLoop || labelAt === undefined ? midwayAlong(points) : labelAt;
+}

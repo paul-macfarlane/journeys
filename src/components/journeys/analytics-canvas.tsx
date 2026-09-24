@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   arrowPoints,
   handleOffset,
-  midwayAlong,
+  labelPoint,
   NODE_BOX_CLASS,
   smoothPath,
   sourceSide,
@@ -138,8 +138,7 @@ function AnalyticsEdge({
     { x: sourceX, y: sourceY },
     { x: targetX, y: targetY },
   );
-  const middle =
-    isLoop || data?.labelAt === undefined ? midwayAlong(points) : data.labelAt;
+  const middle = labelPoint(isLoop, data?.labelAt, points);
   const share = data?.share ?? null;
   const figure = `${formatShare(share)} · ${counted(data?.traversals ?? 0, "time")}`;
 
