@@ -97,16 +97,18 @@ test("guide-link-from-projects", async ({ page, context }) => {
   mintedAuthorIds.push(author.id);
   await page.goto("/projects");
 
+  // The link sits in the page header beside New project; the footer's
+  // Guide link (ticket 54) is outside `main`.
   const link = page.getByRole("main").getByRole("link", { name: "Guide" });
   await expect(link).toHaveAttribute("href", "/guide");
+  await page.screenshot({
+    path: evidencePath("guide-link-from-projects", "projects-header.png"),
+    fullPage: true,
+  });
+
   await link.click();
   await expect(page).toHaveURL(/\/guide$/);
   await expect(
     page.getByRole("heading", { name: "Guide", level: 1 }),
   ).toBeVisible();
-
-  await page.screenshot({
-    path: evidencePath("guide-link-from-projects", "guide.png"),
-    fullPage: true,
-  });
 });

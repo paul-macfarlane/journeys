@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
 import { listProjectsForAuthor } from "@/db/projects";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";

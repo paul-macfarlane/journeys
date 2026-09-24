@@ -1,3 +1,4 @@
+import { DemoStill } from "@/components/demo-still";
 import { cn } from "@/lib/utils";
 
 /**
@@ -74,17 +75,11 @@ function DemoPoster({
   className: string;
 }) {
   return (
-    // A plain <img>: the poster is a still of the app, already sized to
-    // its frame, and next/image would only add a loader hop for a file
-    // that ships beside the page.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      className={cn("aspect-video w-full", className)}
-      src={`/demo/canvas-${scheme}.png`}
-      width={1280}
-      height={720}
+    <DemoStill
+      slug="canvas"
+      scheme={scheme}
       alt={DESCRIPTION}
-      data-scheme={scheme}
+      className={className}
     />
   );
 }
