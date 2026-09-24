@@ -92,3 +92,19 @@ export function choiceLabel(label: string): string {
  */
 export const SELECT_CLASS =
   "h-8 min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30";
+
+/**
+ * Whether anything on the page has the keyboard to itself. The editor's
+ * shortcuts and the map's delete keys ask before they claim a press: while a
+ * dialog is open the keyboard belongs to the dialog, and a key answering from
+ * behind it would act on something the Author cannot see.
+ *
+ * `window.document`: the Draft is what `document` names in the modules that
+ * ask this.
+ */
+export function dialogIsOpen(): boolean {
+  return (
+    window.document.querySelector('[role="dialog"], [role="alertdialog"]') !==
+    null
+  );
+}

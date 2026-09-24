@@ -10,6 +10,7 @@ import {
 } from "@/app/projects/[projectId]/journeys/actions";
 import {
   counted,
+  dialogIsOpen,
   type ApplyEdit,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
@@ -77,21 +78,6 @@ import { SAVE_DEBOUNCE_MS, STATUS_TEXT, type SaveStatus } from "@/lib/autosave";
  * a stacked panel, so the scroll.
  */
 const SIDE_BY_SIDE_QUERY = "(width >= 64rem)";
-
-/**
- * Whether anything on the page has the keyboard to itself. Both of the page's
- * shortcuts ask before they claim a press: while a dialog is open the
- * keyboard belongs to the dialog, and a shortcut answering from behind it
- * would act on something the Author cannot see.
- *
- * `window.document`: the Draft is what `document` names inside this module.
- */
-function dialogIsOpen(): boolean {
-  return (
-    window.document.querySelector('[role="dialog"], [role="alertdialog"]') !==
-    null
-  );
-}
 
 export function DraftEditor({
   projectId,
