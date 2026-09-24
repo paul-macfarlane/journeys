@@ -27,7 +27,11 @@ import {
   tagWithOutcome,
   uniqueSuffix,
 } from "./setup/authoring";
-import { dimmingDocument, writeDraftDocument } from "./setup/documents";
+import {
+  dimmingDocument,
+  publishableDocument,
+  writeDraftDocument,
+} from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
@@ -4102,6 +4106,38 @@ async function expectControlsThemed(page: Page, where: string): Promise<void> {
 }
 
 /**
+ * The direction control's checked answer painted apart from its unchecked
+ * one (ticket 48, item 9): the two radios' backgrounds read as the pixels
+ * Chromium paints them, the way the controls above are read, and the checked
+ * one must not be the unchecked one's colour — in the light theme, where the
+ * old accent was a shade off the background, and in the dark, where the
+ * outline button's own dark background used to paint over the mark.
+ */
+async function expectCheckedDirectionMarked(
+  page: Page,
+  where: string,
+): Promise<void> {
+  const group =
+    '[aria-label="Canvas"] [role="radiogroup"][aria-label="Layout direction"]';
+  await expect(
+    canvas(page).getByRole("radio", { checked: true }),
+    `${where}: one direction is checked`,
+  ).toHaveCount(1);
+  const checked = await paintedRgb(page, {
+    selector: `${group} [role="radio"][aria-checked="true"]`,
+    property: "background-color",
+  });
+  const unchecked = await paintedRgb(page, {
+    selector: `${group} [role="radio"][aria-checked="false"]`,
+    property: "background-color",
+  });
+  expect(
+    checked,
+    `${where}: the checked direction is painted apart from the unchecked (${unchecked})`,
+  ).not.toBe(unchecked);
+}
+
+/**
  * Ticket 35, item 19: in the dark theme the zoom and fit-view controls
  * sometimes came up white. Reproduced the way Paul met it — the dark theme
  * chosen from the user menu, then the Journey page reached by a full load and
@@ -4112,6 +4148,10 @@ async function expectControlsThemed(page: Page, where: string): Promise<void> {
 test("canvas-dark-controls", async ({ page, context }) => {
   const { projectId, journeyId } = await startJourney(page, context);
   const journeyUrl = `/projects/${projectId}/journeys/${journeyId}`;
+
+  // Before the theme is touched: the page is light, and the checked
+  // direction already has to read as the checked one.
+  await expectCheckedDirectionMarked(page, "light theme");
 
   // The dark theme, chosen as an Author chooses it.
   await page.getByRole("button", { name: "Account: Test Author" }).click();
@@ -4127,6 +4167,10 @@ test("canvas-dark-controls", async ({ page, context }) => {
     await expect(page.locator("html")).toHaveClass(/\bdark\b/);
     await expect(canvasNodes(page)).toHaveCount(1);
     await expectControlsThemed(page, `OS ${colorScheme}, full load`);
+    await expectCheckedDirectionMarked(
+      page,
+      `dark theme, OS ${colorScheme}, full load`,
+    );
 
     // By client-side navigation from the Projects list: the list, the
     // Project, the Journey, each a link rather than a load.
@@ -4145,4 +4189,113 @@ test("canvas-dark-controls", async ({ page, context }) => {
       });
     }
   }
+});
+
+/**
+ * Ticket 48, item 11: left to right, with two Choices out of one Step, the
+ * two labels used to lie on top of each other — dagre had no room reserved
+ * for them, and the Choice-order pass then brought both routes' halfway
+ * points to the same place. The layout now hands dagre each label's box and
+ * hangs the label where dagre made room for it, so the two chips read as
+ * two: their boxes on the screen share no area, in either direction.
+ */
+test("canvas-lr-labels-apart", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+
+  // The smallest Journey with two Choices out of one Step.
+  await expectSaved(page);
+  await writeDraftDocument(journeyId, publishableDocument());
+  await page.reload();
+  await expect(canvasNodes(page)).toHaveCount(3);
+  await expect(canvasEdges(page)).toHaveCount(2);
+
+  async function labelBoxes(): Promise<[Box, Box]> {
+    await settledTransform(page);
+    const boxes: Box[] = [];
+    for (const label of ["Wait your turn", "Walk away"]) {
+      const chip = arrowLabelled(page, label).locator("[data-edge-label]");
+      await expect(chip).toBeVisible();
+      const box = await chip.boundingBox();
+      expect(
+        box,
+        `the label "${label}" has a box on the screen`,
+      ).not.toBeNull();
+      if (box === null) throw new Error(label);
+      boxes.push(box);
+    }
+    return [boxes[0], boxes[1]];
+  }
+
+  const [topA, topB] = await labelBoxes();
+  expect(
+    rectsOverlap(topA, topB),
+    "top to bottom, the two labels overlap",
+  ).toBe(false);
+
+  await setDirection(page, "Left to right");
+  const [leftA, leftB] = await labelBoxes();
+  expect(
+    rectsOverlap(leftA, leftB),
+    `left to right, the two labels overlap: ${JSON.stringify(leftA)} and ${JSON.stringify(leftB)}`,
+  ).toBe(false);
+
+  await page.screenshot({
+    path: evidencePath("canvas-lr-labels-apart", "canvas-lr-labels-apart.png"),
+    fullPage: true,
+  });
+});
+
+/**
+ * Ticket 48, item 7: on a phone, or any page narrower than the `lg`
+ * breakpoint, the Step panel is stacked under the map, and the map is tall
+ * enough that the panel starts below the fold; clicking a box opened the
+ * Step and left the Author to scroll down and find it. Now the click brings
+ * the panel's top into view, under the sticky rows.
+ */
+test("canvas-stacked-panel-scroll", async ({ page, context }) => {
+  // Narrower than `lg` (1024), so the panel is stacked; tall enough that the
+  // map alone does not fill the page.
+  await page.setViewportSize({ width: 800, height: 900 });
+  await startJourney(page, context);
+  await renameStep(page, "Border post");
+
+  // Back at the top of the page, where an Author arrives: the panel is
+  // below the fold, which is the inconvenience.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  const panel = stepPanel(page);
+  const before = await panel.boundingBox();
+  expect(before, "the panel has a box").not.toBeNull();
+  if (before === null) throw new Error("panel");
+  expect(before.y, "the panel starts below the fold").toBeGreaterThanOrEqual(
+    900,
+  );
+
+  await clickBox(page, "Border post");
+
+  // The panel's top on the screen, and under the sticky rows rather than
+  // beneath them.
+  const tabs = page.locator('[data-slot="sticky-tabs"]');
+  await expect
+    .poll(async () => (await panel.boundingBox())?.y ?? Number.NaN, {
+      message: "the panel's top is inside the viewport",
+    })
+    .toBeLessThan(900);
+  const after = await panel.boundingBox();
+  const tabsBox = await tabs.boundingBox();
+  expect(after && tabsBox).toBeTruthy();
+  if (after === null || tabsBox === null) throw new Error("boxes");
+  expect(
+    after.y,
+    "the panel's top is under the sticky tab row",
+  ).toBeGreaterThanOrEqual(tabsBox.y + tabsBox.height - 1);
+
+  // The viewport as the Author sees it, not the whole page: what is in view
+  // is the proof.
+  await page.screenshot({
+    path: evidencePath(
+      "canvas-stacked-panel-scroll",
+      "canvas-stacked-panel-scroll.png",
+    ),
+  });
 });
