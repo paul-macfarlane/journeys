@@ -66,9 +66,17 @@ export function useAutosavedForm<T extends FieldValues>({
   // with a timer doing the saving there is no blur to name one.
   const lastEditedField = useRef<Path<T> | null>(null);
 
+  // Two records are the same when they would be stored the same, which is
+  // after the schema has trimmed them: a trailing space left on screen is
+  // not an edit to write again.
+  const sameStored = useCallback(
+    (a: T, b: T) => sameRecord(asStored(schema, a), asStored(schema, b)),
+    [schema],
+  );
+
   const { status, autosave } = useAutosave<T>({
     initial: values,
-    equals: sameRecord,
+    equals: sameStored,
     write: (value) =>
       new Promise<boolean>((resolve) => {
         // `handleSubmit` validates what the form holds, which is `value`:
@@ -102,7 +110,7 @@ export function useAutosavedForm<T extends FieldValues>({
           () => resolve(false),
         )();
       }),
-    onSettled: onSaved,
+    onSaved,
   });
 
   useEffect(() => {
@@ -161,7 +169,16 @@ export function useAutosavedForm<T extends FieldValues>({
   return { form, status, change, flush, handleEnterKeyDown };
 }
 
-/** Two records would be stored the same when every field reads the same. */
+/** What the record would be stored as; as typed, if it would be refused. */
+function asStored<T extends FieldValues>(
+  schema: z.ZodType<T, FieldValues>,
+  value: T,
+): T {
+  const parsed = schema.safeParse(value);
+  return parsed.success ? parsed.data : value;
+}
+
+/** Two records are the same when every field reads the same. */
 function sameRecord<T extends FieldValues>(a: T, b: T): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const key of keys) {

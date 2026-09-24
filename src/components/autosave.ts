@@ -4,7 +4,7 @@ import { createAutosave, type Autosave, type SaveStatus } from "@/lib/autosave";
 
 type Handlers<T> = {
   write: (value: T) => Promise<boolean>;
-  onSettled: () => void;
+  onSaved: () => void;
 };
 
 /**
@@ -15,7 +15,7 @@ type Handlers<T> = {
  * (`useAutosavedForm`) and the rich-text Project description are the
  * callers; the Draft editor keeps its own copy of the same loop.
  *
- * `write` and `onSettled` are read fresh on every call rather than closed
+ * `write` and `onSaved` are read fresh on every call rather than closed
  * over: they carry the caller's router and props, which change per render,
  * while the loop is created once.
  */
@@ -23,7 +23,7 @@ export function useAutosave<T>({
   initial,
   equals,
   write,
-  onSettled,
+  onSaved,
 }: {
   /** What the server holds when the surface mounts. */
   initial: T;
@@ -32,7 +32,7 @@ export function useAutosave<T>({
   /** The write itself; resolves to whether the server accepted it. */
   write: (value: T) => Promise<boolean>;
   /** A write landed with nothing left to write: typically a router refresh. */
-  onSettled: () => void;
+  onSaved: () => void;
 }): { status: SaveStatus; autosave: Autosave<T> } {
   const [status, setStatus] = useState<SaveStatus>("saved");
 
@@ -40,11 +40,11 @@ export function useAutosave<T>({
   // the value in flight, neither of which a render may replace. Its
   // handlers are the caller's latest, handed over after each render.
   const [{ autosave, setHandlers }] = useState(() =>
-    startAutosave(initial, equals, setStatus, { write, onSettled }),
+    startAutosave(initial, equals, setStatus, { write, onSaved }),
   );
   useEffect(() => {
-    setHandlers({ write, onSettled });
-  }, [setHandlers, write, onSettled]);
+    setHandlers({ write, onSaved });
+  }, [setHandlers, write, onSaved]);
 
   // Unmounting with an edit still in the debounce window — the Author
   // opened another tab — is the timer's write made now, through the same
@@ -70,7 +70,10 @@ export function useAutosave<T>({
 /**
  * The loop, with a handle for replacing what it calls. Nothing here runs
  * during a render: the loop calls `write` from its timer and from a flush,
- * and `onSettled` after a write has landed.
+ * and `onSaved` after a write has landed. A ref would be the usual home
+ * for the latest handlers, but the React compiler's lint reads a ref
+ * handed to a `useState` initializer as a ref read during render; this
+ * closure is the same thing said in a way it can follow.
  */
 function startAutosave<T>(
   initial: T,
@@ -85,7 +88,7 @@ function startAutosave<T>(
       equals,
       write: (value) => handlers.write(value),
       onStatus,
-      onSettled: () => handlers.onSettled(),
+      onSaved: () => handlers.onSaved(),
     }),
     setHandlers: (next) => {
       handlers = next;

@@ -77,7 +77,7 @@ export function ProjectSettingsFields({
         return true;
       },
       // The header above the tabs shows the description's opening line.
-      onSettled: () => router.refresh(),
+      onSaved: () => router.refresh(),
     });
 
   return (

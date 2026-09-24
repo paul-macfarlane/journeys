@@ -604,6 +604,44 @@ test("metadata-autosave", async ({ page, context }) => {
     journeyDescription,
   );
 
+  // "Saving…" is on screen only as long as the write is in flight, so the
+  // write is held: the Journey title is typed into (the page is hydrated
+  // by now, the description's save proved it), the line reads "Unsaved
+  // changes" while the timer runs and "Saving…" once the action is sent,
+  // and "Saved" only once the action is let through.
+  const renamedJourneyTitle = `Night Crossing ${suffix}`;
+  let releaseWrite = () => {};
+  const writeHeld = new Promise<void>((resolve) => {
+    releaseWrite = resolve;
+  });
+  const isServerAction = (request: {
+    method(): string;
+    headers(): Record<string, string>;
+  }) => request.method() === "POST" && "next-action" in request.headers();
+  await page.route(
+    (url) => url.pathname === `/projects/${projectId}/journeys/${journeyId}`,
+    async (route) => {
+      if (isServerAction(route.request())) await writeHeld;
+      await route.continue();
+    },
+  );
+  const titleField = page.getByLabel("Title", { exact: true });
+  await titleField.fill(renamedJourneyTitle);
+  await expect(journeyStatus).toHaveText("Unsaved changes");
+  await expect(journeyStatus).toHaveText("Saving…");
+  releaseWrite();
+  await expect(journeyStatus).toHaveText("Saved");
+  await page.unrouteAll();
+  await expect
+    .poll(async () => {
+      const [row] = await queryE2eDatabase<{ value: string }>(
+        `SELECT title AS value FROM "journey" WHERE id = $1`,
+        [journeyId],
+      );
+      return row?.value;
+    })
+    .toBe(renamedJourneyTitle);
+
   // The Project title: typed into, then straight to another tab. Only the
   // open tab's content is mounted, so the form goes away with the edit
   // still in its window, and writes it on the way out.

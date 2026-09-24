@@ -38,6 +38,7 @@ export type Autosave<T> = {
   adopt(incoming: T, keep?: (incoming: T, current: T, lastSaved: T) => T): void;
   /** Whether anything typed has not reached the server. */
   isDirty(): boolean;
+  /** What the loop holds and what it last wrote: seams for the tests. */
   current(): T;
   lastSaved(): T;
   /**
@@ -58,7 +59,7 @@ export function createAutosave<T>({
   equals,
   write,
   onStatus,
-  onSettled,
+  onSaved,
   debounceMs = SAVE_DEBOUNCE_MS,
 }: {
   initial: T;
@@ -68,7 +69,8 @@ export function createAutosave<T>({
   write: (value: T) => Promise<boolean>;
   onStatus: (status: SaveStatus) => void;
   /** A write landed with nothing left to write: the caller's refresh. */
-  onSettled: () => void;
+  onSaved: () => void;
+  /** The tests' clock; every surface uses `SAVE_DEBOUNCE_MS`. */
   debounceMs?: number;
 }): Autosave<T> {
   let current = initial;
@@ -82,6 +84,14 @@ export function createAutosave<T>({
       clearTimeout(timer);
       timer = null;
     }
+  }
+
+  function scheduleSave() {
+    clearTimer();
+    timer = setTimeout(() => {
+      timer = null;
+      void save();
+    }, debounceMs);
   }
 
   function isDirty() {
@@ -117,13 +127,16 @@ export function createAutosave<T>({
         lastSaved = pending;
 
         if (!equals(current, pending)) {
-          // An edit arrived during the write. A flush asked for it to be
-          // written now; otherwise its own timer is about to ask, and the
-          // status stays "unsaved" until it does.
+          // Something arrived during the write: an edit, or another
+          // Member's value adopted over it. A flush asked for it to be
+          // written now; otherwise the edit's own timer is about to ask —
+          // and an adoption has no timer, so one is set for it.
           if (queued) {
             queued = false;
             continue;
           }
+          onStatus("unsaved");
+          if (timer === null) scheduleSave();
           return;
         }
         queued = false;
@@ -131,7 +144,7 @@ export function createAutosave<T>({
         onStatus("saved");
         // Only with nothing left to write: a refresh landing mid-edit would
         // only be answered by another one.
-        onSettled();
+        onSaved();
         return;
       }
     } finally {
@@ -143,12 +156,7 @@ export function createAutosave<T>({
     change(value) {
       current = value;
       onStatus("unsaved");
-
-      clearTimer();
-      timer = setTimeout(() => {
-        timer = null;
-        void save();
-      }, debounceMs);
+      scheduleSave();
     },
 
     async flush() {

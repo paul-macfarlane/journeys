@@ -14,16 +14,16 @@ import {
  * caller hears about it as "Saved", "Saving…", or "Unsaved changes".
  */
 
-type Record = { title: string; description: string };
+type Metadata = { title: string; description: string };
 
-const equals = (a: Record, b: Record) =>
+const equals = (a: Metadata, b: Metadata) =>
   a.title === b.title && a.description === b.description;
 
 /** A write the test resolves by hand, so the loop's states can be watched. */
 function deferredWrite() {
-  const calls: Record[] = [];
+  const calls: Metadata[] = [];
   const resolvers: ((ok: boolean) => void)[] = [];
-  const write = (value: Record) =>
+  const write = (value: Metadata) =>
     new Promise<boolean>((resolve) => {
       calls.push(value);
       resolvers.push(resolve);
@@ -43,18 +43,20 @@ async function flushMicrotasks() {
   for (let i = 0; i < 10; i += 1) await Promise.resolve();
 }
 
-function setup(options: { write?: (value: Record) => Promise<boolean> } = {}) {
+function setup(
+  options: { write?: (value: Metadata) => Promise<boolean> } = {},
+) {
   const statuses: SaveStatus[] = [];
-  const settled = vi.fn();
+  const saved = vi.fn();
   const writer = deferredWrite();
-  const autosave = createAutosave<Record>({
+  const autosave = createAutosave<Metadata>({
     initial: { title: "Border", description: "" },
     equals,
     write: options.write ?? writer.write,
     onStatus: (status) => statuses.push(status),
-    onSettled: settled,
+    onSaved: saved,
   });
-  return { autosave, statuses, settled, writer };
+  return { autosave, statuses, saved, writer };
 }
 
 beforeEach(() => {
@@ -76,7 +78,7 @@ describe("createAutosave", () => {
   });
 
   it("writes an edit once typing pauses, then reports saved and settled", async () => {
-    const { autosave, statuses, settled, writer } = setup();
+    const { autosave, statuses, saved, writer } = setup();
 
     autosave.change({ title: "Night", description: "" });
     expect(statuses).toEqual(["unsaved"]);
@@ -96,11 +98,11 @@ describe("createAutosave", () => {
     expect(statuses.at(-1)).toBe("saved");
     expect(autosave.isDirty()).toBe(false);
     expect(autosave.lastSaved()).toEqual({ title: "Night C", description: "" });
-    expect(settled).toHaveBeenCalledTimes(1);
+    expect(saved).toHaveBeenCalledTimes(1);
   });
 
   it("flush writes now, waiting out a write already running", async () => {
-    const { autosave, statuses, settled, writer } = setup();
+    const { autosave, statuses, saved, writer } = setup();
 
     autosave.change({ title: "One", description: "" });
     const flushed = autosave.flush();
@@ -123,13 +125,13 @@ describe("createAutosave", () => {
       { title: "One", description: "" },
       { title: "Two", description: "" },
     ]);
-    // Nothing was settled yet: the first write landed with more to write.
-    expect(settled).not.toHaveBeenCalled();
+    // Nothing was reported saved yet: the first write landed with more to write.
+    expect(saved).not.toHaveBeenCalled();
 
     await writer.settle();
     await Promise.all([flushed, flushedAgain]);
     expect(statuses.at(-1)).toBe("saved");
-    expect(settled).toHaveBeenCalledTimes(1);
+    expect(saved).toHaveBeenCalledTimes(1);
     expect(autosave.isDirty()).toBe(false);
   });
 
@@ -153,15 +155,15 @@ describe("createAutosave", () => {
     expect(statuses.at(-1)).toBe("saved");
   });
 
-  it("a write that fails leaves the edit unsaved for the next one, and settles nothing", async () => {
-    const { autosave, statuses, settled, writer } = setup();
+  it("a write that fails leaves the edit unsaved for the next one, and reports nothing saved", async () => {
+    const { autosave, statuses, saved, writer } = setup();
 
     autosave.change({ title: "One", description: "" });
     vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
     await writer.settle(false);
     expect(statuses.at(-1)).toBe("unsaved");
     expect(autosave.isDirty()).toBe(true);
-    expect(settled).not.toHaveBeenCalled();
+    expect(saved).not.toHaveBeenCalled();
 
     // Nothing retries on its own; the next edit does.
     vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 5);
@@ -220,6 +222,36 @@ describe("createAutosave", () => {
       description: "Mine",
     });
     expect(autosave.isDirty()).toBe(true);
+  });
+
+  it("a value adopted during a write is written after it, with the edit kept", async () => {
+    const { autosave, statuses, writer } = setup();
+
+    autosave.change({ title: "Border", description: "Mine" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(writer.calls).toHaveLength(1);
+
+    // Another Member's rename arrives on a refresh while the write is out.
+    autosave.adopt(
+      { title: "Renamed elsewhere", description: "" },
+      (incoming, current) => ({
+        ...incoming,
+        description: current.description,
+      }),
+    );
+    await writer.settle();
+    // Not stranded on "saving": the merged record is unsaved, and a timer
+    // is set for it since no keystroke will set one.
+    expect(statuses.at(-1)).toBe("unsaved");
+    expect(autosave.isDirty()).toBe(true);
+
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(writer.calls[1]).toEqual({
+      title: "Renamed elsewhere",
+      description: "Mine",
+    });
+    await writer.settle();
+    expect(statuses.at(-1)).toBe("saved");
   });
 
   it("dispose writes what the timer was about to, once, and drops the timer", async () => {
