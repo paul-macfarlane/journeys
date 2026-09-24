@@ -446,9 +446,10 @@ test("journey-share-link", async ({ page, context }) => {
   const journeyId = await createJourney(page, projectId, journeyTitle);
 
   // Before anything is live there is no address to hand a Participant.
-  // The badge row's copy control, not the one the acknowledgement of a
-  // publish carries for as long as it shows (ticket 65): the badge row's
-  // is the one that stays as long as the Journey is live.
+  // Two controls copy it once there is (ticket 65): the badge row's, for
+  // as long as the Journey is live, and the acknowledgement line's, for
+  // as long as that line shows. This spec is about the badge row's, so the
+  // acknowledgement's — the one inside a `role="status"` — is left out.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
   const copyLink = page
     .getByRole("button", { name: "Copy participant link" })
@@ -525,14 +526,16 @@ test("publish-acknowledged", async ({ page, context }) => {
   await expect(acknowledgement).toHaveCount(0);
 
   // Version 1: the line names it, and the badge says "Published" with an
-  // entrance so the change registers.
+  // entrance so the change registers. A still cannot prove motion, so the
+  // entrance is proven by the class that plays it — here, where the state
+  // changed under the Author, and not after the reload at the end, where
+  // it did not.
   await publish.click();
   await expect(acknowledgement).toContainText(
     "Published Version 1 — participants see it now.",
   );
-  await expect(header.getByText("Published", { exact: true })).toHaveClass(
-    /animate-in/,
-  );
+  const badge = header.getByText("Published", { exact: true });
+  await expect(badge).toHaveClass(/animate-in/);
 
   await page.screenshot({
     path: evidencePath(
@@ -591,9 +594,11 @@ test("publish-acknowledged", async ({ page, context }) => {
   );
   expect(await readVersionRows(journeyId)).toHaveLength(3);
 
-  // Leaving the page is the other way the line goes.
+  // Leaving the page is the other way the line goes — and a page that
+  // loads already published has no change to register, so no entrance.
   await page.reload();
-  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  await expect(badge).toBeVisible();
+  await expect(badge).not.toHaveClass(/animate-in/);
   await expect(acknowledgement).toHaveCount(0);
 });
 

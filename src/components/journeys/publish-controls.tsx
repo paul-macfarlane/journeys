@@ -91,10 +91,12 @@ export function PublishScope({
 }) {
   const [acknowledgement, setAcknowledgement] =
     useState<Acknowledgement | null>(null);
-  const [wasUnpublished, setWasUnpublished] = useState(hasUnpublishedChanges);
+  const [sawUnpublishedChanges, setSawUnpublishedChanges] = useState(
+    hasUnpublishedChanges,
+  );
 
-  if (wasUnpublished !== hasUnpublishedChanges) {
-    setWasUnpublished(hasUnpublishedChanges);
+  if (sawUnpublishedChanges !== hasUnpublishedChanges) {
+    setSawUnpublishedChanges(hasUnpublishedChanges);
     if (hasUnpublishedChanges) setAcknowledgement(null);
   }
 
@@ -119,6 +121,8 @@ export function PublishScope({
  * participant link to copy, and, when it applies, what Participants will
  * meet instead of a deciding Prompt. One `role="status"` so a screen reader
  * hears it without being moved; nothing until there is something to say.
+ * The copy control's own "Copied" is a live region inside this one, so a
+ * copy may be read back as the whole line: brief, and the line is short.
  */
 export function PublishAcknowledgement({ journeyId }: { journeyId: string }) {
   const { acknowledgement } = usePublishScope("PublishAcknowledgement");

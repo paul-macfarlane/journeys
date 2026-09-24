@@ -140,9 +140,8 @@ export default async function JourneyPage({
 
   return (
     <>
-      {/* The acknowledgement of a publish (ticket 65) is made by either
-          Publish button — the header's or the Versions tab's Draft row's —
-          and shown in the header, so the scope holds both. */}
+      {/* Holds the acknowledgement of a publish for both Publish buttons;
+          see PublishScope for why it is not the header button's own. */}
       <PublishScope hasUnpublishedChanges={hasUnpublishedChanges}>
         <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-12">
           <div>

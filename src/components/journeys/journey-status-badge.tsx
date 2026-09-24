@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import type { PublishState } from "@/lib/publish-state";
 
@@ -20,18 +24,21 @@ export function JourneyStatusBadge({
   /**
    * On the Journey page, where the badge is what a publish changes
    * (ticket 65): "Published" fades in when it arrives, so the change
-   * registers without anything moving. Keyed on the state, so the badge
-   * is a new element — and the entrance plays — when the state changes
-   * under a re-render of the page, and otherwise only once, as the page
-   * loads. Off in lists, where a fade on every load would say nothing.
+   * registers without anything moving. Only for a change made under the
+   * Author — a page that loads already published has nothing to register,
+   * so the entrance waits for the state to differ from the one it mounted
+   * with. Off in lists, where nothing changes under the reader.
    */
   entrance?: boolean;
 }) {
+  const [mountedWith] = useState(publishState);
+  const entering =
+    entrance && publishState === "published" && publishState !== mountedWith;
+
   return (
     <Badge
-      key={publishState}
       className={
-        entrance && publishState === "published"
+        entering
           ? "animate-in fade-in duration-500 motion-reduce:animate-none"
           : undefined
       }
