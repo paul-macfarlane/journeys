@@ -1,44 +1,50 @@
-# ticket 46 DoD chain — 2026-09-24T00:13:01Z — code at 9295ee4
+# Ticket 47 DoD chain — 2026-09-24T02:21:54Z — code at 5fc6184
+# E2E_PORT=3147 E2E_DATABASE_NAME=journeys_e2e_47 E2E_EVIDENCE=project-create,journey-create,author-flow
+
 $ pnpm lint
 
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys/.claude/worktrees/47-create-dialogs/journeys
 > eslint
 
-exit=0
+[exit 0]
+
 $ pnpm format:check
 
-> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys/.claude/worktrees/47-create-dialogs/journeys
 > prettier --check .
 
 Checking formatting...
-[warn] Round 3 regression feedback.md
-[warn] Code style issues found in the above file. Run Prettier with --write to fix.
- ELIFECYCLE  Command failed with exit code 1.
-exit=1
-# the only file named above is Paul's untracked notes file at the repo root, which CI never sees; the tracked files are checked on their own:
-$ git ls-files -z | xargs -0 pnpm exec prettier --check --ignore-unknown
-Checking formatting...
 All matched files use Prettier code style!
-exit=0
+[exit 0]
+
 $ pnpm typecheck
 
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys/.claude/worktrees/47-create-dialogs/journeys
 > tsc --noEmit
 
-exit=0
+[exit 0]
+
 $ pnpm test
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys/.claude/worktrees/47-create-dialogs/journeys
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys/.claude/worktrees/47-create-dialogs/journeys
 
 
- Test Files  33 passed (33)
-      Tests  498 passed (498)
-   Start at  20:13:13
-   Duration  1.08s (transform 1.66s, setup 0ms, import 4.35s, tests 750ms, environment 2ms)
+ Test Files  34 passed (34)
+      Tests  508 passed (508)
+   Start at  22:22:03
+   Duration  1.07s (transform 1.52s, setup 0ms, import 4.23s, tests 881ms, environment 2ms)
 
-exit=0
-$ E2E_EVIDENCE=metadata-autosave,project-rename,journey-edit-and-delete,themes-settings pnpm test:e2e  (full output in dod-1-e2e.txt)
-exit=0
-  ✓  97 [chromium] › e2e/canvas.spec.ts:3547:7 › authoring from the map › canvas-undo-drawn-choice (5.1s)
-  ✓  98 [chromium] › e2e/canvas.spec.ts:3590:7 › authoring from the map › canvas-undo-build-branch-and-walk (8.1s)
+[exit 0]
 
-  98 passed (1.9m)
+$ E2E_EVIDENCE=project-create,journey-create,author-flow E2E_PORT=3147 E2E_DATABASE_NAME=journeys_e2e_47 pnpm test:e2e  (full output: test-results/dod-1-e2e.txt)
+  Running TypeScript ...
+Running 100 tests using 5 workers
+  100 passed (2.0m)
+[exit 0]
