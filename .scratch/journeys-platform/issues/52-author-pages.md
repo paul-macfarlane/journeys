@@ -1,8 +1,8 @@
 # 52: Author pages and the display name
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude Fable 5.1 (`/atlas-implement`, 2026-09-23, worktree `52-author-pages` on `feat/52-author-pages`)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 4 (Paul, 2026-09-23, triaged the same day, grilled in its own thread the same day): in the hackathon, and one of the higher priorities. It is independent of 46 → 47 → 48 → 49 → 38 → 50 → 51 at this point, so it runs in parallel with that order in its own worktree rather than queueing behind it (Paul, Q8 and Q10). Post-hackathon 53 joins sweep 3 (41 → 42 → 44 → 45). 14 stays available and is Paul's call.
 Route: contract
@@ -55,3 +55,27 @@ Verification and evidence follow `docs/agents/testing.md` ("Proportional verific
 ## Comments
 
 **2026-09-23 — grilling (Claude Fable 5.1, `/grilling`, worktree `52-author-pages` on `feat/52-author-pages`).** Two rounds, ten questions each; Paul accepted every recommendation. Round 1 settled the address, opt-in, which Projects, the bio, the settings surface, the Project page link, the spec amendment, and the hackathon cut; round 2 re-confirmed opt-in (Paul's "3" was a typo for (a)), and settled the links shape, the route, saving, name rules, off and empty states, page layout, the Project page line, the privacy sentence, and delivery. Paul: "just put up a PR with the spec change, I'll have implementation be a separate thread." PR: see the `[CLOSEOUT]` on the implementation thread; this PR carries only the spec, decisions, and this ticket.
+
+**2026-09-23 — `[EXECUTION PLAN]` (Claude Fable 5.1, `/atlas-implement`, worktree `52-author-pages`, branch `feat/52-author-pages`, comparison SHA `f93bdf2`, base `staging`).** Route `contract`. One repository delivery (`journeys`), direct checkout in the existing worktree, no worker worktrees: the three deliverables are sequential because D2 and D3 each end in a Playwright run that needs the worktree's own build, port, and database, and two builds plus two suites on one machine is the load that has failed unrelated specs here before. The name, bio, links, and public switch save through `useAutosavedForm` / `useAutosave` (ticket 46 replaced `useBlurSavedForm`; same status line). The Settings route lives at `src/app/projects/(list)/settings/` so the `(list)` layout supplies the navbar (URL `/projects/settings`).
+
+Deliverables and the criteria each proves:
+
+- **D1 — schema, contract, data access** (`src/db/schema.ts`, `drizzle/0010_author_pages.sql`, `src/lib/author.ts` + unit tests, `src/db/users.ts`). AC 3 (unit), AC 5 (migration).
+- **D2 — Settings** (`src/app/projects/(list)/settings/{page,actions}.tsx`, `src/components/author-settings.tsx`, the "Settings" row in `user-menu.tsx`, `e2e/author-settings.spec.ts`). AC 1, AC 3 (refusal on screen).
+- **D3 — public Author page, Project page line, privacy** (`src/app/authors/[userId]/{page,opengraph-image}.tsx`, `authorLinkMetadata` in `src/lib/link-preview.ts`, the "By …" line in `src/app/p/[projectId]/page.tsx`, `src/app/privacy/page.tsx`, `e2e/author-page.spec.ts`). AC 2, AC 4, AC 6 (privacy).
+
+Verification map (run surface local + deployed; evidence per `docs/agents/testing.md`, `contract`):
+
+| Criterion | Command / action | Evidence | Earliest | Invalidated by |
+|---|---|---|---|---|
+| AC 1 name | `E2E_EVIDENCE=author-settings,author-page E2E_PORT=3152 E2E_DATABASE_NAME=journeys_e2e_52 pnpm test:e2e` (spec `author-settings`) | `test-results/author-settings/` | after D2 | any change under `src/app/projects/(list)/settings`, `src/components/author-settings.tsx`, `src/components/navbar/user-menu.tsx`, `src/db/users.ts`, `src/lib/author.ts` |
+| AC 2 page on/off, OG | same run, spec `author-page` | `test-results/author-page/` | after D3 | any change under `src/app/authors`, `src/lib/link-preview.ts`, `src/lib/og.tsx`, `src/db/users.ts` |
+| AC 3 links refused, one per kind | `pnpm test -- src/lib/author.test.ts` + the refusal step of `author-settings` | `test-results/ac-3-refused-link.txt`, `test-results/author-settings/` | after D1 / D2 | `src/lib/author.ts`, the Settings surface |
+| AC 4 "By …" line | same run, spec `author-page` | `test-results/author-page/` | after D3 | `src/app/p/[projectId]/page.tsx`, `src/db/users.ts` |
+| AC 5 additive migration, defaults | fresh database: migrate the base commit's `drizzle/`, insert a user, `pnpm db:migrate`, read the row back | `test-results/ac-5-migration.txt` | after D1 | `drizzle/`, `src/db/schema.ts` |
+| AC 6 privacy sentence; spec + decisions on `staging` | `grep` of `src/app/privacy/page.tsx`; `git log origin/staging` naming PR #56 | `test-results/ac-6-privacy-and-spec.txt` | after D3 | `src/app/privacy/page.tsx` |
+| AC 7 full e2e once | the run above, in full | `test-results/dod-1-commands.txt` | after D3 | any change |
+| DoD chain | `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm db:migrate` (migrate against the fresh database above) | `test-results/dod-1-commands.txt` | after D3 | any change |
+| Deployed | Human gate, after Paul merges: open `/projects/settings`, turn the page on, open `/authors/<id>` on the staging domain; expected: the page renders with the trail Theme and the Project list; post-check: the OG image at `/authors/<id>/opengraph-image` is a 200 PNG | closeout note | after merge | a later deploy |
+
+Human gates: none actionable now. Announced for later: the staging smoke above (after merge) and the Migrate action applying `0010` on push to `staging` (additive with defaults, so the deploy window is safe). No new dependency, so no lockfile commit is needed.
