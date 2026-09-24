@@ -1,6 +1,6 @@
 # 58: A small demo Journey for the recording and the stills
 
-Status: in-progress
+Status: done
 Blocked by: 38
 Owner: Claude (Fable 5.1), the 38 thread, 2026-09-24
 Parent: `.scratch/journeys-platform/spec.md`
@@ -46,11 +46,11 @@ Loops: 3 → 2 and 5 → 4 (allowed since ticket 18). Reachability: every Step i
 
 Acceptance criteria:
 
-- [ ] Paul has approved the scenario (or his edits) in Comments.
-- [ ] `pnpm seed:journey-stories <email>` writes both Projects; the demo document publishes.
-- [ ] `pnpm demo:record` records the demo Journey by default and `--source journey-stories` regenerates the cases' set into the same file names.
-- [ ] The committed `public/demo/` set is the demo Journey's, and the landing page and 54's stills need no code change to show it.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, and one full `pnpm test:e2e` pass at the end.
+- [x] Paul has approved the scenario (or his edits) in Comments.
+- [x] `pnpm seed:journey-stories <email>` writes both Projects; the demo document publishes.
+- [x] `pnpm demo:record` records the demo Journey by default and `--source journey-stories` regenerates the cases' set into the same file names.
+- [x] The committed `public/demo/` set is the demo Journey's, and the landing page and 54's stills need no code change to show it.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, and one full `pnpm test:e2e` pass at the end.
 
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `polish`): one `dod-1-commands.txt` plus the `landing` and `landing-canvas-demo` screenshot directories, run with `E2E_EVIDENCE=landing,landing-canvas-demo`. Seeded content only. Use `CONTEXT.md` vocabulary (the image line is a caption, not a credit). Origin: Paul, 2026-09-24.
 
@@ -59,3 +59,31 @@ Verification and evidence follow `docs/agents/testing.md` ("Proportional verific
 ### 2026-09-24 — Paul, scenario approved
 
 Paul: "scenario approved, go ahead." The draft table above is the content; decisions 1–5 stand as proposed. Implemented on `feat/58-demo-journey` (based on the ticket branch with `feat/38-landing-demo-recording` merged in, since #64 is still open); the PR targets `staging` and shrinks to this ticket's diff once #64 merges.
+
+### 2026-09-24 — Claude (Fable 5.1), `[CLOSEOUT]`
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/66 (base `staging`, head `feat/58-demo-journey`, feature commit `a54e311`; the branch carries #64's commits until #64 merges). Route: polish; delivered in the 38 thread, no worker delegation.
+
+**Delivered**
+
+- `scripts/seed/allotment/a-key-on-the-doormat.json`: the approved scenario in stored shape — ten Steps, fifteen Choices, three Endings, two Outcomes (Kept the plot, Handed on), loops 3 → 2 and 5 → 4, a required deciding Prompt on "Blisters", the image with a written `alt` and a caption on "Waist-high grass". `scripts/seed/journey-stories-seed.ts` gains `DEMO_PROJECT_ID` (`…0002`), `DEMO_JOURNEY_ID` (`…0021`), and `SEED_PROJECTS`; `pnpm seed:journey-stories <email>` writes both Projects and prints both. Four unit tests in `src/lib/graph/validate.test.ts` pin the document.
+- `scripts/record-landing-demo.ts`: a per-source table (`demo`, the default; `journey-stories`) and `--source`; walks and the `run` still answer a deciding Prompt (`answerDecidingPrompt`) and match Choices as link or button; the seed image is served from disk for its GitHub address while recording. `public/demo/` regenerated from the demo (recordings 1104 KB of 3072, directory 2368 KB of 4096); the cases' set is one flag away and stays in git history (#64).
+- `scripts/seed/allotment/illustration.svg` → `public/seed/allotment.jpg` (45 KB) with `public/seed/README.md`; README and CLAUDE.md updated.
+
+**Verification**
+
+| Check | Result | Evidence |
+|---|---|---|
+| `pnpm format:check`, `pnpm lint`, `pnpm typecheck` | PASS | `test-results/dod-1-commands.txt` |
+| `pnpm test` | PASS, 544 | `test-results/dod-1-commands.txt` |
+| `pnpm demo:record:prebuilt` (default source) | PASS, 16 files, under both caps | `test-results/dod-1-commands.txt`, `public/demo/` |
+| `E2E_EVIDENCE=landing,landing-canvas-demo pnpm test:e2e`, run 1 | FAIL: `author-settings` (unrelated; the GitHub field's typed value was gone at the assertion; passed on every other run today) | `test-results/dod-1-e2e-run-1-failed.txt` |
+| the same, run 2 (the cited pass) | PASS, 104 | `test-results/dod-1-e2e.txt`, `test-results/landing/`, `test-results/landing-canvas-demo/` |
+
+A task chip was raised to fix `author-settings` at its cause (likely the settings form's refresh after a save wiping a value typed meanwhile); it is not this ticket's.
+
+**AI code review** (one reviewer, both axes, applied before the commit): the image `src` was a root-relative path, which the runner's `harden` strips and the next autosave would delete — now the committed file's raw GitHub address on `staging`, served from disk while recording; `answerDecidingPrompt` waits for the Step's form or Choices before probing; the dead `versionsExpected` removed; `chooseSource` returns the typed name; stale comments fixed; the 5 → 4 loop asserted. Not taken: renaming `seedJourneyStories`/`parseSeedJourneys` (the command keeps its name); collapsing the six per-still `journeyId` fields.
+
+**Deviations from the ticket as written:** decision 4 delivers a drawn illustration rather than a downloaded photograph (nothing to license, no fetch; swap the file for a photo any time); the `run` still is on "Ada's advice", not "Blisters", because a deciding Step shows a textbox and Continue rather than its Choices; the image is linked at its GitHub address rather than served from the app's own origin, for the stored-content rule above.
+
+**For Paul:** merge #64 then #66; rerun the seed on staging and production (it now writes `The Allotment` too) and publish *A key on the doormat* from its Versions tab if 54's Play link should reach it. The image at its GitHub address resolves once this PR is on `staging`.
