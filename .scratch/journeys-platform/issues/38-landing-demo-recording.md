@@ -30,3 +30,18 @@ Verification and evidence follow `docs/agents/testing.md` ("Proportional verific
 ### 2026-09-24 — Claude Opus 5.5, held by Paul
 
 Held until 2026-09-25 (Paul: "I will hold off on the recording until tomorrow in case I have other feedback I want to squeeze in"). Ticket 54's grilling may move the recording to the About page, add stills or clips there made by this script, or both. Read 54's decisions before starting.
+
+### 2026-09-24 — Claude (Fable 5.1), addendum from ticket 54's grilling
+
+Ticket 54 keeps the recording on the landing page (which becomes the splash) and takes its six feature stills from this script, so this ticket runs **first tonight** and gains one deliverable: after the recording, `scripts/record-landing-demo.ts` also writes six 1280 × 720 PNG stills per theme to `public/demo/<slug>-{light,dark}.png`, using the seed Project only:
+
+| slug | What is on screen |
+|---|---|
+| `versions` | A Journey's Versions tab with two Published Versions and the Restore control |
+| `run` | A Participant's Step on the runner, mid-Journey, with its Choices |
+| `analytics` | The canvas with analytics drawn on the graph (seeded Runs the script creates, never real data) |
+| `prompt` | A Step's Prompt in the panel with an AI-decided Choice configured |
+| `themes` | The Theme row on a Journey, one non-default Theme selected |
+| `rich-text` | A Step's rich text with an image and its credit caption |
+
+The stills use the same page size and theme switch as the recording, so a rerun after any UI change refreshes all twelve files plus the video. Document the command once (README or `docs/agents/testing.md`, as the ticket already says) and mention that it writes the stills. Keep the whole `public/demo/` directory under 4 MB (the 3 MB video cap plus the stills). The landing-page `<video>` block still lands here; 54 rebuilds the page around it. Blocked by: none; 54 is blocked by this ticket.
