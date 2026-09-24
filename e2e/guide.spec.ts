@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { evidencePath } from "./setup/evidence";
+import { expectFooterOnOneRow } from "./setup/footer";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
 const mintedAuthorIds: string[] = [];
@@ -59,6 +60,8 @@ test("guide", async ({ page }) => {
   await expect(
     page.getByRole("contentinfo").getByRole("link", { name: "Journeys" }),
   ).toHaveAttribute("href", "/");
+  // Ticket 62: on one row across the page, as on the landing page.
+  await expectFooterOnOneRow(page);
 
   await page.screenshot({
     path: evidencePath("guide", "guide-light.png"),

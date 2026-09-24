@@ -7,7 +7,9 @@ import { SiteFooter } from "@/components/site-footer";
 /**
  * The shell every prose-only public page shares — the two legal pages,
  * About, and the guide: the wordmark as the way home, the title, an
- * optional line under it, the text, and the footer at prose width. Static, so a Participant
+ * optional line under it, the text, and the footer. The footer spans the
+ * page, as on the landing page and the sign-in page, rather than the prose
+ * column, which its six items no longer fit at desktop widths. Static, so a Participant
  * sent here from the runner and an Author sent here from the sign-in page
  * get the same page with no session read.
  *
@@ -48,7 +50,7 @@ export function ProsePage({
         </div>
       </main>
 
-      <SiteFooter width="prose" />
+      <SiteFooter />
     </div>
   );
 }

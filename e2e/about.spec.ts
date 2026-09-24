@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 
 import { evidencePath } from "./setup/evidence";
+import { expectFooterOnOneRow } from "./setup/footer";
 
 /**
  * Ticket 54: the About page, first person from Paul. The heading, the
@@ -60,6 +61,8 @@ test("about", async ({ page }) => {
     "href",
     "/guide",
   );
+  // Ticket 62: the footer spans the page on one row, as on the landing page.
+  await expectFooterOnOneRow(page);
 
   await page.screenshot({
     path: evidencePath("about", "about-light.png"),
