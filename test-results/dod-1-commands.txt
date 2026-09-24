@@ -1,6 +1,6 @@
-# DoD command chain for ticket 38 (Route: polish), run on feat/38-landing-demo-recording
-# Base: staging at 4a17371; the ticket's working tree before its closeout commit. The full e2e run is captured in dod-1-e2e.txt.
-# Environment: local .env.local; the e2e stack provisions journeys_e2e on port 3100 itself; the demo script ran on port 3138 against the same database and cleaned up after itself.
+# DoD command chain for ticket 58 (Route: polish), run on feat/58-demo-journey after merging origin/staging (#64 and #65 merged) and the autosaved-form fix
+# Base: staging at 5517206. The full e2e run is captured in dod-1-e2e.txt; the earlier failed run in dod-1-e2e-run-1-failed.txt.
+# Environment: local .env.local; the e2e stack provisions journeys_e2e on port 3100 itself; the demo script ran on port 3138 against the same database with --source demo (the default) and cleaned up after itself.
 # E2E_EVIDENCE=landing,landing-canvas-demo so only the two specs this ticket names write into the tracked proof root.
 
 $ pnpm format:check
@@ -39,29 +39,26 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
 
  Test Files  36 passed (36)
-      Tests  540 passed (540)
-   Start at  10:33:19
-   Duration  1.09s (transform 1.54s, setup 0ms, import 4.31s, tests 839ms, environment 2ms)
+      Tests  544 passed (544)
+   Start at  11:32:40
+   Duration  1.11s (transform 1.62s, setup 0ms, import 4.35s, tests 894ms, environment 2ms)
 
 exit=0
 
 $ pnpm demo:record:prebuilt
 [e2e] database: journeys_e2e on localhost:5436
 - Network:       http://172.19.9.131:3138
-[demo] seeded 3 Journeys for Demo Author
+[demo] seeded 4 Journeys for Demo Author; source: demo
 [demo] ffmpeg: /Users/paulmacfarlane/Library/Caches/ms-playwright/ffmpeg-1011/ffmpeg-mac
 [demo] recording the canvas (light)
 [demo] recording the canvas (dark)
 [demo] preparing the stills' state
-[demo] walk 1/9: 4 choices
-[demo] walk 2/9: 11 choices
-[demo] walk 3/9: 11 choices
-[demo] walk 4/9: 11 choices
-[demo] walk 5/9: 13 choices
-[demo] walk 6/9: 12 choices
-[demo] walk 7/9: 12 choices
-[demo] walk 8/9: 3 choices
-[demo] walk 9/9: 3 choices
+[demo] walk 1/6: 4 choices
+[demo] walk 2/6: 4 choices
+[demo] walk 3/6: 4 choices
+[demo] walk 4/6: 4 choices
+[demo] walk 5/6: 3 choices
+[demo] walk 6/6: 3 choices
 [demo] versions-light.png
 [demo] themes-light.png
 [demo] prompt-light.png
@@ -75,21 +72,21 @@ $ pnpm demo:record:prebuilt
 [demo] analytics-dark.png
 [demo] run-dark.png
 [demo] written to public/demo:
-  analytics-dark.png           80 KB
-  analytics-light.png          82 KB
-  canvas-dark.png             108 KB
-  canvas-dark.webm            553 KB
-  canvas-light.png            107 KB
-  canvas-light.webm           548 KB
-  prompt-dark.png             109 KB
-  prompt-light.png            109 KB
-  rich-text-dark.png          258 KB
-  rich-text-light.png         259 KB
-  run-dark.png                435 KB
-  run-light.png               436 KB
-  themes-dark.png              75 KB
+  analytics-dark.png           75 KB
+  analytics-light.png          75 KB
+  canvas-dark.png             111 KB
+  canvas-dark.webm            543 KB
+  canvas-light.png            111 KB
+  canvas-light.webm           560 KB
+  prompt-dark.png             127 KB
+  prompt-light.png            125 KB
+  rich-text-dark.png          126 KB
+  rich-text-light.png         126 KB
+  run-dark.png                 57 KB
+  run-light.png                57 KB
+  themes-dark.png              74 KB
   themes-light.png             74 KB
-  versions-dark.png            60 KB
-  versions-light.png           59 KB
-  recordings 1101 KB of 3072 KB; public/demo 3353 KB of 4096 KB
+  versions-dark.png            63 KB
+  versions-light.png           63 KB
+  recordings 1104 KB of 3072 KB; public/demo 2368 KB of 4096 KB
 exit=0

@@ -1,0 +1,438 @@
+{
+  "schemaVersion": 1,
+  "startStepId": "doormat",
+  "allowBack": true,
+  "layoutDirection": "TB",
+  "outcomes": {
+    "outcome-kept": { "id": "outcome-kept", "label": "Kept the plot" },
+    "outcome-handed-on": { "id": "outcome-handed-on", "label": "Handed on" }
+  },
+  "steps": {
+    "doormat": {
+      "id": "doormat",
+      "title": "A key on the doormat",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The envelope is thin and a little damp. Inside is a brass key on a loop of green string and a note from the allotment committee, in handwriting that has clearly written a lot of notes like this one."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "\"Plot 14 was your aunt's. It is yours until the end of September, if you want it. After that it goes to the waiting list.\""
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You have never grown anything on purpose. The key is warm from the sun on the doormat."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "doormat-look",
+          "label": "Go and look this evening",
+          "targetStepId": "grass",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "doormat-ask",
+          "label": "Ask the garden's group chat what state it's in",
+          "targetStepId": "replies",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "grass": {
+      "id": "grass",
+      "title": "Waist-high grass",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Plot 14 is easy to find: it is the one that looks abandoned. The grass comes up past your knees, the bean poles lean like they have had a long day, and something with yellow flowers has taken the far corner for itself."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "On the next plot a woman in a straw hat is watering a row of beans and pretending not to watch you. A hand-painted sign on her shed says ADA."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "https://raw.githubusercontent.com\u002fpaul-macfarlane\u002fjourneys/staging/public\u002fseed/allotment.jpg",
+              "alt": "An overgrown allotment plot with leaning bean poles, a small wooden shed, and a neighbouring plot in neat rows.",
+              "caption": "Illustration made for this demo journey. Public domain: use it however you like."
+            }
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "grass-clear",
+          "label": "Start clearing tonight",
+          "targetStepId": "blisters",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "grass-hello",
+          "label": "Say hello to Ada",
+          "targetStepId": "ada",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "replies": {
+      "id": "replies",
+      "title": "Forty replies",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You post one question in the garden's group chat and put your phone face down. When you pick it up there are forty replies."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Two people are arguing about whether your aunt's beans were a climbing or a dwarf variety. Three people offer to help on Saturday. Someone called Ada says the rhubarb is still there under the grass, and someone else mentions the June inspection twice, in capitals."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "replies-help",
+          "label": "Accept the help",
+          "targetStepId": "ada",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "replies-look",
+          "label": "Go and see it for yourself",
+          "targetStepId": "grass",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "blisters": {
+      "id": "blisters",
+      "title": "Blisters",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Two hours with a borrowed sickle and you have cleared half the plot. Your palms are raw and there is grass in your shoes. Under the last armful, in a neat row nobody has touched in a year, are five crowns of your aunt's rhubarb, red at the base and pushing up anyway."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The light is going. Ada has packed up and gone home. The other half of the plot is still waist-high."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "blisters-keep-going",
+          "label": "Keep going until dark",
+          "targetStepId": "letter",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "blisters-weekend",
+          "label": "Leave the rest for the weekend",
+          "targetStepId": "plan",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "blisters-ada",
+          "label": "Go and find Ada",
+          "targetStepId": "ada",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": {
+        "type": "free_text",
+        "label": "It's getting dark and your hands hurt. What do you do?",
+        "required": true,
+        "decides": true
+      },
+      "outcomeId": null,
+      "position": null
+    },
+    "ada": {
+      "id": "ada",
+      "title": "Ada's advice",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Ada has had plot 13 for twenty-two years and does not believe in wasting words. Your aunt's rhubarb, she says, is the best on the site and will come back on its own if you leave it alone. The beans want poles by May. The committee walks the site in June and any plot that looks untended gets a letter, and then it gets handed on."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "\"Your aunt kept everything in the shed,\" she says. \"Labelled. She was like that.\""
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "ada-shed",
+          "label": "Ask her to show you the shed",
+          "targetStepId": "plan",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "ada-grass",
+          "label": "Thank her and start on the grass",
+          "targetStepId": "blisters",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "plan": {
+      "id": "plan",
+      "title": "A plan for the summer",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The shed smells of creosote and dry soil. There are seed packets in a biscuit tin, a hand-drawn map of the plot with every row named, and a note on the back of the door: BEANS NEED POLES BY MAY."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You sit on an upturned bucket and draw your own map. Beans where they were, potatoes in the half you have cleared, and the rhubarb stays exactly where it is."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "plan-same",
+          "label": "Plant what your aunt planted",
+          "targetStepId": "harvest",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "plan-wildflowers",
+          "label": "Turn half of it over to wildflowers",
+          "targetStepId": "bees",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "letter": {
+      "id": "letter",
+      "title": "The inspection letter",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You cleared the plot in one furious evening, and then work happened, and then it rained for a fortnight, and then it was July. The letter is polite. The committee walked the site in June. Plot 14 did not look tended. You have two weeks to show that it is, or it goes to the waiting list."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [
+        {
+          "id": "letter-work-party",
+          "label": "Ask the group for a work party",
+          "targetStepId": "harvest",
+          "condition": null,
+          "effect": null
+        },
+        {
+          "id": "letter-hand-back",
+          "label": "Hand the key back",
+          "targetStepId": "key-back",
+          "condition": null,
+          "effect": null
+        }
+      ],
+      "prompt": null,
+      "outcomeId": null,
+      "position": null
+    },
+    "harvest": {
+      "id": "harvest",
+      "title": "A shared harvest",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "By September the beans are taller than you are and there are more of them than one person can eat. You leave carrier bags of them on the bench by the gate with a note that says HELP YOURSELF, and by evening they are gone."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Ada takes a crown of the rhubarb for plot 13. \"For safekeeping,\" she says. The committee's next note is shorter: the plot is yours for another year."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-kept",
+      "position": null
+    },
+    "bees": {
+      "id": "bees",
+      "title": "Bees on the plot",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The wildflower half of plot 14 is the loudest place on the site by August. Bees, hoverflies, and one very confident goldfinch. The garden's autumn show gives it the prize for pollinators, which is a jar of honey and a certificate somebody printed at home."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You keep the key. The rhubarb, Ada reports, has never looked better."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-kept",
+      "position": null
+    },
+    "key-back": {
+      "id": "key-back",
+      "title": "The key goes back",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "You post the key through the committee's letterbox with a note that says thank you and sorry. Someone on the waiting list will get plot 14 in the spring. They will clear the grass, and under it they will find five crowns of rhubarb, red at the base and pushing up anyway."
+              }
+            ]
+          }
+        ]
+      },
+      "choices": [],
+      "prompt": null,
+      "outcomeId": "outcome-handed-on",
+      "position": null
+    }
+  }
+}

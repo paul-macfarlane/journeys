@@ -81,39 +81,53 @@ export function useAutosavedForm<T extends FieldValues>({
   const { status, autosave } = useAutosave<T>({
     initial: values,
     equals: sameStored,
-    write: (value) =>
-      new Promise<boolean>((resolve) => {
-        // `handleSubmit` validates what the form holds, which is `value`:
-        // the loop read it the moment `change` stored it, and no keystroke
-        // can land between the two.
-        void form.handleSubmit(
-          async (next) => {
-            const result = await submit(next).catch(() => ({
-              ok: false as const,
-              error: "the server could not be reached",
-            }));
+    // The schema is run here rather than through `form.handleSubmit`: that
+    // returns without calling either of its callbacks when a `reset` lands
+    // while it validates (react-hook-form's `_resetCallId` check), and the
+    // refresh the previous save asked for resets this form — so a field
+    // left the moment that refresh arrived was a write that never settled,
+    // "Saving…" for good with no refusal shown (the author-settings spec,
+    // once locally and once on CI, 2026-09-24). `value` is what the loop
+    // read the moment `change` stored it, so validating it directly checks
+    // exactly what `handleSubmit` would have.
+    write: async (value) => {
+      const parsed = schema.safeParse(value);
+      if (!parsed.success) {
+        form.clearErrors();
+        const blamed = new Set<string>();
+        for (const issue of parsed.error.issues) {
+          const field = String(
+            issue.path[0] ?? lastEditedField.current ?? Object.keys(value)[0],
+          ) as Path<T>;
+          if (blamed.has(field)) continue;
+          blamed.add(field);
+          form.setError(field, { type: "validate", message: issue.message });
+        }
+        return false;
+      }
 
-            if (!result.ok) {
-              const field =
-                lastEditedField.current ?? (Object.keys(value)[0] as Path<T>);
-              form.setError(field, {
-                type: "server",
-                message: `Couldn't save: ${result.error}`,
-              });
-              resolve(false);
-              return;
-            }
+      form.clearErrors();
+      const result = await submit(parsed.data).catch(() => ({
+        ok: false as const,
+        error: "the server could not be reached",
+      }));
 
-            // The schema trims, so the baseline is what was stored; what is
-            // on screen is left as typed, because the Author may still be
-            // typing it — `flush` puts the stored form on screen once the
-            // field is left.
-            form.reset(next, { keepValues: true });
-            resolve(true);
-          },
-          () => resolve(false),
-        )();
-      }),
+      if (!result.ok) {
+        const field =
+          lastEditedField.current ?? (Object.keys(value)[0] as Path<T>);
+        form.setError(field, {
+          type: "server",
+          message: `Couldn't save: ${result.error}`,
+        });
+        return false;
+      }
+
+      // The schema trims, so the baseline is what was stored; what is on
+      // screen is left as typed, because the Author may still be typing it
+      // — `flush` puts the stored form on screen once the field is left.
+      form.reset(parsed.data, { keepValues: true });
+      return true;
+    },
     onSaved,
   });
 

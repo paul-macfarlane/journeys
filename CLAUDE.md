@@ -44,7 +44,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `src/lib/` — Pure, database-free helpers shared by server and client (zod schemas, action results) plus startup env validation
 - `drizzle/` — Committed Drizzle migrations; applied by CI and the Migrate workflow, never by Vercel builds
 - `e2e/` — Playwright specs plus setup that provisions the dedicated `journeys_e2e` database and server on port 3100
-- `scripts/` — Development-only commands run with `tsx` (`seed/journey-stories.ts` over the shared `seed/journey-stories-seed.ts` plus the three committed legacy graph documents beside it, `record-landing-demo.ts`, and `decide-probe.ts`); imports `@/db/schema`, `src/lib/graph`, `src/lib/ai`, and the `e2e/setup/` helpers only, never a `server-only` module
+- `scripts/` — Development-only commands run with `tsx` (`seed/journey-stories.ts` over the shared `seed/journey-stories-seed.ts` plus the committed graph documents beside it — the three legacy cases under `seed/journey-stories/` and the demo Journey under `seed/allotment/` — `record-landing-demo.ts`, and `decide-probe.ts`); imports `@/db/schema`, `src/lib/graph`, `src/lib/ai`, and the `e2e/setup/` helpers only, never a `server-only` module
 - `test-results/` — Committed proof artifacts: one directory per e2e test name plus captured command output
 - `.github/workflows/` — CI (lint, format, typecheck, migrate, unit, build, e2e) and Migrate (per-branch Drizzle migrations)
 

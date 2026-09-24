@@ -30,6 +30,7 @@ import {
 } from "@/lib/graph/document";
 import { validateForPublish } from "@/lib/graph/validate";
 
+import allotment from "./allotment/a-key-on-the-doormat.json";
 import case1 from "./journey-stories/case-1.json";
 import case2 from "./journey-stories/case-2.json";
 import case3 from "./journey-stories/case-3.json";
@@ -37,8 +38,19 @@ import case3 from "./journey-stories/case-3.json";
 export const SEED_PROJECT_ID = "00000000-5eed-4000-8000-000000000001";
 export const SEED_PROJECT_TITLE = "Journey Stories";
 
+/**
+ * The second seed Project (ticket 58): one small, original Journey that the
+ * landing page's recording and stills are made from, so a new Author meets
+ * a ten-Step map rather than a thirty-six-Step case. Its one image is the
+ * committed `public/seed/allotment.jpg`, linked at its raw GitHub address on
+ * `staging` because stored content only keeps absolute http(s) image URLs.
+ */
+export const DEMO_PROJECT_ID = "00000000-5eed-4000-8000-000000000002";
+export const DEMO_PROJECT_TITLE = "The Allotment";
+export const DEMO_JOURNEY_ID = "00000000-5eed-4000-8000-000000000021";
+
 // Fixed ids are the whole of the idempotency: a rerun updates these rows in
-// place, so there is only ever one seed Project and three seed Journeys.
+// place, so there is only ever one of each seed Project and Journey.
 export const SEED_JOURNEYS = [
   {
     journeyId: "00000000-5eed-4000-8000-000000000011",
@@ -62,7 +74,31 @@ export const SEED_JOURNEYS = [
   },
 ] as const;
 
+export const DEMO_JOURNEYS = [
+  {
+    journeyId: DEMO_JOURNEY_ID,
+    title: "A key on the doormat",
+    description: "Goal: keep your aunt's allotment plot through the summer.",
+    source: allotment,
+  },
+] as const;
+
+/** Every seed Project with the Journeys it holds, in the order they are written. */
+export const SEED_PROJECTS = [
+  {
+    projectId: SEED_PROJECT_ID,
+    title: SEED_PROJECT_TITLE,
+    journeys: SEED_JOURNEYS,
+  },
+  {
+    projectId: DEMO_PROJECT_ID,
+    title: DEMO_PROJECT_TITLE,
+    journeys: DEMO_JOURNEYS,
+  },
+] as const;
+
 export type SeedJourney = {
+  projectId: string;
   journeyId: string;
   title: string;
   description: string;
@@ -70,17 +106,20 @@ export type SeedJourney = {
 };
 
 /**
- * The three documents parsed strictly — they are already in stored shape —
+ * The four documents parsed strictly — they are already in stored shape —
  * and checked for publish, which is what makes them worth seeding at all.
  * Throws with every problem listed when one cannot be published.
  */
 export function parseSeedJourneys(): SeedJourney[] {
-  const journeys = SEED_JOURNEYS.map((journey) => ({
-    journeyId: journey.journeyId,
-    title: journey.title,
-    description: journey.description,
-    document: graphDocumentSchema.parse(journey.source),
-  }));
+  const journeys = SEED_PROJECTS.flatMap((project) =>
+    project.journeys.map((journey) => ({
+      projectId: project.projectId,
+      journeyId: journey.journeyId,
+      title: journey.title,
+      description: journey.description,
+      document: graphDocumentSchema.parse(journey.source),
+    })),
+  );
   const problems = journeys.flatMap((journey) =>
     validateForPublish(journey.document).map(
       (problem) => `${journey.title}: ${problem.message}`,
@@ -103,10 +142,10 @@ export function describeSeedJourney(journey: SeedJourney): string {
 }
 
 /**
- * Writes (or rewrites) the seed Project, its Membership for `authorId`, and
- * the three Journeys with their Drafts, in one transaction. Published
- * Versions and Runs are left alone: the seed owns the Drafts, not what was
- * published from them.
+ * Writes (or rewrites) both seed Projects, their Memberships for `authorId`,
+ * and every Journey with its Draft, in one transaction. Published Versions
+ * and Runs are left alone: the seed owns the Drafts, not what was published
+ * from them.
  */
 export async function seedJourneyStories(
   db: NodePgDatabase<typeof schema>,
@@ -115,31 +154,33 @@ export async function seedJourneyStories(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const now = new Date();
-    await tx
-      .insert(schema.project)
-      .values({ id: SEED_PROJECT_ID, title: SEED_PROJECT_TITLE })
-      .onConflictDoUpdate({
-        target: schema.project.id,
-        set: { title: SEED_PROJECT_TITLE, updatedAt: now },
-      });
-    await tx
-      .insert(schema.member)
-      .values({ projectId: SEED_PROJECT_ID, userId: authorId })
-      .onConflictDoNothing();
+    for (const project of SEED_PROJECTS) {
+      await tx
+        .insert(schema.project)
+        .values({ id: project.projectId, title: project.title })
+        .onConflictDoUpdate({
+          target: schema.project.id,
+          set: { title: project.title, updatedAt: now },
+        });
+      await tx
+        .insert(schema.member)
+        .values({ projectId: project.projectId, userId: authorId })
+        .onConflictDoNothing();
+    }
 
     for (const journey of journeys) {
       await tx
         .insert(schema.journey)
         .values({
           id: journey.journeyId,
-          projectId: SEED_PROJECT_ID,
+          projectId: journey.projectId,
           title: journey.title,
           description: journey.description,
         })
         .onConflictDoUpdate({
           target: schema.journey.id,
           set: {
-            projectId: SEED_PROJECT_ID,
+            projectId: journey.projectId,
             title: journey.title,
             description: journey.description,
             updatedAt: now,

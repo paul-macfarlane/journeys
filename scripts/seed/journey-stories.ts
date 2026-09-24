@@ -18,8 +18,7 @@ import * as schema from "@/db/schema";
 import {
   describeSeedJourney,
   parseSeedJourneys,
-  SEED_PROJECT_ID,
-  SEED_PROJECT_TITLE,
+  SEED_PROJECTS,
   seedJourneyStories,
 } from "./journey-stories-seed";
 
@@ -80,7 +79,9 @@ async function main(): Promise<void> {
     for (const journey of journeys) {
       console.log(describeSeedJourney(journey));
     }
-    console.log(`Project: ${SEED_PROJECT_TITLE} (${SEED_PROJECT_ID})`);
+    for (const project of SEED_PROJECTS) {
+      console.log(`Project: ${project.title} (${project.projectId})`);
+    }
     console.log(`Member: ${email}`);
   } finally {
     await pool.end();
