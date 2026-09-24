@@ -105,6 +105,10 @@ describe("StepView with a deciding Prompt", () => {
 
     expect(html).toContain('aria-required="true"');
     expect(html).toMatch(/<button type="submit"[^>]*>Continue<\/button>/);
+    // Idle until the form is submitted (ticket 49): the button is enabled
+    // and reads Continue, never "Deciding…", in the markup the server sends.
+    expect(html).not.toContain(' disabled=""');
+    expect(html).not.toContain("Deciding…");
     expect(html).not.toContain('name="to"');
     expect(html).not.toContain('aria-label="Choices"');
     expect(html).not.toContain("Show your papers");
