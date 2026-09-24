@@ -411,7 +411,45 @@ test("runner-deciding-prompt", async ({ page, context, browser }) => {
 
     const response = "I keep my eyes down and hold out my papers.";
     await decidingBox.fill(response);
+
+    // While the judge runs, the button reads "Deciding…" and is disabled
+    // (ticket 49). The judge here answers at once (no key), so the action's
+    // own POST — the one with a `next-action` header — is held until the
+    // pending button has been read, then released, the way "Saving…" is
+    // proved on the Journey page. Before React has hydrated the form would
+    // post as a plain document request with no pending state to read, so
+    // the click waits for React's fiber on the button — the one sign that
+    // the island is running.
+    await participant.waitForFunction(() =>
+      Array.from(document.querySelectorAll("button")).some(
+        (button) =>
+          button.textContent === "Continue" &&
+          Object.keys(button).some((key) => key.startsWith("__reactFiber")),
+      ),
+    );
+    let releaseJudge = () => {};
+    const judgeHeld = new Promise<void>((resolve) => {
+      releaseJudge = resolve;
+    });
+    await participant.route(
+      (url) => url.pathname === `/j/${journeyId}/${QUEUE_STEP_ID}`,
+      async (route) => {
+        const request = route.request();
+        if (request.method() === "POST" && "next-action" in request.headers()) {
+          await judgeHeld;
+        }
+        await route.continue();
+      },
+    );
     await participant.getByRole("button", { name: "Continue" }).click();
+    const deciding = participant.getByRole("button", { name: "Deciding…" });
+    await expect(deciding).toBeVisible();
+    await expect(deciding).toBeDisabled();
+    await participant.screenshot({
+      path: evidencePath("runner-deciding-prompt", "deciding.png"),
+      fullPage: true,
+    });
+    releaseJudge();
 
     // No key, so no pick: every Choice offered, none marked.
     await expect(

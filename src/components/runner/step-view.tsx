@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { DecideSubmit } from "@/components/runner/decide-submit";
 import { RichText } from "@/components/runner/rich-text";
 import { buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -387,13 +388,14 @@ function ChoiceList({
     ) : null;
 
   if (deciding && decision === undefined) {
-    // No `to`: the action reads a form without one as "judge this".
+    // No `to`: the action reads a form without one as "judge this". The
+    // button is the runner's one client island (ticket 49): it reads
+    // "Deciding…" while the judge runs, which can be most of
+    // `DECISION_TIMEOUT_MS`.
     return (
       <form action={choices.action} noValidate className="flex flex-col gap-6">
         {field}
-        <button type="submit" className={choiceLinkClassName}>
-          Continue
-        </button>
+        <DecideSubmit className={choiceLinkClassName} />
       </form>
     );
   }

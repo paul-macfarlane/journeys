@@ -248,6 +248,7 @@ function PromptField({
   const labelFieldId = useId();
   const requiredFieldId = useId();
   const decidesFieldId = useId();
+  const decidesReasonId = useId();
   const required = step.prompt?.required ?? false;
   const decides = step.prompt?.decides ?? false;
   // Deciding needs a Choice to land on, and a choice between them: one
@@ -302,14 +303,24 @@ function PromptField({
           </Label>
         </div>
       ) : null}
-      {step.prompt !== null && (canDecide || decides) ? (
+      {/*
+       * Always offered once there is a Prompt (ticket 49), so an Author who
+       * writes the question before the Choices still sees what a Prompt can
+       * do: off and unavailable until there are two Choices to pick between,
+       * with the reason beside it. Turned on and then left with too few (a
+       * Choice removed after the fact) it stays enabled, so it can be turned
+       * off, and the same reason says it is not deciding meanwhile.
+       */}
+      {step.prompt !== null ? (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <input
               id={decidesFieldId}
               type="checkbox"
-              className="size-4 accent-primary"
+              className="peer size-4 accent-primary"
               checked={decides}
+              disabled={!canDecide && !decides}
+              aria-describedby={canDecide ? undefined : decidesReasonId}
               onChange={(event) =>
                 onChange(
                   setStepPrompt(document, step.id, {
@@ -321,13 +332,22 @@ function PromptField({
               }
             />
             <Label htmlFor={decidesFieldId} className="font-normal">
-              Let the response decide the next step
+              AI decides the next step from the response
             </Label>
           </div>
+          {canDecide ? null : (
+            <p id={decidesReasonId} className="text-muted-foreground text-xs">
+              Needs two or more choices.
+            </p>
+          )}
           <p className="text-muted-foreground text-xs">
-            {decides && !canDecide
-              ? "Needs two or more choices to decide."
-              : "An AI judge reads the response and picks the choice it fits. Participants choose for themselves when it's unsure or unavailable."}
+            An AI judge reads the response and picks the choice it fits.
+            Participants choose for themselves when it&apos;s unsure or
+            unavailable.
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Participants answer and press Continue; the choices appear only when
+            the judge is unsure.
           </p>
         </div>
       ) : null}

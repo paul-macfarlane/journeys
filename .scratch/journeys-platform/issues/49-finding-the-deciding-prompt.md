@@ -1,8 +1,8 @@
 # 49: Finding the deciding Prompt, and the judge in a demo
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: claude (feat/49-deciding-prompt, 2026-09-23)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: staging feedback round 4 (Paul, 2026-09-23, triaged the same day): pre-hackathon 46 → 47 → 48 → **49** → 38 → 50 → 51; 52 is grilled in its own thread and may squeeze in; post-hackathon 53 joins sweep 3 (41 → 42 → 44 → 45). 14 stays available and is Paul's call.
 Route: polish
