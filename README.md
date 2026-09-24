@@ -155,6 +155,8 @@ Leave `AI_GATEWAY_API_KEY` empty to hide the AI authoring features.
 | `pnpm db:push`                      | Push the schema without a migration (dev only) |
 | `pnpm db:studio`                    | Drizzle Studio                                 |
 | `pnpm seed:journey-stories <email>` | Seed the three legacy cases (see below)        |
+| `pnpm demo:record`                  | Build, then re-make `public/demo/` (see below) |
+| `pnpm demo:record:prebuilt`         | The same over the build already in `.next`     |
 | `pnpm prepare`                      | Installs the husky git hooks (runs on install) |
 
 ### Seeding the legacy Journey Stories cases
@@ -207,6 +209,30 @@ pnpm seed:journey-stories you@example.com    # seed the local dev database
   and caption URLs in the documents carry a `\u` JSON escape that breaks up a
   40+ character alphanumeric run, which the commit-time secret scanner would
   otherwise refuse; the escapes change nothing when parsed — keep them.
+
+### Recording the landing page demo
+
+The landing page shows a silent, looping recording of the canvas in use,
+one per theme, and (from ticket 54 on) six feature stills. None of it is
+captured by hand: `pnpm demo:record` builds the app and then runs
+`scripts/record-landing-demo.ts`, which rewrites every file under
+`public/demo/` — `canvas-{light,dark}.webm`, their posters
+`canvas-{light,dark}.png`, and `versions`, `run`, `analytics`, `prompt`,
+`themes`, and `rich-text` as `<slug>-{light,dark}.png`, all 1280 × 720.
+Rerun it after any change to the canvas or the pages it photographs and
+commit the result. `pnpm demo:record:prebuilt` skips the build when `.next`
+already holds one (remember a stale build records stale UI).
+
+It runs the way the e2e suite runs: over the production build, on its own
+server (port 3138; set `DEMO_PORT` to move it) against the dedicated
+`journeys_e2e` database, which it creates and migrates itself. It mints an
+Author, seeds the Journey Stories Project for that Author, publishes and
+walks the cases with Participants of its own for the analytics still, and
+deletes all of it afterwards — it never touches the dev database, a running
+`pnpm dev`, or any real Run. The recording's lead-in is trimmed and both
+files re-encoded with Playwright's own `ffmpeg` (set `DEMO_FFMPEG` to use
+another); without one the raw recordings are kept. The script fails when the
+two recordings exceed 3 MB together or the directory exceeds 4 MB.
 
 ## Environments
 
