@@ -36,7 +36,9 @@ export const dynamic = "force-dynamic";
 /**
  * What a link to this page previews as: the Author's name and the opening
  * of their bio, with the card `opengraph-image.tsx` beside this file
- * renders. Unknown and off read as the site root does.
+ * renders. Unknown and off are a 404 here too (ticket 60): metadata
+ * streams in after the page, so a title returned for a missing Author
+ * would replace the not-found page's own.
  */
 export async function generateMetadata({
   params,
@@ -44,7 +46,9 @@ export async function generateMetadata({
   params: Promise<{ userId: string }>;
 }): Promise<Metadata> {
   const { userId } = await params;
-  return authorLinkMetadata(await getPublicAuthor(userId), userId);
+  const author = await getPublicAuthor(userId);
+  if (!author) notFound();
+  return authorLinkMetadata(author, userId);
 }
 
 export default async function PublicAuthorPage({
