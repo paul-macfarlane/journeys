@@ -36,6 +36,18 @@ export function SiteFooter({
           © {COPYRIGHT_YEAR} {COPYRIGHT_HOLDER}
         </span>
         <a
+          href="/about"
+          className="hover:text-foreground underline-offset-4 hover:underline"
+        >
+          About
+        </a>
+        <a
+          href="/guide"
+          className="hover:text-foreground underline-offset-4 hover:underline"
+        >
+          Guide
+        </a>
+        <a
           href={REPOSITORY_URL}
           className="hover:text-foreground underline-offset-4 hover:underline"
         >

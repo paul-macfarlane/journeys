@@ -43,6 +43,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
 import * as schema from "@/db/schema";
+import { SEED_JOURNEY_IDS } from "@/lib/demo";
 import { isEnding, type GraphDocument } from "@/lib/graph/document";
 
 import { chooseStep, editJourneyField } from "../e2e/setup/authoring";
@@ -114,9 +115,9 @@ type Source = {
   run: { journeyId: string; stepId: string };
 };
 
-const CASE_1 = "00000000-5eed-4000-8000-000000000011";
-const CASE_2 = "00000000-5eed-4000-8000-000000000012";
-const CASE_3 = "00000000-5eed-4000-8000-000000000013";
+const CASE_1 = SEED_JOURNEY_IDS.case1;
+const CASE_2 = SEED_JOURNEY_IDS.case2;
+const CASE_3 = SEED_JOURNEY_IDS.case3;
 
 const SOURCES: Record<"demo" | "journey-stories", Source> = {
   demo: {

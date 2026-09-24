@@ -23,6 +23,7 @@
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "@/db/schema";
+import { SEED_JOURNEY_IDS, SEED_PROJECT_ID } from "@/lib/demo";
 import {
   graphDocumentSchema,
   isEnding,
@@ -35,7 +36,7 @@ import case1 from "./journey-stories/case-1.json";
 import case2 from "./journey-stories/case-2.json";
 import case3 from "./journey-stories/case-3.json";
 
-export const SEED_PROJECT_ID = "00000000-5eed-4000-8000-000000000001";
+export { SEED_PROJECT_ID };
 export const SEED_PROJECT_TITLE = "Journey Stories";
 
 /**
@@ -53,20 +54,20 @@ export const DEMO_JOURNEY_ID = "00000000-5eed-4000-8000-000000000021";
 // place, so there is only ever one of each seed Project and Journey.
 export const SEED_JOURNEYS = [
   {
-    journeyId: "00000000-5eed-4000-8000-000000000011",
+    journeyId: SEED_JOURNEY_IDS.case1,
     title: "Case 1",
     description: "Goal: Cross the border.",
     source: case1,
   },
   {
-    journeyId: "00000000-5eed-4000-8000-000000000012",
+    journeyId: SEED_JOURNEY_IDS.case2,
     title: "Case 2",
     description:
       "Goal: Seek healthcare for your needs before they overwhelm you, and the situation becomes life or death.",
     source: case2,
   },
   {
-    journeyId: "00000000-5eed-4000-8000-000000000013",
+    journeyId: SEED_JOURNEY_IDS.case3,
     title: "Case 3",
     description:
       "Goal: Maintain your health condition to the best of your ability before it manifests as serious complications.",
