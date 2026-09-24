@@ -1,0 +1,16 @@
+# AC 6: the privacy sentence is present; the spec [SCOPE CHANGE] and the decisions.md amendment are on staging
+# HEAD: d0384cfb2162a730961559d7d873d9ed6e3eecaa (privacy page unchanged since 2eb0692; staging read at b093869)
+
+$ grep -n -A3 "recognise you" src/app/privacy/page.tsx
+38:          signed in as and to let the other members of a project recognise you.
+39-          If you turn on your Author page, your name, profile picture, bio, and
+40-          links are public at that page, together with the projects you belong
+41-          to that have a published journey, until you turn it off. We never see
+
+$ git fetch origin staging && git log --oneline -1 origin/staging
+b093869 Merge pull request #58 from paul-macfarlane/feat/49-deciding-prompt
+
+$ git grep -n "Author pages and the display name\|Amendment for ticket 52" origin/staging -- .scratch/journeys-platform/spec.md .scratch/journeys-platform/decisions.md
+origin/staging:.scratch/journeys-platform/decisions.md:291:## Amendment for ticket 52 (2026-09-23, decided by Paul on 2026-09-23)
+origin/staging:.scratch/journeys-platform/spec.md:308:### [SCOPE CHANGE] 2026-09-23 — Author pages and the display name (ticket 52)
+

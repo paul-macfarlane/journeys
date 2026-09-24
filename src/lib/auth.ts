@@ -25,6 +25,11 @@ export const auth = betterAuth({
       clientSecret: env.DISCORD_CLIENT_SECRET,
     },
   },
+  // better-auth's own update endpoint would let a signed-in Author set any
+  // name or image with no rules. The Settings page (ticket 52) is the one
+  // validated path for the name, and the image is only ever the provider's,
+  // so the endpoint is closed: nothing in the app calls it.
+  disabledPaths: ["/update-user"],
   plugins: [nextCookies()],
 });
 

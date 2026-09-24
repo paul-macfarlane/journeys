@@ -194,3 +194,22 @@ export function projectLinkMetadata(
     url: `/p/${projectId}`,
   });
 }
+
+/**
+ * What an Author link previews as (ticket 52): their name and the opening
+ * of their bio, cut as a Journey's description is. An unknown id and an
+ * Author whose page is off both get the app's own metadata, so a link to a
+ * page that is not public reveals nothing about who it names.
+ */
+export function authorLinkMetadata(
+  author: { name: string; bio: string } | null,
+  userId: string,
+): Metadata {
+  if (!author) return genericLinkMetadata();
+  return linkMetadata({
+    title: author.name,
+    description: textPreview(author.bio, LINK_PREVIEW_DESCRIPTION_LIMIT),
+    type: "website",
+    url: `/authors/${userId}`,
+  });
+}

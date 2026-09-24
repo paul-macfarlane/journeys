@@ -186,13 +186,18 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   });
 
   // Reached by keyboard: Enter on the trigger opens the menu with focus on
-  // the checked segment, the menu's first tab stop, since the group's one
-  // tab stop is the checked segment and menu items take no tab of their own.
-  // Left moves onto Light and chooses it with the menu still open, and Tab
-  // moves on from the row to Sign out.
+  // its first item, Settings (ticket 52); Tab moves to the checked segment,
+  // the group's one tab stop, since menu items take no tab of their own.
+  // Left moves onto Light and chooses it with the menu still open, and Down
+  // moves on from the row to Sign out (Tab would leave the menu, which
+  // closes it).
   await account.focus();
   await page.keyboard.press("Enter");
   await expect(accountMenu).toHaveAttribute("data-open", "");
+  await expect(
+    accountMenu.getByRole("menuitem", { name: "Settings" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
   const dark = themes.getByRole("radio", { name: "Dark" });
   await expect(dark).toHaveAttribute("aria-checked", "true");
   await expect(dark).toBeFocused();
@@ -204,7 +209,7 @@ test("navbar-switch-project-and-theme: the switcher moves between Projects and t
   await expect(accountMenu).toHaveAttribute("data-open", "");
   await expect(page.locator("html")).toHaveClass(/\blight\b/);
   await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("ArrowDown");
   await expect(
     accountMenu.getByRole("menuitem", { name: "Sign out" }),
   ).toBeFocused();

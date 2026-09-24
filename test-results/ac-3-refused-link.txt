@@ -1,0 +1,28 @@
+# AC 3: a link with the wrong host or a non-https: scheme is refused; at most one link per kind is stored
+# Unit tests over the pure contract in src/lib/author.ts (the server actions re-parse every save through these schemas). HEAD: 7062a4a63875c01d95afe40b4c92810b3d15c871
+
+$ pnpm exec vitest run src/lib/author.test.ts --reporter=verbose
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys/.claude/worktrees/52-author-pages
+ ✓ src/lib/author.test.ts > authorNameSchema > trims and accepts a name between 1 and 60 characters 1ms
+ ✓ src/lib/author.test.ts > authorNameSchema > refuses blank, whitespace-only, and over-long names 0ms
+ ✓ src/lib/author.test.ts > authorBioSchema > accepts a blank bio 0ms
+ ✓ src/lib/author.test.ts > authorBioSchema > keeps an inner line break, trimming only the ends 0ms
+ ✓ src/lib/author.test.ts > authorBioSchema > refuses a bio over 1000 characters 0ms
+ ✓ src/lib/author.test.ts > authorLinkUrlSchema > accepts a linkedin.com or www.linkedin.com https link 0ms
+ ✓ src/lib/author.test.ts > authorLinkUrlSchema > refuses http, the wrong platform, a lookalike host, and garbage 0ms
+ ✓ src/lib/author.test.ts > authorLinkUrlSchema > accepts any https host for website and refuses http 0ms
+ ✓ src/lib/author.test.ts > authorLinksSchema > refuses two entries of the same kind with 'One link per kind' 2ms
+ ✓ src/lib/author.test.ts > authorLinksSchema > refuses six entries 1ms
+ ✓ src/lib/author.test.ts > authorLinksSchema > accepts five distinct kinds 0ms
+ ✓ src/lib/author.test.ts > readAuthorLinks > returns [] for null, a string, and an array with a bad entry 1ms
+ ✓ src/lib/author.test.ts > readAuthorLinks > returns the array for a good value 0ms
+ ✓ src/lib/author.test.ts > authorLinkLabel > labels every kind 0ms
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  22:51:50
+   Duration  218ms (transform 27ms, setup 0ms, import 77ms, tests 8ms, environment 0ms)
+
+# The same refusals on screen, with nothing stored, are the wrong-host and http: steps of e2e/author-settings.spec.ts (screenshot directory test-results/author-settings/); the closed better-auth /update-user endpoint is asserted there too.

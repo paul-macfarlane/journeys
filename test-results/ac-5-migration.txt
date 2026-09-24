@@ -1,0 +1,78 @@
+# AC 5: the migration is additive, applies to a fresh database, and existing users get public = false and links = []
+# Fresh database journeys_52_fresh on the local Docker Postgres (host port 5436). Captured 2026-09-23 on the feat/52-author-pages worktree.
+
+$ docker exec journeys-db psql -U postgres -c "DROP DATABASE IF EXISTS journeys_52_fresh" -c "CREATE DATABASE journeys_52_fresh"
+DROP DATABASE
+CREATE DATABASE
+
+$ # step 1: migrations 0000-0009 exactly as committed at the base commit f93bdf2 (git archive f93bdf2 drizzle), applied with drizzle-orm/node-postgres/migrator
+$ DATABASE_URL=<journeys_52_fresh> MIGRATIONS_FOLDER=<base>/drizzle pnpm exec tsx migrate-base.mts
+base migrations applied from <scratch>/base/drizzle
+
+$ # step 2: an Author who exists before 0010 runs
+$ docker exec journeys-db psql -U postgres -d journeys_52_fresh -c "INSERT INTO \"user\" (id, name, email) VALUES (...)"
+INSERT 0 1
+
+$ # step 3: the committed drizzle/ folder, now holding 0010_author_pages, through the repository command
+$ DATABASE_URL=<journeys_52_fresh> pnpm db:migrate
+> journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys/.claude/worktrees/52-author-pages
+> drizzle-kit migrate
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/Users/paulmacfarlane/Code/journeys/.claude/worktrees/52-author-pages/drizzle.config.ts'
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!
+
+$ cat drizzle/0010_author_pages.sql
+ALTER TABLE "user" ADD COLUMN "bio" text;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN "links" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN "public" boolean DEFAULT false NOT NULL;
+
+$ # step 4: the pre-existing row reads back with the defaults
+$ docker exec journeys-db psql -U postgres -d journeys_52_fresh -c "SELECT id, name, bio, links, \"public\" FROM \"user\""
+     id      |      name       | bio | links | public 
+-------------+-----------------+-----+-------+--------
+ before-0010 | Existing Author |     | []    | f
+(1 row)
+
+
+$ docker exec journeys-db psql -U postgres -d journeys_52_fresh -c "\d \"user\""
+                              Table "public.user"
+     Column     |           Type           | Collation | Nullable |   Default   
+----------------+--------------------------+-----------+----------+-------------
+ id             | text                     |           | not null | 
+ name           | text                     |           | not null | 
+ email          | text                     |           | not null | 
+ email_verified | boolean                  |           | not null | false
+ image          | text                     |           |          | 
+ created_at     | timestamp with time zone |           | not null | now()
+ updated_at     | timestamp with time zone |           | not null | now()
+ bio            | text                     |           |          | 
+ links          | jsonb                    |           | not null | '[]'::jsonb
+ public         | boolean                  |           | not null | false
+Indexes:
+    "user_pkey" PRIMARY KEY, btree (id)
+    "user_email_unique" UNIQUE CONSTRAINT, btree (email)
+Referenced by:
+    TABLE "account" CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE
+    TABLE "member" CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE
+    TABLE "published_version" CONSTRAINT "published_version_published_by_user_id_fk" FOREIGN KEY (published_by) REFERENCES "user"(id) ON DELETE SET NULL
+    TABLE "session" CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE
+
+
+$ docker exec journeys-db psql -U postgres -d journeys_52_fresh -c "SELECT id, hash IS NOT NULL AS has_hash FROM drizzle.__drizzle_migrations ORDER BY id"
+ id | has_hash 
+----+----------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+  5 | t
+  6 | t
+  7 | t
+  8 | t
+  9 | t
+ 10 | t
+ 11 | t
+(11 rows)
+

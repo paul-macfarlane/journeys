@@ -7,6 +7,7 @@ import { APP_NAME, APP_TAGLINE, BRAND_COLORS } from "@/lib/brand";
 import { THEME_PRESETS } from "@/lib/theme";
 
 import {
+  authorLinkMetadata,
   journeyLinkMetadata,
   LINK_PREVIEW_DESCRIPTION_LIMIT,
   linkPreviewPalette,
@@ -228,5 +229,59 @@ describe("projectLinkMetadata", () => {
     expect(projectLinkMetadata(null, "p1").title).toEqual({
       absolute: APP_NAME,
     });
+  });
+});
+
+describe("authorLinkMetadata", () => {
+  it("describes an Author by their name and the opening of their bio", () => {
+    expect(
+      authorLinkMetadata(
+        {
+          name: "Ada Lovelace",
+          bio: "I write branching journeys.\nAbout care.",
+        },
+        "u1",
+      ),
+    ).toEqual({
+      title: "Ada Lovelace",
+      description: "I write branching journeys. About care.",
+      openGraph: {
+        type: "website",
+        url: "/authors/u1",
+        siteName: APP_NAME,
+        title: "Ada Lovelace",
+        description: "I write branching journeys. About care.",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Ada Lovelace",
+        description: "I write branching journeys. About care.",
+      },
+    });
+  });
+
+  it("cuts a long bio to the link-preview limit", () => {
+    const long = "word ".repeat(60).trim();
+    const metadata = authorLinkMetadata({ name: "Ada", bio: long }, "u1");
+
+    expect(metadata.description).toBe(`${long.slice(0, 160)}…`);
+    expect(metadata.openGraph?.description).toBe(metadata.description);
+  });
+
+  it("gives an Author with no bio no description", () => {
+    const metadata = authorLinkMetadata({ name: "Ada", bio: "" }, "u1");
+
+    expect(metadata).not.toHaveProperty("description", "");
+    expect(metadata.description).toBeUndefined();
+    expect(metadata.openGraph?.description).toBeUndefined();
+    expect(metadata.twitter?.description).toBeUndefined();
+  });
+
+  it("answers an unknown or private Author with the app's own metadata", () => {
+    const metadata = authorLinkMetadata(null, "u1");
+
+    expect(metadata.title).toEqual({ absolute: APP_NAME });
+    expect(metadata.description).toBe(APP_TAGLINE);
+    expect(metadata.openGraph).not.toHaveProperty("url");
   });
 });

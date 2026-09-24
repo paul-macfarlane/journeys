@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -33,10 +34,11 @@ const THEMES: readonly SegmentOption<Theme>[] = [
 
 /**
  * The navbar's account menu: the Author's avatar (their initials when the
- * provider gave no image) opens their name and email, the Theme as one row
- * with a segmented control of the three choices (ticket 51: neither three
- * rows of the menu nor a fly-out submenu, a desktop idiom that cramps a
- * phone), and Sign out. The name also sits beside the avatar from tablet
+ * provider gave no image) opens their name and email, a link to their
+ * Settings (display name, picture, and Author page, ticket 52), the Theme
+ * as one row with a segmented control of the three choices (ticket 51:
+ * neither three rows of the menu nor a fly-out submenu, a desktop idiom
+ * that cramps a phone), and Sign out. The name also sits beside the avatar from tablet
  * width up and hides at phone width, where the avatar alone is the trigger
  * and the menu opens as a popover under it, as at every width (Base UI's
  * positioner flips and clamps it into the viewport).
@@ -89,6 +91,10 @@ export function UserMenu({
             {user.email}
           </span>
         </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href="/projects/settings" />}>
+          Settings
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <ThemeRow />
         <DropdownMenuSeparator />
