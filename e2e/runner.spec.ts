@@ -1534,6 +1534,10 @@ test("runner-way-out", async ({ page, context, browser }) => {
     await expect(headerStartOver).toBeVisible();
     await expect(anyStartOver).toHaveCount(1);
     await expectNoSidewaysScroll(participant);
+    // The header sticks to the top so the way out stays in reach on a long
+    // Step.
+    await expect(header).toHaveCSS("position", "sticky");
+    await expect(header).toHaveCSS("top", "0px");
 
     // Keyboard focus on the link is the same solid outline the Choices
     // carry (ticket 63); the link is the first thing Tab reaches.
