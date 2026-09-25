@@ -8,13 +8,13 @@ import { cn } from "@/lib/utils";
  * both legal pages, every Author page (inside the two navbar layouts), and
  * the runner (inside `RunnerFrame`, where it replaced the "Made with
  * Journeys" line). A server component with plain anchors on purpose — the
- * runner ships no client bundle, and the other surfaces need nothing a
- * client component would add — so this is the one place the app names
- * itself, consistent everywhere a Participant or an Author sees it.
+ * runner's navigations are whole-document by design, and the other surfaces
+ * need nothing `next/link` would add — so this is the one place the app
+ * names itself, consistent everywhere a Participant or an Author sees it.
  *
- * The one client part is `AppearanceControl` (ticket 70), light, dark, or
- * the system's, which a guest has no account menu to choose from. It is an
- * island under the root layout's `ThemeProvider`, which every page,
+ * The one client part is `AppearanceControl` (ticket 70): light, dark, or
+ * the system's, for a guest who has no account menu to choose from. It is a
+ * small island under the root layout's `ThemeProvider`, which every page,
  * the runner included, already hydrates.
  */
 export function SiteFooter({
@@ -42,7 +42,7 @@ export function SiteFooter({
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a
               plain anchor on purpose: this component renders inside
-              RunnerFrame, which ships no client bundle. */}
+              RunnerFrame, whose navigations are whole-document. */}
           <a
             href="/"
             className="hover:text-foreground inline-flex items-center"

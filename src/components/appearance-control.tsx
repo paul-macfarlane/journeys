@@ -55,6 +55,7 @@ export function AppearanceControl() {
       onValueChange={setTheme}
       options={APPEARANCES}
       size="icon-sm"
+      segmentClassName="max-sm:size-11"
     />
   );
 }

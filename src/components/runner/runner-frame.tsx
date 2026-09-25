@@ -52,7 +52,8 @@ const wayOutClassName =
  * them — so the column is narrow, the padding is small at the smallest size,
  * and nothing inside may push the page sideways. Every link is a plain `<a>`,
  * as in `StepView`: the runner's navigations are whole-document by design,
- * and the frame carries no client bundle of its own.
+ * and the frame carries no client code of its own; the footer's Appearance
+ * control (ticket 70) is the one island on a runner page.
  *
  * The footer is `SiteFooter`, the same one every other page renders (ticket
  * 34: "consistent throughout") — the wordmark, the copyright line, the
