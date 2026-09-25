@@ -965,9 +965,22 @@ async function captureStills(
     await context.close();
   }
 
-  // run: a Participant of their own, no session, a few Choices in.
+  // run: a Participant of their own, no session, a few Choices in. The
+  // demo source gives the same Journey Dusk for the themes still; on the
+  // landing page's "Anonymous runs" card a purple runner beside the app's
+  // own palette reads as a mistake, so the runner is shot in the Project's
+  // Theme and Dusk is put back for the next scheme's themes still.
   const played = seedJourney(journeys, source.run.journeyId);
   const route = routeTo(played.document, source.run.stepId);
+  const [{ theme_preset: runPreset }] = await queryE2eDatabase<{
+    theme_preset: string | null;
+  }>('SELECT theme_preset FROM "journey" WHERE id = $1', [
+    source.run.journeyId,
+  ]);
+  await queryE2eDatabase(
+    'UPDATE "journey" SET theme_preset = NULL WHERE id = $1',
+    [source.run.journeyId],
+  );
   const participant = await newContext(browser, scheme, null);
   try {
     const runner = await participant.newPage();
@@ -995,6 +1008,10 @@ async function captureStills(
     await still(runner, "run", scheme);
   } finally {
     await participant.close();
+    await queryE2eDatabase(
+      'UPDATE "journey" SET theme_preset = $2 WHERE id = $1',
+      [source.run.journeyId, runPreset],
+    );
   }
 }
 

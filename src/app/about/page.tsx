@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     "Why Journeys exists: three hand-built cases for trauma-informed healthcare education, and the platform that grew out of them.",
 };
 
-const LEGACY_SITE_URL = "https://journey-stories.netlify.app";
+const LEGACY_SITE_URL = "https://journey-stories.netlify.app/journeys/";
 
 // The story, first person from Paul (ticket 54, decision 3). Medha agreed to
 // be named. Nothing here mentions how the platform was built: that belongs
@@ -25,7 +25,9 @@ export default function AboutPage() {
         healthcare education: you play a migrant crossing a border, seeking
         care, and managing a condition, and you feel the choices and the dead
         ends before you ever meet someone like them in a clinic. Clinicians
-        walked them and came out changed.
+        walked them and came out changed. She has taught with them at several
+        hospitals and at family medicine conferences in Philadelphia and
+        Atlanta.
       </p>
       <p>
         The cases were written in Twine and compiled into a{" "}
