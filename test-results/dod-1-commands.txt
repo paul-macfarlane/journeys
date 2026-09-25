@@ -1,70 +1,66 @@
 $ pnpm lint
 
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 lint <worktree>
 > eslint
 
-
-/Users/paulmacfarlane/Code/journeys/.claude/atlas-state/56/tour.ts
-  264:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-
-✖ 1 problem (1 error, 0 warnings)
-
- ELIFECYCLE  Command failed with exit code 1.
-exit 1
-
-$ pnpm exec eslint --ignore-pattern '.claude/**' .
 exit 0
 
 $ pnpm typecheck
 
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 typecheck <worktree>
 > tsc --noEmit
 
 exit 0
 
 $ pnpm test
 
-> journeys@0.1.0 test /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 test <worktree>
 > vitest run
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
- RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+ RUN  v4.1.11 <worktree>
 
 
  Test Files  36 passed (36)
       Tests  544 passed (544)
-   Start at  18:34:02
-   Duration  1.24s (transform 1.76s, setup 0ms, import 4.77s, tests 1.00s, environment 2ms)
+   Start at  22:15:21
+   Duration  1.35s (transform 1.74s, setup 0ms, import 5.34s, tests 1.05s, environment 2ms)
 
 exit 0
 
-$ E2E_EVIDENCE=footer-wrap pnpm test:e2e
+$ E2E_EVIDENCE=runner-way-out,preview pnpm test:e2e
 
-> journeys@0.1.0 test:e2e /Users/paulmacfarlane/Code/journeys
+> journeys@0.1.0 test:e2e <worktree>
 > next build && playwright test
 
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of <repo>/pnpm-workspace.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * <worktree>/pnpm-workspace.yaml
+
 ▲ Next.js 16.2.10 (Turbopack)
-- Environments: .env.local
 
   Creating an optimized production build ...
 Turbopack build encountered 1 warnings:
-./
+./.claude/worktrees/69/journeys
 Failed to find font override values for font `Atkinson Hyperlegible Next`
 Skipping generating a fallback font.
 
 
-✓ Compiled successfully in 6.5s
+✓ Compiled successfully in 6.7s
   Running TypeScript ...
-  Finished TypeScript in 6.3s ...
+  Finished TypeScript in 6.2s ...
   Collecting page data using 9 workers ...
   Generating static pages using 9 workers (0/14) ...
   Generating static pages using 9 workers (3/14) 
   Generating static pages using 9 workers (6/14) 
   Generating static pages using 9 workers (10/14) 
-✓ Generating static pages using 9 workers (14/14) in 378ms
+✓ Generating static pages using 9 workers (14/14) in 354ms
   Finalizing page optimization ...
 
 Route (app)
@@ -100,191 +96,1456 @@ Route (app)
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
 
-◇ injected env (8) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
-◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
-[e2e] database: journeys_e2e on localhost:5436
-◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
-
-Running 111 tests using 5 workers
-
-◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
-◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
-◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
-◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
 ◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
-◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+[WebServer] ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[WebServer]  We detected multiple lockfiles and selected the directory of <repo>/pnpm-workspace.yaml as the root directory.
+[WebServer]  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[WebServer]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+[WebServer]  Detected additional lockfiles: 
+[WebServer]    * <worktree>/pnpm-workspace.yaml
+[WebServer] 
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+[e2e] database: journeys_e2e_69 on localhost:5436
 ◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-  ✓    1 [chromium] › e2e/about.spec.ts:15:5 › about (1.4s)
+
+Running 112 tests using 5 workers
+
 ◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
-  ✓    3 [chromium] › e2e/analytics.spec.ts:470:5 › analytics-direction-toggle (7.6s)
-  ✓    6 [chromium] › e2e/author-settings.spec.ts:50:5 › author-settings (5.4s)
-  ✓    2 [chromium] › e2e/analytics.spec.ts:285:5 › analytics-scoped-to-a-version (8.5s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✓    1 [chromium] › e2e/about.spec.ts:15:5 › about (1.5s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✓    3 [chromium] › e2e/analytics.spec.ts:470:5 › analytics-direction-toggle (8.7s)
+  ✓    6 [chromium] › e2e/author-settings.spec.ts:50:5 › author-settings (6.3s)
+  ✓    5 [chromium] › e2e/author-page.spec.ts:57:5 › author-page (9.3s)
+  ✓    2 [chromium] › e2e/analytics.spec.ts:285:5 › analytics-scoped-to-a-version (9.6s)
 contrast sign-in light: body 16.02:1, muted 6.74:1
-  ✓    4 [chromium] › e2e/analytics.spec.ts:174:5 › analytics-two-runs-to-different-endings (8.7s)
 contrast sign-in dark: body 15.64:1, muted 7.9:1
-  ✓   10 [chromium] › e2e/footer.spec.ts:14:5 › footer-wrap: at 375 px the footer wraps into two rows that share a left edge (772ms)
-  ✓    5 [chromium] › e2e/author-page.spec.ts:57:5 › author-page (9.7s)
-  ✓   12 [chromium] › e2e/guide.spec.ts:98:5 › guide-link-from-projects (1.3s)
-  ✓   11 [chromium] › e2e/guide.spec.ts:20:5 › guide (2.0s)
-  ✓    7 [chromium] › e2e/branding.spec.ts:58:5 › legal-pages: /privacy and /terms render and are linked from the sign-in page and the runner footer (4.5s)
-  ✓   13 [chromium] › e2e/landing.spec.ts:23:5 › landing page explains the product and offers a single sign-in link while signed out (1.1s)
-  ✓   14 [chromium] › e2e/landing.spec.ts:167:5 › landing-canvas-demo (785ms)
+  ✓   10 [chromium] › e2e/footer.spec.ts:14:5 › footer-wrap: at 375 px the footer wraps into two rows that share a left edge (406ms)
+  ✓    4 [chromium] › e2e/analytics.spec.ts:174:5 › analytics-two-runs-to-different-endings (10.2s)
+  ✓   12 [chromium] › e2e/guide.spec.ts:98:5 › guide-link-from-projects (1.1s)
+  ✓   11 [chromium] › e2e/guide.spec.ts:20:5 › guide (2.1s)
+  ✓   13 [chromium] › e2e/landing.spec.ts:23:5 › landing page explains the product and offers a single sign-in link while signed out (1.2s)
 contrast projects light: body 16.02:1, muted 6.74:1
+  ✓    9 [chromium] › e2e/draft.spec.ts:48:5 › journey-draft (3.7s)
 contrast projects dark: body 15.64:1, muted 7.9:1
-  ✓    9 [chromium] › e2e/draft.spec.ts:48:5 › journey-draft (4.4s)
+  ✓    7 [chromium] › e2e/branding.spec.ts:58:5 › legal-pages: /privacy and /terms render and are linked from the sign-in page and the runner footer (4.5s)
+  ✓   14 [chromium] › e2e/landing.spec.ts:167:5 › landing-canvas-demo (1.1s)
 contrast journey light: body 16.02:1, muted 6.74:1
 contrast journey dark: body 15.64:1, muted 7.9:1
 contrast runner light: body 16.02:1, muted 6.74:1
 contrast runner dark: body 15.64:1, muted 7.9:1
-  ✓    8 [chromium] › e2e/branding.spec.ts:232:5 › theme-light-and-dark: the identity files are served and the palette holds on every surface in both schemes (6.2s)
-  ✓   16 [chromium] › e2e/members.spec.ts:137:5 › members-add-refused (2.6s)
-  ✓   20 [chromium] › e2e/not-found.spec.ts:59:5 › not-found (1.9s)
-  ✓   17 [chromium] › e2e/members.spec.ts:186:5 › members-remove-and-last-refused (6.7s)
-  ✓   15 [chromium] › e2e/members.spec.ts:34:5 › members-add-and-edit (7.6s)
-  ✓   19 [chromium] › e2e/navbar.spec.ts:306:5 › navbar-sticky-and-phone-menu: the navbar and tab row stick while the header scrolls away, and the phone user menu is a popover (5.4s)
-  ✓   23 [chromium] › e2e/projects-and-journeys.spec.ts:41:5 › project-create (2.3s)
-  ✓   21 [chromium] › e2e/preview.spec.ts:31:5 › preview (5.3s)
-  ✓   24 [chromium] › e2e/projects-and-journeys.spec.ts:119:5 › project-rename (4.0s)
-  ✓   22 [chromium] › e2e/preview.spec.ts:127:5 › preview-non-member (5.1s)
-  ✓   25 [chromium] › e2e/projects-and-journeys.spec.ts:74:5 › project-non-member (3.6s)
-  ✓   26 [chromium] › e2e/projects-and-journeys.spec.ts:244:5 › journey-create (3.6s)
-  ✓   27 [chromium] › e2e/projects-and-journeys.spec.ts:213:5 › project-delete (3.3s)
-  ✓   28 [chromium] › e2e/projects-and-journeys.spec.ts:361:5 › project-delete-cascade (3.3s)
-  ✓   31 [chromium] › e2e/projects.spec.ts:14:5 › signed-out visit to /projects redirects to the landing page (547ms)
-  ✓   18 [chromium] › e2e/navbar.spec.ts:50:5 › navbar-switch-project-and-theme: the switcher moves between Projects and the user menu sets the theme (14.9s)
-  ✓   33 [chromium] › e2e/projects.spec.ts:30:5 › signed-in visit to /projects shows the empty projects state (1.1s)
-  ✓   34 [chromium] › e2e/projects.spec.ts:54:5 › signing out from the user menu lands on sign-in, and /projects redirects again (1.5s)
-  ✓   30 [chromium] › e2e/projects-and-journeys.spec.ts:295:5 › journey-edit-and-delete (5.9s)
-  ✓   29 [chromium] › e2e/projects-and-journeys.spec.ts:479:5 › author-flow (7.5s)
-  ✓   37 [chromium] › e2e/prompts.spec.ts:447:5 › prompts-preview-stores-nothing (3.6s)
-  ✓   32 [chromium] › e2e/projects-and-journeys.spec.ts:396:5 › journeys-reorder (8.1s)
-  ✓   36 [chromium] › e2e/prompts.spec.ts:250:5 › prompts-participant-answers-and-author-reads (7.5s)
-  ✓   35 [chromium] › e2e/prompts.spec.ts:115:5 › prompts-author-attaches-a-prompt (8.9s)
-  ✓   40 [chromium] › e2e/public-project.spec.ts:286:5 › project-link-preview (2.2s)
-  ✓   41 [chromium] › e2e/publish.spec.ts:70:5 › publish-invalid-draft (2.6s)
-  ✓   38 [chromium] › e2e/projects-and-journeys.spec.ts:569:5 › metadata-autosave (6.5s)
-  ✓   42 [chromium] › e2e/publish.spec.ts:201:5 › publish-draft-with-loop (4.2s)
-  ✓   39 [chromium] › e2e/public-project.spec.ts:65:5 › public-project-page (8.0s)
-  ✓   44 [chromium] › e2e/publish.spec.ts:133:5 › publish-untagged-ending (4.1s)
-  ✓   45 [chromium] › e2e/publish.spec.ts:605:5 › versions-tab-shows-draft (4.1s)
-  ✓   43 [chromium] › e2e/publish.spec.ts:433:5 › journey-share-link (7.0s)
-  ✓   47 [chromium] › e2e/runner.spec.ts:166:5 › runner-case-3-on-a-phone (3.1s)
-  ✓   49 [chromium] › e2e/runner.spec.ts:877:5 › runner-case-2-restored-choice (5.6s)
-  ✓   48 [chromium] › e2e/runner.spec.ts:528:5 › runner-back-and-choose-again (5.8s)
-  ✓   46 [chromium] › e2e/publish.spec.ts:237:5 › publish-versions-and-restore (8.2s)
-  ✓   51 [chromium] › e2e/runner.spec.ts:285:5 › runner-required-prompt-refusal (4.1s)
-  ✓   50 [chromium] › e2e/publish.spec.ts:498:5 › publish-acknowledged (7.1s)
-  ✓   56 [chromium] › e2e/sign-in.spec.ts:14:5 › sign-in page offers Google and Discord with their logos (638ms)
-  ✓   57 [chromium] › e2e/sign-in.spec.ts:38:5 › a signed-in Author visiting /sign-in is sent to their projects (341ms)
-  ✓   54 [chromium] › e2e/runner.spec.ts:1194:5 › runner-unavailable-and-unknown (3.5s)
-  ✓   53 [chromium] › e2e/runner.spec.ts:661:5 › runner-loop-and-back (4.7s)
-  ✓   55 [chromium] › e2e/runner.spec.ts:383:5 › runner-deciding-prompt (4.3s)
-  ✓   52 [chromium] › e2e/runner.spec.ts:947:5 › runner-run-cookie-and-refresh (7.1s)
-  ✓   60 [chromium] › e2e/runner.spec.ts:792:5 › runner-path-cap (3.3s)
-  ✓   59 [chromium] › e2e/runner.spec.ts:1267:5 › runner-focus (4.2s)
-  ✓   62 [chromium] › e2e/runner.spec.ts:1112:5 › runner-pinned-version (3.1s)
-  ✓   58 [chromium] › e2e/step-editing.spec.ts:200:5 › step-editing-build-and-publish (7.0s)
-  ✓   64 [chromium] › e2e/runner.spec.ts:1318:5 › journey-link-preview (4.1s)
-  ✓   61 [chromium] › e2e/step-editing.spec.ts:334:5 › step-editing-image-caption-alt-and-preview (9.3s)
-  ✓   66 [chromium] › e2e/step-editing.spec.ts:269:5 › step-editing-delete-and-validate (4.3s)
-  ✓   63 [chromium] › e2e/step-editing.spec.ts:657:5 › step-editing-choices-reorder-retarget (7.7s)
-contrast trail light start: 13 elements pass, 0 fail
-  ✓   65 [chromium] › e2e/step-editing.spec.ts:806:5 › panel-choice-target-search (8.4s)
-contrast trail light step: 13 elements pass, 0 fail
-contrast trail light project: 11 elements pass, 0 fail
-  ✓   67 [chromium] › e2e/themes.spec.ts:144:5 › themes-settings: a Project's preset and accent reach the runner and the Project page, and a Journey's own Theme wins (6.7s)
-  ✓   68 [chromium] › e2e/step-editing.spec.ts:541:5 › rich-text-underline-strike-quote (5.7s)
-contrast trail dark start: 13 elements pass, 0 fail
-◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
-contrast trail dark step: 13 elements pass, 0 fail
-◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
-contrast trail dark project: 11 elements pass, 0 fail
-  ✓   70 [chromium] › e2e/step-editing.spec.ts:761:5 › step-editing-outcome-rename (5.3s)
+  ✓    8 [chromium] › e2e/branding.spec.ts:232:5 › theme-light-and-dark: the identity files are served and the palette holds on every surface in both schemes (5.5s)
+  ✓   16 [chromium] › e2e/members.spec.ts:137:5 › members-add-refused (2.1s)
+  ✓   20 [chromium] › e2e/not-found.spec.ts:59:5 › not-found (1.7s)
+  ✓   17 [chromium] › e2e/members.spec.ts:186:5 › members-remove-and-last-refused (5.9s)
+  ✓   15 [chromium] › e2e/members.spec.ts:34:5 › members-add-and-edit (6.5s)
+  ✓   19 [chromium] › e2e/navbar.spec.ts:306:5 › navbar-sticky-and-phone-menu: the navbar and tab row stick while the header scrolls away, and the phone user menu is a popover (6.3s)
+  ✓   23 [chromium] › e2e/projects-and-journeys.spec.ts:41:5 › project-create (2.0s)
+  ✓   21 [chromium] › e2e/preview.spec.ts:34:5 › preview (5.9s)
+  ✓   22 [chromium] › e2e/preview.spec.ts:161:5 › preview-non-member (4.5s)
+  ✓   24 [chromium] › e2e/projects-and-journeys.spec.ts:119:5 › project-rename (3.8s)
+  ✓   25 [chromium] › e2e/projects-and-journeys.spec.ts:74:5 › project-non-member (3.9s)
+  ✓   26 [chromium] › e2e/projects-and-journeys.spec.ts:244:5 › journey-create (3.1s)
+  ✓   27 [chromium] › e2e/projects-and-journeys.spec.ts:361:5 › project-delete-cascade (4.6s)
+  ✓   18 [chromium] › e2e/navbar.spec.ts:50:5 › navbar-switch-project-and-theme: the switcher moves between Projects and the user menu sets the theme (15.1s)
+  ✓   28 [chromium] › e2e/projects-and-journeys.spec.ts:213:5 › project-delete (3.6s)
+  ✓   32 [chromium] › e2e/projects.spec.ts:14:5 › signed-out visit to /projects redirects to the landing page (677ms)
+  ✓   33 [chromium] › e2e/projects.spec.ts:30:5 › signed-in visit to /projects shows the empty projects state (874ms)
+  ✓   34 [chromium] › e2e/projects.spec.ts:54:5 › signing out from the user menu lands on sign-in, and /projects redirects again (1.7s)
+  ✓   29 [chromium] › e2e/projects-and-journeys.spec.ts:479:5 › author-flow (8.3s)
+  ✓   30 [chromium] › e2e/projects-and-journeys.spec.ts:295:5 › journey-edit-and-delete (8.0s)
+  ✓   31 [chromium] › e2e/projects-and-journeys.spec.ts:396:5 › journeys-reorder (8.4s)
+  ✓   38 [chromium] › e2e/prompts.spec.ts:447:5 › prompts-preview-stores-nothing (4.0s)
+  ✓   36 [chromium] › e2e/prompts.spec.ts:250:5 › prompts-participant-answers-and-author-reads (7.9s)
+  ✓   35 [chromium] › e2e/prompts.spec.ts:115:5 › prompts-author-attaches-a-prompt (9.4s)
+  ✓   40 [chromium] › e2e/public-project.spec.ts:286:5 › project-link-preview (2.9s)
+  ✓   41 [chromium] › e2e/publish.spec.ts:70:5 › publish-invalid-draft (3.6s)
+  ✓   42 [chromium] › e2e/publish.spec.ts:201:5 › publish-draft-with-loop (3.6s)
+  ✓   39 [chromium] › e2e/public-project.spec.ts:65:5 › public-project-page (8.1s)
+  ✓   44 [chromium] › e2e/publish.spec.ts:133:5 › publish-untagged-ending (2.4s)
+  ✓   43 [chromium] › e2e/publish.spec.ts:433:5 › journey-share-link (5.4s)
+  ✓   45 [chromium] › e2e/publish.spec.ts:237:5 › publish-versions-and-restore (4.8s)
+  ✓   47 [chromium] › e2e/runner.spec.ts:166:5 › runner-case-3-on-a-phone (3.3s)
+  ✓   46 [chromium] › e2e/publish.spec.ts:605:5 › versions-tab-shows-draft (3.5s)
+  ✓   48 [chromium] › e2e/publish.spec.ts:498:5 › publish-acknowledged (3.3s)
+  ✓   50 [chromium] › e2e/runner.spec.ts:289:5 › runner-required-prompt-refusal (2.6s)
+  ✓   49 [chromium] › e2e/runner.spec.ts:533:5 › runner-back-and-choose-again (3.5s)
+  ✘   37 [chromium] › e2e/projects-and-journeys.spec.ts:571:5 › metadata-autosave (17.3s)
+  ✓   51 [chromium] › e2e/runner.spec.ts:882:5 › runner-case-2-restored-choice (3.5s)
+  ✓   52 [chromium] › e2e/runner.spec.ts:1201:5 › runner-unavailable-and-unknown (2.0s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✓   53 [chromium] › e2e/runner.spec.ts:388:5 › runner-deciding-prompt (4.0s)
 ◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✓   54 [chromium] › e2e/runner.spec.ts:666:5 › runner-loop-and-back (4.1s)
+  ✓   56 [chromium] › e2e/runner.spec.ts:1274:5 › runner-focus (3.5s)
+  ✓   57 [chromium] › e2e/sign-in.spec.ts:14:5 › sign-in page offers Google and Discord with their logos (507ms)
+  ✓   61 [chromium] › e2e/sign-in.spec.ts:38:5 › a signed-in Author visiting /sign-in is sent to their projects (687ms)
+  ✓   59 [chromium] › e2e/runner.spec.ts:797:5 › runner-path-cap (3.9s)
+  ✓   55 [chromium] › e2e/runner.spec.ts:952:5 › runner-run-cookie-and-refresh (8.0s)
+  ✓   60 [chromium] › e2e/runner.spec.ts:1325:5 › journey-link-preview (4.7s)
+  ✓   58 [chromium] › e2e/runner.spec.ts:1491:5 › runner-way-out (5.3s)
+  ✓   64 [chromium] › e2e/runner.spec.ts:1117:5 › runner-pinned-version (4.2s)
+  ✓   62 [chromium] › e2e/step-editing.spec.ts:200:5 › step-editing-build-and-publish (9.0s)
+  ✓   65 [chromium] › e2e/step-editing.spec.ts:657:5 › step-editing-choices-reorder-retarget (7.4s)
+  ✓   66 [chromium] › e2e/step-editing.spec.ts:806:5 › panel-choice-target-search (8.3s)
+  ✓   63 [chromium] › e2e/step-editing.spec.ts:334:5 › step-editing-image-caption-alt-and-preview (10.3s)
+  ✓   68 [chromium] › e2e/step-editing.spec.ts:269:5 › step-editing-delete-and-validate (4.8s)
+  ✓   67 [chromium] › e2e/themes.spec.ts:144:5 › themes-settings: a Project's preset and accent reach the runner and the Project page, and a Journey's own Theme wins (7.1s)
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✓   69 [chromium] › e2e/step-editing.spec.ts:761:5 › step-editing-outcome-rename (5.2s)
+contrast trail light start: 14 elements pass, 0 fail
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+contrast trail light step: 15 elements pass, 0 fail
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✓   71 [chromium] › e2e/step-editing.spec.ts:541:5 › rich-text-underline-strike-quote (4.1s)
+contrast trail light project: 11 elements pass, 0 fail
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+contrast trail dark start: 14 elements pass, 0 fail
+contrast trail dark step: 15 elements pass, 0 fail
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+contrast trail dark project: 11 elements pass, 0 fail
+  ✓   70 [chromium] › e2e/step-editing.spec.ts:928:5 › panel-outcomes-from-the-ending (6.6s)
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+contrast parchment light start: 14 elements pass, 0 fail
+contrast parchment light step: 15 elements pass, 0 fail
+contrast parchment light project: 11 elements pass, 0 fail
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+contrast parchment dark start: 14 elements pass, 0 fail
+contrast parchment dark step: 15 elements pass, 0 fail
+  ✓   73 [chromium] › e2e/canvas.spec.ts:991:7 › canvas-add-next-step (5.7s)
+contrast parchment dark project: 11 elements pass, 0 fail
+  ✓   74 [chromium] › e2e/canvas.spec.ts:1584:7 › the seeded map › canvas-layout-direction (6.0s)
+  ✓   75 [chromium] › e2e/canvas.spec.ts:2460:5 › canvas-empty-choice-label (5.4s)
+contrast tide light start: 14 elements pass, 0 fail
+contrast tide light step: 15 elements pass, 0 fail
+contrast tide light project: 11 elements pass, 0 fail
+contrast tide dark start: 14 elements pass, 0 fail
+contrast tide dark step: 15 elements pass, 0 fail
+contrast tide dark project: 11 elements pass, 0 fail
+contrast dusk light start: 14 elements pass, 0 fail
+contrast dusk light step: 15 elements pass, 0 fail
+  ✓   79 [chromium] › e2e/canvas.spec.ts:2580:5 › canvas-selection-dims-arrows (5.2s)
+contrast dusk light project: 11 elements pass, 0 fail
+  ✓   77 [chromium] › e2e/canvas.spec.ts:991:7 › canvas-add-next-step-left-to-right (7.5s)
+contrast dusk dark start: 14 elements pass, 0 fail
+contrast dusk dark step: 15 elements pass, 0 fail
+contrast dusk dark project: 11 elements pass, 0 fail
+  ✓   78 [chromium] › e2e/canvas.spec.ts:1698:7 › the seeded map › canvas-locate-on-map (8.8s)
+contrast ember light start: 14 elements pass, 0 fail
+contrast ember light step: 15 elements pass, 0 fail
+contrast ember light project: 11 elements pass, 0 fail
+  ✓   76 [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (13.5s)
+contrast ember dark start: 14 elements pass, 0 fail
+contrast ember dark step: 15 elements pass, 0 fail
+ ELIFECYCLE  Command failed.
+/Users/paulmacfarlane/Library/pnpm/pnpm: line 12:  3320 Terminated: 15          "$basedir/.tools/pnpm-exe/10.33.0/pnpm" "$@"
+contrast ember dark project: 11 elements pass, 0 fail
+  ✓   82 [chromium] › e2e/canvas.spec.ts:1908:7 › the seeded map › canvas-find-step (3.8s)
+  ✘   84 [chromium] › e2e/canvas.spec.ts:2028:7 › the seeded map › canvas-find-step-lists-map-order (170ms)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✘   72 [chromium] › e2e/themes.spec.ts:389:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark (22.4s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✘   85 [chromium] › e2e/canvas.spec.ts:2068:7 › the seeded map › canvas-view-stays-put (215ms)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✘   86 [chromium] › e2e/canvas.spec.ts:3604:7 › authoring from the map › canvas-undo-build-branch-and-walk (191ms)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✘   87 [chromium] › e2e/canvas.spec.ts:2197:7 › the seeded map › canvas-endings-uncolored (210ms)
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘   88 [chromium] › e2e/canvas.spec.ts:3702:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (226ms)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘   89 [chromium] › e2e/canvas.spec.ts:2248:5 › canvas-validation-marks (209ms)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✘   90 [chromium] › e2e/canvas.spec.ts:3802:7 › undo and redo › canvas-undo-title-typing (210ms)
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✘   91 [chromium] › e2e/canvas.spec.ts:2362:5 › canvas-problems-readable (214ms)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘   92 [chromium] › e2e/canvas.spec.ts:3855:7 › undo and redo › canvas-undo-rich-text (198ms)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘   93 [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget (201ms)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘   94 [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls (200ms)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✘   95 [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart (207ms)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✘   81 [chromium] › e2e/canvas.spec.ts:1055:5 › canvas-duplicate-step (15.5s)
+  ✘   80 [chromium] › e2e/canvas.spec.ts:2649:5 › canvas-arrow-select-and-delete (16.2s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+  ✘   83 [chromium] › e2e/canvas.spec.ts:3211:7 › authoring from the map › canvas-retarget-selected-arrow (11.3s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✘   96 [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll (236ms)
+  ✘   97 [chromium] › e2e/canvas.spec.ts:1127:5 › canvas-content-peek (222ms)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘   98 [chromium] › e2e/canvas.spec.ts:2724:5 › canvas-delete-key-step (224ms)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘   99 [chromium] › e2e/canvas.spec.ts:3307:7 › authoring from the map › canvas-drop-choice-on-empty-map (199ms)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
 ◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
 ◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
-contrast parchment light start: 13 elements pass, 0 fail
-contrast parchment light step: 13 elements pass, 0 fail
-contrast parchment light project: 11 elements pass, 0 fail
-◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
-contrast parchment dark start: 13 elements pass, 0 fail
-contrast parchment dark step: 13 elements pass, 0 fail
-contrast parchment dark project: 11 elements pass, 0 fail
-  ✓   71 [chromium] › e2e/step-editing.spec.ts:928:5 › panel-outcomes-from-the-ending (6.2s)
-contrast tide light start: 13 elements pass, 0 fail
-◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-contrast tide light step: 13 elements pass, 0 fail
-contrast tide light project: 11 elements pass, 0 fail
+  ✘  100 [chromium] › e2e/canvas.spec.ts:1191:5 › canvas-keyboard-navigation (222ms)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✘  101 [chromium] › e2e/canvas.spec.ts:2848:5 › canvas-arrow-select-second-arrow (211ms)
 ◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
-contrast tide dark start: 13 elements pass, 0 fail
-contrast tide dark step: 13 elements pass, 0 fail
-contrast tide dark project: 11 elements pass, 0 fail
-  ✓   73 [chromium] › e2e/canvas.spec.ts:991:7 › canvas-add-next-step (5.6s)
-  ✓   72 [chromium] › e2e/canvas.spec.ts:1584:7 › the seeded map › canvas-layout-direction (5.9s)
-  ✓   74 [chromium] › e2e/canvas.spec.ts:2460:5 › canvas-empty-choice-label (4.8s)
-contrast dusk light start: 13 elements pass, 0 fail
-contrast dusk light step: 13 elements pass, 0 fail
-contrast dusk light project: 11 elements pass, 0 fail
-contrast dusk dark start: 13 elements pass, 0 fail
-contrast dusk dark step: 13 elements pass, 0 fail
-contrast dusk dark project: 11 elements pass, 0 fail
-  ✓   78 [chromium] › e2e/canvas.spec.ts:2580:5 › canvas-selection-dims-arrows (4.1s)
-contrast ember light start: 13 elements pass, 0 fail
-contrast ember light step: 13 elements pass, 0 fail
-contrast ember light project: 11 elements pass, 0 fail
-contrast ember dark start: 13 elements pass, 0 fail
-  ✓   76 [chromium] › e2e/canvas.spec.ts:991:7 › canvas-add-next-step-left-to-right (6.8s)
-contrast ember dark step: 13 elements pass, 0 fail
-contrast ember dark project: 11 elements pass, 0 fail
-contrast slate light start: 13 elements pass, 0 fail
-contrast slate light step: 13 elements pass, 0 fail
-  ✓   77 [chromium] › e2e/canvas.spec.ts:1698:7 › the seeded map › canvas-locate-on-map (8.6s)
-contrast slate light project: 11 elements pass, 0 fail
-contrast slate dark start: 13 elements pass, 0 fail
-contrast slate dark step: 13 elements pass, 0 fail
-  ✓   79 [chromium] › e2e/canvas.spec.ts:2649:5 › canvas-arrow-select-and-delete (5.2s)
-contrast slate dark project: 11 elements pass, 0 fail
-  ✓   69 [chromium] › e2e/themes.spec.ts:389:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark (23.0s)
-◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-  ✓   75 [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (12.5s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✘  102 [chromium] › e2e/canvas.spec.ts:3348:7 › authoring from the map › canvas-build-by-dragging-and-walk (198ms)
 ◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
-  ✓   81 [chromium] › e2e/canvas.spec.ts:1908:7 › the seeded map › canvas-find-step (4.1s)
-  ✓   85 [chromium] › e2e/canvas.spec.ts:2028:7 › the seeded map › canvas-find-step-lists-map-order (2.1s)
-  ✓   80 [chromium] › e2e/canvas.spec.ts:1055:5 › canvas-duplicate-step (8.6s)
-  ✓   82 [chromium] › e2e/canvas.spec.ts:2724:5 › canvas-delete-key-step (8.3s)
-  ✓   83 [chromium] › e2e/canvas.spec.ts:3211:7 › authoring from the map › canvas-retarget-selected-arrow (7.6s)
-  ✓   87 [chromium] › e2e/canvas.spec.ts:1127:5 › canvas-content-peek (5.3s)
-  ✓   84 [chromium] › e2e/canvas.spec.ts:3604:7 › authoring from the map › canvas-undo-build-branch-and-walk (10.6s)
-  ✓   89 [chromium] › e2e/canvas.spec.ts:3307:7 › authoring from the map › canvas-drop-choice-on-empty-map (4.6s)
-  ✓   88 [chromium] › e2e/canvas.spec.ts:2848:5 › canvas-arrow-select-second-arrow (6.5s)
-  ✓   86 [chromium] › e2e/canvas.spec.ts:2068:7 › the seeded map › canvas-view-stays-put (11.5s)
-  ✓   90 [chromium] › e2e/canvas.spec.ts:1191:5 › canvas-keyboard-navigation (7.3s)
-  ✓   94 [chromium] › e2e/canvas.spec.ts:2197:7 › the seeded map › canvas-endings-uncolored (2.2s)
-  ✓   93 [chromium] › e2e/canvas.spec.ts:2923:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (5.8s)
-  ✓   91 [chromium] › e2e/canvas.spec.ts:3702:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (7.9s)
-  ✓   92 [chromium] › e2e/canvas.spec.ts:3348:7 › authoring from the map › canvas-build-by-dragging-and-walk (7.3s)
-  ✓   96 [chromium] › e2e/canvas.spec.ts:2248:5 › canvas-validation-marks (5.4s)
-  ✓   97 [chromium] › e2e/canvas.spec.ts:3000:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (4.5s)
-  ✓   98 [chromium] › e2e/canvas.spec.ts:3802:7 › undo and redo › canvas-undo-title-typing (5.1s)
-  ✓   95 [chromium] › e2e/canvas.spec.ts:1270:5 › canvas-hide-and-show-panel (8.1s)
-  ✓  100 [chromium] › e2e/canvas.spec.ts:2362:5 › canvas-problems-readable (4.6s)
-  ✓  102 [chromium] › e2e/canvas.spec.ts:3855:7 › undo and redo › canvas-undo-rich-text (3.6s)
-  ✓   99 [chromium] › e2e/canvas.spec.ts:3387:7 › authoring from the map › canvas-build-by-dropping-and-walk (10.2s)
-  ✓  103 [chromium] › e2e/canvas.spec.ts:1371:5 › canvas-step-actions (7.1s)
-  ✓  101 [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (9.1s)
-case-3 crossing pairs: f24a106 baseline=15 now=14
-  ✓  106 [chromium] › e2e/canvas.spec.ts:1510:7 › the seeded map › canvas-case-3-map (1.9s)
-  ✓  105 [chromium] › e2e/canvas.spec.ts:3425:7 › authoring from the map › canvas-build-left-to-right-and-walk (10.1s)
-  ✓  104 [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget (14.5s)
-  ✓  107 [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish (4.8s)
-  ✓  108 [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls (2.4s)
-  ✓  110 [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart (2.8s)
-  ✓  109 [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice (4.8s)
-  ✓  111 [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll (1.8s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘  103 [chromium] › e2e/canvas.spec.ts:1270:5 › canvas-hide-and-show-panel (225ms)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘  104 [chromium] › e2e/canvas.spec.ts:2923:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (223ms)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘  105 [chromium] › e2e/canvas.spec.ts:3387:7 › authoring from the map › canvas-build-by-dropping-and-walk (194ms)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✘  106 [chromium] › e2e/canvas.spec.ts:1371:5 › canvas-step-actions (223ms)
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✘  107 [chromium] › e2e/canvas.spec.ts:3000:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (198ms)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+  ✘  108 [chromium] › e2e/canvas.spec.ts:3425:7 › authoring from the map › canvas-build-left-to-right-and-walk (200ms)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+  ✘  109 [chromium] › e2e/canvas.spec.ts:1510:7 › the seeded map › canvas-case-3-map (232ms)
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+  ✘  110 [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (204ms)
+  ✘  111 [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish (177ms)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✘  112 [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice (206ms)
 
-  111 passed (2.4m)
-exit 0
 
-CHAIN-DONE
+  1) [chromium] › e2e/canvas.spec.ts:1055:5 › canvas-duplicate-step ────────────────────────────────
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('tabpanel', { name: 'Editor' }).getByRole('status')
+    Expected: "Saved"
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" getByRole('tabpanel', { name: 'Editor' }).getByRole('status') with timeout 10000ms
+      - waiting for getByRole('tabpanel', { name: 'Editor' }).getByRole('status')
+        5 × locator resolved to <p role="status" class="text-muted-foreground text-sm">Unsaved changes</p>
+          - unexpected value "Unsaved changes"
+
+
+      107 |   await expect(
+      108 |     page.getByRole("tabpanel", { name: "Editor" }).getByRole("status"),
+    > 109 |   ).toHaveText("Saved");
+          |     ^
+      110 | }
+      111 |
+      112 | /** A signed-in Author on the Journey page of a brand-new Journey. */
+        at expectSaved (<worktree>/e2e/canvas.spec.ts:109:5)
+        at <worktree>/e2e/canvas.spec.ts:1085:9
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-duplicate-step-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-duplicate-step-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-duplicate-step-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-duplicate-step-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-duplicate-step-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e/canvas.spec.ts:1127:5 › canvas-content-peek ──────────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:1128:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-content-peek-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-content-peek-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-content-peek-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-content-peek-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-content-peek-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › e2e/canvas.spec.ts:1191:5 › canvas-keyboard-navigation ───────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:1192:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-keyboard-navigation-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-keyboard-navigation-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-keyboard-navigation-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-keyboard-navigation-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-keyboard-navigation-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › e2e/canvas.spec.ts:1270:5 › canvas-hide-and-show-panel ───────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:1271:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-hide-and-show-panel-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-hide-and-show-panel-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-hide-and-show-panel-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-hide-and-show-panel-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-hide-and-show-panel-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › e2e/canvas.spec.ts:1371:5 › canvas-step-actions ──────────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:1372:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-step-actions-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-step-actions-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-step-actions-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-step-actions-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-step-actions-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium] › e2e/canvas.spec.ts:1510:7 › the seeded map › canvas-case-3-map ───────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:1511:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-case-3-map-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-case-3-map-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-case-3-map-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-case-3-map-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-the-seeded-map-canvas-case-3-map-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [chromium] › e2e/canvas.spec.ts:2028:7 › the seeded map › canvas-find-step-lists-map-order ────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2029:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-find-step-lists-map-order-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-find-step-lists-map-order-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-find-step-lists-map-order-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-find-step-lists-map-order-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-the-seeded-map-canvas-find-step-lists-map-order-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [chromium] › e2e/canvas.spec.ts:2068:7 › the seeded map › canvas-view-stays-put ───────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2069:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-view-stays-put-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-view-stays-put-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-view-stays-put-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-view-stays-put-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-the-seeded-map-canvas-view-stays-put-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [chromium] › e2e/canvas.spec.ts:2197:7 › the seeded map › canvas-endings-uncolored ────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2198:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-endings-uncolored-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-endings-uncolored-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-the-seeded-map-canvas-endings-uncolored-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-the-seeded-map-canvas-endings-uncolored-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-the-seeded-map-canvas-endings-uncolored-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [chromium] › e2e/canvas.spec.ts:2248:5 › canvas-validation-marks ─────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2249:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-validation-marks-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-validation-marks-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-validation-marks-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-validation-marks-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-validation-marks-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [chromium] › e2e/canvas.spec.ts:2362:5 › canvas-problems-readable ────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2363:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-problems-readable-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-problems-readable-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-problems-readable-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-problems-readable-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-problems-readable-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [chromium] › e2e/canvas.spec.ts:2649:5 › canvas-arrow-select-and-delete ──────────────────────
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  getByRole('tabpanel', { name: 'Editor' }).getByRole('status')
+    Expected: "Saved"
+    Received: "Unsaved changes"
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveText" getByRole('tabpanel', { name: 'Editor' }).getByRole('status') with timeout 10000ms
+      - waiting for getByRole('tabpanel', { name: 'Editor' }).getByRole('status')
+        24 × locator resolved to <p role="status" class="text-muted-foreground text-sm">Unsaved changes</p>
+           - unexpected value "Unsaved changes"
+
+
+      107 |   await expect(
+      108 |     page.getByRole("tabpanel", { name: "Editor" }).getByRole("status"),
+    > 109 |   ).toHaveText("Saved");
+          |     ^
+      110 | }
+      111 |
+      112 | /** A signed-in Author on the Journey page of a brand-new Journey. */
+        at expectSaved (<worktree>/e2e/canvas.spec.ts:109:5)
+        at <worktree>/e2e/canvas.spec.ts:2721:9
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-arrow-select-and-delete-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-arrow-select-and-delete-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-arrow-select-and-delete-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-arrow-select-and-delete-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-arrow-select-and-delete-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [chromium] › e2e/canvas.spec.ts:2724:5 › canvas-delete-key-step ──────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2725:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-delete-key-step-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-delete-key-step-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-delete-key-step-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-delete-key-step-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-delete-key-step-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [chromium] › e2e/canvas.spec.ts:2848:5 › canvas-arrow-select-second-arrow ────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2849:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-arrow-select-second-arrow-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-arrow-select-second-arrow-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-arrow-select-second-arrow-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-arrow-select-second-arrow-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-arrow-select-second-arrow-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [chromium] › e2e/canvas.spec.ts:2923:7 › a map read down the page › canvas-arrow-click-stays-on-canvas 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:2924:5
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-a-map-read-down-the-89de1-arrow-click-stays-on-canvas-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-a-map-read-down-the-89de1-arrow-click-stays-on-canvas-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-a-map-read-down-the-89de1-arrow-click-stays-on-canvas-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-a-map-read-down-the-89de1-arrow-click-stays-on-canvas-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-a-map-read-down-the-89de1-arrow-click-stays-on-canvas-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [chromium] › e2e/canvas.spec.ts:3000:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3004:5
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--07f7f-pens-panel-and-edge-appears-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--07f7f-pens-panel-and-edge-appears-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--07f7f-pens-panel-and-edge-appears-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--07f7f-pens-panel-and-edge-appears-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--07f7f-pens-panel-and-edge-appears-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3047:29
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--510d0-ct-and-retarget-by-dragging-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--510d0-ct-and-retarget-by-dragging-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--510d0-ct-and-retarget-by-dragging-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--510d0-ct-and-retarget-by-dragging-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--510d0-ct-and-retarget-by-dragging-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [chromium] › e2e/canvas.spec.ts:3211:7 › authoring from the map › canvas-retarget-selected-arrow 
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected pattern: /\/projects\/9f392fa3-6451-45c0-bbc9-99d5dd926ed0\/journeys\/[0-9a-f-]{36}$/
+    Received string:  "http://localhost:3169/projects/9f392fa3-6451-45c0-bbc9-99d5dd926ed0"
+    Timeout: 10000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 10000ms
+        24 × locator resolved to <html lang="en" class="literata_65c07dbc-module__OqC59W__variable atkinson_hyperlegible_next_8a17f4ba-module__6gFPra__variable h-full antialiased light">…</html>
+           - unexpected value "http://localhost:3169/projects/9f392fa3-6451-45c0-bbc9-99d5dd926ed0"
+
+
+       at setup/authoring.ts:235
+
+      233 |   await page.getByRole("button", { name: "Create journey" }).click();
+      234 |
+    > 235 |   await expect(page).toHaveURL(
+          |                      ^
+      236 |     new RegExp(`/projects/${projectId}/journeys/${ID_PATTERN}$`),
+      237 |   );
+      238 |   const journeyId = idFromAddress(page, `/projects/${projectId}/journeys/`);
+        at createJourney (<worktree>/e2e/setup/authoring.ts:235:22)
+        at startJourney (<worktree>/e2e/canvas.spec.ts:139:21)
+        at <worktree>/e2e/canvas.spec.ts:3212:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the-map-canvas-retarget-selected-arrow-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the-map-canvas-retarget-selected-arrow-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the-map-canvas-retarget-selected-arrow-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the-map-canvas-retarget-selected-arrow-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the-map-canvas-retarget-selected-arrow-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  19) [chromium] › e2e/canvas.spec.ts:3307:7 › authoring from the map › canvas-drop-choice-on-empty-map 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3308:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--0fe6f-as-drop-choice-on-empty-map-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--0fe6f-as-drop-choice-on-empty-map-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--0fe6f-as-drop-choice-on-empty-map-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--0fe6f-as-drop-choice-on-empty-map-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--0fe6f-as-drop-choice-on-empty-map-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  20) [chromium] › e2e/canvas.spec.ts:3348:7 › authoring from the map › canvas-build-by-dragging-and-walk 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3352:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--72e09--build-by-dragging-and-walk-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--72e09--build-by-dragging-and-walk-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--72e09--build-by-dragging-and-walk-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--72e09--build-by-dragging-and-walk-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--72e09--build-by-dragging-and-walk-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21) [chromium] › e2e/canvas.spec.ts:3387:7 › authoring from the map › canvas-build-by-dropping-and-walk 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3391:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--8828e--build-by-dropping-and-walk-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--8828e--build-by-dropping-and-walk-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--8828e--build-by-dropping-and-walk-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--8828e--build-by-dropping-and-walk-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--8828e--build-by-dropping-and-walk-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  22) [chromium] › e2e/canvas.spec.ts:3425:7 › authoring from the map › canvas-build-left-to-right-and-walk 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3429:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--da36c-uild-left-to-right-and-walk-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--da36c-uild-left-to-right-and-walk-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--da36c-uild-left-to-right-and-walk-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--da36c-uild-left-to-right-and-walk-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--da36c-uild-left-to-right-and-walk-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  23) [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3503:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--e6577-as-build-branch-and-publish-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--e6577-as-build-branch-and-publish-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--e6577-as-build-branch-and-publish-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--e6577-as-build-branch-and-publish-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--e6577-as-build-branch-and-publish-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  24) [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice ───
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3562:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the-map-canvas-undo-drawn-choice-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the-map-canvas-undo-drawn-choice-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the-map-canvas-undo-drawn-choice-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the-map-canvas-undo-drawn-choice-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the-map-canvas-undo-drawn-choice-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  25) [chromium] › e2e/canvas.spec.ts:3604:7 › authoring from the map › canvas-undo-build-branch-and-walk 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3608:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--768b2--undo-build-branch-and-walk-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--768b2--undo-build-branch-and-walk-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--768b2--undo-build-branch-and-walk-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--768b2--undo-build-branch-and-walk-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--768b2--undo-build-branch-and-walk-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  26) [chromium] › e2e/canvas.spec.ts:3702:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3703:29
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--9429d-vas-find-duplicate-and-edit-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--9429d-vas-find-duplicate-and-edit-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-authoring-from-the--9429d-vas-find-duplicate-and-edit-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-authoring-from-the--9429d-vas-find-duplicate-and-edit-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-authoring-from-the--9429d-vas-find-duplicate-and-edit-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  27) [chromium] › e2e/canvas.spec.ts:3802:7 › undo and redo › canvas-undo-title-typing ────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3803:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-undo-and-redo-canvas-undo-title-typing-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-undo-and-redo-canvas-undo-title-typing-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-undo-and-redo-canvas-undo-title-typing-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-undo-and-redo-canvas-undo-title-typing-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-undo-and-redo-canvas-undo-title-typing-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  28) [chromium] › e2e/canvas.spec.ts:3855:7 › undo and redo › canvas-undo-rich-text ───────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3856:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-undo-and-redo-canvas-undo-rich-text-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-undo-and-redo-canvas-undo-rich-text-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-undo-and-redo-canvas-undo-rich-text-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-undo-and-redo-canvas-undo-rich-text-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-undo-and-redo-canvas-undo-rich-text-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  29) [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:3909:27
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-undo-and-redo-canvas-undo-delete-direction-retarget-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-undo-and-redo-canvas-undo-delete-direction-retarget-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-undo-and-redo-canvas-undo-delete-direction-retarget-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-undo-and-redo-canvas-undo-delete-direction-retarget-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-undo-and-redo-canvas-undo-delete-direction-retarget-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  30) [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls ────────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:4162:36
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-dark-controls-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-dark-controls-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-dark-controls-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-dark-controls-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-dark-controls-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  31) [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart ──────────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:4221:25
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-lr-labels-apart-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-lr-labels-apart-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-lr-labels-apart-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-lr-labels-apart-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-lr-labels-apart-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  32) [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll ─────────────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/projects
+    Call log:
+      - navigating to "http://localhost:3169/projects", waiting until "load"
+
+
+      134 |
+      135 |   const suffix = uniqueSuffix();
+    > 136 |   await page.goto("/projects");
+          |              ^
+      137 |   const projectId = await createProject(page, `Refugee Health ${suffix}`);
+      138 |   await page.goto(`/projects/${projectId}`);
+      139 |   const journeyId = await createJourney(
+        at startJourney (<worktree>/e2e/canvas.spec.ts:136:14)
+        at <worktree>/e2e/canvas.spec.ts:4277:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-stacked-panel-scroll-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/playwright/canvas-canvas-stacked-panel-scroll-chromium/error-context.md
+
+    Error Context: test-results/playwright/canvas-canvas-stacked-panel-scroll-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/canvas-canvas-stacked-panel-scroll-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/canvas-canvas-stacked-panel-scroll-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  33) [chromium] › e2e/projects-and-journeys.spec.ts:571:5 › metadata-autosave ─────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  getByRole('tab', { name: 'Settings', exact: true })
+    Expected: "true"
+    Received: "false"
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('tab', { name: 'Settings', exact: true }) with timeout 10000ms
+      - waiting for getByRole('tab', { name: 'Settings', exact: true })
+        23 × locator resolved to <button role="tab" type="button" tabindex="-1" aria-disabled="false" aria-selected="false" data-slot="tabs-trigger" id="base-ui-_R_rlbt5ubtb_" data-orientation="horizontal" data-activation-direction="none" class="relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreg…>Settings</button>
+           - unexpected value "false"
+
+
+       at setup/authoring.ts:143
+
+      141 |   const tab = page.getByRole("tab", { name, exact: true });
+      142 |   await tab.click();
+    > 143 |   await expect(tab).toHaveAttribute("aria-selected", "true");
+          |                     ^
+      144 | }
+      145 |
+      146 | /**
+        at openTab (<worktree>/e2e/setup/authoring.ts:143:21)
+        at <worktree>/e2e/projects-and-journeys.spec.ts:694:3
+
+    Error Context: test-results/playwright/projects-and-journeys-metadata-autosave-chromium/error-context.md
+
+    Error Context: test-results/playwright/projects-and-journeys-metadata-autosave-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/projects-and-journeys-metadata-autosave-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/projects-and-journeys-metadata-autosave-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  34) [chromium] › e2e/themes.spec.ts:389:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3169/j/a7270889-aae3-4c01-b1cd-4722820dce69
+    Call log:
+      - navigating to "http://localhost:3169/j/a7270889-aae3-4c01-b1cd-4722820dce69", waiting until "load"
+
+
+      409 |         const participant = await phone.newPage();
+      410 |
+    > 411 |         await participant.goto(`/j/${journeyId}`);
+          |                           ^
+      412 |         await expect(participant.locator("html")).toHaveClass(
+      413 |           new RegExp(`\\b${scheme}\\b`),
+      414 |         );
+        at <worktree>/e2e/themes.spec.ts:411:27
+
+    Error Context: test-results/playwright/themes-themes-contrast-eve-6dc65-ject-page-in-light-and-dark-chromium/error-context.md
+
+    Error Context: test-results/playwright/themes-themes-contrast-eve-6dc65-ject-page-in-light-and-dark-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/playwright/themes-themes-contrast-eve-6dc65-ject-page-in-light-and-dark-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/playwright/themes-themes-contrast-eve-6dc65-ject-page-in-light-and-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  34 failed
+    [chromium] › e2e/canvas.spec.ts:1055:5 › canvas-duplicate-step ─────────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:1127:5 › canvas-content-peek ───────────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:1191:5 › canvas-keyboard-navigation ────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:1270:5 › canvas-hide-and-show-panel ────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:1371:5 › canvas-step-actions ───────────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:1510:7 › the seeded map › canvas-case-3-map ────────────────────
+    [chromium] › e2e/canvas.spec.ts:2028:7 › the seeded map › canvas-find-step-lists-map-order ─────
+    [chromium] › e2e/canvas.spec.ts:2068:7 › the seeded map › canvas-view-stays-put ────────────────
+    [chromium] › e2e/canvas.spec.ts:2197:7 › the seeded map › canvas-endings-uncolored ─────────────
+    [chromium] › e2e/canvas.spec.ts:2248:5 › canvas-validation-marks ───────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:2362:5 › canvas-problems-readable ──────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:2649:5 › canvas-arrow-select-and-delete ────────────────────────
+    [chromium] › e2e/canvas.spec.ts:2724:5 › canvas-delete-key-step ────────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:2848:5 › canvas-arrow-select-second-arrow ──────────────────────
+    [chromium] › e2e/canvas.spec.ts:2923:7 › a map read down the page › canvas-arrow-click-stays-on-canvas 
+    [chromium] › e2e/canvas.spec.ts:3000:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears 
+    [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging 
+    [chromium] › e2e/canvas.spec.ts:3211:7 › authoring from the map › canvas-retarget-selected-arrow 
+    [chromium] › e2e/canvas.spec.ts:3307:7 › authoring from the map › canvas-drop-choice-on-empty-map 
+    [chromium] › e2e/canvas.spec.ts:3348:7 › authoring from the map › canvas-build-by-dragging-and-walk 
+    [chromium] › e2e/canvas.spec.ts:3387:7 › authoring from the map › canvas-build-by-dropping-and-walk 
+    [chromium] › e2e/canvas.spec.ts:3425:7 › authoring from the map › canvas-build-left-to-right-and-walk 
+    [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish 
+    [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice ─────
+    [chromium] › e2e/canvas.spec.ts:3604:7 › authoring from the map › canvas-undo-build-branch-and-walk 
+    [chromium] › e2e/canvas.spec.ts:3702:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit 
+    [chromium] › e2e/canvas.spec.ts:3802:7 › undo and redo › canvas-undo-title-typing ──────────────
+    [chromium] › e2e/canvas.spec.ts:3855:7 › undo and redo › canvas-undo-rich-text ─────────────────
+    [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget ─
+    [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls ──────────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart ────────────────────────────────
+    [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll ───────────────────────────
+    [chromium] › e2e/projects-and-journeys.spec.ts:571:5 › metadata-autosave ───────────────────────
+    [chromium] › e2e/themes.spec.ts:389:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark 
+  78 passed (1.9m)
+
+# Note (Claude, 2026-09-24 22:17 ET): the e2e step above was stopped at
+# Paul's request ("Ship it, stop the rerun") while the suite was still
+# running; the "Terminated: 15" line is that stop, and every ✘ after it is
+# the kill cascading through the workers still in flight, not a failure of
+# the app. Before the stop this run had passed the two specs this ticket
+# names — preview (5.9s) and runner-way-out (5.3s) — and failed
+# metadata-autosave, the Author-page spec this ticket does not touch.
+#
+# Two full runs of the same command preceded this one in the same session,
+# on the same code except for the spec scoping in ff2edd1:
+#   run 1 (before ff2edd1): 107 passed, 5 failed — author-flow,
+#     runner-case-3-on-a-phone, runner-pinned-version (whole-banner
+#     toHaveText against the new header), runner-required-prompt-refusal
+#     (bare locator("form") now finds the header's form too), and
+#     metadata-autosave. The first four are the assertions ff2edd1 scopes.
+#   run 2 (after ff2edd1): 111 passed, 1 failed — metadata-autosave only,
+#     "expect(tab).toHaveAttribute('aria-selected', 'true')" at
+#     e2e/setup/authoring.ts:143, the load-sensitive failure tickets 60,
+#     62, and 63 already record; the machine sat at load 10–20 all evening.
+# The CI run on the PR is the full-suite proof.
