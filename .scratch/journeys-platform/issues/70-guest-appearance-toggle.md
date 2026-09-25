@@ -1,6 +1,6 @@
 # 70: A guest can choose light or dark
 
-Status: in-progress
+Status: done
 Blocked by:
 Owner: Claude (Opus 5.5), 2026-09-25
 Parent: `.scratch/journeys-platform/spec.md`
@@ -21,10 +21,22 @@ Out of scope: the `themeColor` meta in `src/app/layout.tsx` follows the operatin
 
 Acceptance criteria:
 
-- [ ] A guest with a light OS scheme opens the splash page, presses Dark in the footer's "Appearance" control, and the page turns dark (`<html>` carries `dark`) with the dark recording showing in place of the light one; the choice survives a reload and carries to a live runner Step, whose footer shows Dark checked; System returns to the OS scheme (`e2e/footer.spec.ts`, `guest-appearance`, one screenshot of the splash page in dark).
-- [ ] The account menu's Theme row and the footer control agree: `navbar.spec.ts`, `canvas.spec.ts`, and `themes.spec.ts` pass unchanged.
-- [ ] The footer layout specs pass unchanged: `footer-wrap` at 375 px, and the one-row footer checks in `about.spec.ts`, `guide.spec.ts`, and `landing.spec.ts`.
+- [x] A guest with a light OS scheme opens the splash page, presses Dark in the footer's "Appearance" control, and the page turns dark (`<html>` carries `dark`) with the dark recording showing in place of the light one; the choice survives a reload and carries to a live runner Step, whose footer shows Dark checked; System returns to the OS scheme (`e2e/footer.spec.ts`, `guest-appearance`, one screenshot of the splash page in dark).
+- [x] The account menu's Theme row and the footer control agree: `navbar.spec.ts`, `canvas.spec.ts`, and `themes.spec.ts` pass unchanged.
+- [x] The footer layout specs pass unchanged: `footer-wrap` at 375 px, and the one-row footer checks in `about.spec.ts`, `guide.spec.ts`, and `landing.spec.ts`.
 
 Verification follows `docs/agents/testing.md`, polish route: `pnpm lint`, `pnpm typecheck`, `pnpm test`, one full `pnpm test:e2e` at the end with `E2E_EVIDENCE=guest-appearance`; evidence is `test-results/dod-1-commands.txt` and `test-results/guest-appearance/`. One AI reviewer. No production deploy: the PR targets `staging`, and Paul promotes after judging.
 
 ## Comments
+
+### 2026-09-25 — Claude (Opus 5.5), `[CLOSEOUT]`
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/94 (base `staging`, head `feat/70-guest-theme-toggle`; commits `cda96e8` feature, `ca4b02e` review fixes, then the evidence capture and this closeout). Route: polish. Delivered via `/implement` from a worktree on port 3170 (`journeys_e2e_70`) with a dummy env; no worker delegation. Not for production until judging is over: Paul promotes `staging` → `main` himself.
+
+**Delivered:** `src/components/appearance-control.tsx`, the footer's "Appearance" control (Light / Dark / System, next-themes, hydration-guarded with `useSyncExternalStore`, 44 px segments on phones), rendered last in `SiteFooter`'s links group. The account menu's Theme row now imports the same option list. `e2e/footer.spec.ts` gains `guest-appearance`.
+
+**Verification** (`test-results/dod-1-commands.txt`, run on the final source `ca4b02e`): `pnpm lint` exit 0; `pnpm typecheck` exit 0; `pnpm test` 544 passed; `E2E_EVIDENCE=guest-appearance pnpm test:e2e` **114 passed of 114**. PASS. Evidence: `test-results/guest-appearance/guest-appearance.png` (the splash page in dark, chosen from the footer). An earlier chain run on `cda96e8` was stopped before its e2e step so that the review fixes could be verified in one final run.
+
+**AI review** (one reviewer, whole diff, medium): nothing blocking. Fixed: comments in `site-footer.tsx` and `runner-frame.tsx` still said the runner ships no client code; the segments were 28 px on phones where the account menu uses 44 px. Confirmed clean: no strict-mode locator collisions (every page-wide radio locator is scoped or matches preset names), footer layout helpers unaffected, and criterion 1 fully proven.
+
+**Out of scope, recorded:** the `themeColor` meta follows the OS, so the browser toolbar can disagree with a manual choice.
