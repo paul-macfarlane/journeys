@@ -155,10 +155,10 @@ test("guest-appearance: a guest chooses dark from the footer, and it follows the
     .getByRole("banner")
     .getByRole("button", { name: "Dark mode" });
   await expect(darkMode).toHaveAttribute("aria-pressed", "true");
-  await expect(async () => {
-    await darkMode.click();
-    await expect(html).not.toHaveClass(/\bdark\b/, { timeout: 1_000 });
-  }).toPass();
+  // The pressed state only appears once hydrated, so one press is enough;
+  // retrying a toggle could flip it back.
+  await darkMode.click();
+  await expect(html).not.toHaveClass(/\bdark\b/);
   await expect(darkMode).toHaveAttribute("aria-pressed", "false");
   await expect(
     appearance(guest).getByRole("radio", { name: "Light" }),
