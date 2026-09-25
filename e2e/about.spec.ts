@@ -33,10 +33,10 @@ test("about", async ({ page }) => {
   const legacy = main.getByRole("link", { name: "static site" });
   await expect(legacy).toHaveAttribute(
     "href",
-    "https://journey-stories.netlify.app",
+    "https://journey-stories.netlify.app/journeys/",
   );
   await expect(
-    main.locator('a[href="https://journey-stories.netlify.app"]'),
+    main.locator('a[href="https://journey-stories.netlify.app/journeys/"]'),
   ).toHaveCount(1);
 
   // Play the three cases, and the guide for new Authors.
