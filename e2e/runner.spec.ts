@@ -201,7 +201,9 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
     // description beneath it, and the Step's own content and Choices — no
     // title page in front of it, and no Run yet.
     await participant.goto(`/j/${journeyId}`);
-    await expect(participant.getByRole("banner")).toHaveText(journeyTitle);
+    await expect(
+      participant.getByRole("banner").getByText(journeyTitle, { exact: true }),
+    ).toBeVisible();
     await expect(participant.getByText(description)).toBeVisible();
     await expect(
       participant.getByRole("heading", { name: "Preface" }),
@@ -215,7 +217,9 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
     await expect(participant).toHaveURL(
       `${E2E_BASE_URL}/j/${journeyId}/step-1`,
     );
-    await expect(participant.getByRole("banner")).toHaveText(journeyTitle);
+    await expect(
+      participant.getByRole("banner").getByText(journeyTitle, { exact: true }),
+    ).toBeVisible();
     await expect(
       participant.getByRole("heading", { name: "The Horses" }),
     ).toBeVisible();
@@ -322,7 +326,8 @@ test("runner-required-prompt-refusal", async ({ page, context, browser }) => {
     // app's own text beside the box, not a browser bubble, and the Run stays
     // on the same Step.
     const queueBox = promptBox(participant, QUEUE_PROMPT);
-    const form = participant.locator("form");
+    // The Step's own form: the header carries a "Start over" form too (ticket 69).
+    const form = participant.getByRole("main").locator("form");
     await expect(form).toHaveJSProperty("noValidate", true);
 
     await participant.getByRole("button", { name: "Show your papers" }).click();
@@ -1144,7 +1149,9 @@ test("runner-pinned-version", async ({ page, context, browser }) => {
       journeyId,
     ]);
     await midRun.goto(`/j/${journeyId}`);
-    await expect(midRun.getByRole("banner")).toHaveText(journeyTitle);
+    await expect(
+      midRun.getByRole("banner").getByText(journeyTitle, { exact: true }),
+    ).toBeVisible();
     await expect(midRun.getByText("Renamed after publishing")).toHaveCount(0);
     await midRun.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
 
@@ -1470,6 +1477,119 @@ test("journey-link-preview", async ({ page, context, browser }) => {
         ].join("\n"),
       ),
     );
+  } finally {
+    await participantContext.close();
+  }
+});
+
+/**
+ * Ticket 69: the way out. Mid-walk, the header names the Project (a link to
+ * its public page) and offers "Start over"; the first screen offers only the
+ * Project, since nothing has begun; an Ending keeps its own "Start over"
+ * below the Outcome and the header shows none, so no screen ever shows two.
+ */
+test("runner-way-out", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Crossing ${suffix}`,
+  );
+  const versionId = await publishDocument(journeyId, runnerDocument());
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+    const header = participant.getByRole("banner");
+    const projectLink = header.getByRole("link", { name: projectTitle });
+    const headerStartOver = header.getByRole("button", { name: "Start over" });
+    const anyStartOver = participant.getByRole("button", {
+      name: "Start over",
+    });
+
+    // The first screen names the Project and offers no "Start over": with no Run
+    // begun there is nothing to start over from.
+    await participant.goto(`/j/${journeyId}`);
+    await expect(projectLink).toHaveAttribute("href", `/p/${projectId}`);
+    await expect(anyStartOver).toHaveCount(0);
+
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    expect(await readRuns(versionId)).toHaveLength(1);
+
+    // Mid-walk: the Project above the Journey's title, "Start over" beside
+    // them, and exactly one on the screen.
+    await expect(projectLink).toHaveAttribute("href", `/p/${projectId}`);
+    await expect(headerStartOver).toBeVisible();
+    await expect(anyStartOver).toHaveCount(1);
+    await expectNoSidewaysScroll(participant);
+
+    // Keyboard focus on the link is the same solid outline the Choices
+    // carry (ticket 63); the link is the first thing Tab reaches.
+    await tabTo(participant, projectLink);
+    await expect(projectLink).toHaveCSS("outline-style", "solid");
+    await expect(projectLink).toHaveCSS("outline-width", "2px");
+    await participant.screenshot({
+      path: evidencePath("runner-way-out", "runner-way-out.png"),
+      fullPage: true,
+    });
+
+    // Starting over from the header returns to the first screen with the Run
+    // cookie dropped — no way back is offered — and leaves the Run where it
+    // stood, neither ended nor touched.
+    await headerStartOver.click();
+    await expect(participant).toHaveURL(`${E2E_BASE_URL}/j/${journeyId}`);
+    await expect(
+      participant.getByRole("heading", { name: START_STEP_TITLE }),
+    ).toBeVisible();
+    await expect(
+      participant.getByRole("link", { name: "Continue where you left off" }),
+    ).toHaveCount(0);
+    const runCookies = (await participantContext.cookies()).filter(
+      (cookie) => cookie.name === `journeys.run.${journeyId}`,
+    );
+    expect(runCookies).toHaveLength(0);
+    const abandoned = await readRuns(versionId);
+    expect(abandoned).toHaveLength(1);
+    expect(abandoned[0].path).toEqual([START_STEP_ID, QUEUE_STEP_ID]);
+    expect(abandoned[0].ended_at).toBeNull();
+
+    // The next Choice is a new Run, by the same Participant.
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    const restarted = await readRuns(versionId);
+    expect(restarted).toHaveLength(2);
+    expect(restarted[1].participant_id).toBe(restarted[0].participant_id);
+
+    // An Ending keeps its own "Start over" below the Outcome, in the main
+    // column, and the header shows none.
+    await participant.getByRole("link", { name: "Show your papers" }).click();
+    await expect(participant.getByText("The end")).toBeVisible();
+    await expect(headerStartOver).toHaveCount(0);
+    await expect(anyStartOver).toHaveCount(1);
+    await expect(
+      participant.getByRole("main").getByRole("button", { name: "Start over" }),
+    ).toBeVisible();
+
+    // The Project link lands on the public Project page.
+    await projectLink.click();
+    await expect(participant).toHaveURL(`${E2E_BASE_URL}/p/${projectId}`);
+    await expect(
+      participant.getByRole("heading", { name: projectTitle }),
+    ).toBeVisible();
   } finally {
     await participantContext.close();
   }

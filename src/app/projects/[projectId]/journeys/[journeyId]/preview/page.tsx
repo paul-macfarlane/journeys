@@ -70,6 +70,10 @@ export default async function PreviewStartPage({
       title={journey.title}
       description={journey.description || undefined}
       preview={{ editorHref: journeyHref }}
+      // The way out (ticket 69), pointed at Preview's own routes: the
+      // Author's Project page. No header "Start over" here: this is the
+      // start, as on the live runner's first screen.
+      project={{ title: project.title, href: `/projects/${projectId}` }}
       theme={theme}
     >
       {hasStart ? (

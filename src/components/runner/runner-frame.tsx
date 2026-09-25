@@ -2,6 +2,27 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { SiteFooter } from "@/components/site-footer";
 import { themeStyle, type Theme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
+
+/**
+ * The header's "Start over" (ticket 69): a link, on Preview, which records
+ * nothing and so has nothing to drop; or a form action, in the live runner,
+ * which has a Run cookie to drop.
+ */
+export type StartOverControl =
+  { href: string } | { action: (formData: FormData) => Promise<void> };
+
+/**
+ * The header's link and control: small and muted, the foreground on hover,
+ * underlined only then so they read as the way out rather than as the
+ * title. Keyboard focus is the solid 2px outline in the ring colour the
+ * Choices carry (ticket 63), offset so it sits around the text; every
+ * preset's ring clears the background in both schemes, and an accent
+ * replaces it. `outline-solid` is explicit for the button, whose reset
+ * would otherwise leave the outline style unset.
+ */
+const wayOutClassName =
+  "text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid";
 
 /**
  * The shell every participant screen sits in — the Start Step, each later
@@ -14,6 +35,15 @@ import { themeStyle, type Theme } from "@/lib/theme";
  * Journey to name; a Participant is never inside a Journey without seeing
  * what it is called. The description is a Start Step thing, so the page that
  * shows the Start passes it and the others do not.
+ *
+ * The header is also the way out (ticket 69): the Project's title above the
+ * Journey's, a link to the Project page — the public one for a Participant,
+ * the Author's for Preview — and, at the right, "Start over" on every Step
+ * that does not already offer one below it (an Ending, the path-full
+ * notice, the first screen's resume box), so no screen shows two. Live it is the
+ * `startOverAction` form, which drops the Run cookie and leaves the Run
+ * abandoned for the analytics (ticket 10); on Preview it is a link to the
+ * first screen. The pages decide which and when; the frame only draws it.
  *
  * Mobile-first — a Participant arrives on a phone, from a link somebody sent
  * them — so the column is narrow, the padding is small at the smallest size,
@@ -43,6 +73,8 @@ export function RunnerFrame({
   title,
   description,
   preview,
+  project,
+  startOver,
   theme,
   children,
 }: {
@@ -52,6 +84,10 @@ export function RunnerFrame({
   description?: string;
   /** Present on Preview: the banner that says so, and the way back. */
   preview?: { editorHref: string };
+  /** The Project the Journey belongs to, linked above the Journey's title. */
+  project?: { title: string; href: string };
+  /** The header's "Start over"; omitted where the screen already offers one. */
+  startOver?: StartOverControl;
   /** The effective Theme: the Journey's override, else the Project's. */
   theme: Theme;
   children: ReactNode;
@@ -82,8 +118,37 @@ export function RunnerFrame({
 
       {title ? (
         <header className="border-b">
-          <div className="mx-auto w-full max-w-prose px-4 py-3 sm:px-6">
-            <p className="font-display text-base font-medium">{title}</p>
+          <div className="mx-auto flex w-full max-w-prose items-center justify-between gap-x-4 px-4 py-3 sm:px-6">
+            <div className="flex min-w-0 flex-col break-words">
+              {project ? (
+                <a
+                  href={project.href}
+                  className={cn(wayOutClassName, "self-start")}
+                >
+                  {project.title}
+                </a>
+              ) : null}
+              <p className="font-display text-base font-medium">{title}</p>
+            </div>
+            {startOver ? (
+              "href" in startOver ? (
+                <a
+                  href={startOver.href}
+                  className={cn(wayOutClassName, "shrink-0")}
+                >
+                  Start over
+                </a>
+              ) : (
+                // A native form and button, as everywhere in the runner: the
+                // frame ships no client bundle, and starting over is a POST
+                // the action owns.
+                <form action={startOver.action} className="shrink-0">
+                  <button type="submit" className={wayOutClassName}>
+                    Start over
+                  </button>
+                </form>
+              )
+            ) : null}
           </div>
         </header>
       ) : null}

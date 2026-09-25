@@ -11,6 +11,7 @@ import {
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
+import { isEnding } from "@/lib/graph/document";
 import { requireSession } from "@/lib/session";
 import { effectiveTheme } from "@/lib/theme";
 
@@ -76,6 +77,13 @@ export default async function PreviewStepPage({
           : undefined
       }
       preview={{ editorHref: journeyHref }}
+      // The way out (ticket 69), pointed at Preview's own routes: the
+      // Author's Project page, and the first screen wherever the Step does
+      // not offer "Start over" itself — an Ending does, below its Outcome.
+      project={{ title: project.title, href: `/projects/${projectId}` }}
+      startOver={
+        isEnding(step) ? undefined : { href: `${journeyHref}/preview` }
+      }
       theme={theme}
     >
       <ResponseNotice notice={notice} />

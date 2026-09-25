@@ -107,6 +107,13 @@ export default async function JourneyStartPage({
     <RunnerFrame
       title={journey.title}
       description={journey.description || undefined}
+      // The way out (ticket 69): the public Project page. No header "Start
+      // over" on this first screen — with no Run begun there is nothing to start
+      // over from, and the resume box below offers it when there is.
+      project={{
+        title: journey.projectTitle,
+        href: `/p/${journey.projectId}`,
+      }}
       theme={journey.theme}
     >
       {inProgress ? (
