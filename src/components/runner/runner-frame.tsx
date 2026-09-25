@@ -44,6 +44,9 @@ const wayOutClassName =
  * `startOverAction` form, which drops the Run cookie and leaves the Run
  * abandoned for the analytics (ticket 10); on Preview it is a link to the
  * first screen. The pages decide which and when; the frame only draws it.
+ * The header sticks to the top of the viewport so the way out stays in
+ * reach on a long Step — beneath the Author navbar (`top-14`, its height)
+ * on Preview, where that bar sticks first.
  *
  * Mobile-first — a Participant arrives on a phone, from a link somebody sent
  * them — so the column is narrow, the padding is small at the smallest size,
@@ -117,7 +120,12 @@ export function RunnerFrame({
       ) : null}
 
       {title ? (
-        <header className="border-b">
+        <header
+          className={cn(
+            "bg-background sticky z-30 border-b",
+            preview ? "top-14" : "top-0",
+          )}
+        >
           <div className="mx-auto flex w-full max-w-prose items-center justify-between gap-x-4 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 flex-col break-words">
               {project ? (

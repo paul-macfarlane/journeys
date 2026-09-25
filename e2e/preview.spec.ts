@@ -69,6 +69,9 @@ test("preview", async ({ page, context }) => {
   const projectLink = frameHeader.getByRole("link", { name: projectTitle });
   await expect(projectLink).toHaveAttribute("href", `/projects/${projectId}`);
   await expect(page.getByText("Start over")).toHaveCount(0);
+  // The header sticks beneath the sticky Author navbar (3.5rem tall).
+  await expect(frameHeader).toHaveCSS("position", "sticky");
+  await expect(frameHeader).toHaveCSS("top", "56px");
   await expect(page.getByRole("contentinfo")).toHaveCount(1);
   await expect(page.getByText("Preview — nothing is recorded.")).toBeVisible();
   await expect(
