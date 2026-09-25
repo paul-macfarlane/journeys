@@ -248,8 +248,9 @@ export default function GuidePage() {
           </li>
           <li>
             <strong>Endings.</strong> A Step with no Choices is an Ending, and
-            the Journey tells you so. From there you can start again from the
-            Start; a new Run begins with your first Choice.
+            the Journey tells you so. From there, or from any Step with{" "}
+            <strong>Start over</strong> in the header, you can start again from
+            the Start; a new Run begins with your first Choice.
           </li>
         </ul>
         <Still
