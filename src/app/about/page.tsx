@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 const LEGACY_SITE_URL = "https://journey-stories.netlify.app/journeys/";
+const TWINE_URL = "https://twinery.org/";
 
 // The story, first person from Paul (ticket 54, decision 3). Medha agreed to
 // be named. Nothing here mentions how the platform was built: that belongs
@@ -30,11 +31,15 @@ export default function AboutPage() {
         Atlanta.
       </p>
       <p>
-        The cases were written in Twine and compiled into a{" "}
-        <a href={LEGACY_SITE_URL}>static site</a>. That worked, but it was
-        fragile. Changing a word meant exporting JSON and redeploying. The shape
-        of a story — where it branched, where it looped, where it ended — could
-        only be seen by clicking through it. Nothing recorded where participants
+        Medha wrote the cases in <a href={TWINE_URL}>Twine</a>, a free tool for
+        interactive fiction. To get them onto the web, I wrote a gloriously
+        hacky script that scraped the HTML Twine exports, pulled every passage
+        and its links out of the markup, and turned them into JSON that a small
+        Astro app rendered as a <a href={LEGACY_SITE_URL}>static site</a>. That
+        worked, but it was fragile. Changing a word meant editing in Twine,
+        re-exporting, re-running the script, and redeploying. The shape of a
+        story — where it branched, where it looped, where it ended — could only
+        be seen by clicking through it. Nothing recorded where participants
         went. And only one person could practically write.
       </p>
 
