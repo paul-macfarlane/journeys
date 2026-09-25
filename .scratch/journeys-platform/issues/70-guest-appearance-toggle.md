@@ -1,6 +1,6 @@
 # 70: A guest can choose light or dark
 
-Status: in-progress
+Status: done
 Blocked by:
 Owner: Claude (Opus 5.5), 2026-09-25
 Parent: `.scratch/journeys-platform/spec.md`
@@ -46,3 +46,13 @@ Verification follows `docs/agents/testing.md`, polish route: `pnpm lint`, `pnpm 
 Paul, on PR #94, after asking why the control is in the footer rather than the header: "add the header icon to the runner as part of this ticket". A Participant reads in the runner, and on a long Step the footer is a scroll away. So the runner header (`RunnerFrame`, every screen that names a Journey, live and Preview) gains one icon button at its right, after Start over when that shows. It flips between light and dark (next-themes `resolvedTheme`, set explicitly to the opposite), so a reader on System gets the other scheme in one press. It is a toggle button named "Dark mode" whose `aria-pressed` follows the page (known only after hydration), and it shows a moon in light and a sun in dark, chosen by the `dark:` variant so the icon never waits for hydration. It takes the header's way-out styling: muted, foreground on hover, the ring-colour focus outline. The footer control stays; both drive the same choice.
 
 Added criterion: in the live runner, the header's "Dark mode" button turns a dark page light (not pressed, and the footer shows Light) and back (pressed, footer shows Dark), proved in `guest-appearance`.
+
+### 2026-09-25 — Claude (Opus 5.5), `[CLOSEOUT]` — scope change delivered
+
+**PR:** https://github.com/paul-macfarlane/journeys/pull/94, same branch. Commits `9143ef3` (the header button) and `f0c6f3d` (review fix to the spec), then this evidence capture and closeout.
+
+**Delivered:** `DarkModeToggle` in `src/components/appearance-control.tsx`, rendered last at the right of `RunnerFrame`'s header (after Start over when it shows) on every screen with a header, live and Preview. It is a toggle button named "Dark mode" with `aria-pressed` after hydration; it flips `resolvedTheme` by setting the opposite explicitly; moon or sun comes from the `dark:` variant; it is 36 px, or 44 px on phones, with the way-out styling and focus outline. The added criterion is met: `guest-appearance` turns the runner light from the header (not pressed, footer shows Light) and back (pressed, footer shows Dark).
+
+**Verification** (`test-results/dod-1-commands.txt`, run on the final source `f0c6f3d`): `pnpm lint` exit 0; `pnpm typecheck` exit 0; `pnpm test` 544 passed; `E2E_EVIDENCE=guest-appearance pnpm test:e2e` **114 passed of 114**. PASS. Before the full run, the footer, runner, preview, branding, and themes specs passed (21 of 21) on `9143ef3`. The header was checked by screenshot at 375 and 1280 px, in both schemes and with keyboard focus; those were scratch shots, not committed. Evidence stays `test-results/guest-appearance/guest-appearance.png`.
+
+**AI review** (one reviewer, the scope-change commit, medium): nothing blocking. Fixed: the spec retried the header click inside `toPass`, which could flip a toggle back under load; it now presses once, because `aria-pressed` already proves hydration. Confirmed clean: no pre-hydration click can act on an undefined `resolvedTheme`, no hydration mismatch, and no locator collisions (one banner on guest runner pages; the Preview spec already filters out the navbar's banner).
