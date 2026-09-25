@@ -13,6 +13,8 @@ export const metadata: Metadata = {
 
 const LEGACY_SITE_URL = "https://journey-stories.netlify.app/journeys/";
 const TWINE_URL = "https://twinery.org/";
+const TWINE_SCRIPT_URL =
+  "https://github.com/paul-macfarlane/journey/blob/main/scraping/parseTwineHTML.cjs";
 
 // The story, first person from Paul (ticket 54, decision 3). Medha agreed to
 // be named. Nothing here mentions how the platform was built: that belongs
@@ -33,14 +35,15 @@ export default function AboutPage() {
       <p>
         Medha wrote the cases in <a href={TWINE_URL}>Twine</a>, a free tool for
         interactive fiction. To get them onto the web, I wrote a gloriously
-        hacky script that scraped the HTML Twine exports, pulled every passage
-        and its links out of the markup, and turned them into JSON that a small
-        Astro app rendered as a <a href={LEGACY_SITE_URL}>static site</a>. That
-        worked, but it was fragile. Changing a word meant editing in Twine,
-        re-exporting, re-running the script, and redeploying. The shape of a
-        story — where it branched, where it looped, where it ended — could only
-        be seen by clicking through it. Nothing recorded where participants
-        went. And only one person could practically write.
+        hacky <a href={TWINE_SCRIPT_URL}>script</a> that scraped the HTML Twine
+        exports, pulled every passage and its links out of the markup, and
+        turned them into JSON that a small Astro app rendered as a{" "}
+        <a href={LEGACY_SITE_URL}>static site</a>. That worked, but it was
+        fragile. Changing a word meant editing in Twine, re-exporting,
+        re-running the script, and redeploying. The shape of a story — where it
+        branched, where it looped, where it ended — could only be seen by
+        clicking through it. Nothing recorded where participants went. And only
+        one person could practically write.
       </p>
 
       <h2>What Journeys is</h2>
