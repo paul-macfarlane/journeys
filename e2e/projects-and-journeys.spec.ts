@@ -735,3 +735,65 @@ test("metadata-autosave", async ({ page, context }) => {
     fullPage: true,
   });
 });
+
+/**
+ * Ticket 69's e2e fix: a tab switched while a metadata write is still in
+ * flight. The write is held so the race is certain: the Project title is
+ * typed into on the Settings tab and the Journeys tab opened, which blurs
+ * the field and posts the write, and the address is rewritten while that
+ * action is unanswered. Before the fix Next answered the mismatch with a
+ * full page load, and the next tab click landed on a page mid-reload. A
+ * window marker set before the switch proves the document was kept; the
+ * heading carrying the new title proves the write and its refresh landed;
+ * the Settings tab opening afterwards proves the page still answers.
+ */
+test("tabs-switch-during-write", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const renamedProjectTitle = `Refugee Care ${suffix}`;
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}?tab=settings`);
+  await expect(
+    page.getByRole("tab", { name: "Settings", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+
+  let releaseWrite = () => {};
+  const writeHeld = new Promise<void>((resolve) => {
+    releaseWrite = resolve;
+  });
+  await page.route(
+    (url) => url.pathname === `/projects/${projectId}`,
+    async (route) => {
+      const request = route.request();
+      if (request.method() === "POST" && "next-action" in request.headers()) {
+        await writeHeld;
+      }
+      await route.continue();
+    },
+  );
+
+  await page.evaluate(() => {
+    (window as unknown as { __kept: boolean }).__kept = true;
+  });
+  await page.getByLabel("Title", { exact: true }).fill(renamedProjectTitle);
+  await openTab(page, "Journeys");
+  await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
+  releaseWrite();
+  await expect(
+    page.getByRole("heading", { name: renamedProjectTitle }),
+  ).toBeVisible();
+  await page.unrouteAll({ behavior: "wait" });
+
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __kept?: boolean }).__kept,
+    ),
+  ).toBe(true);
+  await openTab(page, "Settings");
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
+    renamedProjectTitle,
+  );
+});

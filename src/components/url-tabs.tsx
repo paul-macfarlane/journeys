@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,10 +16,18 @@ export type UrlTab = {
  * A page's main sections as tabs, the open one named in the address as
  * `?tab=<value>` so a reload or a shared link opens on it. The address is
  * the one source of truth: the open tab is read off it (`readTab`) on the
- * server and on the client alike, switching rewrites it in place with no
- * navigation, and the first tab is the default the plain address means. So
- * anything on the page can open a tab by linking to its address — the
- * Versions tab's Draft row links to the editor that way.
+ * server and on the client alike, switching replaces it through the router,
+ * and the first tab is the default the plain address means. So anything on
+ * the page can open a tab by linking to its address — the Versions tab's
+ * Draft row links to the editor that way.
+ *
+ * The switch goes through `router.replace`, not a bare
+ * `history.replaceState` (ticket 69): the metadata forms write on the way
+ * out of a tab, and a server action still in flight when the address is
+ * rewritten under it made Next answer the mismatch with a full page load —
+ * the tab clicked next landed on a page mid-reload. A router navigation
+ * queues behind the action instead. `scroll: false` keeps the page where
+ * it is, as the rewrite did.
  *
  * Only the open tab's content is mounted: the Journey editor is heavy, and
  * the Versions list must show what a restore just did, which a fresh mount
@@ -45,20 +53,18 @@ export function UrlTabs({
   sticky?: boolean;
 }) {
   const values = tabs.map((entry) => entry.value);
-  // Next keeps this in step with `history.replaceState` below, so a tab
-  // click and a link to `?tab=…` both land here. Both pages that use this
+  // A tab click and a link to `?tab=…` both land here. Both pages that use this
   // render dynamically (they read the session), so no Suspense boundary is
   // needed; turning on Cache Components would call for one around it.
   const searchParams = useSearchParams();
+  const router = useRouter();
   const tab = readTab(values, searchParams.get("tab") ?? undefined);
 
   function change(next: unknown) {
     if (typeof next !== "string") return;
-    window.history.replaceState(
-      null,
-      "",
-      withTab(window.location.href, values, next),
-    );
+    router.replace(withTab(window.location.href, values, next), {
+      scroll: false,
+    });
   }
 
   const list = (
