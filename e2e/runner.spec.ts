@@ -201,7 +201,9 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
     // description beneath it, and the Step's own content and Choices — no
     // title page in front of it, and no Run yet.
     await participant.goto(`/j/${journeyId}`);
-    await expect(participant.getByRole("banner")).toHaveText(journeyTitle);
+    await expect(
+      participant.getByRole("banner").getByText(journeyTitle, { exact: true }),
+    ).toBeVisible();
     await expect(participant.getByText(description)).toBeVisible();
     await expect(
       participant.getByRole("heading", { name: "Preface" }),
@@ -215,7 +217,9 @@ test("runner-case-3-on-a-phone", async ({ page, context, browser }) => {
     await expect(participant).toHaveURL(
       `${E2E_BASE_URL}/j/${journeyId}/step-1`,
     );
-    await expect(participant.getByRole("banner")).toHaveText(journeyTitle);
+    await expect(
+      participant.getByRole("banner").getByText(journeyTitle, { exact: true }),
+    ).toBeVisible();
     await expect(
       participant.getByRole("heading", { name: "The Horses" }),
     ).toBeVisible();
@@ -322,7 +326,8 @@ test("runner-required-prompt-refusal", async ({ page, context, browser }) => {
     // app's own text beside the box, not a browser bubble, and the Run stays
     // on the same Step.
     const queueBox = promptBox(participant, QUEUE_PROMPT);
-    const form = participant.locator("form");
+    // The Step's own form: the header carries a "Start over" form too (ticket 69).
+    const form = participant.getByRole("main").locator("form");
     await expect(form).toHaveJSProperty("noValidate", true);
 
     await participant.getByRole("button", { name: "Show your papers" }).click();
@@ -1144,7 +1149,9 @@ test("runner-pinned-version", async ({ page, context, browser }) => {
       journeyId,
     ]);
     await midRun.goto(`/j/${journeyId}`);
-    await expect(midRun.getByRole("banner")).toHaveText(journeyTitle);
+    await expect(
+      midRun.getByRole("banner").getByText(journeyTitle, { exact: true }),
+    ).toBeVisible();
     await expect(midRun.getByText("Renamed after publishing")).toHaveCount(0);
     await midRun.goto(`/j/${journeyId}/${QUEUE_STEP_ID}`);
 

@@ -518,7 +518,9 @@ test("author-flow", async ({ page, context, browser }) => {
   try {
     const participant = await participantContext.newPage();
     await participant.goto(`/j/${journeyId}`);
-    await expect(participant.getByRole("banner")).toHaveText(renamedTitle);
+    await expect(
+      participant.getByRole("banner").getByText(renamedTitle, { exact: true }),
+    ).toBeVisible();
     await expect(
       participant.getByRole("heading", { name: START_STEP_TITLE }),
     ).toBeVisible();
