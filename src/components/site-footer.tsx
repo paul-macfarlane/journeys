@@ -1,3 +1,4 @@
+import { AppearanceControl } from "@/components/appearance-control";
 import { LegalLinks, Wordmark } from "@/components/brand";
 import { COPYRIGHT_HOLDER, COPYRIGHT_YEAR, REPOSITORY_URL } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,11 @@ import { cn } from "@/lib/utils";
  * runner ships no client bundle, and the other surfaces need nothing a
  * client component would add — so this is the one place the app names
  * itself, consistent everywhere a Participant or an Author sees it.
+ *
+ * The one client part is `AppearanceControl` (ticket 70), light, dark, or
+ * the system's, which a guest has no account menu to choose from. It is an
+ * island under the root layout's `ThemeProvider`, which every page,
+ * the runner included, already hydrates.
  */
 export function SiteFooter({
   width = "page",
@@ -67,6 +73,9 @@ export function SiteFooter({
             GitHub
           </a>
           <LegalLinks />
+          {/* Last in the links group, so on a phone it wraps under them at
+              the same left edge rather than splitting the row (ticket 70). */}
+          <AppearanceControl />
         </div>
       </div>
     </footer>

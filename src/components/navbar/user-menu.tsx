@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 
+import { APPEARANCES, isAppearance } from "@/components/appearance-control";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,22 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  SegmentedControl,
-  type SegmentOption,
-} from "@/components/ui/segmented-control";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { authClient } from "@/lib/auth-client";
 import { initials } from "@/lib/navbar";
-
-/** The three answers next-themes accepts, "system" following the OS. */
-type Theme = "light" | "dark" | "system";
-
-/** The three, in the order the row offers them, each with its icon. */
-const THEMES: readonly SegmentOption<Theme>[] = [
-  { value: "light", label: "Light", icon: <SunIcon /> },
-  { value: "dark", label: "Dark", icon: <MoonIcon /> },
-  { value: "system", label: "System", icon: <MonitorIcon /> },
-];
 
 /**
  * The navbar's account menu: the Author's avatar (their initials when the
@@ -106,11 +93,6 @@ export function UserMenu({
   );
 }
 
-/** Whether a stored theme is one of the three; anything else reads as System. */
-function isTheme(value: string | undefined): value is Theme {
-  return THEMES.some((option) => option.value === value);
-}
-
 /**
  * "Theme" on the left and the three segments on the right, each an icon
  * button named Light, Dark, or System. The segments are not menu items, so
@@ -130,9 +112,9 @@ function ThemeRow() {
       <span>Theme</span>
       <SegmentedControl
         label="Theme"
-        value={isTheme(theme) ? theme : "system"}
+        value={isAppearance(theme) ? theme : "system"}
         onValueChange={setTheme}
-        options={THEMES}
+        options={APPEARANCES}
         size="icon-sm"
         segmentClassName="max-sm:size-11"
       />
