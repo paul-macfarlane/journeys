@@ -3,6 +3,9 @@ import { expect, test } from "@playwright/test";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
 import {
   publishableDocument,
+  QUEUE_STEP_ID,
+  QUEUE_STEP_TITLE,
+  runnerDocument,
   START_STEP_ID,
   START_STEP_TITLE,
   writeDraftDocument,
@@ -58,7 +61,14 @@ test("preview", async ({ page, context }) => {
   // frame — title in the header, the Step's content and Choices — with only
   // the banner and its way back to the editor telling it apart.
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
-  await expect(frameHeader).toHaveText(journeyTitle);
+  const headerTitle = frameHeader.getByText(journeyTitle, { exact: true });
+  await expect(headerTitle).toBeVisible();
+  // The way out (ticket 69) points at Preview's own routes: the Project
+  // link is the Author's Project page, and the first screen offers no
+  // "Start over" — this is the start.
+  const projectLink = frameHeader.getByRole("link", { name: projectTitle });
+  await expect(projectLink).toHaveAttribute("href", `/projects/${projectId}`);
+  await expect(page.getByText("Start over")).toHaveCount(0);
   await expect(page.getByRole("contentinfo")).toHaveCount(1);
   await expect(page.getByText("Preview — nothing is recorded.")).toBeVisible();
   await expect(
@@ -84,8 +94,12 @@ test("preview", async ({ page, context }) => {
   ).toBeVisible();
   await expect(page.getByText("The end")).toBeVisible();
   await expect(page.getByText("Outcome: Reached care")).toBeVisible();
-  // The same frame on every Step: title and banner travel with the walk.
-  await expect(frameHeader).toHaveText(journeyTitle);
+  // The same frame on every Step: title, Project, and banner travel with
+  // the walk. An Ending keeps its own "Start over" below the Outcome, and
+  // the header shows none, so the screen has exactly one.
+  await expect(headerTitle).toBeVisible();
+  await expect(projectLink).toHaveAttribute("href", `/projects/${projectId}`);
+  await expect(page.getByRole("link", { name: "Start over" })).toHaveCount(1);
   await expect(page.getByText("Preview — nothing is recorded.")).toBeVisible();
 
   await page.screenshot({
@@ -122,6 +136,26 @@ test("preview", async ({ page, context }) => {
     [journeyId],
   );
   expect(responseRows).toHaveLength(0);
+
+  // Mid-walk — a Step that is not an Ending — the header offers "Start
+  // over" as a link to Preview's first screen, beside the Project link.
+  await writeDraftDocument(journeyId, runnerDocument());
+  await page.goto(`${journeyPath}/preview/${QUEUE_STEP_ID}`);
+  await expect(
+    page.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+  ).toBeVisible();
+  await expect(projectLink).toHaveAttribute("href", `/projects/${projectId}`);
+  const headerStartOver = frameHeader.getByRole("link", { name: "Start over" });
+  await expect(headerStartOver).toHaveAttribute(
+    "href",
+    `${journeyPath}/preview`,
+  );
+  await expect(page.getByRole("link", { name: "Start over" })).toHaveCount(1);
+  await headerStartOver.click();
+  await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
+  await expect(
+    page.getByRole("heading", { name: START_STEP_TITLE }),
+  ).toBeVisible();
 });
 
 test("preview-non-member", async ({ page, context, browser }) => {
