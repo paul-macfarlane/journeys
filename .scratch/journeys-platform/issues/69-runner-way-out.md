@@ -39,3 +39,11 @@ Verification follows `docs/agents/testing.md`, polish route: `pnpm lint`, `pnpm 
 **AI review** (one reviewer, whole diff, medium): five findings. Fixed: "Preface" is not a `CONTEXT.md` term (and is a seeded Step's title), reworded to "the first screen"; the preview spec's header check weakened to a substring, now an exact title match; a long unbroken title could overflow the header column, `break-words` added. Skipped as out of scope: the "← Back" link duplicates the way-out styling without the focus outline; the one-per-screen rule lives in the page rather than `StepView`.
 
 **For Paul:** merge #83 to `staging`, promote to `main` for the form. Ticket 68's PR #81 was already merged, so its finding carries no disposition line.
+
+### 2026-09-24 — Claude (Fable 5.1), `[SCOPE CHANGE]` — the e2e flake fixed at its cause
+
+Paul, on the closeout above: "Lets fix the e2e, make sure it works." The `metadata-autosave` failure was not load alone. The trace showed the settings form's write — a server action posted from the field's blur as the Journeys tab was clicked — still in flight when `UrlTabs` rewrote the address with a bare `history.replaceState`; Next answered the mismatch with a full document load of the Project page, and the spec's next tab click landed on a page mid-reload. Reproduced deterministically by holding the action with `page.route`, and gone once the switch goes through `router.replace(..., { scroll: false })`, which queues behind the action.
+
+**Delivered** (`c6f72a0`): `src/components/url-tabs.tsx` switches tabs through the router; `e2e/projects-and-journeys.spec.ts` gains `tabs-switch-during-write`, which holds the write, switches, and proves the document was kept (a window marker survives), the write and its refresh landed (the heading carries the new title), and the page still answers (Settings opens). Outside ticket 69's stated scope; recorded here rather than as a new ticket because it is what made this ticket's verification honest.
+
+**Verification** (`test-results/dod-1-commands.txt`, replacing the capture above): `pnpm lint` exit 0; `pnpm typecheck` exit 0; `pnpm test` 544 passed; `E2E_EVIDENCE=runner-way-out,preview pnpm test:e2e` **113 passed of 113**, `metadata-autosave` and `tabs-switch-during-write` among them. PASS.
