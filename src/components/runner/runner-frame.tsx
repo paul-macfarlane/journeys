@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { DarkModeToggle } from "@/components/appearance-control";
 import { SiteFooter } from "@/components/site-footer";
 import { themeStyle, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,9 @@ const wayOutClassName =
  * `startOverAction` form, which drops the Run cookie and leaves the Run
  * abandoned for the analytics (ticket 10); on Preview it is a link to the
  * first screen. The pages decide which and when; the frame only draws it.
+ * Last at the right, on every screen with a header, is the "Dark mode"
+ * button (ticket 70), so a reader can change the scheme without scrolling
+ * to the footer.
  * The header sticks to the top of the viewport so the way out stays in
  * reach on a long Step — beneath the Author navbar (`top-14`, its height)
  * on Preview, where that bar sticks first.
@@ -52,8 +56,9 @@ const wayOutClassName =
  * them — so the column is narrow, the padding is small at the smallest size,
  * and nothing inside may push the page sideways. Every link is a plain `<a>`,
  * as in `StepView`: the runner's navigations are whole-document by design,
- * and the frame carries no client code of its own; the footer's Appearance
- * control (ticket 70) is the one island on a runner page.
+ * and the frame's only client code is ticket 70's two scheme controls: the
+ * header's "Dark mode" button, where a reader is, and the footer's
+ * Appearance control, the same choice for every page.
  *
  * The footer is `SiteFooter`, the same one every other page renders (ticket
  * 34: "consistent throughout") — the wordmark, the copyright line, the
@@ -139,25 +144,27 @@ export function RunnerFrame({
               ) : null}
               <p className="font-display text-base font-medium">{title}</p>
             </div>
-            {startOver ? (
-              "href" in startOver ? (
-                <a
-                  href={startOver.href}
-                  className={cn(wayOutClassName, "shrink-0")}
-                >
-                  Start over
-                </a>
-              ) : (
-                // A native form and button, as everywhere in the runner: the
-                // frame ships no client bundle, and starting over is a POST
-                // the action owns.
-                <form action={startOver.action} className="shrink-0">
-                  <button type="submit" className={wayOutClassName}>
+            <div className="flex shrink-0 items-center gap-x-3">
+              {startOver ? (
+                "href" in startOver ? (
+                  <a
+                    href={startOver.href}
+                    className={cn(wayOutClassName, "shrink-0")}
+                  >
                     Start over
-                  </button>
-                </form>
-              )
-            ) : null}
+                  </a>
+                ) : (
+                  // A native form and button, as everywhere in the runner:
+                  // starting over is a POST the action owns.
+                  <form action={startOver.action} className="shrink-0">
+                    <button type="submit" className={wayOutClassName}>
+                      Start over
+                    </button>
+                  </form>
+                )
+              ) : null}
+              <DarkModeToggle className={wayOutClassName} />
+            </div>
           </div>
         </header>
       ) : null}

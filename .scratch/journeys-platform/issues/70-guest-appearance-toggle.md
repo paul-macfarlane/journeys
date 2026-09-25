@@ -1,6 +1,6 @@
 # 70: A guest can choose light or dark
 
-Status: done
+Status: in-progress
 Blocked by:
 Owner: Claude (Opus 5.5), 2026-09-25
 Parent: `.scratch/journeys-platform/spec.md`
@@ -40,3 +40,9 @@ Verification follows `docs/agents/testing.md`, polish route: `pnpm lint`, `pnpm 
 **AI review** (one reviewer, whole diff, medium): nothing blocking. Fixed: comments in `site-footer.tsx` and `runner-frame.tsx` still said the runner ships no client code; the segments were 28 px on phones where the account menu uses 44 px. Confirmed clean: no strict-mode locator collisions (every page-wide radio locator is scoped or matches preset names), footer layout helpers unaffected, and criterion 1 fully proven.
 
 **Out of scope, recorded:** the `themeColor` meta follows the OS, so the browser toolbar can disagree with a manual choice.
+
+### 2026-09-25 — Claude (Opus 5.5), `[SCOPE CHANGE]` — a dark-mode button in the runner header
+
+Paul, on PR #94, after asking why the control is in the footer rather than the header: "add the header icon to the runner as part of this ticket". A Participant reads in the runner, and on a long Step the footer is a scroll away. So the runner header (`RunnerFrame`, every screen that names a Journey, live and Preview) gains one icon button at its right, after Start over when that shows. It flips between light and dark (next-themes `resolvedTheme`, set explicitly to the opposite), so a reader on System gets the other scheme in one press. It is a toggle button named "Dark mode" whose `aria-pressed` follows the page (known only after hydration), and it shows a moon in light and a sun in dark, chosen by the `dark:` variant so the icon never waits for hydration. It takes the header's way-out styling: muted, foreground on hover, the ring-colour focus outline. The footer control stays; both drive the same choice.
+
+Added criterion: in the live runner, the header's "Dark mode" button turns a dark page light (not pressed, and the footer shows Light) and back (pressed, footer shows Dark), proved in `guest-appearance`.

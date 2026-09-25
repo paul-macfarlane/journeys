@@ -79,8 +79,9 @@ async function choose(
 /**
  * Ticket 70: a guest, with no account menu, chooses light or dark from the
  * footer. The choice is next-themes' own (stored in the browser), so it
- * survives a reload and follows the guest into the runner, and System hands
- * the page back to the operating system.
+ * survives a reload and follows the guest into the runner, where the
+ * header's "Dark mode" button flips it too, and System hands the page back
+ * to the operating system.
  */
 test("guest-appearance: a guest chooses dark from the footer, and it follows them into the runner", async ({
   page,
@@ -144,6 +145,27 @@ test("guest-appearance: a guest chooses dark from the footer, and it follows the
     guest.getByRole("heading", { name: START_STEP_TITLE }),
   ).toBeVisible();
   await expect(html).toHaveClass(/\bdark\b/);
+  await expect(
+    appearance(guest).getByRole("radio", { name: "Dark" }),
+  ).toHaveAttribute("aria-checked", "true");
+
+  // The runner header's own button flips the scheme where a reader is,
+  // without a scroll to the footer, and the footer follows it.
+  const darkMode = guest
+    .getByRole("banner")
+    .getByRole("button", { name: "Dark mode" });
+  await expect(darkMode).toHaveAttribute("aria-pressed", "true");
+  await expect(async () => {
+    await darkMode.click();
+    await expect(html).not.toHaveClass(/\bdark\b/, { timeout: 1_000 });
+  }).toPass();
+  await expect(darkMode).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    appearance(guest).getByRole("radio", { name: "Light" }),
+  ).toHaveAttribute("aria-checked", "true");
+  await darkMode.click();
+  await expect(html).toHaveClass(/\bdark\b/);
+  await expect(darkMode).toHaveAttribute("aria-pressed", "true");
   await expect(
     appearance(guest).getByRole("radio", { name: "Dark" }),
   ).toHaveAttribute("aria-checked", "true");
