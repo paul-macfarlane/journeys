@@ -1,11 +1,11 @@
 $ pnpm lint
-> journeys@0.1.0 lint /Users/paulmacfarlane/Code/journeys/.claude/worktrees/70-guest-theme-toggle/journeys
+> journeys@0.1.0 lint <worktree>
 > eslint
 
 exit 0
 
 $ pnpm typecheck
-> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys/.claude/worktrees/70-guest-theme-toggle/journeys
+> journeys@0.1.0 typecheck <worktree>
 > tsc --noEmit
 
 exit 0
@@ -16,3 +16,45 @@ $ pnpm test
 exit 0
 
 $ E2E_EVIDENCE=guest-appearance pnpm test:e2e
+  ✓   77 [chromium] › e2e/canvas.spec.ts:2460:5 › canvas-empty-choice-label (4.6s)
+  ✓   81 [chromium] › e2e/canvas.spec.ts:2580:5 › canvas-selection-dims-arrows (2.7s)
+  ✓   79 [chromium] › e2e/canvas.spec.ts:991:7 › canvas-add-next-step-left-to-right (5.3s)
+  ✓   80 [chromium] › e2e/canvas.spec.ts:1698:7 › the seeded map › canvas-locate-on-map (6.3s)
+  ✓   82 [chromium] › e2e/canvas.spec.ts:2649:5 › canvas-arrow-select-and-delete (4.7s)
+  ✓   78 [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging-left-to-right (10.7s)
+  ✓   84 [chromium] › e2e/canvas.spec.ts:1908:7 › the seeded map › canvas-find-step (3.6s)
+  ✓   74 [chromium] › e2e/themes.spec.ts:389:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark (17.9s)
+  ✓   87 [chromium] › e2e/canvas.spec.ts:2028:7 › the seeded map › canvas-find-step-lists-map-order (2.2s)
+  ✓   83 [chromium] › e2e/canvas.spec.ts:1055:5 › canvas-duplicate-step (7.8s)
+  ✓   85 [chromium] › e2e/canvas.spec.ts:2724:5 › canvas-delete-key-step (7.7s)
+  ✓   86 [chromium] › e2e/canvas.spec.ts:3211:7 › authoring from the map › canvas-retarget-selected-arrow (7.4s)
+  ✓   90 [chromium] › e2e/canvas.spec.ts:1127:5 › canvas-content-peek (5.1s)
+  ✓   88 [chromium] › e2e/canvas.spec.ts:3604:7 › authoring from the map › canvas-undo-build-branch-and-walk (9.2s)
+  ✓   92 [chromium] › e2e/canvas.spec.ts:3307:7 › authoring from the map › canvas-drop-choice-on-empty-map (4.4s)
+  ✓   91 [chromium] › e2e/canvas.spec.ts:2848:5 › canvas-arrow-select-second-arrow (5.7s)
+  ✓   89 [chromium] › e2e/canvas.spec.ts:2068:7 › the seeded map › canvas-view-stays-put (11.6s)
+  ✓   93 [chromium] › e2e/canvas.spec.ts:1191:5 › canvas-keyboard-navigation (7.1s)
+  ✓   97 [chromium] › e2e/canvas.spec.ts:2197:7 › the seeded map › canvas-endings-uncolored (2.0s)
+  ✓   95 [chromium] › e2e/canvas.spec.ts:3348:7 › authoring from the map › canvas-build-by-dragging-and-walk (5.8s)
+  ✓   96 [chromium] › e2e/canvas.spec.ts:2923:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (5.0s)
+  ✓   94 [chromium] › e2e/canvas.spec.ts:3702:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (7.6s)
+  ✓   99 [chromium] › e2e/canvas.spec.ts:2248:5 › canvas-validation-marks (4.8s)
+  ✓  101 [chromium] › e2e/canvas.spec.ts:3000:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (3.9s)
+  ✓   98 [chromium] › e2e/canvas.spec.ts:1270:5 › canvas-hide-and-show-panel (7.3s)
+  ✓  102 [chromium] › e2e/canvas.spec.ts:3802:7 › undo and redo › canvas-undo-title-typing (4.3s)
+  ✓  103 [chromium] › e2e/canvas.spec.ts:2362:5 › canvas-problems-readable (4.7s)
+  ✓  100 [chromium] › e2e/canvas.spec.ts:3387:7 › authoring from the map › canvas-build-by-dropping-and-walk (9.0s)
+  ✓  106 [chromium] › e2e/canvas.spec.ts:3855:7 › undo and redo › canvas-undo-rich-text (3.4s)
+  ✓  105 [chromium] › e2e/canvas.spec.ts:1371:5 › canvas-step-actions (7.0s)
+  ✓  104 [chromium] › e2e/canvas.spec.ts:3043:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (9.0s)
+  ✓  109 [chromium] › e2e/canvas.spec.ts:1510:7 › the seeded map › canvas-case-3-map (1.8s)
+  ✓  107 [chromium] › e2e/canvas.spec.ts:3425:7 › authoring from the map › canvas-build-left-to-right-and-walk (10.1s)
+  ✓  108 [chromium] › e2e/canvas.spec.ts:3905:7 › undo and redo › canvas-undo-delete-direction-retarget (14.5s)
+  ✓  110 [chromium] › e2e/canvas.spec.ts:3502:7 › authoring from the map › canvas-build-branch-and-publish (4.8s)
+  ✓  111 [chromium] › e2e/canvas.spec.ts:4161:5 › canvas-dark-controls (2.5s)
+  ✓  112 [chromium] › e2e/canvas.spec.ts:3561:7 › authoring from the map › canvas-undo-drawn-choice (4.7s)
+  ✓  113 [chromium] › e2e/canvas.spec.ts:4220:5 › canvas-lr-labels-apart (2.7s)
+  ✓  114 [chromium] › e2e/canvas.spec.ts:4273:5 › canvas-stacked-panel-scroll (1.8s)
+  114 passed (1.9m)
+exit 0
+
