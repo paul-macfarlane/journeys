@@ -62,11 +62,11 @@ Tagline (one line):
 
 Short (about 50 words):
 
-> Journeys is a platform for authoring branching, text-based experiences. Authors build a graph of steps and choices on a visual canvas, publish an immutable version, and share a link. Participants walk it anonymously, no account needed. Analytics are drawn onto the graph, and a step can ask a question that an AI reads to choose the path. https://journeys.paul-macfarlane.com
+> Journeys is a platform for authoring branching, text-based experiences. Authors build a graph of steps and choices on a visual canvas, publish an immutable version, and share a link. Participants walk it anonymously, no account needed. Analytics are drawn onto the graph, and a step can ask a question that an AI reads to choose the path. https://journeys-mvp-prod.vercel.app
 
 Long (about 120 words):
 
-> Journeys is a platform for authoring and running branching, text-based experiences. It began as three hand-built interactive cases my wife Medha, a family medicine doctor, wrote for trauma-informed healthcare education: clinicians walk in a migrant's shoes before ever meeting them in a clinic. Those cases could only be edited by exporting JSON and redeploying, and nobody could see where participants went. Journeys generalises them: authors build a graph of steps and choices on a visual canvas with auto-layout and undo, publish immutable versions, theme the experience, and share a link that participants walk anonymously. Analytics are drawn on the graph itself, and a step can pose a question that an AI reads to decide the next step. It was built in one week with Claude Code and the Atlas plugin: specs grilled into tickets, each delivered as a reviewed pull request with end-to-end evidence. Play the original cases at https://journeys.paul-macfarlane.com
+> Journeys is a platform for authoring and running branching, text-based experiences. It began as three hand-built interactive cases my wife Medha, a family medicine doctor, wrote for trauma-informed healthcare education: clinicians walk in a migrant's shoes before ever meeting them in a clinic. Those cases could only be edited by exporting JSON and redeploying, and nobody could see where participants went. Journeys generalises them: authors build a graph of steps and choices on a visual canvas with auto-layout and undo, publish immutable versions, theme the experience, and share a link that participants walk anonymously. Analytics are drawn on the graph itself, and a step can pose a question that an AI reads to decide the next step. It was built in one week with Claude Code and the Atlas plugin: specs grilled into tickets, each delivered as a reviewed pull request with end-to-end evidence. Play the original cases at https://journeys-mvp-prod.vercel.app
 
 Look at this first (if the form has a notes field):
 
@@ -129,3 +129,7 @@ One earlier full run had `author-page` time out at 30 s under load; it passed al
 **Deviations from the ticket text:** none. The `landing` evidence files are `landing-{light,dark,375}.png` in place of the former `landing.png`.
 
 **For Paul:** merge #68 after 55 or accept that Guide links 404 until 55 lands — if 55 is cut, say so and a one-line PR removes the three links. Seed and publish the three cases on staging and production before promotion (runbook step 0) or the Play link 404s. Then 56.
+
+### 2026-09-24 — Claude (Fable 5.1), domain decision
+
+Paul dropped the custom-domain move for the hackathon and instead renamed the Vercel domains: production `https://journeys-mvp-prod.vercel.app`, staging `https://journeys-mvp-staging.vercel.app`. The paragraph set above now ends with the production origin; the "Domain change" and "What is true today" notes above describe the abandoned plan. No code names a domain (`BETTER_AUTH_URL` is the source of `metadataBase`), so nothing on the site changed for it; `.scratch/journeys-platform/human-prerequisites.md` records the new URLs and the redirect-URI work.
