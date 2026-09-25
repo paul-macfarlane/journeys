@@ -14,6 +14,7 @@ import {
 } from "@/components/runner/step-view";
 import { getResponse } from "@/db/responses";
 import { getPublicJourney, getRunForJourney, saveRunState } from "@/db/runs";
+import { isEnding } from "@/lib/graph/document";
 import { navigateTo, parsePathIndex } from "@/lib/graph/run";
 import { journeyLinkMetadata } from "@/lib/link-preview";
 import { runCookieName } from "@/lib/run-cookies";
@@ -85,7 +86,7 @@ export default async function RunStepPage({
   const found = await getRunForJourney(runId, journeyId);
   if (!found) redirect(`/j/${journeyId}`);
 
-  const { run, version, theme } = found;
+  const { run, version, project, theme } = found;
   const moved = navigateTo(
     version.document,
     run,
@@ -121,9 +122,13 @@ export default async function RunStepPage({
   // below the Outcome; the path-full notice offers it beside the notice,
   // since telling a Participant to start over without a way to is no help.
   // Only one of the two ever renders — a Step that refused a forward move
-  // had a Choice to refuse, so it is not an Ending.
+  // had a Choice to refuse, so it is not an Ending. Every other Step offers
+  // it in the header instead (ticket 69), so a screen never shows two.
+  const startOverAll = startOverAction.bind(null, journeyId);
+  const pathFull = typeof notice === "string" && notice === "path-full";
+  const offersStartOverBelow = isEnding(step) || pathFull;
   const startOver = (
-    <form action={startOverAction.bind(null, journeyId)}>
+    <form action={startOverAll}>
       <button type="submit" className={choiceLinkClassName}>
         Start over
       </button>
@@ -140,6 +145,10 @@ export default async function RunStepPage({
           ? version.description || undefined
           : undefined
       }
+      // The way out (ticket 69): the public Project page, and "Start over"
+      // wherever the Step itself does not offer it.
+      project={{ title: project.title, href: `/p/${project.id}` }}
+      startOver={offersStartOverBelow ? undefined : { action: startOverAll }}
       theme={theme}
     >
       {/* The index this page stands at is remembered while the page is still
@@ -161,7 +170,7 @@ export default async function RunStepPage({
         </a>
       ) : null}
 
-      {typeof notice === "string" && notice === "path-full" ? (
+      {pathFull ? (
         <div className="flex flex-col gap-3">
           <p className="text-muted-foreground text-sm">
             This journey has gone on too long to continue. Start over to keep

@@ -71,7 +71,8 @@ export type PublicJourney =
       description: string;
       document: GraphDocument;
       theme: Theme;
-      /** The Project's title, which a link preview names above the Journey's. */
+      /** The Project the Journey belongs to: its id, which the runner's header links the public Project page by (ticket 69), and its title, which that link and a link preview name above the Journey's. */
+      projectId: string;
       projectTitle: string;
     }
   // The unavailable screen sits in the same frame, so it carries the Theme
@@ -99,6 +100,7 @@ export const getPublicJourney = cache(async function getPublicJourney(
       title: publishedVersion.title,
       description: publishedVersion.description,
       document: publishedVersion.document,
+      projectId: project.id,
       projectTitle: project.title,
       theme: themeColumns,
     })
@@ -134,6 +136,7 @@ export const getPublicJourney = cache(async function getPublicJourney(
     description,
     document: graphDocumentSchema.parse(document),
     theme,
+    projectId: row.projectId,
     projectTitle: row.projectTitle,
   };
 });
@@ -191,6 +194,8 @@ export type RunForJourney = {
     outcomeId: string | null;
   };
   version: { title: string; description: string; document: GraphDocument };
+  /** The Project the Run's Journey belongs to, for the header's way out (ticket 69). */
+  project: { id: string; title: string };
   /** The Theme the Step pages paint, read fresh on every request. */
   theme: Theme;
 };
@@ -226,6 +231,7 @@ export async function getRunForJourney(
         description: publishedVersion.description,
         document: publishedVersion.document,
       },
+      project: { id: project.id, title: project.title },
       theme: themeColumns,
     })
     .from(run)
@@ -243,6 +249,7 @@ export async function getRunForJourney(
       ...row.version,
       document: graphDocumentSchema.parse(row.version.document),
     },
+    project: row.project,
     theme: toTheme(row.theme),
   };
 }
