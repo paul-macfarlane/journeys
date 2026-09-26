@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: None
-Owner:
+Owner: Claude Opus 5.5 (`/implement`, 2026-09-26)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: post-hackathon order (Paul, 2026-09-26): **71** → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45. First because it is confirmed data loss and self-contained; it does not wait for 72.
 Route: contract (the rich-text contract's editor side)
@@ -24,3 +24,12 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`contract`): the full command chain, one full `pnpm test:e2e` at the end, evidence for the one spec this ticket adds. Never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Origin: ticket 68 finding 2; ticket 15.
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-26 — Claude Opus 5.5 (`/implement`, Route: contract)
+
+Direct work in the worktree `.claude/worktrees/71-image-in-list-item/journeys` on `feat/71-image-in-list-item` (off `origin/staging` at `79a4b0a`), no worker delegation, e2e on port 3171 against `journeys_e2e_71` with a scratchpad dummy env (no `.env.local`). Choice (the ticket's "pick whichever keeps `extensions.ts` one schema"): **lift, not disable** — `CaptionedImage` joins a `figure` group only `QuoteDocument` admits (`(block|quote|figure)+`), as ticket 40 did for the quote, so the editor, the runner, and the sanitizer keep one schema. Seams under test, red first: (1) unit, `src/lib/rich-text/extensions.test.ts` — the schema refuses an image in a list item or a quote, and parsing `<ul><li>text<img></li></ul>` yields a top-level image; (2) unit, `src/lib/rich-text/insert-image.test.ts` (happy-dom) — the Image control, a paste (`view.pasteHTML`), and a drop (`handleDrop` with `posAtCoords` stubbed) place the image directly after the whole list or quote; (3) e2e `rich-text-image-in-list-item`. Verification: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && E2E_EVIDENCE=rich-text-image-in-list-item pnpm test:e2e`, then two `/code-review` readers.
+
+### [AI CODE REVIEW] 2026-09-26 — `/code-review` (standards + spec), diff `79a4b0a...ad678b8`
+
+*Spec:* the first cut placed only the Image control's image after the list; a paste or drop was left to ProseMirror's fitting, which kept the image but split the list (and the word) at the cursor — not "directly after the list" for "(toolbar, paste, or drop)". **Fixed in ed308ca:** `replaceLiftingImages` serves all three — the rest of a pasted or dropped slice lands where it was aimed and every image goes after the whole list or quote; a slice side closed only by a lifted image reopens, so pasted words join the item they land in. Also fixed: the Image control inside a list ignored a text selection (it now replaces it, as at the top). Noted, not changed: the quote gets the same lift (harmless, it is the same stored-shape rule); JSON already holding a nested image still renders nested (stored rows never hold that shape — the sanitizer drops it, unchanged). The ticket 15 bullet and `[CLOSEOUT]` were pending at review time and are in this PR.
+*Standards:* no hard violations. Fixed: the image attrs got a named `ImageAttrs` type shared by the command and the editor. Accepted as is: `happy-dom` is used by `insert-image.test.ts` through `@tiptap/html`'s peer rather than a direct devDependency (declaring it changes the lockfile, which is Paul's); `group: "figure"` and the `captionedImage` command key (the `image` key is taken by `@tiptap/extension-image`'s own declaration); the `depth > 1` rule assumes only lists and quotes nest, which the helper's comment now says.

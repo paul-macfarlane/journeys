@@ -1,0 +1,19 @@
+$ pnpm vitest run src/lib/rich-text/extensions.test.ts src/lib/rich-text/insert-image.test.ts --reporter=verbose
+ ✓ src/lib/rich-text/extensions.test.ts > editorExtensions schema > accepts a quote of paragraphs at the top of a document 2ms
+ ✓ src/lib/rich-text/extensions.test.ts > editorExtensions schema > refuses a quote inside a list item 0ms
+ ✓ src/lib/rich-text/extensions.test.ts > editorExtensions schema > refuses a quote inside a quote, and a heading inside a quote 0ms
+ ✓ src/lib/rich-text/extensions.test.ts > editorExtensions schema > accepts an image at the top of a document 0ms
+ ✓ src/lib/rich-text/extensions.test.ts > editorExtensions schema > refuses an image inside a list item or a quote 0ms
+ ✓ src/lib/rich-text/extensions.test.ts > editorExtensions schema > lifts a pasted image out of a list item instead of dropping it 11ms
+ ✓ src/lib/rich-text/insert-image.test.ts > insertImage > places the image after a bullet list, leaving the list whole 22ms
+ ✓ src/lib/rich-text/insert-image.test.ts > insertImage > places the image after a numbered list from a nested item 4ms
+ ✓ src/lib/rich-text/insert-image.test.ts > insertImage > places the image after a quote 3ms
+ ✓ src/lib/rich-text/insert-image.test.ts > insertImage > replaces selected text in a list item, as it does at the top 3ms
+ ✓ src/lib/rich-text/insert-image.test.ts > insertImage > inserts at the cursor in a top-level paragraph, as before 8ms
+ ✓ src/lib/rich-text/insert-image.test.ts > pasting an image > places a pasted image after the list the cursor is in 4ms
+ ✓ src/lib/rich-text/insert-image.test.ts > pasting an image > keeps a pasted list item's words where they land and lifts its image 5ms
+ ✓ src/lib/rich-text/insert-image.test.ts > pasting an image > places a pasted image after the quote the cursor is in 3ms
+ ✓ src/lib/rich-text/insert-image.test.ts > dropping an image > places an image dropped on a list item after the list 8ms
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+exit 0
