@@ -59,11 +59,6 @@ test("unreadable-version", async ({ page, context }) => {
     page.getByRole("heading", { name: "This journey isn't available" }),
   ).toBeVisible();
 
-  await page.screenshot({
-    path: evidencePath("unreadable-version", "runner-unavailable.png"),
-    fullPage: true,
-  });
-
   // The Author's Journey page: not a 500 either. The Editor tab still
   // loads the Draft's canvas —
   const journeyResponse = await page.goto(
