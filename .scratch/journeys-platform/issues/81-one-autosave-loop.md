@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: proposed by ticket 72 (2026-09-26) to go first, before 73; Paul to approve the order (see 72's `[CLOSEOUT]`).
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish (no schema, auth, or route change; behaviour-preserving)
 
 **Why:** ticket 72, finding W1. The Draft editor keeps its own copy of the autosave loop (`src/components/journeys/draft-editor.tsx:155-375`: `savingRef`, `queuedRef`, `timerRef`, `lastSavedRef`, `save`, `flushSave`, `applyDocument`'s debounce, the unmount save, and the `beforeunload` write). The metadata forms use the shared one (`createAutosave` in `src/lib/autosave.ts`, wrapped by `useAutosave` in `src/components/autosave.ts`). `src/components/autosave.ts:16` says so: "the Draft editor keeps its own copy of the same loop." Ticket 73 adds a terminal `stale` state to the loop. With two loops it is written twice and tested twice, so this ticket merges them first.

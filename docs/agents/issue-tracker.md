@@ -140,7 +140,8 @@ themselves.
 
 - **Choosing work.** The next ticket is the first row of the backlog's
   "Ordered" table that is not `done` and is available to claim (see
-  "Readiness"). Never pick by ticket number, by a ticket's own text, or by a
+  "Readiness"). A `Blocked by:` ticket earlier in the same chunk counts as
+  available once its closeout commit is on the chunk's branch. Never pick by ticket number, by a ticket's own text, or by a
   chat transcript. If the backlog and a ticket disagree, the backlog wins; say
   so in the ticket's first record.
 - **Status column.** Each work package's closeout commit sets its row's status
@@ -154,6 +155,17 @@ themselves.
 - **Re-orders.** Change the table and the "Last re-ordered" line together. When
   a re-order changes scope, the reason goes in a spec `[SCOPE CHANGE]`, never
   in this file.
+- **Chunks** (Paul, 2026-09-26). The "Ordered" table groups tickets into
+  numbered chunks: runs of tickets that share code or depend on each other.
+  One chunk is one thread and one pull request to `staging`, and it replaces
+  the earlier "one ticket per thread" rule. The chunk takes the heaviest
+  `Route:` among its tickets. Its tickets run in table order, each with its
+  own records and `[CLOSEOUT]` (and its own row set to `done` in that
+  closeout commit). Verification that the routes run once per work package,
+  such as the full `pnpm test:e2e` and the AI review, runs once at the end
+  of the chunk. A ticket's decisions that are Paul's are settled at the
+  chunk's start, before any of its tickets begins. Only Paul forms, splits,
+  or re-orders chunks.
 - **Ticket files.** A ticket's `Priority:` line reads
   ``see `.scratch/<feature-slug>/backlog.md` `` plus, at most, a note that
   belongs to the ticket itself (for example "run in its own thread"). It never
