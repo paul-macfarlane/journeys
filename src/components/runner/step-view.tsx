@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 
-import { DecideSubmit } from "@/components/runner/decide-submit";
 import { RichText } from "@/components/runner/rich-text";
 import { buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { DECISION_THRESHOLD } from "@/lib/ai/threshold";
 import {
   hasOutcome,
   hasStep,
@@ -13,7 +11,7 @@ import {
   type Prompt,
   type Step,
 } from "@/lib/graph/document";
-import { isDeciding, MAX_RESPONSE_LENGTH } from "@/lib/graph/prompt";
+import { MAX_RESPONSE_LENGTH } from "@/lib/graph/prompt";
 import { cn } from "@/lib/utils";
 
 /**
@@ -83,54 +81,7 @@ export type ChoiceControls =
       action: (formData: FormData) => Promise<void>;
       response?: string | null;
       refusal?: string | null;
-      /** What the judge made of a deciding Prompt's Response (ticket 43), once asked. */
-      decision?: DecisionView;
     };
-
-/**
- * What the judge made of a deciding Prompt's Response (ticket 43), as the
- * page read it back from the address: `pick` is the Choice id it suggested,
- * or null when it had no answer; `probability` is its confidence in Preview,
- * and null in a live Run, which never shows a number to a Participant.
- */
-export type DecisionView = { pick: string | null; probability: number | null };
-
-/** The pick a `?decide=` names, when it is a Choice of this Step — else no pick. */
-function pickFrom(step: Step, decide: string): string | null {
-  return step.choices.some((choice) => choice.id === decide) ? decide : null;
-}
-
-/**
- * The live runner's reading of `?decide=`: undefined when nothing was judged
- * (the deciding form), otherwise the pick — "none", or an id this Step does
- * not have, reads as no pick.
- */
-export function liveDecision(
-  step: Step,
-  decide: string | string[] | undefined,
-): DecisionView | undefined {
-  if (typeof decide !== "string") return undefined;
-  return { pick: pickFrom(step, decide), probability: null };
-}
-
-/**
- * Preview's reading of `?decide=` and `?confidence=` (0–100): the same pick
- * as the live runner, with the judge's probability. A missing or malformed
- * confidence reads as 0, so Preview always says what the judge did — no
- * answer carries no confidence at all.
- */
-export function previewDecision(
-  step: Step,
-  decide: string | string[] | undefined,
-  confidence: string | string[] | undefined,
-): DecisionView | undefined {
-  if (typeof decide !== "string") return undefined;
-  const percent =
-    typeof confidence === "string" && /^\d{1,3}$/.test(confidence)
-      ? Math.min(Number(confidence), 100)
-      : 0;
-  return { pick: pickFrom(step, decide), probability: percent / 100 };
-}
 
 /**
  * The one-line notices the runner's pages carry in `?notice=` and show above
@@ -223,7 +174,7 @@ function ResponseField({
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-base font-medium">
         {prompt.label}
-        {prompt.required || isDeciding(step) ? null : (
+        {prompt.required ? null : (
           <span className="text-muted-foreground font-normal"> (optional)</span>
         )}
       </label>
@@ -231,7 +182,7 @@ function ResponseField({
         id={id}
         name="response"
         rows={4}
-        aria-required={prompt.required || isDeciding(step)}
+        aria-required={prompt.required}
         maxLength={MAX_RESPONSE_LENGTH}
         defaultValue={response ?? ""}
         autoComplete="off"
@@ -297,31 +248,6 @@ function EndingView({
   );
 }
 
-/**
- * The one line above the Choices once the judge has been asked: in Preview
- * (a probability) what it picked and what a live Run would have done with
- * that, so an Author can tune their Choice labels; live, a suggestion or an
- * invitation to choose, and never a number.
- */
-function decisionStatus(step: Step, decision: DecisionView): string {
-  const picked =
-    step.choices.find((choice) => choice.id === decision.pick) ?? null;
-
-  if (decision.probability !== null) {
-    if (picked === null) {
-      return "The judge couldn't pick a choice (no key, a failed call, or an unclear answer) — a live run would ask.";
-    }
-    const percent = Math.round(decision.probability * 100);
-    const outcome =
-      decision.probability >= DECISION_THRESHOLD ? "advanced" : "asked";
-    return `The judge picked "${picked.label}" (${percent}%) — a live run would have ${outcome}.`;
-  }
-
-  return picked === null
-    ? "Choose the step that fits your response."
-    : `We think "${picked.label}" fits your response — or choose another.`;
-}
-
 function ChoiceList({
   step,
   document,
@@ -331,24 +257,12 @@ function ChoiceList({
   document: GraphDocument;
   choices: ChoiceControls;
 }) {
-  // A deciding Prompt (ticket 43): the Response is posted on its own first,
-  // and only once the judge has answered are the Choices offered — its pick,
-  // when it had one, marked among them.
-  const deciding = choices.kind === "form" && isDeciding(step);
-  const decision = choices.kind === "form" ? choices.decision : undefined;
-  const suggested =
-    deciding && decision !== undefined
-      ? (step.choices.find((choice) => choice.id === decision.pick) ?? null)
-      : null;
-  const suggestionId = `suggested-${step.id}`;
-
   // role="list" is explicit: the flex layout strips the list marker, and
   // some browsers drop the implicit role with it.
   const list = (
     <ul role="list" aria-label="Choices" className="flex flex-col gap-2">
       {step.choices.map((choice) => {
         const targetExists = hasStep(document, choice.targetStepId);
-        const isSuggested = suggested !== null && suggested.id === choice.id;
         return (
           <li key={choice.id} className="flex flex-col gap-1">
             {!targetExists ? (
@@ -367,21 +281,11 @@ function ChoiceList({
                 type="submit"
                 name="to"
                 value={choice.targetStepId}
-                className={cn(
-                  choiceLinkClassName,
-                  isSuggested && "ring-primary ring-2",
-                )}
-                data-suggested={isSuggested ? "true" : undefined}
-                aria-describedby={isSuggested ? suggestionId : undefined}
+                className={choiceLinkClassName}
               >
                 {choice.label}
               </button>
             )}
-            {isSuggested && targetExists ? (
-              <p id={suggestionId} className="text-muted-foreground text-sm">
-                Suggested for your response
-              </p>
-            ) : null}
           </li>
         );
       })}
@@ -400,30 +304,9 @@ function ChoiceList({
       />
     ) : null;
 
-  if (deciding && decision === undefined) {
-    // No `to`: the action reads a form without one as "judge this". The
-    // button is the runner's one client island (ticket 49): it reads
-    // "Deciding…" while the judge runs, which can be most of
-    // `DECISION_TIMEOUT_MS`.
-    return (
-      <form action={choices.action} noValidate className="flex flex-col gap-6">
-        {field}
-        <DecideSubmit className={choiceLinkClassName} />
-      </form>
-    );
-  }
-
   return (
     <form action={choices.action} noValidate className="flex flex-col gap-6">
       {field}
-      {deciding && decision !== undefined ? (
-        <div className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">Choose for yourself</h2>
-          <p role="status" className="text-muted-foreground text-sm">
-            {decisionStatus(step, decision)}
-          </p>
-        </div>
-      ) : null}
       {list}
     </form>
   );

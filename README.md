@@ -29,15 +29,12 @@ pnpm db:migrate
 pnpm dev                      # http://localhost:3000
 ```
 
-`.env.local` is never committed. Every variable in `.env.example` except
-`AI_GATEWAY_API_KEY` is required — the app validates its configuration at
-startup and refuses to boot with a missing or malformed value. Generate the
-auth secret with `openssl rand -base64 32`; the Google and Discord OAuth
-client pairs come from real OAuth apps, and where to get each value is
-documented in
+`.env.local` is never committed. Every variable in `.env.example` is
+required — the app validates its configuration at startup and refuses to
+boot with a missing or malformed value. Generate the auth secret with
+`openssl rand -base64 32`; the Google and Discord OAuth client pairs come
+from real OAuth apps, and where to get each value is documented in
 [`.scratch/journeys-platform/human-prerequisites.md`](.scratch/journeys-platform/human-prerequisites.md).
-Leave `AI_GATEWAY_API_KEY` empty and a deciding Prompt lets the Participant
-choose instead of the Judge.
 
 ## Routes
 
@@ -172,7 +169,7 @@ validated for publish before anything is written.
 
 The same command writes a second project, `The Allotment`, holding one small
 original journey, `A key on the doormat` (ten steps, three endings, two
-outcomes, one image, and one deciding prompt). The image is the committed
+outcomes, one image, and one prompt). The image is the committed
 `public/seed/allotment.jpg`, linked at its raw GitHub address on `staging`
 because stored content keeps only absolute http(s) image URLs, so it needs no
 third-party host and no per-environment configuration. It is the journey the landing page's recording and stills

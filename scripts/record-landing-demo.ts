@@ -210,11 +210,8 @@ async function serveSeedImages(context: BrowserContext): Promise<void> {
   );
 }
 
-/** What a Participant of this script writes into a deciding Prompt. */
+/** What a Participant of this script writes into a Prompt's textbox. */
 const FIXTURE_RESPONSE = "I'll come back at the weekend and bring gloves.";
-
-/** The Step panel's deciding option (ticket 49), by its label. */
-const DECIDES_LABEL = "AI decides the next step from the response";
 
 function journeyPath(source: Source, journeyId: string): string {
   return `/projects/${source.projectId}/journeys/${journeyId}`;
@@ -258,7 +255,6 @@ async function startServer(databaseUrl: string): Promise<ChildProcess> {
         ...process.env,
         DATABASE_URL: databaseUrl,
         BETTER_AUTH_URL: BASE_URL,
-        AI_GATEWAY_API_KEY: "",
       },
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
@@ -663,6 +659,15 @@ function routeTo(document: GraphDocument, targetStepId: string): string[] {
   throw new Error(`No route from the Start to ${targetStepId}`);
 }
 
+/** A Step's id, found by its title, since the seed is the script's own. */
+function stepIdByTitle(document: GraphDocument, title: string): string {
+  const found = Object.values(document.steps).find(
+    (step) => step.title === title,
+  );
+  if (!found) throw new Error(`No step titled "${title}"`);
+  return found.id;
+}
+
 /** One of the seed's Journeys, by id; the seed is the script's own, so it is there. */
 function seedJourney(journeys: SeedJourney[], journeyId: string): SeedJourney {
   const journey = journeys.find(
@@ -672,38 +677,38 @@ function seedJourney(journeys: SeedJourney[], journeyId: string): SeedJourney {
   return journey;
 }
 
-/** The runner's Choice: a button for the first (it creates the Run), then links. */
+/**
+ * The runner's Choice: a button for the first (it creates the Run), then
+ * links — except a Step with a Prompt, which offers every Choice as one
+ * form's buttons, never links.
+ */
 function choiceControl(page: Page, label: string, index: number): Locator {
   const main = page.getByRole("main");
   return index === 0
     ? main.getByRole("button", { name: label, exact: true })
     : main
         .getByRole("link", { name: label, exact: true })
-        // After a deciding Prompt falls back to the Choices (no gateway key
-        // here, so the judge never answers), they are offered as buttons.
         .or(main.getByRole("button", { name: label, exact: true }));
 }
 
 /**
- * A deciding Prompt on the current Step answered, if there is one: the
- * fixture Response typed and Continue pressed, after which the judge —
- * unavailable on this server — hands the Participant the Choices to pick
- * from themselves. A Step that asks nothing deciding is left alone.
+ * A Prompt's textbox on the current Step filled, if there is one, with the
+ * fixture Response; a Step that asks nothing is left alone. Waits for
+ * either the textbox or the named Choice to appear, so the walk never reads
+ * a Step that has not finished rendering.
  */
-async function answerDecidingPrompt(participant: Page): Promise<void> {
+async function answerPromptIfPresent(
+  participant: Page,
+  nextLabel: string,
+  index: number,
+): Promise<void> {
   const main = participant.getByRole("main");
-  const submit = main.getByRole("button", { name: "Continue", exact: true });
-  // The Step has arrived once it offers either its deciding form or its
-  // Choices; asked before that, "no Continue here" would be a race.
-  await expect(
-    submit.or(main.locator('[aria-label="Choices"]')).first(),
-  ).toBeVisible();
-  if ((await submit.count()) === 0) return;
-  await main.getByRole("textbox").fill(FIXTURE_RESPONSE);
-  await submit.click();
-  await expect(
-    main.getByRole("heading", { name: "Choose for yourself" }),
-  ).toBeVisible();
+  const textbox = main.getByRole("textbox");
+  const control = choiceControl(participant, nextLabel, index);
+  await expect(textbox.or(control).first()).toBeVisible();
+  if ((await textbox.count()) > 0) {
+    await textbox.fill(FIXTURE_RESPONSE);
+  }
 }
 
 /**
@@ -721,7 +726,7 @@ async function walk(
     const participant = await context.newPage();
     await participant.goto(`/j/${journeyId}`);
     for (const [index, label] of choices.entries()) {
-      await answerDecidingPrompt(participant);
+      await answerPromptIfPresent(participant, label, index);
       const control = choiceControl(participant, label, index);
       await control.click();
       await expect(control).toBeHidden();
@@ -764,15 +769,18 @@ async function prepareStillsState(
   const page = await context.newPage();
   try {
     // Prompt first, so a Prompt the panel writes is in what gets published
-    // below. Written in the panel unless the seed already asks a deciding
-    // Prompt on that Step, which is then only checked.
+    // below. Written in the panel unless the seed already asks a Prompt on
+    // that Step, which is then only checked.
     await page.goto(journeyPath(source, source.prompt.journeyId));
     await chooseStep(page, source.prompt.step);
+    const required = page.getByLabel(
+      "Required — participants must answer before choosing",
+    );
     if (source.prompt.text !== null) {
       await page.getByLabel("Prompt", { exact: true }).fill(source.prompt.text);
-      await page.getByLabel(DECIDES_LABEL).check();
+      await required.check();
     }
-    await expect(page.getByLabel(DECIDES_LABEL)).toBeChecked();
+    await expect(required).toBeChecked();
     await expect
       .poll(async () => {
         const [row] = await queryE2eDatabase<{ document: GraphDocument }>(
@@ -782,7 +790,7 @@ async function prepareStillsState(
         const step = Object.values(row.document.steps).find(
           (candidate) => candidate.title === source.prompt.step,
         );
-        return step?.prompt?.decides ?? false;
+        return step?.prompt !== null && step?.prompt !== undefined;
       })
       .toBe(true);
 
@@ -898,22 +906,6 @@ async function captureStills(
     await frameElement(page.getByRole("region", { name: "Theme" }));
     await still(page, "themes", scheme);
 
-    // prompt: the Step panel on the deciding Prompt.
-    await page.goto(journeyPath(source, source.prompt.journeyId));
-    await chooseStep(page, source.prompt.step);
-    const decides = page.getByLabel(DECIDES_LABEL);
-    await expect(decides).toBeChecked();
-    await frameCanvas(page);
-    // The deciding option and its explanation are what the still is of:
-    // brought up to the bottom edge, so the map keeps most of the frame.
-    await page
-      .getByText("Participants answer and press Continue")
-      .evaluate((element) => {
-        element.scrollIntoView({ block: "end", behavior: "instant" });
-        window.scrollBy({ top: 16, behavior: "instant" });
-      });
-    await still(page, "prompt", scheme);
-
     // rich-text: a Step's rich text with its image and its caption. The
     // figure is brought up by as little as it takes, so the map keeps most
     // of the frame's left; the caption's long URL can overflow the panel,
@@ -987,7 +979,7 @@ async function captureStills(
     await runner.goto(`/j/${source.run.journeyId}`);
     await expectScheme(runner, scheme);
     for (const [index, label] of route.entries()) {
-      await answerDecidingPrompt(runner);
+      await answerPromptIfPresent(runner, label, index);
       const control = choiceControl(runner, label, index);
       await control.click();
       await expect(control).toBeHidden();
@@ -1012,6 +1004,38 @@ async function captureStills(
       'UPDATE "journey" SET theme_preset = $2 WHERE id = $1',
       [source.run.journeyId, runPreset],
     );
+  }
+
+  // prompt: a Participant's view of a Step with a Prompt — the textbox
+  // above the Choices, unanswered, the way the runner offers both together.
+  const promptJourney = seedJourney(journeys, source.prompt.journeyId);
+  const promptStepId = stepIdByTitle(
+    promptJourney.document,
+    source.prompt.step,
+  );
+  const promptRoute = routeTo(promptJourney.document, promptStepId);
+  const promptParticipant = await newContext(browser, scheme, null);
+  try {
+    const promptPage = await promptParticipant.newPage();
+    await promptPage.goto(`/j/${source.prompt.journeyId}`);
+    await expectScheme(promptPage, scheme);
+    for (const [index, label] of promptRoute.entries()) {
+      await answerPromptIfPresent(promptPage, label, index);
+      const control = choiceControl(promptPage, label, index);
+      await control.click();
+      await expect(control).toBeHidden();
+    }
+    const main = promptPage.getByRole("main");
+    await expect(main.getByRole("textbox")).toBeVisible();
+    await expect(main.locator('[aria-label="Choices"]')).toBeVisible();
+    await imagesSettled(promptPage);
+    const textbox = main.getByRole("textbox");
+    await textbox.evaluate((element) => {
+      element.scrollIntoView({ block: "center", behavior: "instant" });
+    });
+    await still(promptPage, "prompt", scheme);
+  } finally {
+    await promptParticipant.close();
   }
 }
 

@@ -45,7 +45,6 @@ function step(
             type: "free_text",
             label: options.prompt,
             required: false,
-            decides: false,
           },
     outcomeId: options.outcomeId ?? null,
     position: null,

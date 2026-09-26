@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
-  previewDecision,
   ResponseNotice,
   responseRefusal,
   StepView,
@@ -33,14 +32,13 @@ export default async function PreviewStartPage({
   params: Promise<{ projectId: string; journeyId: string }>;
   searchParams: Promise<{
     notice?: string | string[];
-    decide?: string | string[];
-    confidence?: string | string[];
-    response?: string | string[];
   }>;
 }) {
   const session = await requireSession();
-  const [{ projectId, journeyId }, { notice, decide, confidence, response }] =
-    await Promise.all([params, searchParams]);
+  const [{ projectId, journeyId }, { notice }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   const journey = await getJourneyForMember(
     projectId,
@@ -101,20 +99,6 @@ export default async function PreviewStartPage({
                       draft.startStepId,
                     ),
                     refusal: responseRefusal(notice),
-                    // Preview stores nothing, so a deciding Prompt's
-                    // Response travels back in the address (ticket 43) —
-                    // but only once the judge has actually been asked
-                    // (`decide` present); a bare `?response=` on its own is
-                    // never trusted back into the box (ticket 43 F6).
-                    response:
-                      typeof decide === "string" && typeof response === "string"
-                        ? response
-                        : undefined,
-                    decision: previewDecision(
-                      draft.steps[draft.startStepId],
-                      decide,
-                      confidence,
-                    ),
                   }
                 : {
                     kind: "links",
