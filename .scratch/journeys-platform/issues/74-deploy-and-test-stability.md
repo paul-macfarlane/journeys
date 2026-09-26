@@ -27,3 +27,37 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`polish`). Use `CONTEXT.md` vocabulary. Origin: ticket 66 finding 3; ticket 15; the load notes on tickets 60–69.
 
 ## Comments
+
+### 2026-09-26: design to follow (ticket 72)
+
+Ticket 72 read the e2e suite for load sensitivity. Take these into the flake hunt; each is a cause to confirm with a trace, not a timeout to raise.
+
+**Suspects to reproduce first (72 finding T2):**
+
+- **A transient state asserted.** `projects-and-journeys.spec.ts:652` expects "Unsaved changes", which is only on screen for `SAVE_DEBOUNCE_MS` (600 ms) before the held write turns it into "Saving…". Under load, the check can land late. Assert on the held `next-action` request instead, or on a state that persists until the spec releases it.
+- **`expectSaved` before a direct database write.** About 12 sites in `canvas.spec.ts` (for example 1520, 1604, 2034) wait for "Saved", then write the Draft row directly and reload. If the edit's status has not yet left "Saved", `expectSaved` passes at once, and the pending autosave can overwrite the database write. Wait on the save's server-action response, or poll the stored row, as `readDraft` does elsewhere.
+- **One-shot reads.** Poll these instead:
+  - `canvas.spec.ts:2628-2629` (computed opacity during a transition; see ticket 63's `toHaveCSS` lesson)
+  - `canvas.spec.ts:287` (`count()` before an action)
+  - `canvas.spec.ts:1901` (branching on `count() === 0`)
+  - `canvas.spec.ts:2130-2174` (`zoomOf` read once)
+  - `projects-and-journeys.spec.ts:622` (`wouldAskBeforeLeaving()` once)
+- **Negative assertions that pass immediately.** `canvas.spec.ts:1153` and `analytics.spec.ts:349` check `toHaveCount(0)` straight after the action. Assert the positive state first, then the absence.
+- **Default 30 s budgets.** `metadata-autosave` has three `toPass({ timeout: 20_000 })` blocks, and `author-settings.spec.ts:79, 115` has two, both under the default test timeout. Find what makes a retry slow before touching any budget.
+
+**Shared helpers (72 finding T3).** The same helpers are copied across specs; one fix should land in one place. Move these into `e2e/setup/`:
+
+- `readDraft` (3 copies, plus `readDraftRow` and `readDraftDocument`)
+- `expectSaved` (2)
+- `startJourney` (4)
+- `renameStep` (2)
+- `addChoiceToStep` (2)
+- `publishOne` (2)
+- `promptBox` (2)
+- `directionRadio` (2)
+- `fitWholeMap`/`clickBox` beside `analytics.spec`'s `expectMapFitted`
+- **the held server-action route**, reimplemented at `projects-and-journeys.spec.ts:643, 767` and `runner.spec.ts:461`: add a `holdServerAction(page)` returning `{ request, release }`
+
+Each helper keeps its strictest variant (the canvas `startJourney` adds the `overflowAnchor` init script).
+
+**Chunk-load recovery placement.** Mount the handler once in the root layout as a small client component. Wrap every `sessionStorage` access in try/catch. Ticket 83 adds `error.tsx` and `global-error.tsx`; a `ChunkLoadError` that reaches them should also get the reload-once path, so share one `isChunkLoadError` helper between the handler and the error pages.
