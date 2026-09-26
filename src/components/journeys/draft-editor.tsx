@@ -13,7 +13,7 @@ import {
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { FindStep } from "@/components/journeys/find-step";
-import { useHoldDraftVersion } from "@/components/journeys/publish-controls";
+import { useRegisterDraft } from "@/components/journeys/draft-version";
 import { StaleNotice } from "@/components/stale-notice";
 import {
   JourneyCanvas,
@@ -100,10 +100,7 @@ export function DraftEditor({
   version: number;
 }) {
   const router = useRouter();
-  const holdDraftVersion = useHoldDraftVersion();
-  // Whether the editor is still on the page: its unmount save can land after
-  // it has gone, when the version it stored is no longer the editor's to hold.
-  const mountedRef = useRef(false);
+  const registerDraft = useRegisterDraft();
 
   const [document, setDocument] = useState<GraphDocument>(draft);
   const [selectedStepId, setSelectedStepId] = useState(draft.startStepId);
@@ -195,7 +192,6 @@ export function DraftEditor({
         return { kind: "refused", error: result.error, stepId: result.stepId };
       }
       setSaveError(null);
-      if (mountedRef.current) holdDraftVersion(result.version);
       return {
         kind: "saved",
         saved: { document: value.document, version: result.version },
@@ -292,7 +288,6 @@ export function DraftEditor({
     if (autosave.isDirty()) return;
 
     autosave.adopt({ document: draft, version });
-    holdDraftVersion(version);
     // Only the version moved (the same document stored again): nothing on
     // screen, and nothing on the history, changes.
     if (sameDocument) return;
@@ -314,18 +309,18 @@ export function DraftEditor({
     // undo back into one of them would throw away the write that arrived.
     historyRef.current = emptyHistory();
     setHistory(historyRef.current);
-  }, [autosave, draft, version, holdDraftVersion]);
+  }, [autosave, draft, version]);
 
-  // The Journey page's Publish and Restore are sent with the version this
-  // editor holds while it is open, and the page's own once it closes.
-  useEffect(() => {
-    mountedRef.current = true;
-    holdDraftVersion(autosave.lastSaved().version);
-    return () => {
-      mountedRef.current = false;
-      holdDraftVersion(null);
-    };
-  }, [autosave, holdDraftVersion]);
+  // The Journey page's Publish and Restore wait for this editor's save and
+  // are sent with the version it leaves (see `DraftVersionScope`).
+  useEffect(
+    () =>
+      registerDraft({
+        flush: () => autosave.flush(),
+        version: () => autosave.lastSaved().version,
+      }),
+    [autosave, registerDraft],
+  );
 
   // Cmd/Ctrl+K from anywhere on the Journey page is the way into "Find step",
   // wherever the Author's hands happen to be. On `window` rather than on the

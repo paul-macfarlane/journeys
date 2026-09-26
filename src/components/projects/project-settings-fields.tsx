@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   editProjectDescriptionAction,
@@ -92,6 +92,12 @@ export function ProjectSettingsFields({
     // The header above the tabs shows the description's opening line.
     onSaved: () => router.refresh(),
   });
+  // The refresh's description, adopted only while nothing is unsaved: an
+  // edit in hand keeps the baseline it was made against.
+  useEffect(
+    () => descriptionAutosave.adopt(description),
+    [descriptionAutosave, description],
+  );
 
   return (
     <div className="flex max-w-xl flex-col gap-4">

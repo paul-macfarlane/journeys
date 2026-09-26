@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { restoreVersionAction } from "@/app/projects/[projectId]/journeys/actions";
-import { useDraftVersion } from "@/components/journeys/publish-controls";
+import { useSettledDraftVersion } from "@/components/journeys/draft-version";
 import { StaleNotice } from "@/components/stale-notice";
 import {
   AlertDialog,
@@ -45,7 +45,7 @@ export function RestoreVersionDialog({
   triggerVariant?: "outline" | "default";
 }) {
   const router = useRouter();
-  const draftVersion = useDraftVersion();
+  const settledDraftVersion = useSettledDraftVersion();
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -54,6 +54,9 @@ export function RestoreVersionDialog({
   function confirmRestore() {
     setServerError(null);
     startTransition(async () => {
+      // The editor's unmount save may still be on its way: sent with the
+      // version it leaves, not the one the page last rendered.
+      const draftVersion = await settledDraftVersion();
       const result = await restoreVersionAction(
         projectId,
         journeyId,

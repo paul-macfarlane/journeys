@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { createJourneySchema } from "@/lib/validation/journey";
+import {
+  createJourneySchema,
+  draftVersionSchema,
+} from "@/lib/validation/journey";
 
 /**
  * Ticket 47: the New Journey dialog asks for a title only, so the create
@@ -40,5 +43,20 @@ describe("createJourneySchema", () => {
     const result = createJourneySchema.safeParse({ title: "   " });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe("Enter a title");
+  });
+});
+
+/**
+ * Ticket 73: the Draft version a write is guarded by is Postgres's
+ * `integer`, so a number past its range is refused here rather than by the
+ * database.
+ */
+describe("draftVersionSchema", () => {
+  it("accepts the largest version the column holds", () => {
+    expect(draftVersionSchema.safeParse(2147483647).success).toBe(true);
+  });
+
+  it("refuses a version past the column's range", () => {
+    expect(draftVersionSchema.safeParse(2147483648).success).toBe(false);
   });
 });

@@ -8,6 +8,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   guardedWrite,
+  rowExists,
   type GuardedWriteResult,
   type StaleWrite,
 } from "@/db/guarded-write";
@@ -134,14 +135,7 @@ export function writeDraftGuarded(
           setWhere: eq(draft.version, expectedVersion),
         })
         .returning({ version: draft.version }),
-    async () => {
-      const [row] = await db
-        .select({ journeyId: draft.journeyId })
-        .from(draft)
-        .where(eq(draft.journeyId, journeyId))
-        .limit(1);
-      return row !== undefined;
-    },
+    () => rowExists(draft, draft.journeyId, journeyId),
   );
 }
 

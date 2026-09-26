@@ -1,6 +1,14 @@
+import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it, vi } from "vitest";
 
-import { changedFields, guardedWrite } from "./guarded-write";
+vi.mock("@/db", () => ({ db: {} }));
+
+import {
+  changedFields,
+  guardedWrite,
+  stillHoldsOrRetired,
+} from "./guarded-write";
+import { journey, project } from "./schema";
 
 /**
  * The data layer's one conditional write (ticket 73): the guarded statement
@@ -64,5 +72,37 @@ describe("changedFields", () => {
         { descriptionContent: { type: "doc", content: [] }, themeAccent: null },
       ),
     ).toEqual(["descriptionContent", "themeAccent"]);
+  });
+});
+
+/**
+ * A Theme preset guard (ticket 73): a row still holding a preset id the app
+ * no longer offers reads back as the default, which is the baseline the
+ * Member then sends — so the guard also passes a row whose preset is not
+ * one of the offered ids, or that Member could never change the Theme.
+ */
+describe("stillHoldsOrRetired", () => {
+  const dialect = new PgDialect();
+
+  it("passes the row that still holds the baseline, or holds an id no longer offered", () => {
+    const query = dialect.sqlToQuery(
+      stillHoldsOrRetired(project.themePreset, "trail", ["trail", "dusk"]),
+    );
+
+    expect(query.sql).toBe(
+      '("project"."theme_preset" IS NOT DISTINCT FROM $1 or "project"."theme_preset" not in ($2, $3))',
+    );
+    expect(query.params).toEqual(["trail", "trail", "dusk"]);
+  });
+
+  it("leaves a null override to the null-safe half", () => {
+    const query = dialect.sqlToQuery(
+      stillHoldsOrRetired(journey.themePreset, null, ["trail"]),
+    );
+
+    expect(query.sql).toBe(
+      '("journey"."theme_preset" IS NOT DISTINCT FROM $1 or "journey"."theme_preset" not in ($2))',
+    );
+    expect(query.params).toEqual([null, "trail"]);
   });
 });

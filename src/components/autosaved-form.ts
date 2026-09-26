@@ -13,6 +13,7 @@ import { useAutosave } from "@/components/autosave";
 import type { ActionResult } from "@/lib/action-result";
 import {
   keepEditedFields,
+  rebaseWrittenFields,
   type SaveStatus,
   type StaleNoun,
 } from "@/lib/autosave";
@@ -104,6 +105,9 @@ export function useAutosavedForm<T extends FieldValues>({
   const { status, autosave, reload } = useAutosave<T>({
     initial: values,
     equals: sameStored,
+    // A write landing keeps a field adopted from another Member during it,
+    // rather than putting that field's old baseline back.
+    rebase: rebaseWrittenFields,
     // The schema is run here rather than through `form.handleSubmit`: that
     // returns without calling either of its callbacks when a `reset` lands
     // while it validates (react-hook-form's `_resetCallId` check), and the

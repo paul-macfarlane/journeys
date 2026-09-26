@@ -55,6 +55,7 @@ export function ThemeFields({
   theme,
   submit,
   onSaved,
+  onStored,
   noun,
 }: {
   /** The Theme as stored, which the fields read until edited. */
@@ -68,6 +69,11 @@ export function ThemeFields({
   noun: StaleNoun;
   /** After a save the server accepted, typically a router refresh. */
   onSaved: () => void;
+  /**
+   * Each Theme the server accepted, the moment it did — before the refresh
+   * `onSaved` asks for has landed.
+   */
+  onStored?: (saved: Theme) => void;
 }) {
   const id = useId();
   const values = useMemo<ThemeFormInput>(
@@ -78,7 +84,12 @@ export function ThemeFields({
     schema: themeFormSchema,
     values,
     noun,
-    submit: (next, baseline) => submit(toTheme(next), toTheme(baseline)),
+    submit: async (next, baseline) => {
+      const saved = toTheme(next);
+      const result = await submit(saved, toTheme(baseline));
+      if (result.ok) onStored?.(saved);
+      return result;
+    },
     onSaved,
   });
   const { errors } = form.formState;

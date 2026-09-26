@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createAutosave,
   keepEditedFields,
+  rebaseWrittenFields,
   SAVE_DEBOUNCE_MS,
   staleText,
   STATUS_TEXT,
@@ -594,5 +595,65 @@ describe("adopting another Member's change mid-edit", () => {
       title: "Mine",
       description: "Theirs",
     });
+  });
+});
+
+/**
+ * A refresh landing while a write is in flight: another Member's change to a
+ * field this Member has not touched is adopted as that field's baseline, and
+ * the write landing afterwards must not put the old baseline back under it
+ * (ticket 73 AC3: a Member editing alone never sees the stale message).
+ */
+describe("a write landing after an adoption", () => {
+  it("keeps the adopted value as the baseline of a field the write did not change", async () => {
+    const writer = deferredWrite();
+    const autosave = createAutosave<Metadata>({
+      initial: { title: "Border", description: "" },
+      equals,
+      write: writer.write,
+      onStatus: () => {},
+      onSaved: () => {},
+      rebase: rebaseWrittenFields,
+    });
+
+    // The title write is in flight…
+    autosave.change({ title: "Mine", description: "" });
+    const flushing = autosave.flush();
+    await flushMicrotasks();
+    expect(writer.calls).toEqual([{ title: "Mine", description: "" }]);
+
+    // …when the refresh brings another Member's description.
+    autosave.adopt(
+      { title: "Border", description: "Theirs" },
+      keepEditedFields,
+    );
+
+    // The write lands, handing back the record it stored.
+    await writer.settle({
+      kind: "saved",
+      saved: { title: "Mine", description: "" },
+    });
+    await flushing;
+
+    expect(autosave.lastSaved()).toEqual({
+      title: "Mine",
+      description: "Theirs",
+    });
+
+    // The next write is guarded by the adopted description, so a guard on
+    // the description (had it changed) compares with what the row holds.
+    autosave.change({ title: "Mine again", description: "Theirs" });
+    const next = autosave.flush();
+    await flushMicrotasks();
+    expect(writer.calls.at(-1)).toEqual({
+      title: "Mine again",
+      description: "Theirs",
+    });
+    expect(writer.baselines.at(-1)).toEqual({
+      title: "Mine",
+      description: "Theirs",
+    });
+    await writer.settle();
+    await next;
   });
 });

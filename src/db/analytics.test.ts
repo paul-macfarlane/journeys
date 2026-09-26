@@ -18,7 +18,10 @@ describe("toAnalyticsSource", () => {
 
   it("reads a version whose document satisfies the contract", () => {
     expect(
-      toAnalyticsSource({ id: "version-1", versionNumber: 2, document }, runs),
+      toAnalyticsSource(
+        { journeyId: "journey-1", id: "version-1", versionNumber: 2, document },
+        runs,
+      ),
     ).toEqual({
       kind: "ok",
       version: { id: "version-1", versionNumber: 2, document },
@@ -27,9 +30,11 @@ describe("toAnalyticsSource", () => {
   });
 
   it("reads a version whose document fails the contract as unreadable", () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(
       toAnalyticsSource(
         {
+          journeyId: "journey-1",
           id: "version-1",
           versionNumber: 2,
           document: { schemaVersion: 1, steps: "not a map" },
@@ -37,5 +42,10 @@ describe("toAnalyticsSource", () => {
         runs,
       ),
     ).toEqual({ kind: "unreadable", versionId: "version-1", versionNumber: 2 });
+    expect(logged).toHaveBeenCalledWith("[unreadable]", "published version", {
+      journeyId: "journey-1",
+      versionId: "version-1",
+    });
+    logged.mockRestore();
   });
 });

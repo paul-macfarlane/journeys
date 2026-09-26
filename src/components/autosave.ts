@@ -42,13 +42,15 @@ export function reloadPage(): void {
  * metadata forms (`useAutosavedForm`), and the rich-text Project
  * description are the callers.
  *
- * `write`, `onSaved`, and `onRefused` are read fresh on every call rather than closed
- * over: they carry the caller's router and props, which change per render,
- * while the loop is created once.
+ * `write`, `onSaved`, `onRefused`, and `onStale` are read fresh on every
+ * call rather than closed over: they carry the caller's router and props,
+ * which change per render, while the loop is created once. `equals` and
+ * `rebase` are read once, with the loop.
  */
 export function useAutosave<T>({
   initial,
   equals,
+  rebase,
   write,
   onSaved,
   onRefused,
@@ -58,6 +60,8 @@ export function useAutosave<T>({
   initial: T;
   /** Whether two values would be stored the same. */
   equals: (a: T, b: T) => boolean;
+  /** The baseline once a write lands; see `createAutosave`. */
+  rebase?: (saved: T, sentBaseline: T, currentBaseline: T) => T;
   /** The write itself, against the last saved value; see `createAutosave`. */
   write: (value: T, baseline: T) => Promise<WriteResult<T>>;
   /** A write landed with nothing left to write: typically a router refresh. */
@@ -82,7 +86,7 @@ export function useAutosave<T>({
   // the value in flight, neither of which a render may replace. Its
   // handlers are the caller's latest, handed over after each render.
   const [{ autosave, setHandlers }] = useState(() =>
-    startAutosave(initial, equals, setStatus, {
+    startAutosave(initial, equals, rebase, setStatus, {
       write,
       onSaved,
       onRefused,
@@ -125,14 +129,16 @@ export function useAutosave<T>({
 /**
  * The loop, with a handle for replacing what it calls. Nothing here runs
  * during a render: the loop calls `write` from its timer and from a flush,
- * and `onSaved` or `onRefused` after a write has settled. A ref would be the usual home
- * for the latest handlers, but the React compiler's lint reads a ref
- * handed to a `useState` initializer as a ref read during render; this
- * closure is the same thing said in a way it can follow.
+ * and `onSaved`, `onRefused`, or `onStale` after a write has settled. A ref
+ * would be the usual home for the latest handlers, but the React
+ * compiler's lint reads a ref handed to a `useState` initializer as a ref
+ * read during render; this closure is the same thing said in a way it can
+ * follow.
  */
 function startAutosave<T>(
   initial: T,
   equals: (a: T, b: T) => boolean,
+  rebase: ((saved: T, sentBaseline: T, currentBaseline: T) => T) | undefined,
   onStatus: (status: SaveStatus) => void,
   first: Handlers<T>,
 ): { autosave: Autosave<T>; setHandlers: (next: Handlers<T>) => void } {
@@ -141,6 +147,7 @@ function startAutosave<T>(
     autosave: createAutosave<T>({
       initial,
       equals,
+      rebase,
       write: (value, baseline) => handlers.write(value, baseline),
       onStatus,
       onSaved: () => handlers.onSaved(),

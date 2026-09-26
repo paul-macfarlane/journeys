@@ -1,8 +1,10 @@
-// Database access only — `server-only` so a client import fails the build.
+// Server-only data-layer helper — `server-only` so a client import fails the build.
 import "server-only";
 
-import { sql, type SQL } from "drizzle-orm";
-import type { PgColumn } from "drizzle-orm/pg-core";
+import { eq, notInArray, or, sql, type SQL } from "drizzle-orm";
+import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
+
+import { db } from "@/db";
 
 /**
  * The one conditional write every concurrently edited row goes through
@@ -36,6 +38,28 @@ export async function guardedWrite<R>(
   return (await exists())
     ? { ok: false, reason: "stale" }
     : { ok: false, reason: "not-found" };
+}
+
+/** What reads a row: the database, or a transaction already open on it. */
+type Reader = Pick<typeof db, "select">;
+
+/**
+ * Whether the row `id` names is still in `table`: the re-read `guardedWrite`
+ * tells a failed guard from a deleted row with. `reader` is the open
+ * transaction when the guarded statement ran inside one.
+ */
+export async function rowExists(
+  table: PgTable,
+  idColumn: PgColumn,
+  id: string,
+  reader: Reader = db,
+): Promise<boolean> {
+  const rows = await reader
+    .select({ id: idColumn })
+    .from(table)
+    .where(eq(idColumn, id))
+    .limit(1);
+  return rows.length > 0;
 }
 
 /** Whether a data-layer answer is a stale refusal. */
@@ -80,4 +104,20 @@ export function stillHolds(column: PgColumn, previous: unknown): SQL {
     return sql`${column} IS NOT DISTINCT FROM ${JSON.stringify(previous)}::jsonb`;
   }
   return sql`${column} IS NOT DISTINCT FROM ${previous}`;
+}
+
+/**
+ * `stillHolds` for a Theme preset column (ticket 73): the row still holds
+ * the baseline, or holds an id that is not one of `offered`. A retired
+ * preset id reads back as the default (`toThemePreset`), which is then the
+ * Member's baseline and never what the row holds; without the second half
+ * every Theme save on that row would be refused as stale. A null override
+ * is `NOT IN`'s unknown, so the null-safe first half alone decides it.
+ */
+export function stillHoldsOrRetired(
+  column: PgColumn,
+  previous: unknown,
+  offered: readonly string[],
+): SQL {
+  return or(stillHolds(column, previous), notInArray(column, [...offered]))!;
 }

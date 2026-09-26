@@ -14,6 +14,10 @@ import {
 } from "@/app/projects/[projectId]/journeys/actions";
 import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import {
+  DraftVersionScope,
+  useSettledDraftVersion,
+} from "@/components/journeys/draft-version";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -58,14 +62,6 @@ type Acknowledgement = {
 type PublishScopeValue = {
   acknowledgement: Acknowledgement | null;
   acknowledge: (acknowledgement: Acknowledgement) => void;
-  /**
-   * The Draft version the Member holds (ticket 73), which a publish and a
-   * restore are guarded by: the open editor's, which knows the moment its
-   * own save lands, else the page's.
-   */
-  draftVersion: number;
-  /** The open editor saying which version it holds; null as it closes. */
-  holdDraftVersion: (version: number | null) => void;
 };
 
 const PublishScopeContext = createContext<PublishScopeValue | null>(null);
@@ -79,26 +75,8 @@ function usePublishScope(caller: string): PublishScopeValue {
 }
 
 /**
- * The Draft version a publish or a restore is sent with: the one the Member
- * holds, from the editor while it is open, else from the page.
- */
-export function useDraftVersion(): number {
-  return usePublishScope("useDraftVersion").draftVersion;
-}
-
-const holdNothing = () => {};
-
-/**
- * How the Draft editor tells the Journey page's publish and restore controls
- * which Draft version it holds. Outside a `PublishScope` nothing listens.
- */
-export function useHoldDraftVersion(): (version: number | null) => void {
-  return useContext(PublishScopeContext)?.holdDraftVersion ?? holdNothing;
-}
-
-/**
  * Holds the acknowledgement of the last publish for everything beneath it,
- * and the Draft version the Member holds (see `useDraftVersion`).
+ * and the Draft version the Member holds (`DraftVersionScope`).
  *
  * The line stays until the Draft changes again — the moment the page says
  * "Unpublished changes" — or the page is left, which unmounts this. The
@@ -119,9 +97,6 @@ export function PublishScope({
   draftVersion: number;
   children: ReactNode;
 }) {
-  // The page's version trails the editor's own save by a refresh; while the
-  // editor is open, what it holds is what the Member is looking at.
-  const [editorVersion, setEditorVersion] = useState<number | null>(null);
   const [acknowledgement, setAcknowledgement] =
     useState<Acknowledgement | null>(null);
   const [sawUnpublishedChanges, setSawUnpublishedChanges] = useState(
@@ -141,11 +116,11 @@ export function PublishScope({
         // edit the reset above has not yet seen.
         acknowledgement: hasUnpublishedChanges ? null : acknowledgement,
         acknowledge: setAcknowledgement,
-        draftVersion: editorVersion ?? draftVersion,
-        holdDraftVersion: setEditorVersion,
       }}
     >
-      {children}
+      <DraftVersionScope draftVersion={draftVersion}>
+        {children}
+      </DraftVersionScope>
     </PublishScopeContext.Provider>
   );
 }
@@ -196,12 +171,16 @@ export function PublishButton({
   /** `sm` beside the Versions tab's row actions; the page header's is full size. */
   size?: "default" | "sm";
 }) {
-  const { acknowledge, draftVersion } = usePublishScope("PublishButton");
+  const { acknowledge } = usePublishScope("PublishButton");
+  const settledDraftVersion = useSettledDraftVersion();
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
 
   function publish() {
     startTransition(async () => {
+      // Clicking this blurred the editor, whose save of the last edit is on
+      // its way: the publish is sent with the version that save leaves.
+      const draftVersion = await settledDraftVersion();
       const result = await publishJourneyAction(
         projectId,
         journeyId,

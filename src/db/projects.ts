@@ -10,13 +10,15 @@ import { db } from "@/db";
 import {
   changedFields,
   guardedWrite,
+  rowExists,
   stillHolds,
+  stillHoldsOrRetired,
   type StaleWrite,
 } from "@/db/guarded-write";
 import { member, project } from "@/db/schema";
 import { logUnreadable } from "@/db/unreadable";
 import { contentSchema, emptyContent, type Content } from "@/lib/graph/content";
-import { toThemePreset, type Theme } from "@/lib/theme";
+import { themePresetSchema, toThemePreset, type Theme } from "@/lib/theme";
 
 /**
  * Data access for Projects. Their Members live in `@/db/members`; only the
@@ -191,6 +193,45 @@ const projectFieldColumns = {
   themeAccent: project.themeAccent,
 } as const;
 
+/** Whether a description is the empty rich text an unreadable one reads as. */
+function isEmptyContent(value: unknown): boolean {
+  return JSON.stringify(value) === JSON.stringify(emptyContent);
+}
+
+/**
+ * Whether a description write is guarded by its baseline (ticket 73 with
+ * ticket 83). A stored description that fails `contentSchema` reads back as
+ * empty rich text, so that is the baseline the Member edits from — and the
+ * row never holds it, so a guard would refuse every description save as
+ * stale. Such a write, from empty rich text over a stored description that
+ * cannot be read, is unguarded; every other one is guarded.
+ */
+export function guardsDescription(baseline: unknown, stored: unknown): boolean {
+  if (!isEmptyContent(baseline)) return true;
+  return contentSchema.safeParse(stored).success;
+}
+
+/** The description as the row holds it, unparsed: what `guardsDescription` reads. */
+async function storedDescription(projectId: string): Promise<unknown> {
+  const [row] = await db
+    .select({ descriptionContent: project.descriptionContent })
+    .from(project)
+    .where(eq(project.id, projectId))
+    .limit(1);
+  return row?.descriptionContent;
+}
+
+/** The guard on one changed field: the preset also passes a retired id. */
+function fieldGuard(field: keyof ProjectFields, previous: unknown) {
+  return field === "themePreset"
+    ? stillHoldsOrRetired(
+        projectFieldColumns.themePreset,
+        previous,
+        themePresetSchema.options,
+      )
+    : stillHolds(projectFieldColumns[field], previous);
+}
+
 /**
  * The one write shape every Settings-tab edit has: the Member check, then
  * the guarded update (ticket 73). Only the fields whose value differs from
@@ -201,7 +242,9 @@ const projectFieldColumns = {
  * guard only their own fields and never make each other stale. The update is
  * stamped with `updatedAt` (which is what moves the Project up the navbar's
  * switcher), and the row read back. Null when the Author is not a Member of
- * `projectId`, or the Project went away.
+ * `projectId`, or the Project went away. A description edited from the
+ * empty rich text an unreadable description reads as is written unguarded
+ * (`guardsDescription`), and logged.
  */
 async function updateProjectForMember(
   projectId: string,
@@ -215,6 +258,19 @@ async function updateProjectForMember(
   const fields = changedFields(next, baseline);
   if (fields.length === 0) return existing;
 
+  let guarded = fields;
+  if (
+    fields.includes("descriptionContent") &&
+    isEmptyContent(baseline.descriptionContent) &&
+    !guardsDescription(
+      baseline.descriptionContent,
+      await storedDescription(existing.id),
+    )
+  ) {
+    logUnreadable("project description", { projectId: existing.id });
+    guarded = fields.filter((field) => field !== "descriptionContent");
+  }
+
   const written = await guardedWrite(
     () =>
       db
@@ -226,20 +282,11 @@ async function updateProjectForMember(
         .where(
           and(
             eq(project.id, existing.id),
-            ...fields.map((field) =>
-              stillHolds(projectFieldColumns[field], baseline[field]),
-            ),
+            ...guarded.map((field) => fieldGuard(field, baseline[field])),
           ),
         )
         .returning(projectColumns),
-    async () => {
-      const rows = await db
-        .select({ id: project.id })
-        .from(project)
-        .where(eq(project.id, existing.id))
-        .limit(1);
-      return rows.length > 0;
-    },
+    () => rowExists(project, project.id, existing.id),
   );
   if (!written.ok) return written.reason === "stale" ? written : null;
   return toProjectSummary(written.row);

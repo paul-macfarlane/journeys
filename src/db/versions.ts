@@ -7,7 +7,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { writeDraftGuarded } from "@/db/drafts";
-import { guardedWrite, type StaleWrite } from "@/db/guarded-write";
+import { guardedWrite, rowExists, type StaleWrite } from "@/db/guarded-write";
 import { getJourneyForMember } from "@/db/journeys";
 import { draft, journey, publishedVersion, user } from "@/db/schema";
 import { logUnreadable } from "@/db/unreadable";
@@ -83,6 +83,7 @@ export type LiveVersion =
 
 /** A `published_version` row read through the document contract, never trusted. */
 export function toLiveVersion(row: {
+  journeyId: string;
   versionId: string;
   versionNumber: number;
   title: string;
@@ -98,7 +99,10 @@ export function toLiveVersion(row: {
       document: parsed.data,
     };
   }
-  logUnreadable("published version", { versionId: row.versionId });
+  logUnreadable("published version", {
+    journeyId: row.journeyId,
+    versionId: row.versionId,
+  });
   return {
     kind: "unreadable",
     versionId: row.versionId,
@@ -132,7 +136,7 @@ export async function getLiveVersion(
     .where(eq(journey.id, existing.id))
     .limit(1);
 
-  return row ? toLiveVersion(row) : null;
+  return row ? toLiveVersion({ journeyId: existing.id, ...row }) : null;
 }
 
 export type PublishDraftResult =
@@ -141,7 +145,7 @@ export type PublishDraftResult =
   | { ok: false; problems: PublishProblem[] }
   | { ok: false; conflict: true }
   /** The Draft row fails the document contract: nothing to publish. */
-  | { ok: false; unreadable: true }
+  | { ok: false; reason: "unreadable" }
   | StaleWrite
   | null;
 
@@ -208,19 +212,12 @@ export async function publishDraft(
               ),
             )
             .for("share"),
-        async () => {
-          const rows = await tx
-            .select({ journeyId: draft.journeyId })
-            .from(draft)
-            .where(eq(draft.journeyId, existing.id))
-            .limit(1);
-          return rows.length > 0;
-        },
+        () => rowExists(draft, draft.journeyId, existing.id, tx),
       );
       if (!locked.ok) return locked.reason === "stale" ? locked : null;
 
       const parsed = graphDocumentSchema.safeParse(locked.row.document);
-      if (!parsed.success) return { ok: false, unreadable: true };
+      if (!parsed.success) return { ok: false, reason: "unreadable" };
       const document = parsed.data;
 
       const problems = validateForPublish(document);
@@ -299,20 +296,9 @@ export async function unpublishJourney(
 export type RestoreVersionResult =
   | { versionNumber: number }
   /** The version being restored fails the document contract (ticket 83). */
-  | { ok: false; unreadable: true; versionNumber: number }
+  | { ok: false; reason: "unreadable"; versionNumber: number }
   | StaleWrite
   | null;
-
-/** Whether a `restoreVersion` answer is the unreadable refusal. */
-export function isUnreadableVersion(
-  result: RestoreVersionResult,
-): result is { ok: false; unreadable: true; versionNumber: number } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    (result as { unreadable?: unknown }).unreadable === true
-  );
-}
 
 /**
  * A stored Published Version document, parsed rather than trusted (ticket
@@ -332,8 +318,9 @@ export function parseVersionDocument(document: unknown): GraphDocument | null {
  *
  * The stored document is parsed, not re-sanitized: it went through
  * `prepareDocumentForWrite` on its way into the Draft it was snapshotted
- * from, so it is already in stored shape, and a row that no longer satisfies
- * the contract is a bug worth failing loudly on.
+ * from, so it is already in stored shape. A row that no longer satisfies
+ * the contract is refused by name (`reason: "unreadable"`, with its version
+ * number) and logged, never thrown (ticket 83).
  *
  * Guarded like a save (ticket 73): `expectedVersion` is the Draft version
  * the Member's page last read, and a Draft another Member has written since
@@ -372,7 +359,11 @@ export async function restoreVersion(
   const document = parseVersionDocument(row.document);
   if (document === null) {
     logUnreadable("published version", { versionId, journeyId: existing.id });
-    return { ok: false, unreadable: true, versionNumber: row.versionNumber };
+    return {
+      ok: false,
+      reason: "unreadable",
+      versionNumber: row.versionNumber,
+    };
   }
 
   // Upsert for the same reason `saveDraft` is one: a Journey whose Draft row

@@ -101,6 +101,7 @@ export function createAutosave<T>({
   onSaved,
   onRefused,
   onStale,
+  rebase = (saved) => saved,
   debounceMs = SAVE_DEBOUNCE_MS,
 }: {
   initial: T;
@@ -119,6 +120,15 @@ export function createAutosave<T>({
   onRefused?: (result: WriteRefusal<T>) => void;
   /** A write was refused as stale: the loop has stopped for good. */
   onStale?: () => void;
+  /**
+   * The baseline once a write has landed: `saved` (what was stored, or the
+   * value sent), `sentBaseline` (the baseline sent with the write), and
+   * `currentBaseline` (the baseline at landing, which an `adopt` during the
+   * write may have moved). By default what was stored replaces the whole
+   * baseline; a record of fields keeps each adopted field the write did not
+   * change (`rebaseWrittenFields`).
+   */
+  rebase?: (saved: T, sentBaseline: T, currentBaseline: T) => T;
   /** The tests' clock; every surface uses `SAVE_DEBOUNCE_MS`. */
   debounceMs?: number;
 }): Autosave<T> {
@@ -165,7 +175,8 @@ export function createAutosave<T>({
         }
 
         onStatus("saving");
-        const result = await write(pending, lastSaved).catch(
+        const sentBaseline = lastSaved;
+        const result = await write(pending, sentBaseline).catch(
           (): WriteResult<T> => ({
             kind: "refused",
             error: "the server could not be reached",
@@ -192,7 +203,11 @@ export function createAutosave<T>({
           return;
         }
 
-        lastSaved = result.saved !== undefined ? result.saved : pending;
+        lastSaved = rebase(
+          result.saved !== undefined ? result.saved : pending,
+          sentBaseline,
+          lastSaved,
+        );
 
         if (equals(current, pending)) {
           // Nothing arrived during the write: what was stored is what the
@@ -287,6 +302,8 @@ export function createAutosave<T>({
  * value and its baseline; a field they have edited keeps their edit and the
  * baseline it was edited against, so its write is refused as stale when
  * another Member changed that same field.
+ *
+ * Fields are compared with `===`, so every field is assumed primitive.
  */
 export function keepEditedFields<T extends Record<string, unknown>>(
   incoming: T,
@@ -302,4 +319,26 @@ export function keepEditedFields<T extends Record<string, unknown>>(
     }
   }
   return { value, baseline };
+}
+
+/**
+ * `createAutosave`'s `rebase` for a record of fields (ticket 73): once a
+ * write lands, a field the write changed (`saved` differs from the baseline
+ * sent with it) takes what was stored, and every other field keeps the
+ * baseline it has now — which an `adopt` during the write may have moved to
+ * another Member's value. Without this, the write landing would put the old
+ * baseline back under an adopted field, and a later write of that field
+ * would be guarded by a value the row no longer holds: stale, for a Member
+ * who never touched it. Compares with `===`, as `keepEditedFields` does.
+ */
+export function rebaseWrittenFields<T extends Record<string, unknown>>(
+  saved: T,
+  sentBaseline: T,
+  currentBaseline: T,
+): T {
+  const next = { ...currentBaseline };
+  for (const key of Object.keys(saved) as (keyof T)[]) {
+    if (saved[key] !== sentBaseline[key]) next[key] = saved[key];
+  }
+  return next;
 }

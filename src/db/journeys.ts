@@ -9,14 +9,20 @@ import { db } from "@/db";
 import {
   changedFields,
   guardedWrite,
+  rowExists,
   stillHolds,
+  stillHoldsOrRetired,
   type StaleWrite,
 } from "@/db/guarded-write";
 import { draft, journey, member, project, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
 import { moveInOrder, type MoveDirection } from "@/lib/journey-order";
 import { publishStateOf, type PublishState } from "@/lib/publish-state";
-import { readThemeOverride, type ThemeOverride } from "@/lib/theme";
+import {
+  readThemeOverride,
+  themePresetSchema,
+  type ThemeOverride,
+} from "@/lib/theme";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
@@ -323,19 +329,20 @@ async function updateJourneyForMember(
           and(
             eq(journey.id, existing.id),
             ...fields.map((field) =>
-              stillHolds(journeyFieldColumns[field], baseline[field]),
+              // A retired preset id reads back as the default, so the
+              // preset guard also passes one (see `stillHoldsOrRetired`).
+              field === "themePreset"
+                ? stillHoldsOrRetired(
+                    journeyFieldColumns.themePreset,
+                    baseline.themePreset,
+                    themePresetSchema.options,
+                  )
+                : stillHolds(journeyFieldColumns[field], baseline[field]),
             ),
           ),
         )
         .returning(journeyColumns),
-    async () => {
-      const rows = await db
-        .select({ id: journey.id })
-        .from(journey)
-        .where(eq(journey.id, existing.id))
-        .limit(1);
-      return rows.length > 0;
-    },
+    () => rowExists(journey, journey.id, existing.id),
   );
   if (!written.ok) return written.reason === "stale" ? written : null;
   // Title, description, and Theme are all this changes; publish state is

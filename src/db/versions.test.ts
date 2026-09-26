@@ -19,6 +19,7 @@ describe("toLiveVersion", () => {
   it("reads a row that satisfies the contract as the live version", () => {
     expect(
       toLiveVersion({
+        journeyId: "journey-1",
         versionId: "version-1",
         versionNumber: 3,
         title: "Border Crossing",
@@ -34,8 +35,10 @@ describe("toLiveVersion", () => {
   });
 
   it("reads a row that fails the contract as unreadable, keeping its id and number", () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(
       toLiveVersion({
+        journeyId: "journey-1",
         versionId: "version-1",
         versionNumber: 3,
         title: "Border Crossing",
@@ -43,6 +46,11 @@ describe("toLiveVersion", () => {
         document: { schemaVersion: 1, steps: "not a map" },
       }),
     ).toEqual({ kind: "unreadable", versionId: "version-1", versionNumber: 3 });
+    expect(logged).toHaveBeenCalledWith("[unreadable]", "published version", {
+      journeyId: "journey-1",
+      versionId: "version-1",
+    });
+    logged.mockRestore();
   });
 });
 

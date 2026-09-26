@@ -17,12 +17,7 @@ import {
   updateJourney,
 } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
-import {
-  isUnreadableVersion,
-  publishDraft,
-  restoreVersion,
-  unpublishJourney,
-} from "@/db/versions";
+import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
 import { env } from "@/lib/env";
 import { isDeciding } from "@/lib/graph/prompt";
 import type { PublishProblem } from "@/lib/graph/validate";
@@ -278,7 +273,7 @@ export async function publishJourneyAction(
   if (!published) return { ok: false, error: "That journey no longer exists" };
   if (isStale(published)) return staleResult("draft");
   if (!published.ok) {
-    if ("unreadable" in published) {
+    if ("reason" in published && published.reason === "unreadable") {
       return {
         ok: false,
         error:
@@ -366,7 +361,7 @@ export async function restoreVersionAction(
   if (isStale(restored)) return staleResult("draft");
   // The version being restored fails the document contract (ticket 83):
   // there is nothing in it to copy into the Draft.
-  if (isUnreadableVersion(restored)) {
+  if ("reason" in restored && restored.reason === "unreadable") {
     return {
       ok: false,
       error: `Version ${restored.versionNumber} can't be read, so it can't be restored.`,

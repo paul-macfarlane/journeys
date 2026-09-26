@@ -44,7 +44,12 @@ export type AnalyticsSource =
 
 /** A `published_version` row read through the document contract, never trusted. */
 export function toAnalyticsSource(
-  version: { id: string; versionNumber: number; document: unknown },
+  version: {
+    journeyId: string;
+    id: string;
+    versionNumber: number;
+    document: unknown;
+  },
   runs: RunPath[],
 ): AnalyticsSource {
   const parsed = graphDocumentSchema.safeParse(version.document);
@@ -59,7 +64,10 @@ export function toAnalyticsSource(
       runs,
     };
   }
-  logUnreadable("published version", { versionId: version.id });
+  logUnreadable("published version", {
+    journeyId: version.journeyId,
+    versionId: version.id,
+  });
   return {
     kind: "unreadable",
     versionId: version.id,
@@ -105,5 +113,5 @@ export async function getAnalyticsForMember(
     .from(run)
     .where(eq(run.versionId, version.id));
 
-  return toAnalyticsSource(version, runs);
+  return toAnalyticsSource({ journeyId: existing.id, ...version }, runs);
 }

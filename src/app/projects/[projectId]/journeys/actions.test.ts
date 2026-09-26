@@ -23,12 +23,6 @@ const doubles = vi.hoisted(() => ({
     publishDraft: vi.fn(),
     restoreVersion: vi.fn(),
     unpublishJourney: vi.fn(),
-    // The real predicate, not a double: it is pure and the action's own
-    // narrowing of `restoreVersion`'s answer, not a call worth stubbing.
-    isUnreadableVersion: (result: unknown) =>
-      typeof result === "object" &&
-      result !== null &&
-      (result as { unreadable?: unknown }).unreadable === true,
   },
   // Mutable, so a test can take the key away; never a real credential.
   env: { AI_GATEWAY_API_KEY: "test-key" as string | undefined },
@@ -293,7 +287,7 @@ describe("restoreVersionAction", () => {
   it("refuses to restore a version that fails the document contract (ticket 83)", async () => {
     doubles.versions.restoreVersion.mockResolvedValue({
       ok: false,
-      unreadable: true,
+      reason: "unreadable",
       versionNumber: 1,
     });
 
@@ -471,7 +465,7 @@ describe("publishJourneyAction", () => {
   it("refuses a Draft whose row cannot be read", async () => {
     doubles.versions.publishDraft.mockResolvedValue({
       ok: false,
-      unreadable: true,
+      reason: "unreadable",
     });
 
     const result = await publishJourneyAction("project-1", "journey-1", 2);

@@ -1,9 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import {
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
-import { setJourneyThemeAction } from "@/app/projects/[projectId]/journeys/actions";
+import {
+  setJourneyThemeAction,
+  type JourneyActionResult,
+} from "@/app/projects/[projectId]/journeys/actions";
 import { StaleNotice } from "@/components/stale-notice";
 import { ThemeFields } from "@/components/theme-fields";
 import { THEME_PRESETS, type Theme, type ThemeOverride } from "@/lib/theme";
@@ -40,6 +49,15 @@ export function JourneyThemeSettings({
   const overriding = theme.preset !== null;
   const [checked, setChecked] = useOptimistic(overriding);
   const [, startTransition] = useTransition();
+  // The override as last acknowledged by the server: the props' once a
+  // refresh lands, and before that the Member's own save's, so a box
+  // unticked just after a preset pick is guarded by that pick rather than
+  // by the props' older value — a Member's own save never makes their
+  // next one stale (ticket 73).
+  const acknowledged = useRef<ThemeOverride>(theme);
+  useEffect(() => {
+    acknowledged.current = { preset: theme.preset, accent: theme.accent };
+  }, [theme.preset, theme.accent]);
 
   function toggle(on: boolean) {
     startTransition(async () => {
@@ -53,11 +71,10 @@ export function JourneyThemeSettings({
         projectId,
         journeyId,
         next,
-        theme,
-      ).catch(() => ({
-        ok: false as const,
+        acknowledged.current,
+      ).catch((): JourneyActionResult => ({
+        ok: false,
         error: "the server could not be reached",
-        stale: undefined,
       }));
       if (!result.ok) {
         if (result.stale) {
@@ -68,6 +85,7 @@ export function JourneyThemeSettings({
         setError(`Couldn't save: ${result.error}`);
         return;
       }
+      acknowledged.current = next;
       setError(null);
       router.refresh();
     });
@@ -114,6 +132,9 @@ export function JourneyThemeSettings({
             setJourneyThemeAction(projectId, journeyId, next, baseline)
           }
           onSaved={() => router.refresh()}
+          onStored={(saved) => {
+            acknowledged.current = saved;
+          }}
         />
       ) : null}
     </section>

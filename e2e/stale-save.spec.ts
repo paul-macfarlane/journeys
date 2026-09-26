@@ -16,6 +16,7 @@ import {
   publishableDocument,
   publishDocument,
   START_STEP_TITLE,
+  writeDraftDocument,
   writeRawDraftRow,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
@@ -263,4 +264,63 @@ test("draft-unreadable", async ({ page, context }) => {
 
   await openTab(page, "Editor");
   await expect(notice).toHaveCount(0);
+});
+
+/**
+ * Ticket 73 AC3: a Member editing alone never sees the stale sentence.
+ * Clicking the header's Publish straight after an edit blurs the editor,
+ * which starts that edit's save; the publish must go out after it, with the
+ * version it leaves, rather than beside it with the one it replaces.
+ */
+test("draft-publish-right-after-edit", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Crossing ${suffix}`,
+  );
+  await writeDraftDocument(journeyId, publishableDocument());
+
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  const stepTitle = page.getByLabel("Step title");
+  await expect(stepTitle).toHaveValue(START_STEP_TITLE);
+
+  // One saved edit first, typed until the row holds it: the editor is
+  // hydrated (a fill before hydration is written over), and the Draft's
+  // version has moved past the one the page first read.
+  const first = "Border post at dawn";
+  await expect(async () => {
+    await stepTitle.fill(first);
+    await expect(draftStatus(page)).toHaveText("Saved", { timeout: 3_000 });
+    await expect.poll(() => storedStartTitle(journeyId)).toBe(first);
+  }).toPass({ timeout: 20_000 });
+
+  // Then an edit and, without waiting for it to save, Publish.
+  const edited = "Border post at dusk";
+  await stepTitle.fill(edited);
+  const header = page.locator("main header");
+  await header.getByRole("button", { name: "Publish", exact: true }).click();
+
+  await expect(
+    header.getByRole("status").filter({ hasText: "Published Version" }),
+  ).toHaveText(/Published Version 1 — participants see it now\./);
+  await expect(page.getByText(STALE_DRAFT)).toHaveCount(0);
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+
+  // What was published is the edit made just before the click.
+  const [version] = await queryE2eDatabase<{
+    document: DraftRow["document"] & { startStepId: string };
+  }>('SELECT document FROM "published_version" WHERE journey_id = $1', [
+    journeyId,
+  ]);
+  expect(version.document.steps[version.document.startStepId].title).toBe(
+    edited,
+  );
+  expect(await storedStartTitle(journeyId)).toBe(edited);
 });

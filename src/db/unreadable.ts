@@ -1,4 +1,4 @@
-// Database access only — `server-only` so a client import fails the build.
+// Server-only data-layer helper — `server-only` so a client import fails the build.
 import "server-only";
 
 /**
