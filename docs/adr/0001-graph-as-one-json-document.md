@@ -4,6 +4,7 @@
 - Amended by: ADR-0002 (2026-09-21) — the "walk in circles" publish rule is withdrawn; cycles are allowed.
 - Amended by: ticket 24 (2026-09-22; `spec.md` `[SCOPE CHANGE]` of that date) — the "Ending with no Outcome" publish rule is withdrawn; an Ending may carry an Outcome or not.
 - Amended by: ticket 73 (2026-09-26) — writes are no longer last-write-wins: a Draft write is guarded by a version counter, and a Project or Journey settings write by the previous value of each field it changes; a stale write is refused, never merged.
+- Note (2026-09-26): ticket 14 (AI authoring) was withdrawn as `wontfix` before its code merged; the "projection" this ADR mentions below was never built. The decision text below is left as written.
 - Decided: 2026-09-18 (grilling session); written up 2026-09-19
 - Deciders: Paul Macfarlane
 

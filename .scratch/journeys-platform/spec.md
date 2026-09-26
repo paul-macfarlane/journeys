@@ -139,12 +139,14 @@ A platform where signed-in Authors build Journeys as a visible graph of Steps an
 
 ### AI authoring
 
-76. As an Author, I want to describe a Journey in a paragraph and receive a generated Draft of Steps, Choices, and Outcomes, so that I start from something instead of nothing.
-77. As an Author, I want the generated Draft to appear on the canvas for review before anything is published, so that AI proposes and I decide.
-78. As an Author, I want generation to respect the graph contract (one Start, endings with Outcomes, resolvable Choices), so that generated drafts are publishable with edits.
-79. As an Author, I want to ask AI to rewrite one Step's text with an instruction (e.g. "more urgent"), so that I can polish without retyping.
-80. As an Author, I want AI never to touch a Published Version, so that participants are never exposed to unreviewed content.
-80a. As an Author, I want AI features simply hidden when the platform has no AI key configured, so that a missing key is never an error I see.
+Withdrawn — see the `[SCOPE CHANGE] 2026-09-26` record below (ticket 14, `wontfix`); this section's code never merged.
+
+76. ~~As an Author, I want to describe a Journey in a paragraph and receive a generated Draft of Steps, Choices, and Outcomes, so that I start from something instead of nothing.~~
+77. ~~As an Author, I want the generated Draft to appear on the canvas for review before anything is published, so that AI proposes and I decide.~~
+78. ~~As an Author, I want generation to respect the graph contract (one Start, endings with Outcomes, resolvable Choices), so that generated drafts are publishable with edits.~~
+79. ~~As an Author, I want to ask AI to rewrite one Step's text with an instruction (e.g. "more urgent"), so that I can polish without retyping.~~
+80. ~~As an Author, I want AI never to touch a Published Version, so that participants are never exposed to unreviewed content.~~
+80a. ~~As an Author, I want AI features simply hidden when the platform has no AI key configured, so that a missing key is never an error I see.~~
 
 ### Seeded content
 
@@ -155,7 +157,7 @@ A platform where signed-in Authors build Journeys as a visible graph of Steps an
 
 ### Stack (confirmed team policy)
 
-Next.js 16 App Router, React 19, TypeScript, pnpm. Drizzle ORM on Neon Postgres in deployed environments and on a docker-compose Postgres locally. better-auth with Google and Discord, both always enabled. Tailwind v4 with shadcn, zod 4, react-hook-form, TanStack Query, next-themes. Vercel AI SDK for AI features. Vitest and Playwright. Deployed on Vercel: Production from `main`, a long-lived `staging` branch with a stable domain, and ephemeral preview deployments for every other branch. The Vercel Preview environment carries a full set of env values (`human-prerequisites.md` §9) so every preview build passes env validation; the Preview environment's OAuth callbacks and `BETTER_AUTH_URL` point at the staging domain, so sign-in is expected to work on staging and production but not on ephemeral PR previews. Project layout, lint, format, and hook conventions mirror `paul-macfarlane/paulitakes`. The canvas uses React Flow (`@xyflow/react`, MIT) with `@dagrejs/dagre` auto-layout (the maintained fork, not the unmaintained `dagre` package). Rich text uses Tiptap.
+Next.js 16 App Router, React 19, TypeScript, pnpm. Drizzle ORM on Neon Postgres in deployed environments and on a docker-compose Postgres locally. better-auth with Google and Discord, both always enabled. Tailwind v4 with shadcn, zod 4, react-hook-form, next-themes. Vercel AI SDK for AI features. Vitest and Playwright. Deployed on Vercel: Production from `main`, a long-lived `staging` branch with a stable domain, and ephemeral preview deployments for every other branch. The Vercel Preview environment carries a full set of env values (`human-prerequisites.md` §9) so every preview build passes env validation; the Preview environment's OAuth callbacks and `BETTER_AUTH_URL` point at the staging domain, so sign-in is expected to work on staging and production but not on ephemeral PR previews. Project layout, lint, format, and hook conventions mirror `paul-macfarlane/paulitakes`. The canvas uses React Flow (`@xyflow/react`, MIT) with `@dagrejs/dagre` auto-layout (the maintained fork, not the unmaintained `dagre` package). Rich text uses Tiptap.
 
 ### Domain model
 
@@ -211,9 +213,11 @@ Auto-layout only via dagre; the canvas is a navigable map, not a drawing surface
 
 ### AI
 
-Provider: Anthropic Claude via the Vercel AI SDK's Anthropic provider, model `claude-opus-5` with adaptive thinking, using structured output. Anthropic structured outputs do not accept dictionary-shaped (`additionalProperties`) or recursive schemas, so the AI-facing schema is an array-shaped projection of the graph document (Steps and Outcomes as arrays with explicit ids, content as a restricted block list) derived in code next to the canonical zod schema so the two cannot drift; the model's output is mapped into a graph document and validated with the canonical schema before it touches the Draft. The API key is an environment variable populated out of band; agents never read live secret files. When the key is absent the AI entry points are hidden and every other feature works unchanged.
+Withdrawn — see the `[SCOPE CHANGE] 2026-09-26` record below (ticket 14, `wontfix`); this section's code never merged. The only AI consumer is the Judge (deciding Prompts); see the `### AI` bullet in that record.
 
-Authoring generates a full graph document from a prompt through that projection, writes it into the Draft (replacing an empty Draft or, if non-empty, after confirmation), and returns the author to the canvas. Step rewrite generates replacement Tiptap-JSON content for one step from an instruction and the current content. Neither operation can read or write a Published Version.
+~~Provider: Anthropic Claude via the Vercel AI SDK's Anthropic provider, model `claude-opus-5` with adaptive thinking, using structured output. Anthropic structured outputs do not accept dictionary-shaped (`additionalProperties`) or recursive schemas, so the AI-facing schema is an array-shaped projection of the graph document (Steps and Outcomes as arrays with explicit ids, content as a restricted block list) derived in code next to the canonical zod schema so the two cannot drift; the model's output is mapped into a graph document and validated with the canonical schema before it touches the Draft. The API key is an environment variable populated out of band; agents never read live secret files. When the key is absent the AI entry points are hidden and every other feature works unchanged.~~
+
+~~Authoring generates a full graph document from a prompt through that projection, writes it into the Draft (replacing an empty Draft or, if non-empty, after confirmation), and returns the author to the canvas. Step rewrite generates replacement Tiptap-JSON content for one step from an instruction and the current content. Neither operation can read or write a Published Version.~~
 
 ### Seeding
 
@@ -221,7 +225,7 @@ A throwaway scraper reads the live legacy site's prerendered step pages for case
 
 ### Reserved-for-future columns and fields
 
-Documented so nobody removes them: `member.role`; `choice.condition` and `choice.effect`; `prompt.type` accepting only `free_text`; nullable step position fields; nullable custom theme tokens.
+Documented so nobody removes them: `member.role`; `choice.condition` and `choice.effect`; `prompt.type` accepting only `free_text`; nullable custom theme tokens. Nullable step position fields are unused legacy, kept only so already-stored documents keep parsing; ticket 17 (manual layout) is `wontfix`, so nothing reads them, and removing them is itself `wontfix` (ticket 72 D4).
 
 ## Testing Decisions
 

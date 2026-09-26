@@ -6,6 +6,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DECISION_THRESHOLD } from "@/lib/ai/threshold";
 import {
+  hasOutcome,
+  hasStep,
   isEnding,
   type GraphDocument,
   type Prompt,
@@ -257,11 +259,8 @@ function EndingView({
   choices: ChoiceControls;
   startOver: ReactNode;
 }) {
-  // `Object.hasOwn`, not `in` or bare indexing: the maps are plain objects
-  // parsed from JSON, so an id like "toString" would otherwise find a
-  // prototype method and read as a real Outcome.
   const outcome =
-    step.outcomeId !== null && Object.hasOwn(document.outcomes, step.outcomeId)
+    step.outcomeId !== null && hasOutcome(document, step.outcomeId)
       ? document.outcomes[step.outcomeId]
       : null;
 
@@ -348,8 +347,7 @@ function ChoiceList({
   const list = (
     <ul role="list" aria-label="Choices" className="flex flex-col gap-2">
       {step.choices.map((choice) => {
-        // Own property only — see the Outcome lookup above.
-        const targetExists = Object.hasOwn(document.steps, choice.targetStepId);
+        const targetExists = hasStep(document, choice.targetStepId);
         const isSuggested = suggested !== null && suggested.id === choice.id;
         return (
           <li key={choice.id} className="flex flex-col gap-1">

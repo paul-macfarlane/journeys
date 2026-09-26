@@ -82,9 +82,7 @@ export function groupResponsesByStep(
   for (const row of rows) {
     let group = groups.get(row.stepId);
     if (!group) {
-      // Own property only: the map is parsed JSON, and a Step id such as
-      // "constructor" must not find a prototype method.
-      const step = Object.hasOwn(document.steps, row.stepId)
+      const step = hasStep(document, row.stepId)
         ? document.steps[row.stepId]
         : null;
       group = {

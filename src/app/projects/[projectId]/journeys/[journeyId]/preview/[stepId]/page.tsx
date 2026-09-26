@@ -11,7 +11,7 @@ import {
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
-import { isEnding } from "@/lib/graph/document";
+import { hasStep, isEnding } from "@/lib/graph/document";
 import { requireSession } from "@/lib/session";
 import { effectiveTheme } from "@/lib/theme";
 
@@ -60,9 +60,7 @@ export default async function PreviewStepPage({
   }
   const draft = stored.document;
 
-  // Own property only: `steps` is a plain object parsed from JSON, and a
-  // URL naming "toString" must 404 rather than find a prototype method.
-  if (!Object.hasOwn(draft.steps, stepId)) notFound();
+  if (!hasStep(draft, stepId)) notFound();
   const step = draft.steps[stepId];
 
   // The Theme a Participant will see, as on Preview's first screen.

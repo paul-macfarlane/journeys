@@ -50,15 +50,15 @@ Staging URL: `https://journeys-mvp-staging.vercel.app` (renamed 2026-09-24 from 
 - [x] Set `BETTER_AUTH_URL` to `http://localhost:3000` locally and the production URL in Vercel Production.
 - [x] Set `BETTER_AUTH_URL` for **Preview** to the staging URL (see §9).
 
-## 6. Vercel AI Gateway key (AI authoring, ticket 14; jev decisions, ticket 43)
+## 6. Vercel AI Gateway key (jev decisions, ticket 43)
 
 Decided 2026-09-22 (Paul): every model call goes through the Vercel AI Gateway with a static key, not a provider key.
 
 - [ ] In Vercel → `journeys` → Settings → AI Gateway, enable the gateway and create an API key.
-- [ ] Set `AI_GATEWAY_API_KEY` in Vercel (Production and Preview) and `.env.local`. Optional: a budget alert in the same settings page; the team's free monthly credit covers hackathon use.
-- [ ] Without it, AI features are hidden and everything else works — safe to defer until ticket 14 or 43 starts.
+- [ ] Set `AI_GATEWAY_API_KEY` in Vercel (Production and Preview) and `.env.local`. Set a spend limit per ticket 84 in place of the earlier "optional budget alert" note; the team's free monthly credit covers hackathon use.
+- [ ] Without it, the Judge falls back and a deciding Prompt lets the Participant choose instead — everything else works, so this is safe to defer until ticket 43 starts.
 - [ ] Confirm the Vercel project runs on Fluid compute (the default; Settings → Functions), so a server action may wait the judge's full 20 s (ticket 49). A non-Fluid function is cut off at 10 s, before the judge's fallback, and a Participant would see an error page instead of the Choices.
-- Expected result: after ticket 14, the AI controls render on a Journey page; after ticket 43, a deciding Prompt advances a Run.
+- Expected result: after ticket 43, a deciding Prompt advances a Run using the Judge.
 
 ## 7. Local machine
 

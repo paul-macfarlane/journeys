@@ -81,8 +81,10 @@ import "@xyflow/react/dist/style.css";
  * and to the "Find step" field above it. No Author drags a node, so there is
  * no hand-placed position to preserve, and a stored one would go stale the
  * moment a Choice was added: what the map is for is showing the shape the
- * Journey has now. `stepSchema` keeps a `position` field for a later
- * decision; nothing here reads or writes it.
+ * Journey has now. `stepSchema` carries a `position` field, but it is unused
+ * legacy kept only so already-stored documents keep parsing (ticket 17's
+ * manual layout is `wontfix`, and removing the field is itself `wontfix`;
+ * ticket 72 D4); nothing here reads or writes it.
  *
  * Which way the map runs is the Draft's, not this component's: `layout`
  * arrives laid out top to bottom or left to right, and the control beside
