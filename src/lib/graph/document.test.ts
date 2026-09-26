@@ -4,8 +4,9 @@ import {
   createDraftDocument,
   documentsEqual,
   graphDocumentSchema,
+  hasOutcome,
+  hasStep,
   isEnding,
-  parseGraphDocument,
   prepareDocumentForWrite,
   type Prompt,
 } from "@/lib/graph/document";
@@ -198,9 +199,9 @@ describe("graphDocumentSchema", () => {
       },
     };
 
-    expect(parseGraphDocument(withDecidingPrompt)).toEqual({
-      ok: true,
-      document: withDecidingPrompt,
+    expect(graphDocumentSchema.safeParse(withDecidingPrompt)).toMatchObject({
+      success: true,
+      data: withDecidingPrompt,
     });
   });
 
@@ -245,18 +246,21 @@ describe("layoutDirection", () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { layoutDirection, ...withoutDirection } = document;
 
-    const result = parseGraphDocument(withoutDirection);
+    const result = graphDocumentSchema.safeParse(withoutDirection);
 
-    expect(result).toEqual({ ok: true, document });
+    expect(result).toMatchObject({ success: true, data: document });
   });
 
-  it('round-trips "LR" through parseGraphDocument and prepareDocumentForWrite', () => {
+  it('round-trips "LR" through the schema and prepareDocumentForWrite', () => {
     const document = {
       ...createDraftDocument(),
       layoutDirection: "LR" as const,
     };
 
-    expect(parseGraphDocument(document)).toEqual({ ok: true, document });
+    expect(graphDocumentSchema.safeParse(document)).toMatchObject({
+      success: true,
+      data: document,
+    });
     expect(prepareDocumentForWrite(document)).toEqual({
       ok: true,
       document,
@@ -264,55 +268,12 @@ describe("layoutDirection", () => {
   });
 
   it('refuses a layoutDirection other than "TB" or "LR"', () => {
-    const result = parseGraphDocument({
+    const result = graphDocumentSchema.safeParse({
       ...createDraftDocument(),
       layoutDirection: "RL",
     });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toMatch(/layoutDirection/);
-    }
-  });
-});
-
-describe("parseGraphDocument", () => {
-  it("returns the document when it is valid", () => {
-    const document = createDraftDocument();
-    const result = parseGraphDocument(document);
-
-    expect(result).toEqual({ ok: true, document });
-  });
-
-  it("returns an error naming the field that failed instead of throwing", () => {
-    const result = parseGraphDocument({
-      ...createDraftDocument(),
-      startStepId: 7,
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toMatch(/startStepId/);
-    }
-  });
-
-  it("names a nested path", () => {
-    const document = createDraftDocument();
-    const start = document.steps[document.startStepId];
-
-    const result = parseGraphDocument({
-      ...document,
-      steps: { [start.id]: { ...start, choices: "none" } },
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toMatch(/choices/);
-    }
-  });
-
-  it("rejects something that is not a document at all", () => {
-    expect(parseGraphDocument("a journey").ok).toBe(false);
+    expect(result.success).toBe(false);
   });
 });
 
@@ -613,15 +574,59 @@ describe("decides defaults to false on every stored Prompt (ticket 43)", () => {
   ])(
     "%s still parses, with decides: false on every Prompt",
     (_name, document) => {
-      const result = parseGraphDocument(document);
+      const result = graphDocumentSchema.safeParse(document);
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        const prompts = promptsIn(result.document);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const prompts = promptsIn(result.data);
         for (const prompt of prompts) {
           expect(prompt.decides).toBe(false);
         }
       }
     },
   );
+});
+
+describe("hasStep", () => {
+  it("is true for a Step the document holds", () => {
+    const document = createDraftDocument();
+
+    expect(hasStep(document, document.startStepId)).toBe(true);
+  });
+
+  it("is false for an id the document does not hold", () => {
+    const document = createDraftDocument();
+
+    expect(hasStep(document, "not-a-step")).toBe(false);
+  });
+
+  it("is false for a prototype key such as constructor, not a false positive from bare indexing", () => {
+    const document = createDraftDocument();
+
+    expect(hasStep(document, "constructor")).toBe(false);
+  });
+});
+
+describe("hasOutcome", () => {
+  it("is true for an Outcome the document holds", () => {
+    const document = createDraftDocument();
+    const withOutcome = {
+      ...document,
+      outcomes: { "outcome-1": { id: "outcome-1", label: "Escaped" } },
+    };
+
+    expect(hasOutcome(withOutcome, "outcome-1")).toBe(true);
+  });
+
+  it("is false for an id the document does not hold", () => {
+    const document = createDraftDocument();
+
+    expect(hasOutcome(document, "not-an-outcome")).toBe(false);
+  });
+
+  it("is false for a prototype key such as constructor", () => {
+    const document = createDraftDocument();
+
+    expect(hasOutcome(document, "constructor")).toBe(false);
+  });
 });

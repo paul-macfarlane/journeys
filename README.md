@@ -36,7 +36,8 @@ auth secret with `openssl rand -base64 32`; the Google and Discord OAuth
 client pairs come from real OAuth apps, and where to get each value is
 documented in
 [`.scratch/journeys-platform/human-prerequisites.md`](.scratch/journeys-platform/human-prerequisites.md).
-Leave `AI_GATEWAY_API_KEY` empty to hide the AI authoring features.
+Leave `AI_GATEWAY_API_KEY` empty and a deciding Prompt lets the Participant
+choose instead of the Judge.
 
 ## Routes
 

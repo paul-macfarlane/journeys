@@ -16,12 +16,13 @@ import type { PublishProblem } from "@/lib/graph/validate";
  * `server-only` and no React import — the canvas component and this module's
  * own tests both call it directly on the client, with no server round trip.
  *
- * `stepSchema` reserves a `position` field, but the canvas never reads or
- * writes it: no manual position is ever stored, so `layoutGraph` recomputes
- * layout with dagre every time the document changes, and the map always
- * shows the current shape of the Journey rather than wherever a node
- * happened to be left. It never mutates the document it is given, and the
- * same document always lays out the same way.
+ * `stepSchema` carries a `position` field, but it is unused legacy kept only
+ * so already-stored documents keep parsing (ticket 17's manual layout is
+ * `wontfix`, and removing the field is itself `wontfix`; ticket 72 D4).
+ * `layoutGraph` recomputes layout with dagre every time the document
+ * changes, and the map always shows the current shape of the Journey rather
+ * than wherever a node happened to be left. It never mutates the document it
+ * is given, and the same document always lays out the same way.
  *
  * dagre runs as a multigraph: every Choice gets its own named dagre edge
  * (`graph.setEdge(source, target, label box, edge.id)`), so parallel Choices

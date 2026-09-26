@@ -5,6 +5,7 @@ import {
   contentSchema,
   isBlankContent,
   PREVIEW_LIMIT,
+  readStoredImageAttrs,
   sanitizeContent,
   textPreview,
   type Content,
@@ -985,5 +986,48 @@ describe("documents stored before ticket 40", () => {
     for (const step of steps) {
       expect(sanitized(step.content)).toEqual(step.content);
     }
+  });
+});
+
+describe("readStoredImageAttrs", () => {
+  it("falls back to credit as the caption when no caption is present", () => {
+    const attrs = readStoredImageAttrs({
+      src: "https://example.com/a.png",
+      alt: "A photo",
+      credit: "Photo by A. Photographer",
+    });
+
+    expect(attrs).toEqual({
+      src: "https://example.com/a.png",
+      alt: "A photo",
+      caption: "Photo by A. Photographer",
+    });
+  });
+
+  it("prefers caption over credit when both are present", () => {
+    const attrs = readStoredImageAttrs({
+      src: "https://example.com/a.png",
+      caption: "New caption",
+      credit: "Old credit",
+    });
+
+    expect(attrs.caption).toBe("New caption");
+  });
+
+  it("reads a non-string alt (the null documents before ticket 30 stored) as an empty string", () => {
+    const attrs = readStoredImageAttrs({
+      src: "https://example.com/a.png",
+      alt: null,
+    });
+
+    expect(attrs.alt).toBe("");
+  });
+
+  it("reads attrs that are not a record as entirely absent", () => {
+    expect(readStoredImageAttrs(null)).toEqual({
+      src: undefined,
+      alt: "",
+      caption: "",
+    });
   });
 });

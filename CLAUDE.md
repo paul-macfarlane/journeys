@@ -43,7 +43,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `src/app/` — Next.js 16 App Router routes, layouts, and the better-auth route handler
 - `src/components/` — shadcn/ui primitives and app components
 - `src/db/` — Drizzle schema, database client (Neon in deployments, `pg` locally), and per-table data access (`projects.ts`, `journeys.ts`); every file here except `schema.ts` is `server-only`
-- `src/lib/` — Pure, database-free helpers shared by server and client (zod schemas, action results) plus startup env validation
+- `src/lib/` — Pure, database-free helpers shared by server and client (zod schemas, action results) plus startup env validation, plus the server-only auth, session, env, and Judge modules
 - `drizzle/` — Committed Drizzle migrations; applied by CI and the Migrate workflow, never by Vercel builds
 - `e2e/` — Playwright specs plus setup that provisions the dedicated `journeys_e2e` database and server on port 3100
 - `scripts/` — Development-only commands run with `tsx` (`seed/journey-stories.ts` over the shared `seed/journey-stories-seed.ts` plus the committed graph documents beside it — the three legacy cases under `seed/journey-stories/` and the demo Journey under `seed/allotment/` — `record-landing-demo.ts`, and `decide-probe.ts`); imports `@/db/schema`, `src/lib/graph`, `src/lib/ai`, and the `e2e/setup/` helpers only, never a `server-only` module
@@ -52,7 +52,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 
 ### Repository-specific rules
 
-- Stack: Next.js 16 App Router, React 19, TypeScript, pnpm 10, Drizzle + Neon Postgres (`pg` + docker-compose locally on host port 5436), better-auth (Google + Discord), Tailwind v4 + shadcn, zod 4, TanStack Query, Vitest + Playwright, Vercel. Mirror `paul-macfarlane/paulitakes` conventions.
+- Stack: Next.js 16 App Router, React 19, TypeScript, pnpm 10, Drizzle + Neon Postgres (`pg` + docker-compose locally on host port 5436), better-auth (Google + Discord), Tailwind v4 + shadcn, zod 4, Vitest + Playwright, Vercel. Mirror `paul-macfarlane/paulitakes` conventions.
 - The Foundation ticket has landed. Use the commands in `docs/agents/testing.md`; CI runs the same commands on every pull request and on every push to `staging` and `main`.
 - Vercel builds never run migrations. The `Migrate` GitHub Action applies Drizzle migrations on push to `staging` and `main`, and it starts alongside the Vercel build with no ordering guarantee, so every migration must stay compatible with the previously deployed code.
 - There are no pull-request preview deployments: Vercel's Ignored Build Step skips every branch except `staging` and `main`. Deployed verification happens on the staging domain after a PR merges.
