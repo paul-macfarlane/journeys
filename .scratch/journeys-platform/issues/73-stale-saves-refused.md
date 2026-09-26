@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: 72
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → **73** → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (schema and every write path)
 
 **Why:** ticket 15 ("Concurrent Draft writes", "Metadata forms, last write wins", "Corrupt-row handling"). `saveDraft` is whole-document and last-write-wins (ADR-0001, "Writes are whole-document"), and so are the Project and Journey settings forms. Two Members editing at once overwrite each other with no warning: silent data loss.

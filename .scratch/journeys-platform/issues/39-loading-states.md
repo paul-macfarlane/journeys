@@ -4,7 +4,7 @@ Status: needs-info
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: parked (Paul, 2026-09-26): still blocked on vercel/next.js#86055; resume per the comment above when it closes. Product order: 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`. Parked: blocked on vercel/next.js#86055; resume per the comment above when it closes.
 Route: polish
 
 **Why:** Paul, 2026-09-22, item 9: "Do you feel we need improved loading states? Feels like a nice enhancement, but not something we necessarily need for the hackathon unless there is time." Agent's answer: yes, but only route-level. Every Author page is a server component that reads several tables before it renders, so a navigation from the Projects list to a Journey page shows nothing until the whole page is ready; a `loading.tsx` beside each page turns that into an instant navbar plus a skeleton. Within a page the app already has pending states (blur-saved forms, Publish, moves).
