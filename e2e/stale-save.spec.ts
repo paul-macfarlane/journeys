@@ -28,6 +28,7 @@ import {
   signInAgain,
   signInAs,
 } from "./setup/session";
+import { readDraftRow } from "./setup/documents";
 
 /**
  * Seam B for ticket 73: a stale save is refused, never silently
@@ -64,16 +65,6 @@ async function secondMember(
 }
 
 type DraftRow = { document: { steps: Record<string, { title: string }> } };
-
-async function readDraftRow(
-  journeyId: string,
-): Promise<{ document: unknown; version: number }> {
-  const [row] = await queryE2eDatabase<{ document: unknown; version: number }>(
-    'SELECT document, version FROM "draft" WHERE journey_id = $1',
-    [journeyId],
-  );
-  return row;
-}
 
 async function storedStartTitle(journeyId: string): Promise<string> {
   const { document } = await readDraftRow(journeyId);

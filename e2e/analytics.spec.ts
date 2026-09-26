@@ -8,12 +8,7 @@ import {
 
 import type { GraphDocument } from "@/lib/graph/document";
 
-import {
-  createJourney,
-  createProject,
-  openTab,
-  uniqueSuffix,
-} from "./setup/authoring";
+import { openTab } from "./setup/authoring";
 import {
   publishDocument,
   QUEUE_STEP_TITLE,
@@ -29,6 +24,8 @@ import {
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
+import { directionRadio, expectMapFitted } from "./setup/canvas";
+import { startJourney } from "./setup/editor";
 
 /**
  * Seam B for ticket 10: Participants walk a Published Version to different
@@ -44,28 +41,16 @@ test.setTimeout(120_000);
 
 const mintedAuthorIds: string[] = [];
 
+/** The Analytics tab's map, by the region the page names it. */
+function analyticsMap(page: Page) {
+  return page.getByRole("region", { name: "Analytics map" });
+}
+
 test.afterAll(async () => {
   // Deleting the Project cascades Journeys → Published Versions → Runs.
   await cleanup(mintedAuthorIds);
   await closePools();
 });
-
-/** A Project and a Journey, made through the browser as an Author would. */
-async function startJourney(page: Page): Promise<{
-  projectId: string;
-  journeyId: string;
-}> {
-  const suffix = uniqueSuffix();
-  await page.goto("/projects");
-  const projectId = await createProject(page, `Refugee Health ${suffix}`);
-  await page.goto(`/projects/${projectId}`);
-  const journeyId = await createJourney(
-    page,
-    projectId,
-    `Border Crossing ${suffix}`,
-  );
-  return { projectId, journeyId };
-}
 
 /**
  * One anonymous Participant's walk of the live version: the first Choice is
@@ -424,41 +409,6 @@ async function expectAnchorsOn(
   await expect(map.locator(".react-flow__handle")).toHaveCount(8);
 }
 
-/** Every box on the map lies inside the map's own frame: the fit held. */
-async function expectMapFitted(page: Page): Promise<void> {
-  const frame = await page
-    .getByRole("region", { name: "Analytics map" })
-    .boundingBox();
-  expect(frame).not.toBeNull();
-  if (frame === null) return;
-
-  await expect
-    .poll(async () => {
-      const boxes = await page
-        .getByRole("region", { name: "Analytics map" })
-        .locator(".react-flow__node")
-        .evaluateAll((elements) =>
-          elements.map((element) => element.getBoundingClientRect()),
-        );
-      return boxes.every(
-        (rect) =>
-          rect.left >= frame.x &&
-          rect.top >= frame.y &&
-          rect.right <= frame.x + frame.width &&
-          rect.bottom <= frame.y + frame.height,
-      );
-    })
-    .toBe(true);
-}
-
-/** The control in the map's own row, by the direction it names. */
-function directionRadio(page: Page, name: "Top to bottom" | "Left to right") {
-  return page
-    .getByRole("region", { name: "Analytics map" })
-    .getByRole("group", { name: "Map controls" })
-    .getByRole("radio", { name, exact: true });
-}
-
 /**
  * Ticket 35, item 15: the Analytics map can be turned. A Published Version is
  * immutable, so which way it is read is the browser's to remember and
@@ -479,24 +429,22 @@ test("analytics-direction-toggle", async ({ page, context, browser }) => {
   // otherwise.
   await page.goto(analyticsUrl);
   await openTab(page, "Analytics");
-  await expect(directionRadio(page, "Top to bottom")).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
+  await expect(
+    directionRadio(analyticsMap(page), "Top to bottom"),
+  ).toHaveAttribute("aria-checked", "true");
   await expectMapRuns(page, "bottom");
   await expectAnchorsOn(page, { source: "bottom", target: "top" });
 
   // Turned a quarter: every anchor moves to the sides, the Step the Start's
   // first Choice leads to stands past its right edge, and the whole map is
   // fitted into the frame again.
-  await directionRadio(page, "Left to right").click();
-  await expect(directionRadio(page, "Left to right")).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
+  await directionRadio(analyticsMap(page), "Left to right").click();
+  await expect(
+    directionRadio(analyticsMap(page), "Left to right"),
+  ).toHaveAttribute("aria-checked", "true");
   await expectMapRuns(page, "right");
   await expectAnchorsOn(page, { source: "right", target: "left" });
-  await expectMapFitted(page);
+  await expectMapFitted(analyticsMap(page));
 
   await page.screenshot({
     path: evidencePath(
@@ -508,10 +456,9 @@ test("analytics-direction-toggle", async ({ page, context, browser }) => {
 
   // A reload finds it turned, in this browser.
   await page.reload();
-  await expect(directionRadio(page, "Left to right")).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
+  await expect(
+    directionRadio(analyticsMap(page), "Left to right"),
+  ).toHaveAttribute("aria-checked", "true");
   await expectMapRuns(page, "right");
   await expectAnchorsOn(page, { source: "right", target: "left" });
 
@@ -530,18 +477,17 @@ test("analytics-direction-toggle", async ({ page, context, browser }) => {
     const otherPage = await other.newPage();
     await otherPage.goto(analyticsUrl);
     await openTab(otherPage, "Analytics");
-    await expect(directionRadio(otherPage, "Top to bottom")).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    await expect(
+      directionRadio(analyticsMap(otherPage), "Top to bottom"),
+    ).toHaveAttribute("aria-checked", "true");
     await expectMapRuns(otherPage, "bottom");
   } finally {
     await other.close();
   }
 
   // And turned back, from the same control.
-  await directionRadio(page, "Top to bottom").click();
+  await directionRadio(analyticsMap(page), "Top to bottom").click();
   await expectMapRuns(page, "bottom");
   await expectAnchorsOn(page, { source: "bottom", target: "top" });
-  await expectMapFitted(page);
+  await expectMapFitted(analyticsMap(page));
 });

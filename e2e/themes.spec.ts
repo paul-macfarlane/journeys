@@ -3,19 +3,8 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import { THEME_PRESETS, type ThemePreset } from "@/lib/theme";
 
-import {
-  createJourney,
-  createProject,
-  openTab,
-  uniqueSuffix,
-} from "./setup/authoring";
-import {
-  publishDocument,
-  QUEUE_STEP_TITLE,
-  runnerDocument,
-  START_STEP_TITLE,
-  writeDraftDocument,
-} from "./setup/documents";
+import { openTab, publishOne } from "./setup/authoring";
+import { QUEUE_STEP_TITLE, START_STEP_TITLE } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
@@ -112,26 +101,6 @@ async function readJourneyTheme(journeyId: string) {
   return { preset: row.theme_preset, accent: row.theme_accent };
 }
 
-/** A Project with one published Journey, made through the UI as an Author. */
-async function publishOne(
-  page: Page,
-  label: string,
-): Promise<{ projectId: string; journeyId: string }> {
-  const suffix = uniqueSuffix();
-  await page.goto("/projects");
-  const projectId = await createProject(page, `${label} ${suffix}`);
-  await page.goto(`/projects/${projectId}`);
-  const journeyId = await createJourney(
-    page,
-    projectId,
-    `${label} journey ${suffix}`,
-    "A short walk to check the theme.",
-  );
-  await writeDraftDocument(journeyId, runnerDocument());
-  await publishDocument(journeyId, runnerDocument());
-  return { projectId, journeyId };
-}
-
 /** A Participant: no session, on a phone, holding only the link. */
 function newParticipant(browser: Browser, colorScheme?: "light" | "dark") {
   return browser.newContext({
@@ -148,7 +117,11 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
 }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
-  const { projectId, journeyId } = await publishOne(page, "Theme");
+  const { projectId, journeyId } = await publishOne(
+    page,
+    "Theme",
+    "A short walk to check the theme.",
+  );
 
   // Every Project starts in the app's own palette, with no accent.
   expect(await readProjectTheme(projectId)).toEqual({
@@ -393,7 +366,11 @@ test("themes-contrast: every preset passes WCAG AA on the start screen, a Step, 
 }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
-  const { projectId, journeyId } = await publishOne(page, "Contrast");
+  const { projectId, journeyId } = await publishOne(
+    page,
+    "Contrast",
+    "A short walk to check the theme.",
+  );
 
   for (const { id: preset } of THEME_PRESETS) {
     await queryE2eDatabase(
