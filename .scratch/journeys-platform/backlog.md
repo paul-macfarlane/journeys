@@ -15,8 +15,8 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 1 | **1 Saves and unreadable rows** (contract) | [81 One autosave loop](issues/81-one-autosave-loop.md) | polish | done | PR #101 |
 | 2 | 1 | [73 Stale saves are refused](issues/73-stale-saves-refused.md) | contract | done | PR #101 |
 | 3 | 1 | [83 Error pages and unreadable Published Versions](issues/83-error-surfaces.md) | contract | done | PR #101 |
-| 4 | **2 Cleanup and stability** (contract) | [85 Leftovers sweep](issues/85-leftovers-sweep.md) | contract | in-progress | Drop-migration follow-up after promotion; lockfile commit is Paul's |
-| 5 | 2 | [74 Deploy and test stability](issues/74-deploy-and-test-stability.md) | polish | in-progress | Paul turns on Skew Protection |
+| 4 | **2 Cleanup and stability** (contract) | [85 Leftovers sweep](issues/85-leftovers-sweep.md) | contract | ai-review | Drop-migration follow-up after promotion; lockfile commit is Paul's |
+| 5 | 2 | [74 Deploy and test stability](issues/74-deploy-and-test-stability.md) | polish | ai-review | Paul turns on Skew Protection |
 | 6 | **3 Runs and the Judge** (contract) | [84 Abuse limits on Runs and the Judge](issues/84-run-and-judge-abuse.md) | contract | needs-triage | Paul settles its two decisions at the chunk's start |
 | 7 | 3 | [76 The Judge can find a Response unclear](issues/76-judge-unclear.md) | contract | ready-for-agent | |
 | 8 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | ready-for-agent | |
