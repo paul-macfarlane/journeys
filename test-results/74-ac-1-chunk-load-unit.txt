@@ -1,0 +1,60 @@
+$ pnpm exec vitest run --reporter=verbose <chunk-load unit files> (at 7b692b6)
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 .
+
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns true for a webpack ChunkLoadError by name 1ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns true for a webpack chunk failure message 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns true for a Failed to load chunk message 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns true for a CSS chunk failure message 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns true for a Turbopack/ESM dynamic import failure 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns false for an ordinary Error 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns false for a non-Error value 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns false for undefined 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns false for null 0ms
+ ✓ src/lib/chunk-load.test.ts > isChunkLoadError > returns false for a plain object 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > keeps its marker under the app's own storage key 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > reloads when no marker exists 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > does not reload a second time while the marker is present, however long after 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > does not reload when a marker is already stored 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > reloads again once a successful navigation has cleared the marker 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > does not reload when the storage getter throws 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > does not reload when setItem throws 0ms
+ ✓ src/lib/chunk-load.test.ts > reloadOnceForChunkError > does not reload when getItem throws 0ms
+ ✓ src/lib/chunk-load.test.ts > forgetChunkReload > swallows a storage that throws 0ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > reloads once when a chunk-load error event fires 7ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > does not reload again for a second failure while the marker is present 1ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > does not reload after a fresh page load that still carries the marker 1ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > reloads again once a client-side navigation has changed the pathname 1ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > does not reload for a normal error event 1ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > reloads once for an unhandledrejection carrying a chunk-load error 0ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > does not reload for an unhandledrejection carrying a normal error 0ms
+ ✓ src/components/chunk-load-recovery.test.tsx > ChunkLoadRecovery > does not reload when sessionStorage throws 0ms
+stderr | src/app/global-error.test.tsx > global-error.tsx chunk-load recovery > reloads once for a chunk-load error
+In HTML, <html> cannot be a child of <div>.
+This will cause a hydration error.
+[error] digest-1
+
+stderr | src/app/global-error.test.tsx > global-error.tsx chunk-load recovery > does not reload for an ordinary error
+[error] digest-2
+
+ ✓ src/app/global-error.test.tsx > global-error.tsx > offers Try again and never renders the error's own message 6ms
+ ✓ src/app/global-error.test.tsx > global-error.tsx chunk-load recovery > reloads once for a chunk-load error 16ms
+ ✓ src/app/global-error.test.tsx > global-error.tsx chunk-load recovery > does not reload for an ordinary error 3ms
+stderr | src/app/error.test.tsx > error.tsx chunk-load recovery > reloads once for a chunk-load error
+[error] digest-1
+
+stderr | src/app/error.test.tsx > error.tsx chunk-load recovery > does not reload for an ordinary error
+[error] digest-2
+
+ ✓ src/app/error.test.tsx > error.tsx > offers Try again and never renders the error's own message 12ms
+ ✓ src/app/error.test.tsx > error.tsx chunk-load recovery > reloads once for a chunk-load error 14ms
+ ✓ src/app/error.test.tsx > error.tsx chunk-load recovery > does not reload for an ordinary error 4ms
+
+ Test Files  4 passed (4)
+      Tests  33 passed (33)
+   Start at  18:01:13
+   Duration  580ms (transform 124ms, setup 0ms, import 400ms, tests 73ms, environment 725ms)
+
