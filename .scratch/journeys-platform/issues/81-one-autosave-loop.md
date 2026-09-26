@@ -12,8 +12,8 @@ Route: polish (no schema, auth, or route change; behaviour-preserving)
 **What to build:**
 
 - Widen the loop's `write` contract so it covers what the Draft editor needs today and what 73 will add. Today `write` resolves to a boolean (`src/lib/autosave.ts:69`). Change it to a result the loop can act on:
-  `write(value: T, baseline: T) => Promise<{ kind: "saved"; saved?: T } | { kind: "refused"; error: string; detail?: unknown }>`.
-  `baseline` is the loop's `lastSaved`, the value the edit was made against; nothing reads it until 73. `saved`, when given, becomes `lastSaved`. This is how a write hands back server-owned state (73's Draft version). `refused` carries the Draft's `error` and `stepId` through `detail`.
+  `write(value: T, baseline: T) => Promise<{ kind: "saved"; saved?: T } | { kind: "refused"; error: string; stepId?: string }>`.
+  `baseline` is the loop's `lastSaved`, the value the edit was made against. Nothing reads it until 73; it is here so 73 changes no signature. `saved`, when given, becomes `lastSaved`. This is how a write hands back server-owned state (73's Draft version). `refused` carries the Draft's `error` and `stepId`.
 - The loop reports a refusal through a new `onRefused(result)` handler. The Draft editor uses it for `setSaveError` and to open the Step named by `stepId`. The metadata forms map it onto their field error, as `useAutosavedForm` does now.
 - Move `DraftEditor` onto `useAutosave`. Keep its adopt rule. Today it adopts an incoming `draft` only when nothing is unsaved and no save is running (`draft-editor.tsx:314-326`), and it clears the undo history on adoption. Express that through `adopt` and the loop's `isDirty`, not a second set of refs.
 - **Unload writes go through the loop** (72 finding W5). `unload()` (`src/lib/autosave.ts:190`) and the editor's `beforeunload` (`draft-editor.tsx:367`) call `write` directly, alongside any write already in flight. Route the unload write through the same single-flight path, or skip it when a write is in flight and let the in-flight write's queue carry the edit. Record which in the closeout.

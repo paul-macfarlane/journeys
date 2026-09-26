@@ -29,7 +29,7 @@ Route: polish (behaviour-preserving; no schema, auth, or route change)
 **What to build:**
 
 - **Canvas:**
-  - `step-node.tsx` (`StepNode`, `MissingNode`) and `choice-edge.tsx`.
+  - `step-node.tsx` (`StepNode`, `MissingNode`) and `choice-line.tsx` (the component keeps React Flow's `ChoiceEdge` name, because "edge" is React Flow's term, not the domain's).
   - A `useCanvasViewport` hook (fit, zoom, `bringOntoMap`, view requests) and a `useCanvasKeyboard` hook (focus movement, escape, box keys).
   - Replace the per-Step `on*` callbacks with one `onEdit(command)`, where `command` is a discriminated union of the edits in `src/lib/graph/edit.ts`. The canvas interface shrinks to the document, the layout, the selection, and that one handler.
 - **Draft editor:** a `useDraftDocument` hook (document, history, `applyEdit`, undo, redo, adopt) and a `usePanelVisibility` hook. What stays in `DraftEditor` is composition.

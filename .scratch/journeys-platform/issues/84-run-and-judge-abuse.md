@@ -7,7 +7,7 @@ Parent: `.scratch/journeys-platform/spec.md`
 Priority: proposed by ticket 72 (2026-09-26); Paul to approve the order and the two decisions below.
 Route: contract (a runner route contract changes; Paul-owned cloud settings)
 
-**Why:** ticket 72, findings A1–A3; ticket 15 ("rate limiting and abuse protection", moved to 72).
+**Why:** ticket 72, finding Q-abuse (its three parts are A1–A3 below); ticket 15 ("rate limiting and abuse protection", moved to 72).
 
 - **A1: a Response in the address.** When the Judge is undecided on a deciding Prompt at the Start, the Participant's Response (up to 2000 characters) travels back as `?response=` in the redirect (`src/app/j/[journeyId]/actions.ts:131`), because no Run exists yet to hold it. Addresses end up in browser history, Vercel request logs, and anything the Participant shares. A Response is the most sensitive thing the app stores (`CLAUDE.md` bars it from proof artifacts).
 - **A2: the Judge has no durable limit.**

@@ -5,15 +5,15 @@ Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: proposed by ticket 72 (2026-09-26); Paul to approve the order.
-Route: polish (no schema or auth change; adds error routes)
+Route: contract (changes how Published Versions and Runs are read)
 
-**Why:** ticket 72, finding E1. `src/app` has no `error.tsx` and no `global-error.tsx`; only `not-found.tsx`. A thrown error anywhere reaches Next's default error page, which is unbranded and gives the Participant or Author no way back.
+**Why:** ticket 72, finding Q-corrupt. `src/app` has no `error.tsx` and no `global-error.tsx`; only `not-found.tsx`. A thrown error anywhere reaches Next's default error page, which is unbranded and gives the Participant or Author no way back.
 
 Every stored document is read with a throwing parse: `graphDocumentSchema.parse` or `contentSchema.parse`, at 8 sites in `src/db`. These are `drafts.ts:68`, `versions.ts:103, 270`, `analytics.ts:78`, `runs.ts:137, 250`, `projects.ts:60`, and `users.ts:208`. A Run's `path` is typed with `$type` and never validated (`runs.ts:223`). Ticket 73 takes the Draft (a recovery page offering Restore). This ticket takes everything else. The worst case is a Published Version that no longer parses: it breaks the public runner page and every live Run on it.
 
 **What to build:**
 
-- A root `src/app/error.tsx` and `src/app/global-error.tsx` in the app's layout and voice. They say something went wrong and offer "Try again" (`reset`) and a link home. They never show the error message or stack to the visitor. Log the error server-side with its digest.
+- A root `src/app/error.tsx` and `src/app/global-error.tsx` in the app's layout and voice. They say something went wrong and offer "Try again" (`reset`) and a link home. They never show the error message or stack to a Participant or Author. Log the error server-side with its digest.
 - Reads of a Published Version (`getPublicJourney`, `getRunForJourney`, `getLiveVersion`, analytics) use `safeParse`. On failure:
   - The runner renders the same "This Journey isn't available" page an unpublished Journey gets.
   - The Author's Journey page shows a banner on the Versions and Analytics tabs naming the version that cannot be read. The Draft and the other versions still work.

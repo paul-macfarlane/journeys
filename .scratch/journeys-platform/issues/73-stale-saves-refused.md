@@ -1,7 +1,7 @@
 # 73: Stale saves are refused, never silently overwritten
 
 Status: ready-for-agent
-Blocked by: 72
+Blocked by: 72, 81
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → **73** → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
@@ -34,11 +34,14 @@ Verification follows `docs/agents/testing.md` (`contract`), including `pnpm db:m
 
 Ticket 72 reviewed the write path. Follow this design; each point cites 72's findings.
 
-**Do 81 first.** The Draft editor runs its own copy of the autosave loop (`draft-editor.tsx:155-375`). Ticket 81 moves it onto `createAutosave` and widens `write` to `write(value, baseline) → saved | refused`. After that, this ticket adds `stale` in one place.
+**Blocked by 81** (added by 72; the order itself is Paul's to approve). The Draft editor runs its own copy of the autosave loop (`draft-editor.tsx:155-375`). Ticket 81 moves it onto `createAutosave` and widens `write` to `write(value, baseline) → saved | refused`. After that, this ticket adds `stale` in one place.
 
 **1. The check lives at two seams, each written once.**
 
-- **The data layer.** One helper in `src/db` performs a conditional `UPDATE … WHERE <guard> RETURNING …`. It returns `{ ok: true, row }`, or `{ ok: false, reason: "stale" }` when no row matched after the membership check passed. Every guarded write goes through it: `saveDraft`, `restoreVersion`, `updateProjectForMember` (title, description, and theme already share it), and a new `updateJourneyForMember` that `updateJourney` and `setJourneyTheme` both use.
+- **The data layer.** One helper in `src/db` performs a conditional write with a guard and `RETURNING`. It returns `{ ok: true, row }`, or `{ ok: false, reason: "stale" }`.
+  - For `project` and `journey` rows it is `UPDATE … WHERE id = $id AND <guard>`.
+  - For the Draft it keeps today's upsert, with the guard on the conflict branch: `INSERT … ON CONFLICT (journey_id) DO UPDATE SET … WHERE draft.version = $expected`. A missing Draft row is still created, as `saveDraft` and `restoreVersion` intend (`drafts.ts:110`, `versions.ts:273`).
+  - Zero rows returned is ambiguous: the guard failed, or the row went away (a Journey deleted between the membership check and the write). Before answering `stale`, the helper re-reads the row's existence and answers `not-found` if it is gone. Every guarded write goes through it: `saveDraft`, `restoreVersion`, `updateProjectForMember` (title, description, and theme already share it), and a new `updateJourneyForMember` that `updateJourney` and `setJourneyTheme` both use.
 - **The loop.** `createAutosave` gains a terminal `stale` status: `STATUS_TEXT` holds the message, and the Reload button sits beside it.
   - Once stale, `change` still updates the value on screen, but nothing schedules a write.
   - `flush` and `dispose` do nothing.
@@ -69,10 +72,14 @@ Ticket 72 reviewed the write path. Follow this design; each point cites 72's fin
   - An untouched field adopts the incoming value, for both value and baseline.
   - An edited field keeps its old baseline, so its write goes stale if someone else changed that field.
   - A write sends and guards only the fields where value and baseline differ, so an untouched field is never overwritten or checked.
-  - Give `adopt` a `keepBaseline` counterpart to `keep`, or have the loop derive it (edited fields keep theirs). Test it: a dirty loop adopts another Member's change to the same field, then writes, and gets `stale`. Adopting a change to a different field and then writing gets `saved`.
+  - `adopt(incoming, keep)`'s `keep` returns both halves, `{ value, baseline }`. `useAutosavedForm`'s merge fills both from the same per-field rule, and the loop stays ignorant of fields. Test it: a dirty loop adopts another Member's change to the same field, then writes, and gets `stale`. Adopting a change to a different field and then writing gets `saved`.
 - **Draft.** It already adopts only when nothing is unsaved (`draft-editor.tsx:314-326`); keep that. A dirty editor keeps its old `version`, so its write goes stale.
 
 **3a. The baseline must be what the server stored, not what the client sent.** Titles are trimmed (`src/lib/validation/project.ts:17`, `journey.ts:13, 24`), and Content and documents are sanitised on write. If `lastSaved` held the client's untrimmed value, the next guard would compare against a value the database never held, and every second save would go stale. So every guarded write returns the stored values, and the loop takes them as `lastSaved` (81's `saved`).
+
+**3b. Restore and the open editor.** Restore runs from the Versions tab, and opening that tab unmounts the editor. The editor's unmount save runs first and refreshes the page when it lands, so no open editor ever holds a Draft version older than the restore. The restore dialog sends the Draft version from the latest render. If that render predates the unmount save landing, the restore is refused as stale and the Member reloads. That refusal is conservative but safe, and it cannot lose an edit. Returning to the Draft tab remounts the editor with the restored document and its new version.
+
+**3c. What a value compare cannot see.** A field changed A → B → A by someone else passes the guard, because the value is what it was when the edit began. For a title or a Theme that is the right answer, since nothing the Member overwrites differs from what they saw. Say so in the ADR amendment.
 
 **4. Publish reads the Draft outside its transaction (72 finding W2).** `publishDraft` reads the Journey and the Draft before `db.transaction` (`src/db/versions.ts:153-158`), so a save landing in between publishes the older document. Move both reads inside the transaction, lock the Draft row (`SELECT … FOR SHARE`), and compare its `version` with the one the Member sent.
 
@@ -80,4 +87,4 @@ Ticket 72 reviewed the write path. Follow this design; each point cites 72's fin
 
 **6. Result shape.** Add `stale` to the data-layer failure union that ticket 82 standardises. If 82 has not landed, add it as `{ ok: false, reason: "stale" }` so 82 can fold the rest in around it.
 
-**7. Writes outside the loop.** The Journey's "Use the Project's Theme" checkbox writes the `journey` row through `useOptimistic`, beside the Theme fields' own loop (`journey-theme-settings.tsx:40-61`). It sends the preset it replaced as its guard, and a stale answer shows the same message. Account settings (`author-settings.tsx`) edit the Author's own row, not a shared one, so they stay out of scope.
+**7. Writes outside the loop.** These use the same helper and the same compare-previous-value guard, not a third mechanism. The Journey's "Use the Project's Theme" checkbox writes the `journey` row through `useOptimistic`, beside the Theme fields' own loop (`journey-theme-settings.tsx:40-61`). It sends the preset it replaced as its guard, and a stale answer shows the same message. Account settings (`author-settings.tsx`) edit the Author's own row, not a shared one, so they stay out of scope.
