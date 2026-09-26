@@ -143,20 +143,17 @@ export default function GuidePage() {
           caption="A Step’s content in the panel."
         />
 
-        <h3>Prompts and the AI-decided Choice</h3>
+        <h3>Prompts</h3>
         <p>
           A Step can carry a Prompt: a free-text question a Participant may
-          answer before choosing. By default the Response is simply kept for the
-          Members to read. Mark the Prompt as deciding and the Participant
-          answers instead of choosing: a Judge reads the Response against the
-          Step’s Choices and picks the one that fits. The Judge sees only that
-          Step, never an Ending, an Outcome, another Step, or anyone else’s
-          Response, and when it has no answer the Participant chooses as usual.
+          answer before choosing. The Response is kept with the Run for the
+          Project’s Members to read; it never changes which Choice the
+          Participant takes.
         </p>
         <Still
           slug="prompt"
-          alt="A Step in the runner with a Prompt: a question above a text box, and a Continue button instead of the Choices."
-          caption="A deciding Prompt as a Participant sees it."
+          alt="A Step in the runner with a Prompt: a question above a text box, shown together with its Choices."
+          caption="A Prompt shown above its Choices, as a Participant sees it."
         />
 
         <h3>Themes</h3>

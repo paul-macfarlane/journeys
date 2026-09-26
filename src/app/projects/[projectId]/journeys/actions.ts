@@ -18,8 +18,6 @@ import {
 } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
 import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
-import { env } from "@/lib/env";
-import { isDeciding } from "@/lib/graph/prompt";
 import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
@@ -236,7 +234,7 @@ export async function saveDraftAction(
  * the whole list rather than the first one.
  */
 export type PublishJourneyActionResult =
-  | { ok: true; versionNumber: number; warning?: string }
+  | { ok: true; versionNumber: number }
   | {
       ok: false;
       error: string;
@@ -295,18 +293,6 @@ export async function publishJourneyAction(
   }
 
   revalidateJourneyPaths();
-
-  // A deciding Prompt (ticket 43) with no gateway key still publishes — the
-  // runner falls back to the Choices — but the Author is told, once, here.
-  const decides = Object.values(published.document.steps).some(isDeciding);
-  if (decides && env.AI_GATEWAY_API_KEY === undefined) {
-    return {
-      ok: true,
-      versionNumber: published.versionNumber,
-      warning:
-        "This journey has a prompt that decides the next step, but no AI Gateway key is set. Participants will choose for themselves.",
-    };
-  }
 
   return { ok: true, versionNumber: published.versionNumber };
 }

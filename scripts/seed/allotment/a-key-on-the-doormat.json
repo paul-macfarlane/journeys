@@ -215,8 +215,7 @@
       "prompt": {
         "type": "free_text",
         "label": "It's getting dark and your hands hurt. What do you do?",
-        "required": true,
-        "decides": true
+        "required": true
       },
       "outcomeId": null,
       "position": null

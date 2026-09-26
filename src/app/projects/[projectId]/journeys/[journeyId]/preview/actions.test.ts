@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Judge } from "@/lib/ai/decide";
 import type { GraphDocument } from "@/lib/graph/document";
 
 /**
- * Seam A for ticket 43's Preview judge path: the shell around `judgeResponse`
- * — what Preview's action does with a judge's answer — with the session, the
- * Draft, and the gateway replaced by doubles. Modeled on
- * `src/app/j/[journeyId]/actions.test.ts`.
+ * Seam A: the shell around Preview's one action — what it does with a
+ * Response and a chosen Step — with the session and the Draft replaced by
+ * doubles. Modeled on `src/app/j/[journeyId]/actions.test.ts`.
  */
 
 class RedirectSignal extends Error {
@@ -19,9 +17,6 @@ class RedirectSignal extends Error {
 const doubles = vi.hoisted(() => ({
   session: { user: { id: "author-1" } },
   drafts: { getDraftForMember: vi.fn() },
-  // Mutable, so a test can take the key away; never a real credential.
-  env: { AI_GATEWAY_API_KEY: "test-key" as string | undefined },
-  judge: vi.fn<Judge>(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -33,15 +28,6 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/db/drafts", () => doubles.drafts);
 vi.mock("@/lib/session", () => ({
   requireSession: vi.fn(async () => doubles.session),
-}));
-vi.mock("@/lib/env", () => ({ env: doubles.env }));
-
-// The gateway is a system boundary: only the judge that calls it is
-// replaced, and `decideChoice` — what the action does with the answer —
-// stays real.
-vi.mock("@/lib/ai/decide", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/ai/decide")>()),
-  gatewayJudge: doubles.judge,
 }));
 
 import { previewChooseAction } from "./actions";
@@ -67,8 +53,8 @@ function endingStep(id: string) {
   };
 }
 
-/** A deciding queue Step with two Choices, to Endings "done" and "turned". */
-function decidingDraft(): GraphDocument {
+/** A queue Step with a required Prompt and two Choices, to Endings "done" and "turned". */
+function promptedDraft(): GraphDocument {
   return {
     schemaVersion: 1,
     startStepId: "queue",
@@ -98,7 +84,6 @@ function decidingDraft(): GraphDocument {
           type: "free_text",
           label: "What do you do?",
           required: true,
-          decides: true,
         },
         outcomeId: null,
         position: null,
@@ -132,48 +117,12 @@ const BASE = `/projects/${PROJECT_ID}/journeys/${JOURNEY_ID}/preview`;
 beforeEach(() => {
   vi.clearAllMocks();
   doubles.drafts.getDraftForMember.mockResolvedValue({
-    document: decidingDraft(),
+    document: promptedDraft(),
   });
-  doubles.env.AI_GATEWAY_API_KEY = "test-key";
 });
 
-describe("previewChooseAction on a deciding Prompt", () => {
-  it("floors the probability, so 0.496 never reads as the 50 a live Run needs (ticket 43 F4)", async () => {
-    doubles.judge.mockResolvedValue({ choiceId: "papers", probability: 0.496 });
-
-    const to = await redirectOf(
-      previewChooseAction(
-        PROJECT_ID,
-        JOURNEY_ID,
-        "queue",
-        formResponding(RESPONSE),
-      ),
-    );
-
-    expect(to).toBe(
-      `${BASE}/queue?decide=papers&confidence=49&response=${encodeURIComponent(RESPONSE)}`,
-    );
-  });
-
-  it("comes back with no pick and the Response when there is no gateway key", async () => {
-    doubles.env.AI_GATEWAY_API_KEY = undefined;
-
-    const to = await redirectOf(
-      previewChooseAction(
-        PROJECT_ID,
-        JOURNEY_ID,
-        "queue",
-        formResponding(RESPONSE),
-      ),
-    );
-
-    expect(to).toBe(
-      `${BASE}/queue?decide=none&response=${encodeURIComponent(RESPONSE)}`,
-    );
-    expect(doubles.judge).not.toHaveBeenCalled();
-  });
-
-  it("follows a pressed Choice as before, without asking the judge", async () => {
+describe("previewChooseAction on a Step with a required Prompt", () => {
+  it("follows the pressed Choice and comes back with nothing recorded", async () => {
     const formData = formResponding(RESPONSE);
     formData.set("to", "turned");
 
@@ -182,6 +131,29 @@ describe("previewChooseAction on a deciding Prompt", () => {
     );
 
     expect(to).toBe(`${BASE}/turned`);
-    expect(doubles.judge).not.toHaveBeenCalled();
+  });
+
+  it("refuses a blank Response and moves nothing", async () => {
+    const formData = formResponding("   ");
+    formData.set("to", "turned");
+
+    const to = await redirectOf(
+      previewChooseAction(PROJECT_ID, JOURNEY_ID, "queue", formData),
+    );
+
+    expect(to).toBe(`${BASE}/queue?notice=response-required`);
+  });
+
+  it("tells the Author nothing was recorded when a Response is saved with no Choice pressed", async () => {
+    const to = await redirectOf(
+      previewChooseAction(
+        PROJECT_ID,
+        JOURNEY_ID,
+        "queue",
+        formResponding(RESPONSE),
+      ),
+    );
+
+    expect(to).toBe(`${BASE}/queue?notice=response-preview`);
   });
 });

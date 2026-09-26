@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { chooseStep, openTab } from "./setup/authoring";
+import { openTab } from "./setup/authoring";
 import {
   ENDING_PROMPT,
   promptDocument,
@@ -43,9 +43,6 @@ test.afterAll(async () => {
   await cleanup(mintedAuthorIds);
   await closePools();
 });
-
-/** The Step panel's deciding option (ticket 49), named for what it does. */
-const DECIDES_LABEL = "AI decides the next step from the response";
 
 /**
  * Waits until React is running on a runner step page before a box that
@@ -102,7 +99,6 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
       type: "free_text",
       label: START_PROMPT,
       required: false,
-      decides: false,
     });
 
   await required.check();
@@ -115,62 +111,6 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
       type: "free_text",
       label: START_PROMPT,
       required: true,
-      decides: false,
-    });
-
-  // The deciding option (ticket 49) is offered as soon as the Step has a
-  // Prompt, and says why it cannot be turned on yet: a judge needs two
-  // Choices to pick between, and the Start has none. The copy says what a
-  // Participant will meet.
-  const decides = page.getByLabel(DECIDES_LABEL);
-  await expect(decides).toBeVisible();
-  await expect(decides).toBeDisabled();
-  await expect(decides).not.toBeChecked();
-  await expect(page.getByText("Needs two or more choices.")).toBeVisible();
-  await expect(
-    page.getByText(
-      "Participants answer and press Continue; the choices appear only when the judge is unsure or unavailable.",
-    ),
-  ).toBeVisible();
-
-  // One Choice is not yet a choice: the option stays off. The Choice is
-  // pointed at a new Step, which the panel then opens on, so the Start is
-  // found again by name.
-  await page.getByRole("button", { name: "Add choice", exact: true }).click();
-  await page.getByLabel("Label", { exact: true }).fill("Wait your turn");
-  await page
-    .getByLabel("Target", { exact: true })
-    .selectOption({ label: "New step" });
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
-  await chooseStep(page, "Start");
-  await expect(page.getByLabel(DECIDES_LABEL)).toBeDisabled();
-  await expect(page.getByText("Needs two or more choices.")).toBeVisible();
-
-  // A second Choice, and the option can be turned on.
-  await page.getByRole("button", { name: "Add choice", exact: true }).click();
-  await page.getByLabel("Label", { exact: true }).fill("Walk away");
-  await page
-    .getByLabel("Target", { exact: true })
-    .selectOption({ label: "Untitled step" });
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Add", exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByLabel(DECIDES_LABEL)).toBeEnabled();
-  await expect(page.getByText("Needs two or more choices.")).toHaveCount(0);
-
-  await page.getByLabel(DECIDES_LABEL).check();
-  await expect
-    .poll(async () => {
-      const draft = await readDraft(journeyId);
-      return draft.steps[draft.startStepId].prompt;
-    })
-    .toEqual({
-      type: "free_text",
-      label: START_PROMPT,
-      required: true,
-      decides: true,
     });
 
   await page.screenshot({
@@ -189,13 +129,11 @@ test("prompts-author-attaches-a-prompt", async ({ page, context }) => {
   await expect(startSection.getByText(START_PROMPT)).toBeVisible();
   await expect(startSection.getByText("No responses yet.")).toBeVisible();
 
-  // Blanking the question takes the Prompt away, "Required" and the
-  // deciding option with it.
+  // Blanking the question takes the Prompt away, "Required" with it.
   await openTab(page, "Editor");
   await expect(page.getByLabel("Step title")).toHaveValue("Start");
   await page.getByLabel("Prompt", { exact: true }).fill("");
   await expect(page.getByLabel(/^Required/)).toHaveCount(0);
-  await expect(page.getByLabel(DECIDES_LABEL)).toHaveCount(0);
   await expect
     .poll(async () => {
       const draft = await readDraft(journeyId);

@@ -149,7 +149,6 @@ const steps: Step[] = [
         type: "free_text",
         label: "What would you do first, and why?",
         required: false,
-        decides: false,
       },
     },
   ),

@@ -606,12 +606,12 @@ describe("the seeded demo Journey (ticket 58)", () => {
     ).not.toBe("");
   });
 
-  it("asks one deciding Prompt, on the Step with three Choices", () => {
-    const deciding = Object.values(document().steps).filter(
-      (step) => step.prompt?.decides,
+  it("asks one Prompt, on the Step with three Choices", () => {
+    const prompted = Object.values(document().steps).filter(
+      (step) => step.prompt !== null,
     );
-    expect(deciding.map((step) => step.title)).toEqual(["Blisters"]);
-    expect(deciding[0].choices).toHaveLength(3);
-    expect(deciding[0].prompt?.required).toBe(true);
+    expect(prompted.map((step) => step.title)).toEqual(["Blisters"]);
+    expect(prompted[0].choices).toHaveLength(3);
+    expect(prompted[0].prompt?.required).toBe(true);
   });
 });
