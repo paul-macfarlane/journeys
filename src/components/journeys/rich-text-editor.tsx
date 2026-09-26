@@ -25,6 +25,7 @@ import { sanitizeContent, type Content } from "@/lib/graph/content";
 import {
   draftEditorExtensions,
   editorExtensions,
+  type ImageAttrs,
 } from "@/lib/rich-text/extensions";
 import { formatShortcut, isApplePlatform } from "@/lib/rich-text/shortcuts";
 
@@ -368,14 +369,13 @@ export function RichTextEditor({
       return;
     }
 
-    const attrs = { src, alt, caption };
+    const attrs: ImageAttrs = { src, alt, caption };
     if (imageMode === "edit") {
       editor.chain().focus().updateAttributes("image", attrs).run();
     } else {
-      // `insertContent` rather than `setImage`: the caption is an attribute
-      // of this app's image node, which `setImage`'s own options do not
-      // carry.
-      editor.chain().focus().insertContent({ type: "image", attrs }).run();
+      // `insertImage` rather than `setImage`: it carries the caption, and
+      // it places the image after a list or quote the selection sits in.
+      editor.chain().focus().insertImage(attrs).run();
     }
     setImageOpen(false);
   }

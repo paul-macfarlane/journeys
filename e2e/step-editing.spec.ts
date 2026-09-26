@@ -654,6 +654,69 @@ test("rich-text-underline-strike-quote", async ({ page, context }) => {
   await participant.close();
 });
 
+test("rich-text-image-in-list-item", async ({ page, context }) => {
+  const { journeyId } = await startJourney(page, context);
+  await renameStep(page, "Lamp room");
+  await addChoiceToNewStep(page, "Go down", "Cellar");
+  await chooseStep(page, "Lamp room");
+
+  // The cursor is in the list's last item when the image goes in (ticket 71):
+  // an image cannot live in a list item, so it lands after the list, whole.
+  const surface = page.getByLabel("Step content");
+  await surface.click();
+  await page.getByRole("button", { name: "Bullet list", exact: true }).click();
+  await page.keyboard.type("Oil");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Wick");
+
+  await page.getByRole("button", { name: "Image", exact: true }).click();
+  const imageDialog = page.getByRole("dialog");
+  await imageDialog
+    .getByLabel("Image URL")
+    .fill("https://example.com/lamp.jpg");
+  await imageDialog
+    .getByLabel("Alt text", { exact: true })
+    .fill("A brass lamp");
+  await imageDialog.getByRole("button", { name: "Insert image" }).click();
+  await expect(imageDialog).toBeHidden();
+  await expect(surface.locator("ul > li")).toHaveText(["Oil", "Wick"]);
+  await expect(surface.locator("ul + figure img")).toHaveAttribute(
+    "alt",
+    "A brass lamp",
+  );
+  await expectSaved(page);
+
+  // Away to another Step and back: the figure the Author saw is the one
+  // that was saved.
+  await chooseStep(page, "Cellar");
+  await expect(surface.locator("figure")).toHaveCount(0);
+  await chooseStep(page, "Lamp room");
+  await expect(surface.locator("ul > li")).toHaveText(["Oil", "Wick"]);
+  await expect(surface.locator("ul + figure img")).toHaveAttribute(
+    "alt",
+    "A brass lamp",
+  );
+  await page.screenshot({
+    path: evidencePath("rich-text-image-in-list-item", "reopened.png"),
+    fullPage: true,
+  });
+
+  const draft = await readDraft(journeyId);
+  const content = draft.steps[stepIdByTitle(draft, "Lamp room")].content;
+  expect(content.content.map((block) => block.type)).toEqual([
+    "bulletList",
+    "image",
+  ]);
+  expect(content.content[1]).toEqual({
+    type: "image",
+    attrs: {
+      src: "https://example.com/lamp.jpg",
+      alt: "A brass lamp",
+      caption: "",
+    },
+  });
+});
+
 test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   const { journeyId } = await startJourney(page, context);
 
