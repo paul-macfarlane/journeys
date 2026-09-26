@@ -1,8 +1,8 @@
 # 75: Completion survives a backtrack; the latest Ending sets the Outcome
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude (chunk 3)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (Runs, schema, ADR-0002)
@@ -31,3 +31,7 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`contract`). Never include participant Responses or real run data; use seeded or fixture Journeys. Use `CONTEXT.md` vocabulary. Origin: ticket 66 finding 6; Paul's post-hackathon grilling, 2026-09-26.
 
 ## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), chunk 3
+
+`[EXECUTION PLAN]` Chunk 3 is now 87 → 75, re-formed by Paul in this thread. This ticket is delivered by one worker in its own worktree, in parallel with 87; the two share no source files. The work: an additive `run.completed_at` column (migration 0013, nullable, backfilled from `ended_at`), set when an Ending is first reached and never cleared; `outcome_id` keeps the latest Ending's Outcome through a backtrack; `ended_at` keeps meaning "resting on an Ending". Analytics counts Completions and Runs-by-Outcome from `completed_at` and `outcome_id`/the latest Ending, not from the path's last entry. ADR-0002's analytics contract and the spec are amended. Evidence: reducer and analytics unit tests, the migration run against a fresh database and against the previous code's schema, and the new e2e `analytics-backtrack-after-ending` with its screenshot.

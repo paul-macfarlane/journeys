@@ -1,6 +1,6 @@
 # 76: The Judge can find a Response unclear
 
-Status: ready-for-agent
+Status: wontfix
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -28,3 +28,7 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`contract`). Never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Origin: ticket 15; ticket 64 finding 15; Paul's post-hackathon grilling, 2026-09-26.
 
 ## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), chunk 3
+
+`[SCOPE CHANGE]` Closed as `wontfix`. Paul cut the Judge at the start of chunk 3 (ticket 87), so a Response is never judged and cannot be judged unclear. Ticket 15's "Ticket 43 leftovers" bullet is closed with it: the deciding checkbox, the no-key Publish warning, and the threshold are all removed by 87.

@@ -2,7 +2,7 @@
 
 The single source of truth for **what to work on next**. The order below is Paul's. Tickets hold the what and the why. The spec's `[SCOPE CHANGE]` records hold the reasons for a re-order. This file holds only the order and each ticket's current status. Maintenance rules are in `docs/agents/issue-tracker.md` ("Priority").
 
-Last re-ordered: 2026-09-26, grouped into chunks (Paul). Direction: polish, bug fixes, stability, and a clean technical design, with no feature bloat and no AI authoring. Ticket 72's proposed order, with three moves: 83 joins 81 and 73, 76 runs before 75, and 57 runs before 86 and 53.
+Last re-ordered: 2026-09-26, chunk 3 re-formed when Paul cut the Judge (87 replaces 84 and 76); before that, grouped into chunks (Paul). Direction: polish, bug fixes, stability, and a clean technical design, with no feature bloat and no AI authoring. Ticket 72's proposed order, with three moves: 83 joins 81 and 73, 76 runs before 75, and 57 runs before 86 and 53.
 
 ## Ordered
 
@@ -17,9 +17,8 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 3 | 1 | [83 Error pages and unreadable Published Versions](issues/83-error-surfaces.md) | contract | done | PR #101 |
 | 4 | **2 Cleanup and stability** (contract) | [85 Leftovers sweep](issues/85-leftovers-sweep.md) | contract | done | PR #102 |
 | 5 | 2 | [74 Deploy and test stability](issues/74-deploy-and-test-stability.md) | polish | done | PR #102 |
-| 6 | **3 Runs and the Judge** (contract) | [84 Abuse limits on Runs and the Judge](issues/84-run-and-judge-abuse.md) | contract | needs-triage | Paul settles its two decisions at the chunk's start |
-| 7 | 3 | [76 The Judge can find a Response unclear](issues/76-judge-unclear.md) | contract | ready-for-agent | |
-| 8 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | ready-for-agent | |
+| 6 | **3 Runs, and the Judge cut** (contract) | [87 Cut the Judge](issues/87-cut-the-judge.md) | contract | in-progress | Paul, 2026-09-26: replaces 84 and 76 |
+| 7 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | in-progress | |
 | 9 | **4 Membership and accounts** (contract) | [82 One membership seam](issues/82-one-membership-seam.md) | contract | ready-for-agent | |
 | 10 | 4 | [77 Account deletion](issues/77-account-deletion.md) | contract | ready-for-agent | Paul re-approves the `/privacy` sentence |
 | 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | ready-for-agent | Rescoped 2026-09-26 |
@@ -48,4 +47,4 @@ Not ordered. Each needs something outside the backlog before it can move.
 
 ## Withdrawn (2026-09-26)
 
-[14 AI authoring](issues/14-ai-authoring.md), [17 Manual layout](issues/17-manual-layout.md), [41 Drag-and-drop ordering](issues/41-drag-and-drop-ordering.md): all `wontfix`. The catch-alls [15](issues/15-post-hackathon-hardening.md), [64](issues/64-regression-pass-post-hackathon.md), [66](issues/66-production-smoke-2026-09-24.md), and [68](issues/68-production-regression-2026-09-24.md) are closed; each records where its items went.
+[76 The Judge can find a Response unclear](issues/76-judge-unclear.md) and [84 Abuse limits on Runs and the Judge](issues/84-run-and-judge-abuse.md): `wontfix`, superseded by 87 when Paul cut the Judge. [14 AI authoring](issues/14-ai-authoring.md), [17 Manual layout](issues/17-manual-layout.md), [41 Drag-and-drop ordering](issues/41-drag-and-drop-ordering.md): all `wontfix`. The catch-alls [15](issues/15-post-hackathon-hardening.md), [64](issues/64-regression-pass-post-hackathon.md), [66](issues/66-production-smoke-2026-09-24.md), and [68](issues/68-production-regression-2026-09-24.md) are closed; each records where its items went.
