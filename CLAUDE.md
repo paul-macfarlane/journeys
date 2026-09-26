@@ -43,7 +43,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `src/app/` — Next.js 16 App Router routes, layouts, and the better-auth route handler
 - `src/components/` — shadcn/ui primitives and app components
 - `src/db/` — Drizzle schema, database client (Neon in deployments, `pg` locally), and per-table data access (`projects.ts`, `journeys.ts`); every file here except `schema.ts` is `server-only`
-- `src/lib/` — Pure, database-free helpers shared by server and client (zod schemas, action results) plus startup env validation, plus the server-only auth, session, env, and Judge modules
+- `src/lib/` — Pure, database-free helpers shared by server and client (zod schemas, action results), plus the server-only auth, session, env, and Judge modules and the browser-only preference and chunk-load helpers
 - `drizzle/` — Committed Drizzle migrations; applied by CI and the Migrate workflow, never by Vercel builds
 - `e2e/` — Playwright specs plus setup that provisions the dedicated `journeys_e2e` database and server on port 3100
 - `scripts/` — Development-only commands run with `tsx` (`seed/journey-stories.ts` over the shared `seed/journey-stories-seed.ts` plus the committed graph documents beside it — the three legacy cases under `seed/journey-stories/` and the demo Journey under `seed/allotment/` — `record-landing-demo.ts`, and `decide-probe.ts`); imports `@/db/schema`, `src/lib/graph`, `src/lib/ai`, and the `e2e/setup/` helpers only, never a `server-only` module
