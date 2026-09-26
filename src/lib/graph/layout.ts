@@ -7,7 +7,7 @@ import type {
   LayoutDirection,
   Step,
 } from "@/lib/graph/document";
-import { hasStep, isEnding, stepName } from "@/lib/graph/document";
+import { hasStep, isEnding, stepName, walkSteps } from "@/lib/graph/document";
 import type { PublishProblem } from "@/lib/graph/validate";
 
 /**
@@ -582,7 +582,11 @@ export function layoutGraph(document: GraphDocument): GraphLayout {
   const seenMissingTargets = new Set<string>();
   const edges: Array<Omit<CanvasEdge, "points" | "labelAt">> = [];
 
-  const stepIds = Object.keys(document.steps);
+  // dagre's placement depends on the order nodes and edges are added, so
+  // they go in walk order rather than `document.steps`'s key order, which
+  // jsonb does not keep: the same Draft draws the same map however its
+  // keys come back.
+  const stepIds = walkSteps(document).order;
   for (const stepId of stepIds) {
     nodes.push(stepNode(document, document.steps[stepId]));
   }
