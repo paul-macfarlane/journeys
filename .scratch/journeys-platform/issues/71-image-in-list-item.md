@@ -1,6 +1,6 @@
 # 71: An image inside a list item is never silently dropped
 
-Status: ready-for-agent
+Status: done
 Blocked by: None
 Owner: Claude Opus 5.5 (`/implement`, 2026-09-26)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -17,9 +17,9 @@ Route: contract (the rich-text contract's editor side)
 
 Acceptance criteria:
 
-- [ ] Inserting an image with the cursor in a bullet or numbered list item leaves the image in the document after reopening the Step (e2e: insert, switch Steps, reopen, the figure is there) — or the Image control is disabled there, proven the same way.
-- [ ] Pasting `<ul><li>text<img …></li></ul>` keeps the image as a top-level figure (unit test on the editor schema).
-- [ ] Ticket 15's "Rich-text contract gaps" bullet is closed.
+- [x] Inserting an image with the cursor in a bullet or numbered list item leaves the image in the document after reopening the Step (e2e: insert, switch Steps, reopen, the figure is there) — or the Image control is disabled there, proven the same way.
+- [x] Pasting `<ul><li>text<img …></li></ul>` keeps the image as a top-level figure (unit test on the editor schema).
+- [x] Ticket 15's "Rich-text contract gaps" bullet is closed.
 
 Verification follows `docs/agents/testing.md` (`contract`): the full command chain, one full `pnpm test:e2e` at the end, evidence for the one spec this ticket adds. Never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Origin: ticket 68 finding 2; ticket 15.
 
@@ -33,3 +33,26 @@ Direct work in the worktree `.claude/worktrees/71-image-in-list-item/journeys` o
 
 *Spec:* the first cut placed only the Image control's image after the list; a paste or drop was left to ProseMirror's fitting, which kept the image but split the list (and the word) at the cursor — not "directly after the list" for "(toolbar, paste, or drop)". **Fixed in ed308ca:** `replaceLiftingImages` serves all three — the rest of a pasted or dropped slice lands where it was aimed and every image goes after the whole list or quote; a slice side closed only by a lifted image reopens, so pasted words join the item they land in. Also fixed: the Image control inside a list ignored a text selection (it now replaces it, as at the top). Noted, not changed: the quote gets the same lift (harmless, it is the same stored-shape rule); JSON already holding a nested image still renders nested (stored rows never hold that shape — the sanitizer drops it, unchanged). The ticket 15 bullet and `[CLOSEOUT]` were pending at review time and are in this PR.
 *Standards:* no hard violations. Fixed: the image attrs got a named `ImageAttrs` type shared by the command and the editor. Accepted as is: `happy-dom` is used by `insert-image.test.ts` through `@tiptap/html`'s peer rather than a direct devDependency (declaring it changes the lockfile, which is Paul's); `group: "figure"` and the `captionedImage` command key (the `image` key is taken by `@tiptap/extension-image`'s own declaration); the `depth > 1` rule assumes only lists and quotes nest, which the helper's comment now says.
+
+### [CLOSEOUT] 2026-09-26 — Claude Opus 5.5 (`/implement`, Route: contract)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/97 (base `staging`, comparison SHA `79a4b0a`). Status set to `done` in this commit; merging the PR is Paul's acceptance. State log: ready-for-agent → in-progress → ai-review → ready-for-human → done (this commit).
+
+**Choice recorded:** lift, not disable. The Image control, a paste, and a drop aimed inside a list item (or quote) all place the image directly after that whole list or quote; the Image control stays enabled everywhere.
+
+**Commits.** ad678b8 (schema group, `insertImage`, unit + e2e), ed308ca (review fix: `replaceLiftingImages` for paste and drop, selection replaced, `ImageAttrs`), 061f7f3 (records, ticket 15 bullet, evidence), this closeout.
+
+**Verified run command (code at ed308ca):** `pnpm format:check; pnpm lint; pnpm typecheck; pnpm test; E2E_EVIDENCE=rich-text-image-in-list-item pnpm test:e2e` — every block `exit 0`; unit 556/556; e2e 115 passed in 2.2m, 0 flaky, retries 0. No migration; `pnpm build` ran inside `pnpm test:e2e`.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| Inserting an image with the cursor in a list item leaves the image in the document after reopening the Step | PASS | `rich-text-image-in-list-item`: bullet list "Oil"/"Wick", Image inserted from the last item, `ul + figure` in the editor, switch to "Cellar" and back, figure still after the whole list, Draft row asserted `[bulletList, image]` with the exact attrs; `test-results/rich-text-image-in-list-item/reopened.png` (viewed). Numbered and nested lists: unit tests in `insert-image.test.ts` |
+| Pasting `<ul><li>text<img …></li></ul>` keeps the image as a top-level figure | PASS | `test-results/ac-2-paste-lifts-image.txt` (schema parse + paste into a list item + paste of a bare image + drop) |
+| Ticket 15's "Rich-text contract gaps" bullet is closed | PASS | `15-post-hackathon-hardening.md` line 12 |
+| One full `pnpm test:e2e` at the end | PASS locally; PR CI is the durable proof | `test-results/71-commands.txt` |
+
+**Deviations.** None from the contract. Out of scope, raised as a separate task chip: a pasted heading inside a list item still loses its words at save (the same trap, StarterKit's `paragraph block*` list item).
+
+**Queued for Paul (non-blocking, also in the PR).** `happy-dom` resolves through `@tiptap/html`'s peer; `pnpm add -D happy-dom` would declare it (lockfile commit is yours).
+
+**Next in Paul's order:** 72 (codebase design review, its own thread) → 73.
