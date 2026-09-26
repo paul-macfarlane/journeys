@@ -13,8 +13,9 @@ import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
  * each Step's own Choice order — never `layout.ts`'s dagre layout, which
  * this module must not import (`layout.ts` already imports `PublishProblem`
  * from here). A Step unreachable from the Start has no such position, so
- * every unreachable Step is appended last, sorted by id. Within one Step,
- * problems are grouped by rule so the Publish dialog's list stays stable.
+ * every unreachable Step is appended last, sorted by id. Problems are
+ * grouped by rule and, within a rule, in that Step order, so the Publish
+ * dialog and the canvas can render the list without sorting.
  */
 
 export type PublishProblemCode =
@@ -93,9 +94,11 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
     ? publishOrder(document, document.startStepId)
     : { order: Object.keys(document.steps).sort(), reached: new Set<string>() };
 
-  for (const stepId of order) {
-    const step = document.steps[stepId];
+  const steps = order.map(
+    (stepId) => [stepId, document.steps[stepId]] as const,
+  );
 
+  for (const [stepId, step] of steps) {
     for (const choice of step.choices) {
       if (!hasStep(document, choice.targetStepId)) {
         problems.push({
@@ -106,11 +109,13 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
         });
       }
     }
+  }
 
-    // A Choice drawn on the map starts with no label, and the editor reads
-    // that as "Untitled choice" while the Author works; a Participant would
-    // be shown a link with no text and no accessible name, so a Published
-    // Version may not carry one. Whitespace is no label either.
+  // A Choice drawn on the map starts with no label, and the editor reads that
+  // as "Untitled choice" while the Author works; a Participant would be shown
+  // a link with no text and no accessible name, so a Published Version may
+  // not carry one. Whitespace is no label either.
+  for (const [stepId, step] of steps) {
     for (const choice of step.choices) {
       if (choice.label.trim().length === 0) {
         problems.push({
@@ -121,25 +126,30 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
         });
       }
     }
+  }
 
-    // With no Start there is nothing to walk out from, and calling every
-    // Step unreachable would bury the one problem worth fixing.
-    if (startExists && !reached.has(stepId)) {
-      problems.push({
-        code: "unreachable-step",
-        message: `Step "${stepName(step)}" cannot be reached from the start`,
-        stepId,
-      });
+  // With no Start there is nothing to walk out from, and calling every Step
+  // unreachable would bury the one problem worth fixing.
+  if (startExists) {
+    for (const [stepId, step] of steps) {
+      if (!reached.has(stepId)) {
+        problems.push({
+          code: "unreachable-step",
+          message: `Step "${stepName(step)}" cannot be reached from the start`,
+          stepId,
+        });
+      }
     }
+  }
 
+  for (const [stepId, step] of steps) {
     // An Ending needs no Outcome; a tag naming an Outcome the document no
-    // longer defines is still broken data. Only an Ending carries one at
-    // all: an outcome id left on a Step that still has Choices is ignored.
-    if (
-      isEnding(step) &&
-      step.outcomeId !== null &&
-      !hasOutcome(document, step.outcomeId)
-    ) {
+    // longer defines is still broken data. Only an Ending carries one at all:
+    // an outcome id left on a Step that still has Choices is ignored.
+    if (!isEnding(step) || step.outcomeId === null) {
+      continue;
+    }
+    if (!hasOutcome(document, step.outcomeId)) {
       problems.push({
         code: "unknown-outcome",
         message: `Ending "${stepName(step)}" is tagged with an outcome that no longer exists`,
