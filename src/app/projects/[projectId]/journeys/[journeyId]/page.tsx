@@ -5,6 +5,7 @@ import {
   AnalyticsTab,
   type SelectedVersionAnalytics,
 } from "@/components/journeys/analytics-tab";
+import { CannotBeRead } from "@/components/cannot-be-read";
 import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import { DeleteJourneyDialog } from "@/components/journeys/delete-journey-dialog";
 import { DraftEditor } from "@/components/journeys/draft-editor";
@@ -18,6 +19,7 @@ import {
   UnpublishButton,
 } from "@/components/journeys/publish-controls";
 import { ResponseList } from "@/components/journeys/response-list";
+import { RestoreVersionDialog } from "@/components/journeys/restore-version-dialog";
 import { VersionList } from "@/components/journeys/version-list";
 import { buttonVariants } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
@@ -70,7 +72,10 @@ export default async function JourneyPage({
   // a hole in it.
   const stored = await getDraftForMember(projectId, journeyId, session.user.id);
   if (!stored) notFound();
-  const draft = stored.document;
+  // A Draft row that fails the document contract is not a 500 (ticket 73):
+  // the page keeps its header and tabs, and the Editor tab says the Draft
+  // cannot be read and offers a Restore in place of the editor.
+  const draft = stored.kind === "ok" ? stored.document : null;
 
   // Null only for a non-Member, which the check above already answered; an
   // empty list is a Journey that has never been published.
@@ -89,7 +94,6 @@ export default async function JourneyPage({
     session.user.id,
   );
   if (!responses) notFound();
-  const responseGroups = groupResponsesByStep(draft, responses);
 
   // The Analytics tab reads one Published Version: the one the address
   // names when it is this Journey's, else the live one, else the newest.
@@ -105,28 +109,58 @@ export default async function JourneyPage({
           analyticsVersionId,
           session.user.id,
         );
-  const selectedAnalytics: SelectedVersionAnalytics | null = analyticsSource
-    ? {
-        versionId: analyticsSource.version.id,
-        document: analyticsSource.version.document,
-        analytics: analyticsForVersion(
-          analyticsSource.version.id,
-          analyticsSource.version.document,
-          analyticsSource.runs,
-        ),
-      }
-    : null;
+  const selectedAnalytics: SelectedVersionAnalytics | null =
+    analyticsSource?.kind === "ok"
+      ? {
+          versionId: analyticsSource.version.id,
+          document: analyticsSource.version.document,
+          analytics: analyticsForVersion(
+            analyticsSource.version.id,
+            analyticsSource.version.document,
+            analyticsSource.runs,
+          ),
+        }
+      : null;
+  // The selected Published Version's row fails the document contract
+  // (ticket 83): the Analytics tab names it in a banner instead of the
+  // map and chart.
+  const unreadableAnalyticsVersion =
+    analyticsSource?.kind === "unreadable"
+      ? {
+          versionId: analyticsSource.versionId,
+          versionNumber: analyticsSource.versionNumber,
+        }
+      : null;
 
   // Publish has nothing to do while participants already see exactly this:
   // the Draft, the title, and the description. An unpublished or
   // never-published Journey always has something to publish.
   const live = await getLiveVersion(projectId, journeyId, session.user.id);
+  const liveOk = live?.kind === "ok" ? live : null;
   const titleOrDescriptionPending =
-    live === null ||
-    live.title !== journey.title ||
-    live.description !== journey.description;
+    liveOk === null ||
+    liveOk.title !== journey.title ||
+    liveOk.description !== journey.description;
+  // A Draft that cannot be read is never what participants see, and
+  // neither is a live version that cannot be (ticket 83); Publish stays on
+  // offer and refuses either with the reason.
   const hasUnpublishedChanges =
-    titleOrDescriptionPending || !documentsEqual(draft, live.document);
+    titleOrDescriptionPending ||
+    draft === null ||
+    liveOk === null ||
+    !documentsEqual(draft, liveOk.document);
+  // Named on the Versions tab, above the list, while the Journey's live
+  // pointer names a Published Version that cannot be read.
+  const unreadableLiveVersion =
+    live?.kind === "unreadable" ? { versionNumber: live.versionNumber } : null;
+
+  // Responses are arranged by the Draft's Steps, or — with a Draft that
+  // cannot be read — by the live version's, else not at all.
+  const responseDocument = draft ?? liveOk?.document ?? null;
+  const responseGroups =
+    responseDocument === null
+      ? []
+      : groupResponsesByStep(responseDocument, responses);
 
   // When the Draft was last edited, for its row on the Versions tab: the
   // document's own save, or the title's and description's when they are
@@ -142,7 +176,10 @@ export default async function JourneyPage({
     <>
       {/* Holds the acknowledgement of a publish for both Publish buttons;
           see PublishScope for why it is not the header button's own. */}
-      <PublishScope hasUnpublishedChanges={hasUnpublishedChanges}>
+      <PublishScope
+        hasUnpublishedChanges={hasUnpublishedChanges}
+        draftVersion={stored.version}
+      >
         <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-12">
           <div>
             <Link
@@ -217,13 +254,22 @@ export default async function JourneyPage({
               {
                 value: "editor",
                 label: "Editor",
-                content: (
-                  <DraftEditor
-                    projectId={projectId}
-                    journeyId={journey.id}
-                    draft={draft}
-                  />
-                ),
+                content:
+                  draft !== null ? (
+                    <DraftEditor
+                      projectId={projectId}
+                      journeyId={journey.id}
+                      draft={draft}
+                      version={stored.version}
+                    />
+                  ) : (
+                    <UnreadableDraft
+                      projectId={projectId}
+                      journeyId={journey.id}
+                      title={journey.title}
+                      newest={versions[0] ?? null}
+                    />
+                  ),
               },
               {
                 value: "versions",
@@ -235,6 +281,7 @@ export default async function JourneyPage({
                     versions={versions}
                     hasUnpublishedChanges={hasUnpublishedChanges}
                     draftUpdatedAt={draftEditedAt}
+                    unreadableLive={unreadableLiveVersion}
                   />
                 ),
               },
@@ -245,6 +292,7 @@ export default async function JourneyPage({
                   <AnalyticsTab
                     versions={versions}
                     selected={selectedAnalytics}
+                    unreadable={unreadableAnalyticsVersion}
                   />
                 ),
               },
@@ -276,5 +324,50 @@ export default async function JourneyPage({
       </PublishScope>
       <SiteFooter />
     </>
+  );
+}
+
+/**
+ * The Editor tab when the Draft's row fails the document contract (ticket
+ * 73): which Journey, what happened, and — when the Journey has been
+ * published — the newest Published Version to restore it from.
+ */
+function UnreadableDraft({
+  projectId,
+  journeyId,
+  title,
+  newest,
+}: {
+  projectId: string;
+  journeyId: string;
+  title: string;
+  newest: { id: string; versionNumber: number } | null;
+}) {
+  return (
+    <CannotBeRead
+      title="This draft can't be read"
+      action={
+        newest !== null ? (
+          <RestoreVersionDialog
+            projectId={projectId}
+            journeyId={journeyId}
+            versionId={newest.id}
+            versionNumber={newest.versionNumber}
+            triggerLabel={`Restore from Version ${newest.versionNumber}`}
+            triggerVariant="default"
+          />
+        ) : undefined
+      }
+    >
+      <p>
+        The draft of “{title}” is stored in a shape the editor can&apos;t read,
+        so it can&apos;t be edited, previewed, or published.
+      </p>
+      <p className="mt-2">
+        {newest !== null
+          ? `Restoring Version ${newest.versionNumber} replaces the draft with that version's steps, choices, and outcomes.`
+          : "No published version exists to restore it from."}
+      </p>
+    </CannotBeRead>
   );
 }

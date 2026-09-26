@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
-import { firstIssue, type ActionResult } from "@/lib/action-result";
+import {
+  firstIssue,
+  staleResult,
+  type ActionResult,
+} from "@/lib/action-result";
+import { isStale } from "@/db/guarded-write";
 import { addMemberByEmail, removeMember } from "@/db/members";
 import {
   createProject,
@@ -45,9 +50,15 @@ export async function createProjectAction(
   return { ok: true, id: created.id };
 }
 
+/**
+ * Renames the Project. `baseline` is the title the Member edited from,
+ * parsed by the same schema as the title: another Member's rename since is
+ * refused as stale rather than overwritten (ticket 73).
+ */
 export async function renameProjectAction(
   projectId: string,
   input: unknown,
+  baseline: unknown,
 ): Promise<ProjectActionResult> {
   const session = await requireSession();
 
@@ -55,10 +66,20 @@ export async function renameProjectAction(
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
+  const previous = renameProjectSchema.safeParse(baseline);
+  if (!previous.success) {
+    return { ok: false, error: firstIssue(previous.error.issues) };
+  }
 
-  const renamed = await renameProject(projectId, parsed.data, session.user.id);
+  const renamed = await renameProject(
+    projectId,
+    parsed.data,
+    previous.data,
+    session.user.id,
+  );
   // Not a Member (or no such Project): same answer as the page's 404.
   if (!renamed) return { ok: false, error: "That project no longer exists" };
+  if (isStale(renamed)) return staleResult("project");
 
   revalidatePath("/projects");
   revalidatePath("/projects/[projectId]", "page");
@@ -69,12 +90,15 @@ export async function renameProjectAction(
  * Replaces the Project's rich-text description. The editor already cleaned
  * what it sends, but the action is a public endpoint, so the content goes
  * through `sanitizeContent` again here — the same closed set a Step's text
- * is held to — before anything reaches storage. The public Project page is
- * rendered on every request, so it needs no revalidation.
+ * is held to — before anything reaches storage. The baseline, the
+ * description the Member edited from, is cleaned the same way and guards
+ * the write (ticket 73). The public Project page is rendered on every
+ * request, so it needs no revalidation.
  */
 export async function editProjectDescriptionAction(
   projectId: string,
   input: unknown,
+  baseline: unknown,
 ): Promise<ProjectActionResult> {
   const session = await requireSession();
 
@@ -82,13 +106,19 @@ export async function editProjectDescriptionAction(
   if (!sanitized.ok) {
     return { ok: false, error: sanitized.error };
   }
+  const previous = sanitizeContent(baseline);
+  if (!previous.ok) {
+    return { ok: false, error: previous.error };
+  }
 
   const edited = await editProjectDescription(
     projectId,
     sanitized.content,
+    previous.content,
     session.user.id,
   );
   if (!edited) return { ok: false, error: "That project no longer exists" };
+  if (isStale(edited)) return staleResult("project");
 
   revalidatePath("/projects/[projectId]", "page");
   return { ok: true, id: edited.id };
@@ -98,10 +128,12 @@ export async function editProjectDescriptionAction(
  * Sets the Project's Theme (ticket 11): the preset and the optional accent
  * the runner and the public Project page are painted in. Both are rendered
  * on every request, so neither needs revalidating; the Settings tab does.
+ * `baseline` is the Theme the Member edited from, parsed the same way.
  */
 export async function setProjectThemeAction(
   projectId: string,
   input: unknown,
+  baseline: unknown,
 ): Promise<ProjectActionResult> {
   const session = await requireSession();
 
@@ -109,13 +141,19 @@ export async function setProjectThemeAction(
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
+  const previous = projectThemeSchema.safeParse(baseline);
+  if (!previous.success) {
+    return { ok: false, error: firstIssue(previous.error.issues) };
+  }
 
   const updated = await setProjectTheme(
     projectId,
     parsed.data,
+    previous.data,
     session.user.id,
   );
   if (!updated) return { ok: false, error: "That project no longer exists" };
+  if (isStale(updated)) return staleResult("project");
 
   revalidatePath("/projects/[projectId]", "page");
   return { ok: true, id: updated.id };

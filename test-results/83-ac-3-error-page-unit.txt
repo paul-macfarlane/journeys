@@ -1,0 +1,8 @@
+# Ticket 83 AC3 — the app's error pages (unit render at e29037d)
+No route can throw in the test server without a test-only hook, so, as the ticket allows, error.tsx and global-error.tsx are proven by a server render: each shows Try again and a way home, and never the thrown error's message.
+Server-side logging: Next logs every server render error with its digest; the pages log the digest in the browser.
+$ pnpm exec vitest run src/app/error.test.tsx src/app/global-error.test.tsx --reporter=verbose
+ ✓ src/app/global-error.test.tsx > global-error.tsx > offers Try again and never renders the error's own message 6ms
+ ✓ src/app/error.test.tsx > error.tsx > offers Try again and never renders the error's own message 12ms
+ Test Files  2 passed (2)
+      Tests  2 passed (2)

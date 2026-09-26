@@ -53,16 +53,19 @@ describe("setProjectThemeAction", () => {
   });
 
   it("stores the preset and accent for the signed-in Author and refreshes the Project page", async () => {
-    const result = await setProjectThemeAction("project-1", {
-      preset: "tide",
-      accent: "#095B41",
-    });
+    const result = await setProjectThemeAction(
+      "project-1",
+      { preset: "tide", accent: "#095B41" },
+      { preset: "trail", accent: null },
+    );
 
     expect(result).toEqual({ ok: true, id: "project-1" });
-    // The accent is stored lowercased, as the schema normalizes it.
+    // The accent is stored lowercased, as the schema normalizes it; the
+    // Theme it replaces goes along as the guard.
     expect(doubles.projects.setProjectTheme).toHaveBeenCalledWith(
       "project-1",
       { preset: "tide", accent: "#095b41" },
+      { preset: "trail", accent: null },
       "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith(
@@ -72,42 +75,80 @@ describe("setProjectThemeAction", () => {
   });
 
   it("stores a preset with no accent", async () => {
-    await setProjectThemeAction("project-1", { preset: "dusk", accent: null });
+    await setProjectThemeAction(
+      "project-1",
+      { preset: "dusk", accent: null },
+      { preset: "trail", accent: null },
+    );
 
     expect(doubles.projects.setProjectTheme).toHaveBeenCalledWith(
       "project-1",
       { preset: "dusk", accent: null },
+      { preset: "trail", accent: null },
       "author-1",
     );
   });
 
   it("refuses a preset that is not one of the six, and a malformed accent, without touching the database", async () => {
+    const baseline = { preset: "trail", accent: null };
     expect(
-      await setProjectThemeAction("project-1", {
-        preset: "neon",
-        accent: null,
-      }),
+      await setProjectThemeAction(
+        "project-1",
+        { preset: "neon", accent: null },
+        baseline,
+      ),
     ).toEqual({ ok: false, error: "Choose one of the themes" });
     expect(
-      await setProjectThemeAction("project-1", {
-        preset: "tide",
-        accent: "teal",
-      }),
+      await setProjectThemeAction(
+        "project-1",
+        { preset: "tide", accent: "teal" },
+        baseline,
+      ),
     ).toEqual({ ok: false, error: "Use a color like #095b41" });
+    // The baseline is parsed by the same schema as the value.
+    expect(
+      await setProjectThemeAction(
+        "project-1",
+        { preset: "tide", accent: null },
+        { preset: "neon", accent: null },
+      ),
+    ).toEqual({ ok: false, error: "Choose one of the themes" });
     expect(doubles.projects.setProjectTheme).not.toHaveBeenCalled();
   });
 
   it("answers a non-Member like a Project that is not there", async () => {
     doubles.projects.setProjectTheme.mockResolvedValue(null);
 
-    const result = await setProjectThemeAction("project-1", {
-      preset: "tide",
-      accent: null,
-    });
+    const result = await setProjectThemeAction(
+      "project-1",
+      { preset: "tide", accent: null },
+      { preset: "trail", accent: null },
+    );
 
     expect(result).toEqual({
       ok: false,
       error: "That project no longer exists",
+    });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("answers a Theme another Member changed first as stale, and refreshes nothing", async () => {
+    doubles.projects.setProjectTheme.mockResolvedValue({
+      ok: false,
+      reason: "stale",
+    });
+
+    const result = await setProjectThemeAction(
+      "project-1",
+      { preset: "tide", accent: null },
+      { preset: "trail", accent: null },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      stale: true,
+      error:
+        "Someone else changed this project since you opened it. Reload to see their changes.",
     });
     expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
@@ -135,12 +176,16 @@ describe("editProjectDescriptionAction", () => {
       ],
     };
 
-    const result = await editProjectDescriptionAction("project-1", content);
+    const result = await editProjectDescriptionAction("project-1", content, {
+      type: "doc",
+      content: [],
+    });
 
     expect(result).toEqual({ ok: true, id: "project-1" });
     expect(doubles.projects.editProjectDescription).toHaveBeenCalledWith(
       "project-1",
       content,
+      { type: "doc", content: [] },
       "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith(
@@ -150,27 +195,33 @@ describe("editProjectDescriptionAction", () => {
   });
 
   it("cleans the content with the shared allowed set before storing it", async () => {
-    await editProjectDescriptionAction("project-1", {
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: "Click",
-              marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }],
-            },
-            { type: "text", text: " here", marks: [{ type: "code" }] },
-          ],
-        },
-        { type: "codeBlock", content: [{ type: "text", text: "rm -rf /" }] },
-        {
-          type: "image",
-          attrs: { src: "data:image/png;base64,AAAA", alt: "x" },
-        },
-      ],
-    });
+    await editProjectDescriptionAction(
+      "project-1",
+      {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Click",
+                marks: [
+                  { type: "link", attrs: { href: "javascript:alert(1)" } },
+                ],
+              },
+              { type: "text", text: " here", marks: [{ type: "code" }] },
+            ],
+          },
+          { type: "codeBlock", content: [{ type: "text", text: "rm -rf /" }] },
+          {
+            type: "image",
+            attrs: { src: "data:image/png;base64,AAAA", alt: "x" },
+          },
+        ],
+      },
+      { type: "doc", content: [] },
+    );
 
     expect(doubles.projects.editProjectDescription).toHaveBeenCalledWith(
       "project-1",
@@ -186,12 +237,17 @@ describe("editProjectDescriptionAction", () => {
           },
         ],
       },
+      { type: "doc", content: [] },
       "author-1",
     );
   });
 
   it("refuses input that is not a document without touching the database", async () => {
-    const result = await editProjectDescriptionAction("project-1", "<b>hi</b>");
+    const result = await editProjectDescriptionAction(
+      "project-1",
+      "<b>hi</b>",
+      { type: "doc", content: [] },
+    );
 
     expect(result).toEqual({
       ok: false,
@@ -203,15 +259,32 @@ describe("editProjectDescriptionAction", () => {
   it("answers a non-Member the way the page's 404 does", async () => {
     doubles.projects.editProjectDescription.mockResolvedValue(null);
 
-    const result = await editProjectDescriptionAction("project-1", {
-      type: "doc",
-      content: [],
-    });
+    const result = await editProjectDescriptionAction(
+      "project-1",
+      { type: "doc", content: [] },
+      { type: "doc", content: [] },
+    );
 
     expect(result).toEqual({
       ok: false,
       error: "That project no longer exists",
     });
+  });
+
+  it("answers a description another Member changed first as stale", async () => {
+    doubles.projects.editProjectDescription.mockResolvedValue({
+      ok: false,
+      reason: "stale",
+    });
+
+    const result = await editProjectDescriptionAction(
+      "project-1",
+      { type: "doc", content: [] },
+      { type: "doc", content: [] },
+    );
+
+    expect(result).toMatchObject({ ok: false, stale: true });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 });
 
@@ -223,14 +296,18 @@ describe("renameProjectAction", () => {
   it("renames the Project and refreshes both Project pages", async () => {
     doubles.projects.renameProject.mockResolvedValue(summary);
 
-    const result = await renameProjectAction("project-1", {
-      title: "  Refugee Health  ",
-    });
+    const result = await renameProjectAction(
+      "project-1",
+      { title: "  Refugee Health  " },
+      { title: "Refugee  " },
+    );
 
     expect(result).toEqual({ ok: true, id: "project-1" });
+    // Both the title and the baseline are what the schema stores: trimmed.
     expect(doubles.projects.renameProject).toHaveBeenCalledWith(
       "project-1",
       { title: "Refugee Health" },
+      { title: "Refugee" },
       "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith("/projects");
@@ -241,9 +318,45 @@ describe("renameProjectAction", () => {
   });
 
   it("returns the first validation issue for a blank title", async () => {
-    const result = await renameProjectAction("project-1", { title: " " });
+    const result = await renameProjectAction(
+      "project-1",
+      { title: " " },
+      { title: "Refugee" },
+    );
 
     expect(result).toEqual({ ok: false, error: "Enter a title" });
     expect(doubles.projects.renameProject).not.toHaveBeenCalled();
+  });
+
+  it("refuses a missing baseline without touching the database", async () => {
+    const result = await renameProjectAction(
+      "project-1",
+      { title: "Refugee Health" },
+      undefined,
+    );
+
+    expect(result).toMatchObject({ ok: false });
+    expect(doubles.projects.renameProject).not.toHaveBeenCalled();
+  });
+
+  it("answers a title another Member changed first as stale, naming the project", async () => {
+    doubles.projects.renameProject.mockResolvedValue({
+      ok: false,
+      reason: "stale",
+    });
+
+    const result = await renameProjectAction(
+      "project-1",
+      { title: "Refugee Health" },
+      { title: "Refugee" },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      stale: true,
+      error:
+        "Someone else changed this project since you opened it. Reload to see their changes.",
+    });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 });

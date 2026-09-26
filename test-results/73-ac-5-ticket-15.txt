@@ -1,0 +1,6 @@
+# Ticket 73 AC5 — ticket 15's three bullets are closed (at e29037d)
+$ grep -n "Concurrent Draft writes\|Metadata forms, last write wins\|Corrupt-row handling" .scratch/journeys-platform/issues/15-post-hackathon-hardening.md
+10:- [x] **Concurrent Draft writes.** ~~Today `saveDraft` is whole-document and last-write-wins (ADR-0001, "Writes are whole-document"). Two Members editing one Draft overwrite each other silently. Decide and build a graceful mechanism: optimistic concurrency 
+15:- [x] **Corrupt-row handling.** ~~`getDraftForMember` throws on a row that fails the schema (a 500). Decide whether a recovery path (restore from a Published Version, or a repair tool) is wanted.~~ Closed by ticket 73 (2026-09-26): a Draft row that fails th
+27:- [x] **Metadata forms, last write wins.** ~~Ticket 46 gives the title, description, and Theme forms autosave; two Members editing the same Project title still overwrite each other silently, the same gap as "Concurrent Draft writes" above. Solve both togeth
+40:- Concurrent Draft writes, Metadata forms last write wins, Corrupt-row handling → **73**.

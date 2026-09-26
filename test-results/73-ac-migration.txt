@@ -1,0 +1,28 @@
+# Ticket 73 — migration 0011_draft_version works against the previous code (commit 95c5435; drizzle/ unchanged since, and the final chain re-applied it)
+
+Database: local docker Postgres (port 5436), database journeys_e2e_c1. The dev database was not touched.
+
+$ DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_e2e_c1 pnpm db:migrate
+[✓] migrations applied successfully!
+
+$ psql \d draft  →  version | integer | not null | 0
+
+The previous code's saveDraft upsert (no version column), against a throwaway Project/Journey:
+
+INSERT INTO draft (journey_id, document, updated_at) VALUES ('mig-proof-journey', '{"schemaVersion":1}'::jsonb, now())
+  ON CONFLICT (journey_id) DO UPDATE SET document = EXCLUDED.document, updated_at = EXCLUDED.updated_at RETURNING version;
+ version
+---------
+       0
+(1 row)
+INSERT 0 1
+
+(second upsert, conflict branch)  version 0, INSERT 0 1
+SELECT → mig-proof-journey | {"second": true, "schemaVersion": 1} | 0
+DELETE 1   (the throwaway Project; Journey and Draft cascaded)
+ leftover
+----------
+        0
+
+Result: the column is additive with a default; the deployed code's insert and conflict-update both succeed after the migration.
+Caveat (recorded in ticket 73's [CLOSEOUT]): writes from the previous build do not bump version, so during the overlap window an old-build save cannot make a new-build save stale.

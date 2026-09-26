@@ -14,6 +14,10 @@ import {
 } from "@/app/projects/[projectId]/journeys/actions";
 import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import {
+  DraftVersionScope,
+  useSettledDraftVersion,
+} from "@/components/journeys/draft-version";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -71,7 +75,8 @@ function usePublishScope(caller: string): PublishScopeValue {
 }
 
 /**
- * Holds the acknowledgement of the last publish for everything beneath it.
+ * Holds the acknowledgement of the last publish for everything beneath it,
+ * and the Draft version the Member holds (`DraftVersionScope`).
  *
  * The line stays until the Draft changes again — the moment the page says
  * "Unpublished changes" — or the page is left, which unmounts this. The
@@ -83,10 +88,13 @@ function usePublishScope(caller: string): PublishScopeValue {
  */
 export function PublishScope({
   hasUnpublishedChanges,
+  draftVersion,
   children,
 }: {
   /** The header's own: false only while the live version matches the Draft. */
   hasUnpublishedChanges: boolean;
+  /** The Draft version the page read. */
+  draftVersion: number;
   children: ReactNode;
 }) {
   const [acknowledgement, setAcknowledgement] =
@@ -110,7 +118,9 @@ export function PublishScope({
         acknowledge: setAcknowledgement,
       }}
     >
-      {children}
+      <DraftVersionScope draftVersion={draftVersion}>
+        {children}
+      </DraftVersionScope>
     </PublishScopeContext.Provider>
   );
 }
@@ -162,12 +172,20 @@ export function PublishButton({
   size?: "default" | "sm";
 }) {
   const { acknowledge } = usePublishScope("PublishButton");
+  const settledDraftVersion = useSettledDraftVersion();
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
 
   function publish() {
     startTransition(async () => {
-      const result = await publishJourneyAction(projectId, journeyId);
+      // Clicking this blurred the editor, whose save of the last edit is on
+      // its way: the publish is sent with the version that save leaves.
+      const draftVersion = await settledDraftVersion();
+      const result = await publishJourneyAction(
+        projectId,
+        journeyId,
+        draftVersion,
+      );
 
       if (!result.ok) {
         setRefusal({ error: result.error, problems: result.problems ?? [] });

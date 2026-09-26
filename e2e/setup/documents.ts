@@ -308,6 +308,23 @@ export async function writeDraftDocument(
 }
 
 /**
+ * Writes anything at all into a Journey's Draft row — a document the
+ * contract would refuse included — for the spec that proves an unreadable
+ * Draft is recovered rather than a 500 (ticket 73). `version`, when given,
+ * sets the row's write counter too; otherwise it is left as it is.
+ */
+export async function writeRawDraftRow(
+  journeyId: string,
+  json: unknown,
+  version?: number,
+): Promise<void> {
+  await queryE2eDatabase(
+    'UPDATE "draft" SET document = $1::jsonb, version = COALESCE($3::integer, version), updated_at = now() WHERE journey_id = $2',
+    [JSON.stringify(json), journeyId, version ?? null],
+  );
+}
+
+/**
  * Publishes a document straight into a `published_version` row and points the
  * Journey's live pointer at it, returning the new version's id.
  *
@@ -339,6 +356,37 @@ export async function publishDocument(
       overrides.description ?? null,
       JSON.stringify(document),
     ],
+  );
+
+  await queryE2eDatabase(
+    'UPDATE "journey" SET live_version_id = $1 WHERE id = $2',
+    [versionId, journeyId],
+  );
+
+  return versionId;
+}
+
+/**
+ * Publishes anything at all as a Journey's live Published Version — a
+ * document the contract would refuse included — for the spec that proves
+ * an unreadable Published Version reads as unavailable to a Participant
+ * and is named on the Author's Versions and Analytics tabs, rather than
+ * 500ing (ticket 83). Sets the Journey's live pointer, as `publishDocument`
+ * does.
+ */
+export async function publishRawDocument(
+  journeyId: string,
+  json: unknown,
+): Promise<string> {
+  const versionId = randomUUID();
+
+  await queryE2eDatabase(
+    `INSERT INTO "published_version" (id, journey_id, version_number, title, description, document)
+     SELECT $1, j.id,
+            COALESCE((SELECT MAX(v.version_number) FROM "published_version" v WHERE v.journey_id = j.id), 0) + 1,
+            j.title, j.description, $3::jsonb
+     FROM "journey" j WHERE j.id = $2`,
+    [versionId, journeyId, JSON.stringify(json)],
   );
 
   await queryE2eDatabase(

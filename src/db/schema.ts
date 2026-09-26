@@ -232,11 +232,18 @@ export const journey = pgTable("journey", {
 // jsonb and the application validates it on the way in and on the way out.
 // The row is created with the Journey, and migration 0002 backfills one for
 // every Journey that predates this table.
+//
+// `version` counts the Draft's writes (ticket 73): every save and restore
+// sends the version it read and is stored only while it still matches,
+// incrementing it; a mismatch is another Member's write, refused as stale.
+// Added with a default by migration 0011, so code that never reads it keeps
+// working while the migration runs.
 export const draft = pgTable("draft", {
   journeyId: text("journey_id")
     .primaryKey()
     .references(() => journey.id, { onDelete: "cascade" }),
   document: jsonb("document").$type<GraphDocument>().notNull(),
+  version: integer("version").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

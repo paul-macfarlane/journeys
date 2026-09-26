@@ -33,7 +33,10 @@ export function ProjectThemeSettings({
       </div>
       <ThemeFields
         theme={theme}
-        submit={(next) => setProjectThemeAction(projectId, next)}
+        noun="project"
+        submit={(next, baseline) =>
+          setProjectThemeAction(projectId, next, baseline)
+        }
         // The swatches and the public page read the row; the page's own
         // props are what the picker shows until then.
         onSaved={() => router.refresh()}

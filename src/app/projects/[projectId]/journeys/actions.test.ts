@@ -18,6 +18,7 @@ const doubles = vi.hoisted(() => ({
     updateJourney: vi.fn(),
   },
   revalidatePath: vi.fn(),
+  drafts: { saveDraft: vi.fn() },
   versions: {
     publishDraft: vi.fn(),
     restoreVersion: vi.fn(),
@@ -33,7 +34,7 @@ vi.mock("@/lib/session", () => ({
   requireSession: vi.fn(async () => doubles.session),
 }));
 vi.mock("@/db/journeys", () => doubles.journeys);
-vi.mock("@/db/drafts", () => ({ saveDraft: vi.fn() }));
+vi.mock("@/db/drafts", () => doubles.drafts);
 vi.mock("@/db/projects", () => ({ getProjectForMember: vi.fn() }));
 vi.mock("@/db/versions", () => doubles.versions);
 vi.mock("@/lib/env", () => ({ env: doubles.env }));
@@ -43,8 +44,14 @@ import type { GraphDocument } from "@/lib/graph/document";
 import {
   moveJourneyAction,
   publishJourneyAction,
+  restoreVersionAction,
+  saveDraftAction,
   setJourneyThemeAction,
+  updateJourneyAction,
 } from "./actions";
+
+const STALE_DRAFT =
+  "Someone else changed this draft since you opened it. Reload to see their changes.";
 
 describe("setJourneyThemeAction", () => {
   const summary = {
@@ -61,16 +68,19 @@ describe("setJourneyThemeAction", () => {
   });
 
   it("stores the override for the signed-in Author and refreshes the Journey page", async () => {
-    const result = await setJourneyThemeAction("project-1", "journey-1", {
-      preset: "dusk",
-      accent: "#FFD400",
-    });
+    const result = await setJourneyThemeAction(
+      "project-1",
+      "journey-1",
+      { preset: "dusk", accent: "#FFD400" },
+      { preset: null, accent: null },
+    );
 
     expect(result).toEqual({ ok: true, id: "journey-1" });
     expect(doubles.journeys.setJourneyTheme).toHaveBeenCalledWith(
       "project-1",
       "journey-1",
       { preset: "dusk", accent: "#ffd400" },
+      { preset: null, accent: null },
       "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith(
@@ -80,24 +90,29 @@ describe("setJourneyThemeAction", () => {
   });
 
   it("clears the override, and any accent with it, when the preset is null", async () => {
-    await setJourneyThemeAction("project-1", "journey-1", {
-      preset: null,
-      accent: "#ffd400",
-    });
+    await setJourneyThemeAction(
+      "project-1",
+      "journey-1",
+      { preset: null, accent: "#ffd400" },
+      { preset: "dusk", accent: "#ffd400" },
+    );
 
     expect(doubles.journeys.setJourneyTheme).toHaveBeenCalledWith(
       "project-1",
       "journey-1",
       { preset: null, accent: null },
+      { preset: "dusk", accent: "#ffd400" },
       "author-1",
     );
   });
 
   it("refuses a preset that is not one of the six without touching the database", async () => {
-    const result = await setJourneyThemeAction("project-1", "journey-1", {
-      preset: "neon",
-      accent: null,
-    });
+    const result = await setJourneyThemeAction(
+      "project-1",
+      "journey-1",
+      { preset: "neon", accent: null },
+      { preset: null, accent: null },
+    );
 
     expect(result).toEqual({ ok: false, error: "Choose one of the themes" });
     expect(doubles.journeys.setJourneyTheme).not.toHaveBeenCalled();
@@ -106,16 +121,187 @@ describe("setJourneyThemeAction", () => {
   it("answers a non-Member like a Journey that is not there", async () => {
     doubles.journeys.setJourneyTheme.mockResolvedValue(null);
 
-    const result = await setJourneyThemeAction("project-1", "journey-1", {
-      preset: "dusk",
-      accent: null,
-    });
+    const result = await setJourneyThemeAction(
+      "project-1",
+      "journey-1",
+      { preset: "dusk", accent: null },
+      { preset: null, accent: null },
+    );
 
     expect(result).toEqual({
       ok: false,
       error: "That journey no longer exists",
     });
     expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("answers a Theme another Member changed first as stale, naming the journey", async () => {
+    doubles.journeys.setJourneyTheme.mockResolvedValue({
+      ok: false,
+      reason: "stale",
+    });
+
+    const result = await setJourneyThemeAction(
+      "project-1",
+      "journey-1",
+      { preset: "dusk", accent: null },
+      { preset: null, accent: null },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      stale: true,
+      error:
+        "Someone else changed this journey since you opened it. Reload to see their changes.",
+    });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateJourneyAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends the title and description with the baseline they were edited from, both trimmed", async () => {
+    doubles.journeys.updateJourney.mockResolvedValue({ id: "journey-1" });
+
+    const result = await updateJourneyAction(
+      "project-1",
+      "journey-1",
+      { title: " Night crossing ", description: "" },
+      { title: "Border ", description: "" },
+    );
+
+    expect(result).toEqual({ ok: true, id: "journey-1" });
+    expect(doubles.journeys.updateJourney).toHaveBeenCalledWith(
+      "project-1",
+      "journey-1",
+      { title: "Night crossing", description: "" },
+      { title: "Border", description: "" },
+      "author-1",
+    );
+  });
+
+  it("answers a title another Member changed first as stale", async () => {
+    doubles.journeys.updateJourney.mockResolvedValue({
+      ok: false,
+      reason: "stale",
+    });
+
+    const result = await updateJourneyAction(
+      "project-1",
+      "journey-1",
+      { title: "Night crossing", description: "" },
+      { title: "Border", description: "" },
+    );
+
+    expect(result).toMatchObject({ ok: false, stale: true });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveDraftAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("stores the document against the version the editor holds, and hands back the new one", async () => {
+    const document = { schemaVersion: 1 };
+    doubles.drafts.saveDraft.mockResolvedValue({
+      ok: true,
+      document,
+      version: 5,
+    });
+
+    const result = await saveDraftAction("project-1", "journey-1", document, 4);
+
+    expect(result).toEqual({ ok: true, id: "journey-1", version: 5 });
+    expect(doubles.drafts.saveDraft).toHaveBeenCalledWith(
+      "project-1",
+      "journey-1",
+      document,
+      4,
+      "author-1",
+    );
+  });
+
+  it("answers another Member's save since as stale, and refreshes nothing", async () => {
+    doubles.drafts.saveDraft.mockResolvedValue({ ok: false, reason: "stale" });
+
+    const result = await saveDraftAction("project-1", "journey-1", {}, 4);
+
+    expect(result).toEqual({ ok: false, stale: true, error: STALE_DRAFT });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("refuses a version that is not a count without touching the database", async () => {
+    const result = await saveDraftAction("project-1", "journey-1", {}, "4");
+
+    expect(result).toMatchObject({ ok: false });
+    expect(doubles.drafts.saveDraft).not.toHaveBeenCalled();
+  });
+});
+
+describe("restoreVersionAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("restores against the Draft version the page read", async () => {
+    doubles.versions.restoreVersion.mockResolvedValue({ versionNumber: 1 });
+
+    const result = await restoreVersionAction(
+      "project-1",
+      "journey-1",
+      "version-1",
+      3,
+    );
+
+    expect(result).toEqual({ ok: true, id: "journey-1" });
+    expect(doubles.versions.restoreVersion).toHaveBeenCalledWith(
+      "project-1",
+      "journey-1",
+      "version-1",
+      3,
+      "author-1",
+    );
+  });
+
+  it("answers a Draft another Member saved since as stale", async () => {
+    doubles.versions.restoreVersion.mockResolvedValue({
+      ok: false,
+      reason: "stale",
+    });
+
+    const result = await restoreVersionAction(
+      "project-1",
+      "journey-1",
+      "version-1",
+      3,
+    );
+
+    expect(result).toEqual({ ok: false, stale: true, error: STALE_DRAFT });
+  });
+
+  it("refuses to restore a version that fails the document contract (ticket 83)", async () => {
+    doubles.versions.restoreVersion.mockResolvedValue({
+      ok: false,
+      reason: "unreadable",
+      versionNumber: 1,
+    });
+
+    const result = await restoreVersionAction(
+      "project-1",
+      "journey-1",
+      "version-1",
+      3,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Version 1 can't be read, so it can't be restored.",
+    });
   });
 });
 
@@ -228,7 +414,7 @@ describe("publishJourneyAction", () => {
       document: documentWhosePromptDecides(true),
     });
 
-    const result = await publishJourneyAction("project-1", "journey-1");
+    const result = await publishJourneyAction("project-1", "journey-1", 0);
 
     expect(result).toEqual({ ok: true, versionNumber: 3, warning: WARNING });
   });
@@ -240,7 +426,7 @@ describe("publishJourneyAction", () => {
       document: documentWhosePromptDecides(true),
     });
 
-    const result = await publishJourneyAction("project-1", "journey-1");
+    const result = await publishJourneyAction("project-1", "journey-1", 0);
 
     expect(result).toEqual({ ok: true, versionNumber: 3 });
   });
@@ -253,8 +439,41 @@ describe("publishJourneyAction", () => {
       document: documentWhosePromptDecides(false),
     });
 
-    const result = await publishJourneyAction("project-1", "journey-1");
+    const result = await publishJourneyAction("project-1", "journey-1", 0);
 
     expect(result).toEqual({ ok: true, versionNumber: 1 });
+  });
+
+  it("publishes the Draft at the version the Member holds, and answers a newer one as stale", async () => {
+    doubles.versions.publishDraft.mockResolvedValue({
+      ok: false,
+      reason: "stale",
+    });
+
+    const result = await publishJourneyAction("project-1", "journey-1", 2);
+
+    expect(doubles.versions.publishDraft).toHaveBeenCalledWith(
+      "project-1",
+      "journey-1",
+      2,
+      "author-1",
+    );
+    expect(result).toEqual({ ok: false, stale: true, error: STALE_DRAFT });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("refuses a Draft whose row cannot be read", async () => {
+    doubles.versions.publishDraft.mockResolvedValue({
+      ok: false,
+      reason: "unreadable",
+    });
+
+    const result = await publishJourneyAction("project-1", "journey-1", 2);
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "This journey's draft can't be read. Restore it from a published version before publishing.",
+    });
   });
 });

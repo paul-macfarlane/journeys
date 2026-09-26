@@ -5,6 +5,7 @@ import { useMemo } from "react";
 
 import { updateJourneyAction } from "@/app/projects/[projectId]/journeys/actions";
 import { useAutosavedForm } from "@/components/autosaved-form";
+import { StaleNotice } from "@/components/stale-notice";
 import { STATUS_TEXT } from "@/lib/autosave";
 import { cn } from "@/lib/utils";
 import {
@@ -37,14 +38,17 @@ export function JourneyTitleFields({
     () => ({ title, description }),
     [title, description],
   );
-  const { form, status, change, flush, handleEnterKeyDown } = useAutosavedForm({
-    schema: updateJourneySchema,
-    values,
-    submit: (next) => updateJourneyAction(projectId, journeyId, next),
-    // The refresh is what lets Publish notice participants have not seen
-    // this yet, and what puts the new title on the Delete confirmation.
-    onSaved: () => router.refresh(),
-  });
+  const { form, status, stale, change, flush, handleEnterKeyDown } =
+    useAutosavedForm({
+      schema: updateJourneySchema,
+      values,
+      noun: "journey",
+      submit: (next, baseline) =>
+        updateJourneyAction(projectId, journeyId, next, baseline),
+      // The refresh is what lets Publish notice participants have not seen
+      // this yet, and what puts the new title on the Delete confirmation.
+      onSaved: () => router.refresh(),
+    });
   const { errors } = form.formState;
 
   const fieldClassName =
@@ -92,13 +96,17 @@ export function JourneyTitleFields({
         </p>
       ) : null}
 
-      <p className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
-        <span role="status">{STATUS_TEXT[status]}</span>
-        <span>
-          Participants see the title and description from the last published
-          version.
-        </span>
-      </p>
+      {stale ? (
+        <StaleNotice noun={stale.noun} onReload={stale.reload} />
+      ) : (
+        <p className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
+          <span role="status">{STATUS_TEXT[status]}</span>
+          <span>
+            Participants see the title and description from the last published
+            version.
+          </span>
+        </p>
+      )}
     </div>
   );
 }

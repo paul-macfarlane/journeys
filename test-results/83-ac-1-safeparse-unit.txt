@@ -1,0 +1,27 @@
+# Ticket 83 AC1 — a unit test per safeParse site (at e29037d)
+$ pnpm exec vitest run src/db/drafts.test.ts src/db/versions.test.ts src/db/analytics.test.ts src/db/runs.test.ts src/db/projects.test.ts src/db/users.test.ts --reporter=verbose
+ ✓ src/db/users.test.ts > toPublicAuthorProject > reads a row whose description satisfies the contract as itself 2ms
+ ✓ src/db/users.test.ts > toPublicAuthorProject > reads a row whose description fails the contract as empty rich text 1ms
+ ✓ src/db/projects.test.ts > toProjectSummary > reads a row whose description satisfies the contract as itself 2ms
+ ✓ src/db/projects.test.ts > toProjectSummary > reads a row whose description fails the contract as empty rich text 1ms
+ ✓ src/db/projects.test.ts > guardsDescription > guards an edit made from a description the Member could read 0ms
+ ✓ src/db/projects.test.ts > guardsDescription > guards an edit made from empty rich text while the stored description is readable 1ms
+ ✓ src/db/projects.test.ts > guardsDescription > does not guard an edit made from empty rich text over a description that cannot be read 0ms
+ ✓ src/db/drafts.test.ts > toStoredDraft > reads a row that satisfies the contract as the document and its version 4ms
+ ✓ src/db/drafts.test.ts > toStoredDraft > reads a row that fails the contract as unreadable, keeping its version 0ms
+ ✓ src/db/analytics.test.ts > toAnalyticsSource > reads a version whose document satisfies the contract 3ms
+ ✓ src/db/analytics.test.ts > toAnalyticsSource > reads a version whose document fails the contract as unreadable 1ms
+ ✓ src/db/runs.test.ts > toPublicJourney > reads a row whose document satisfies the contract as live 3ms
+ ✓ src/db/runs.test.ts > toPublicJourney > reads a row whose document fails the contract as unavailable 1ms
+ ✓ src/db/runs.test.ts > toRunForJourney > reads a row whose document and path satisfy their contracts 0ms
+ ✓ src/db/runs.test.ts > toRunForJourney > answers null for a row whose document fails its contract 0ms
+ ✓ src/db/runs.test.ts > toRunForJourney > answers null for a row whose path fails its contract 0ms
+ ✓ src/db/versions.test.ts > toLiveVersion > reads a row that satisfies the contract as the live version 4ms
+ ✓ src/db/versions.test.ts > toLiveVersion > reads a row that fails the contract as unreadable, keeping its id and number 1ms
+ ✓ src/db/versions.test.ts > parseVersionDocument > parses a document that satisfies the contract 0ms
+ ✓ src/db/versions.test.ts > parseVersionDocument > answers null for a document that fails the contract 0ms
+ Test Files  6 passed (6)
+      Tests  20 passed (20)
+
+$ grep -rn "Schema.parse(" src --include=*.ts --include=*.tsx | grep -v test
+(none: no throwing parse of a stored document remains)

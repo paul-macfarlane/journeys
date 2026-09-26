@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
@@ -53,6 +53,11 @@ export default async function PreviewStepPage({
 
   const stored = await getDraftForMember(projectId, journeyId, session.user.id);
   if (!stored) notFound();
+  // A Draft that cannot be read has nothing to preview: the Journey page
+  // says so and offers a Restore (ticket 73).
+  if (stored.kind === "unreadable") {
+    redirect(`/projects/${projectId}/journeys/${journeyId}`);
+  }
   const draft = stored.document;
 
   // Own property only: `steps` is a plain object parsed from JSON, and a
