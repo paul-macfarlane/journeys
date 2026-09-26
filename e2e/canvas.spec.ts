@@ -25,18 +25,18 @@ import {
   tagWithOutcome,
 } from "./setup/authoring";
 import {
+  type Box,
   canvas,
   canvasNode,
+  canvasNodeBox,
   canvasNodes,
   clickBox,
+  connectHandle,
   directionRadio,
+  emptySpot,
   fitWholeMap,
   mapFaults,
   nodeViews,
-  type Box,
-  canvasNodeBox,
-  connectHandle,
-  emptySpot,
   settledTransform,
 } from "./setup/canvas";
 import {
@@ -45,8 +45,6 @@ import {
   readDraft,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
-import { evidencePath } from "./setup/evidence";
-import { cleanup, closePools } from "./setup/session";
 import {
   addChoiceToStep,
   expectSaved,
@@ -54,6 +52,8 @@ import {
   seedDraft,
   startJourney,
 } from "./setup/editor";
+import { evidencePath } from "./setup/evidence";
+import { cleanup, closePools } from "./setup/session";
 
 /**
  * Seam B for ticket 09: the Draft as a map on the Journey page — every Step a
@@ -212,10 +212,22 @@ function redoButton(page: Page) {
 
 /** "Add step" is the canvas's, beside the map the new Step lands on. */
 async function addStepFromCanvas(page: Page, title: string): Promise<void> {
-  // Counted once the map has drawn its boxes: the count before the click is
-  // what the new box is measured against.
+  // Counted once the map has drawn its boxes and the count has held still
+  // across two reads in a row (a map still drawing reads short): the count
+  // before the click is what the new box is measured against.
   await expect(canvasNodes(page).first()).toBeVisible();
-  const before = await canvasNodes(page).count();
+  let before = -1;
+  await expect
+    .poll(
+      async () => {
+        const count = await canvasNodes(page).count();
+        const stable = count > 0 && count === before;
+        before = count;
+        return stable;
+      },
+      { intervals: [200] },
+    )
+    .toBe(true);
   await canvas(page)
     .getByRole("button", { name: "Add step", exact: true })
     .click();
