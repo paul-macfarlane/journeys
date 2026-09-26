@@ -624,7 +624,10 @@ test("metadata-autosave", async ({ page, context }) => {
   // the stored value over a `fill` that lands first, and then nothing is
   // posted and the typing is made again.
   const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
-  const descriptionWrite = await holdServerAction(page, journeyPath);
+  // Arrival may take the retry loop's whole budget, not the hold's 10 s.
+  const descriptionWrite = await holdServerAction(page, journeyPath, {
+    arrivalTimeout: 20_000,
+  });
   await expect(async () => {
     await descriptionField.fill(journeyDescription);
     await expect(descriptionField).toHaveValue(journeyDescription, {
