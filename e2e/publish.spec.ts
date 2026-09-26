@@ -24,6 +24,7 @@ import {
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
+import { readDraftRow } from "./setup/documents";
 
 /**
  * Seam B for ticket 05: publishing a Journey, listing its Published
@@ -45,20 +46,12 @@ test.afterAll(async () => {
   await closePools();
 });
 
-type DocumentRow = { document: unknown };
 type VersionRow = {
   id: string;
   version_number: number;
   description: string;
   document: unknown;
 };
-
-function readDraftDocument(journeyId: string): Promise<DocumentRow[]> {
-  return queryE2eDatabase<DocumentRow>(
-    'SELECT document FROM "draft" WHERE journey_id = $1',
-    [journeyId],
-  );
-}
 
 function readVersionRows(journeyId: string): Promise<VersionRow[]> {
   return queryE2eDatabase<VersionRow>(
@@ -369,8 +362,8 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   // Restoring asks first, and changes nothing until it is answered.
   await versionOne.getByRole("button", { name: "Restore" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
-  const whileAsking = await readDraftDocument(journeyId);
-  expect(whileAsking[0].document).toEqual(edited);
+  const whileAsking = await readDraftRow(journeyId);
+  expect(whileAsking.document).toEqual(edited);
 
   await page.getByRole("button", { name: "Restore version" }).click();
   await expect(page.getByRole("alertdialog")).toBeHidden();
@@ -391,8 +384,8 @@ test("publish-versions-and-restore", async ({ page, context }) => {
   await expect(page.getByLabel("Step content")).not.toContainText(
     editedStartText,
   );
-  const restored = await readDraftDocument(journeyId);
-  expect(restored[0].document).toEqual(versionOneDocument);
+  const restored = await readDraftRow(journeyId);
+  expect(restored.document).toEqual(versionOneDocument);
 
   // Restoring read a version; it must not have written one.
   expect(await readVersionRows(journeyId)).toEqual(afterSecondPublish);

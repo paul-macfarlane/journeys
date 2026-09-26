@@ -22,6 +22,7 @@ import {
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
+import { holdServerAction } from "./setup/server-action";
 
 /**
  * Seam B for ticket 02: an Author's Projects (and the Journeys inside them)
@@ -32,6 +33,14 @@ import {
  */
 
 const mintedAuthorIds: string[] = [];
+
+/** Whether a promise has settled yet, asked without waiting on it. */
+function settled(promise: Promise<unknown>): Promise<boolean> {
+  return Promise.race([
+    promise.then(() => true),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 0)),
+  ]);
+}
 
 test.afterAll(async () => {
   await cleanup(mintedAuthorIds);
@@ -607,19 +616,30 @@ test("metadata-autosave", async ({ page, context }) => {
       window.dispatchEvent(event);
       return event.defaultPrevented;
     });
+  // The write is held while the guard is asked, so "in its window" is a
+  // state the spec holds rather than a 600ms one it has to catch: asked
+  // after the write had landed, the guard rightly says no, and a retry
+  // that types the same text again is no edit at all. The held action's
+  // arrival is also what says the typing took — hydration can still write
+  // the stored value over a `fill` that lands first, and then nothing is
+  // posted and the typing is made again.
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  const descriptionWrite = await holdServerAction(page, journeyPath);
   await expect(async () => {
     await descriptionField.fill(journeyDescription);
     await expect(descriptionField).toHaveValue(journeyDescription, {
       timeout: 1_000,
     });
-    expect(await wouldAskBeforeLeaving()).toBe(true);
     await expect
-      .poll(storedJourneyDescription, { timeout: 3_000 })
-      .toBe(journeyDescription);
+      .poll(() => settled(descriptionWrite.request), { timeout: 3_000 })
+      .toBe(true);
   }).toPass({ timeout: 20_000 });
+  expect(await wouldAskBeforeLeaving()).toBe(true);
+  await descriptionWrite.release();
+  await expect.poll(storedJourneyDescription).toBe(journeyDescription);
   await expect(descriptionField).toBeFocused();
   await expect(journeyStatus).toHaveText("Saved");
-  expect(await wouldAskBeforeLeaving()).toBe(false);
+  await expect.poll(wouldAskBeforeLeaving).toBe(false);
 
   await page.reload();
   await expect(page.getByLabel("Description", { exact: true })).toHaveValue(
@@ -628,32 +648,19 @@ test("metadata-autosave", async ({ page, context }) => {
 
   // "Saving…" is on screen only as long as the write is in flight, so the
   // write is held: the Journey title is typed into (the page is hydrated
-  // by now, the description's save proved it), the line reads "Unsaved
-  // changes" while the timer runs and "Saving…" once the action is sent,
-  // and "Saved" only once the action is let through.
+  // by now, the description's save proved it), the held action arriving
+  // is what says the timer ran out and the write was sent, the line reads
+  // "Saving…" for as long as it is held, and "Saved" only once it is let
+  // through. ("Unsaved changes" is on screen only for the 600ms quiet
+  // window before the write, too short to be sure of catching under load.)
   const renamedJourneyTitle = `Night Crossing ${suffix}`;
-  let releaseWrite = () => {};
-  const writeHeld = new Promise<void>((resolve) => {
-    releaseWrite = resolve;
-  });
-  const isServerAction = (request: {
-    method(): string;
-    headers(): Record<string, string>;
-  }) => request.method() === "POST" && "next-action" in request.headers();
-  await page.route(
-    (url) => url.pathname === `/projects/${projectId}/journeys/${journeyId}`,
-    async (route) => {
-      if (isServerAction(route.request())) await writeHeld;
-      await route.continue();
-    },
-  );
+  const titleWrite = await holdServerAction(page, journeyPath);
   const titleField = page.getByLabel("Title", { exact: true });
   await titleField.fill(renamedJourneyTitle);
-  await expect(journeyStatus).toHaveText("Unsaved changes");
+  await titleWrite.request;
   await expect(journeyStatus).toHaveText("Saving…");
-  releaseWrite();
+  await titleWrite.release();
   await expect(journeyStatus).toHaveText("Saved");
-  await page.unrouteAll();
   await expect
     .poll(async () => {
       const [row] = await queryE2eDatabase<{ value: string }>(
@@ -760,20 +767,7 @@ test("tabs-switch-during-write", async ({ page, context }) => {
     page.getByRole("tab", { name: "Settings", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
 
-  let releaseWrite = () => {};
-  const writeHeld = new Promise<void>((resolve) => {
-    releaseWrite = resolve;
-  });
-  await page.route(
-    (url) => url.pathname === `/projects/${projectId}`,
-    async (route) => {
-      const request = route.request();
-      if (request.method() === "POST" && "next-action" in request.headers()) {
-        await writeHeld;
-      }
-      await route.continue();
-    },
-  );
+  const write = await holdServerAction(page, `/projects/${projectId}`);
 
   await page.evaluate(() => {
     (window as unknown as { __kept: boolean }).__kept = true;
@@ -781,11 +775,11 @@ test("tabs-switch-during-write", async ({ page, context }) => {
   await page.getByLabel("Title", { exact: true }).fill(renamedProjectTitle);
   await openTab(page, "Journeys");
   await expect(page).toHaveURL(`${E2E_BASE_URL}/projects/${projectId}`);
-  releaseWrite();
+  await write.request;
+  await write.release();
   await expect(
     page.getByRole("heading", { name: renamedProjectTitle }),
   ).toBeVisible();
-  await page.unrouteAll({ behavior: "wait" });
 
   expect(
     await page.evaluate(

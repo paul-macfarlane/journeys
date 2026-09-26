@@ -1,7 +1,15 @@
 import { randomUUID } from "node:crypto";
 
+import { expect } from "@playwright/test";
+
 import type { Content } from "@/lib/graph/content";
-import type { Choice, GraphDocument, Prompt, Step } from "@/lib/graph/document";
+import {
+  graphDocumentSchema,
+  type Choice,
+  type GraphDocument,
+  type Prompt,
+  type Step,
+} from "@/lib/graph/document";
 
 import { queryE2eDatabase } from "./session";
 
@@ -305,6 +313,24 @@ export async function writeDraftDocument(
     'UPDATE "draft" SET document = $1::jsonb, updated_at = now() WHERE journey_id = $2',
     [JSON.stringify(document), journeyId],
   );
+}
+
+/** A Journey's Draft row as stored: the document and its write counter. */
+export type DraftRow = { document: unknown; version: number };
+
+/** The one Draft row a Journey has, read straight from the table. */
+export async function readDraftRow(journeyId: string): Promise<DraftRow> {
+  const rows = await queryE2eDatabase<DraftRow>(
+    'SELECT document, version FROM "draft" WHERE journey_id = $1',
+    [journeyId],
+  );
+  expect(rows, "a Journey has exactly one Draft").toHaveLength(1);
+  return rows[0];
+}
+
+/** The Draft exactly as the editor stored it, read through the contract. */
+export async function readDraft(journeyId: string): Promise<GraphDocument> {
+  return graphDocumentSchema.parse((await readDraftRow(journeyId)).document);
 }
 
 /**

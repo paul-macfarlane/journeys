@@ -1,30 +1,23 @@
-import {
-  expect,
-  test,
-  type BrowserContext,
-  type Locator,
-  type Page,
-} from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
+import type { GraphDocument } from "@/lib/graph/document";
 
 import {
   arrowLabelled,
   chooseStep,
-  createJourney,
-  createProject,
   openFindStep,
   tagWithOutcome,
-  uniqueSuffix,
 } from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
+import { cleanup, closePools } from "./setup/session";
+import { readDraft } from "./setup/documents";
 import {
-  cleanup,
-  closePools,
-  queryE2eDatabase,
-  signInAs,
-} from "./setup/session";
+  addChoiceToStep,
+  expectSaved,
+  renameStep,
+  startJourney,
+} from "./setup/editor";
 
 /**
  * Seam B for ticket 08: an Author building a Journey out of Steps, Choices,
@@ -49,16 +42,6 @@ test.afterAll(async () => {
   await closePools();
 });
 
-/** The Draft exactly as the editor stored it. */
-async function readDraft(journeyId: string): Promise<GraphDocument> {
-  const rows = await queryE2eDatabase<{ document: unknown }>(
-    'SELECT document FROM "draft" WHERE journey_id = $1',
-    [journeyId],
-  );
-  expect(rows).toHaveLength(1);
-  return graphDocumentSchema.parse(rows[0].document);
-}
-
 /** Ids are minted by the app, so a spec can only ever look one up by name. */
 function stepIdByTitle(draft: GraphDocument, title: string): string {
   const match = Object.values(draft.steps).find((step) => step.title === title);
@@ -66,52 +49,11 @@ function stepIdByTitle(draft: GraphDocument, title: string): string {
   return match.id;
 }
 
-/**
- * Autosave is debounced, so "the Draft is stored" is a thing to wait for
- * rather than assume. Every reload, Preview, row read, and Publish in this
- * file goes through here first.
- */
-async function expectSaved(page: Page): Promise<void> {
-  // The Draft's line, not the title form's above the tabs (ticket 46).
-  await expect(
-    page.getByRole("tabpanel", { name: "Editor" }).getByRole("status"),
-  ).toHaveText("Saved");
-}
-
-/** A signed-in Author on the Journey page of a brand-new Journey. */
-async function startJourney(
-  page: Page,
-  context: BrowserContext,
-): Promise<{ projectId: string; journeyId: string }> {
-  const author = await signInAs(context);
-  mintedAuthorIds.push(author.id);
-
-  const suffix = uniqueSuffix();
-  await page.goto("/projects");
-  const projectId = await createProject(page, `Refugee Health ${suffix}`);
-  await page.goto(`/projects/${projectId}`);
-  const journeyId = await createJourney(
-    page,
-    projectId,
-    `Border Crossing ${suffix}`,
-  );
-
-  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
-  await expect(page.getByRole("heading", { name: "Steps" })).toBeVisible();
-
-  return { projectId, journeyId };
-}
-
 /** One Step offered by "Find step", named by its title alone. */
 function stepOption(page: Page, title: string) {
   return page
     .getByRole("listbox", { name: "Steps" })
     .getByRole("option", { name: title, exact: true });
-}
-
-async function renameStep(page: Page, title: string): Promise<void> {
-  await page.getByLabel("Step title").fill(title);
-  await expect(page.getByLabel("Step title")).toHaveValue(title);
 }
 
 /**
@@ -178,27 +120,8 @@ async function addChoiceToNewStep(
   await renameStep(page, title);
 }
 
-/** "Add choice" pointed at a Step that is already in the Draft. */
-async function addChoiceToStep(
-  page: Page,
-  label: string,
-  target: string,
-): Promise<void> {
-  await page.getByRole("button", { name: "Add choice", exact: true }).click();
-  await page.getByLabel("Label", { exact: true }).fill(label);
-  await page
-    .getByLabel("Target", { exact: true })
-    .selectOption({ label: target });
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-
-  // The form closes on adding, which is what makes "Add" go away.
-  await expect(
-    page.getByRole("button", { name: "Add", exact: true }),
-  ).toHaveCount(0);
-}
-
-test("step-editing-build-and-publish", async ({ page, context }) => {
-  const { journeyId } = await startJourney(page, context);
+test("step-editing-build-and-publish", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
 
   // The Start is what the panel opens on.
   await expect(page.getByLabel("Step title")).toHaveValue("Start");
@@ -266,8 +189,8 @@ test("step-editing-build-and-publish", async ({ page, context }) => {
   });
 });
 
-test("step-editing-delete-and-validate", async ({ page, context }) => {
-  const { journeyId } = await startJourney(page, context);
+test("step-editing-delete-and-validate", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
 
   await renameStep(page, "Border post");
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
@@ -335,7 +258,7 @@ test("step-editing-image-caption-alt-and-preview", async ({
   page,
   context,
 }) => {
-  const { projectId, journeyId } = await startJourney(page, context);
+  const { projectId, journeyId } = await startJourney(page, mintedAuthorIds);
 
   await renameStep(page, "Border post");
 
@@ -539,7 +462,7 @@ test("step-editing-image-caption-alt-and-preview", async ({
 });
 
 test("rich-text-underline-strike-quote", async ({ page, context }) => {
-  const { journeyId } = await startJourney(page, context);
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
   await renameStep(page, "Lamp room");
 
   // Every mark and the quote go on by one of button or shortcut and the
@@ -654,8 +577,8 @@ test("rich-text-underline-strike-quote", async ({ page, context }) => {
   await participant.close();
 });
 
-test("rich-text-image-in-list-item", async ({ page, context }) => {
-  const { journeyId } = await startJourney(page, context);
+test("rich-text-image-in-list-item", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
   await renameStep(page, "Lamp room");
   await addChoiceToNewStep(page, "Go down", "Cellar");
   await chooseStep(page, "Lamp room");
@@ -717,8 +640,8 @@ test("rich-text-image-in-list-item", async ({ page, context }) => {
   });
 });
 
-test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
-  const { journeyId } = await startJourney(page, context);
+test("step-editing-choices-reorder-retarget", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
 
   await renameStep(page, "Border post");
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
@@ -821,8 +744,8 @@ test("step-editing-choices-reorder-retarget", async ({ page, context }) => {
   });
 });
 
-test("step-editing-outcome-rename", async ({ page, context }) => {
-  const { projectId, journeyId } = await startJourney(page, context);
+test("step-editing-outcome-rename", async ({ page }) => {
+  const { projectId, journeyId } = await startJourney(page, mintedAuthorIds);
 
   await renameStep(page, "Border post");
   await addChoiceToNewStep(page, "Wait your turn", "Waved through");
@@ -866,8 +789,8 @@ test("step-editing-outcome-rename", async ({ page, context }) => {
   });
 });
 
-test("panel-choice-target-search", async ({ page, context }) => {
-  const { journeyId } = await startJourney(page, context);
+test("panel-choice-target-search", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
 
   // A Start with two Choices, each on a Step of its own.
   await renameStep(page, "Border post");
@@ -988,8 +911,8 @@ test("panel-choice-target-search", async ({ page, context }) => {
   });
 });
 
-test("panel-outcomes-from-the-ending", async ({ page, context }) => {
-  const { journeyId } = await startJourney(page, context);
+test("panel-outcomes-from-the-ending", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
 
   // A Start with two Choices, so the Journey has two Endings to group.
   await renameStep(page, "Border post");

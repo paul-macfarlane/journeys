@@ -45,6 +45,8 @@ import {
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
+import { promptBox } from "./setup/runner";
+import { holdServerAction } from "./setup/server-action";
 
 /**
  * Seam B for ticket 06: an anonymous Participant walking a published Journey
@@ -140,11 +142,6 @@ async function expectNoSidewaysScroll(page: Page): Promise<void> {
       document.documentElement.clientWidth,
   );
   expect(fits).toBe(true);
-}
-
-/** The Prompt's textbox on a runner screen, found by its question. */
-function promptBox(page: Page, label: string) {
-  return page.getByRole("textbox", { name: label });
 }
 
 /** More Tab presses than any runner screen has focusable things before its Choices. */
@@ -454,21 +451,12 @@ test("runner-deciding-prompt", async ({ page, context, browser }) => {
           Object.keys(button).some((key) => key.startsWith("__reactFiber")),
       ),
     );
-    let releaseJudge = () => {};
-    const judgeHeld = new Promise<void>((resolve) => {
-      releaseJudge = resolve;
-    });
-    await participant.route(
-      (url) => url.pathname === `/j/${journeyId}/${QUEUE_STEP_ID}`,
-      async (route) => {
-        const request = route.request();
-        if (request.method() === "POST" && "next-action" in request.headers()) {
-          await judgeHeld;
-        }
-        await route.continue();
-      },
+    const judge = await holdServerAction(
+      participant,
+      `/j/${journeyId}/${QUEUE_STEP_ID}`,
     );
     await participant.getByRole("button", { name: "Continue" }).click();
+    await judge.request;
     const deciding = participant.getByRole("button", { name: "Deciding…" });
     await expect(deciding).toBeVisible();
     await expect(deciding).toBeDisabled();
@@ -476,11 +464,7 @@ test("runner-deciding-prompt", async ({ page, context, browser }) => {
       path: evidencePath("runner-deciding-prompt", "deciding.png"),
       fullPage: true,
     });
-    releaseJudge();
-    // "wait", not the default: the handler above is still finishing its
-    // `route.continue()` for the released POST, and unrouting under it
-    // would hand the request to the network and make that call throw.
-    await participant.unrouteAll({ behavior: "wait" });
+    await judge.release();
 
     // No key, so no pick: every Choice offered, none marked.
     await expect(

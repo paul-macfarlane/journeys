@@ -1,14 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
-
-import {
-  chooseStep,
-  createJourney,
-  createProject,
-  openTab,
-  uniqueSuffix,
-} from "./setup/authoring";
+import { chooseStep, openTab } from "./setup/authoring";
 import {
   ENDING_PROMPT,
   promptDocument,
@@ -25,12 +17,10 @@ import {
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
-import {
-  cleanup,
-  closePools,
-  queryE2eDatabase,
-  signInAs,
-} from "./setup/session";
+import { cleanup, closePools, signInAs } from "./setup/session";
+import { readDraft } from "./setup/documents";
+import { startJourney } from "./setup/editor";
+import { promptBox } from "./setup/runner";
 
 /**
  * Seam B for ticket 12: an Author attaches a Prompt to a Step, a Participant
@@ -54,41 +44,8 @@ test.afterAll(async () => {
   await closePools();
 });
 
-/** The Draft exactly as the editor stored it. */
-async function readDraft(journeyId: string): Promise<GraphDocument> {
-  const rows = await queryE2eDatabase<{ document: unknown }>(
-    'SELECT document FROM "draft" WHERE journey_id = $1',
-    [journeyId],
-  );
-  expect(rows).toHaveLength(1);
-  return graphDocumentSchema.parse(rows[0].document);
-}
-
-/** A Project and a Journey, made through the browser as an Author would. */
-async function startJourney(page: Page): Promise<{
-  projectId: string;
-  journeyId: string;
-}> {
-  const suffix = uniqueSuffix();
-  await page.goto("/projects");
-  const projectId = await createProject(page, `Refugee Health ${suffix}`);
-  await page.goto(`/projects/${projectId}`);
-  const journeyId = await createJourney(
-    page,
-    projectId,
-    `Border Crossing ${suffix}`,
-  );
-  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
-  return { projectId, journeyId };
-}
-
 /** The Step panel's deciding option (ticket 49), named for what it does. */
 const DECIDES_LABEL = "AI decides the next step from the response";
-
-/** The Prompt's textbox on a runner or Preview screen, found by its question. */
-function promptBox(page: Page, label: string) {
-  return page.getByRole("textbox", { name: label });
-}
 
 /**
  * Waits until React is running on a runner step page before a box that

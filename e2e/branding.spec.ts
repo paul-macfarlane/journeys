@@ -1,12 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
-import {
-  publishDocument,
-  runnerDocument,
-  START_STEP_TITLE,
-  writeDraftDocument,
-} from "./setup/documents";
+import { publishOne } from "./setup/authoring";
+import { START_STEP_TITLE } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import { expectFooterOnOneRow } from "./setup/footer";
@@ -37,22 +32,6 @@ test.afterAll(async () => {
 /** The "Legal" navigation any of the app's footers carries. */
 function legalLinks(scope: Page | Locator) {
   return scope.getByRole("navigation", { name: "Legal" });
-}
-
-/** A Project with one published Journey, made through the UI as an Author. */
-async function publishOne(page: Page, label: string): Promise<string> {
-  const suffix = uniqueSuffix();
-  const projectId = await createProject(page, `${label} ${suffix}`);
-  await page.goto(`/projects/${projectId}`);
-  const journeyId = await createJourney(
-    page,
-    projectId,
-    `${label} journey ${suffix}`,
-    "A short walk to check the frame.",
-  );
-  await writeDraftDocument(journeyId, runnerDocument());
-  await publishDocument(journeyId, runnerDocument());
-  return `/projects/${projectId}/journeys/${journeyId}`;
 }
 
 test("legal-pages: /privacy and /terms render and are linked from the sign-in page and the runner footer", async ({
@@ -118,9 +97,11 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
   // The runner footer: an anonymous Participant on a phone reaches both.
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
-  await page.goto("/projects");
-  const journeyHref = await publishOne(page, "Legal");
-  const journeyId = journeyHref.split("/").pop();
+  const { journeyId } = await publishOne(
+    page,
+    "Legal",
+    "A short walk to check the frame.",
+  );
 
   const phone = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -261,9 +242,12 @@ test("theme-light-and-dark: the identity files are served and the palette holds 
 
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
-  await page.goto("/projects");
-  const journeyHref = await publishOne(page, "Theme");
-  const journeyId = journeyHref.split("/").pop();
+  const { projectId, journeyId } = await publishOne(
+    page,
+    "Theme",
+    "A short walk to check the frame.",
+  );
+  const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
   // The Projects list, with at least one Project card on it.
   await page.goto("/projects");
