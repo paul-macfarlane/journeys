@@ -16,7 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Content } from "@/lib/graph/content";
-import { isEnding, type GraphDocument, type Step } from "@/lib/graph/document";
+import {
+  hasOutcome,
+  isEnding,
+  type GraphDocument,
+  type Step,
+} from "@/lib/graph/document";
 import {
   createOutcomeForEnding,
   endingCountsByOutcome,
@@ -79,7 +84,7 @@ function OutcomeField({
   const cancelledRef = useRef(false);
 
   const outcome =
-    step.outcomeId !== null && Object.hasOwn(document.outcomes, step.outcomeId)
+    step.outcomeId !== null && hasOutcome(document, step.outcomeId)
       ? document.outcomes[step.outcomeId]
       : null;
 

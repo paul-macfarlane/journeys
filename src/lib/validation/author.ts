@@ -37,7 +37,3 @@ export const authorPageVisibilitySchema = z.object({
 });
 
 export type AuthorIdentityInput = z.infer<typeof authorIdentitySchema>;
-export type AuthorPageInput = z.infer<typeof authorPageSchema>;
-export type AuthorPageVisibilityInput = z.infer<
-  typeof authorPageVisibilitySchema
->;

@@ -193,9 +193,6 @@ export function hasOutcome(
   return Object.hasOwn(document.outcomes, outcomeId);
 }
 
-export type ParseGraphDocumentResult =
-  { ok: true; document: GraphDocument } | { ok: false; error: string };
-
 /**
  * The first problem with the path it was found at, because a caller showing
  * an Author one message is better served by a precise one.
@@ -206,19 +203,6 @@ function firstIssueMessage(error: {
   const [issue] = error.issues;
   const path = issue.path.join(".");
   return path.length > 0 ? `${path}: ${issue.message}` : issue.message;
-}
-
-/**
- * Structural validation for callers that would rather branch than catch.
- * This reads content strictly, so it is for documents already known to be in
- * stored shape; anything arriving from an editor goes through
- * `prepareDocumentForWrite` instead.
- */
-export function parseGraphDocument(input: unknown): ParseGraphDocumentResult {
-  const parsed = graphDocumentSchema.safeParse(input);
-  return parsed.success
-    ? { ok: true, document: parsed.data }
-    : { ok: false, error: firstIssueMessage(parsed.error) };
 }
 
 export type PrepareDocumentResult =

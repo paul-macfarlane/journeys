@@ -21,9 +21,9 @@ const envSchema = z.object({
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_CLIENT_SECRET: z.string().min(1),
 
-  // Optional until AI authoring lands (Vercel AI Gateway, Paul 2026-09-22). .env.example tells Authors to leave
-  // it empty to hide the AI features, so a blank value reads as absent
-  // rather than as a configuration error.
+  // Optional: the Judge (deciding Prompts) falls back to letting the Participant
+  // choose when this is absent. .env.example tells Authors to leave it empty for
+  // that, so a blank value reads as absent rather than as a configuration error.
   AI_GATEWAY_API_KEY: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional(),

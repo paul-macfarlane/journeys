@@ -28,6 +28,7 @@ import {
 import type { Content } from "@/lib/graph/content";
 import {
   documentsEqual,
+  hasStep,
   type GraphDocument,
   type LayoutDirection,
 } from "@/lib/graph/document";
@@ -212,7 +213,7 @@ export function DraftEditor({
       // it was away, and the map goes to its box.
       if (
         result.stepId !== undefined &&
-        Object.hasOwn(documentRef.current.steps, result.stepId)
+        hasStep(documentRef.current, result.stepId)
       ) {
         selectStepRef.current(result.stepId);
       }
@@ -298,7 +299,7 @@ export function DraftEditor({
     setDocument(documentRef.current);
     setRevision((current) => current + 1);
 
-    const kept = Object.hasOwn(draft.steps, selectedStepIdRef.current)
+    const kept = hasStep(draft, selectedStepIdRef.current)
       ? selectedStepIdRef.current
       : draft.startStepId;
     selectedStepIdRef.current = kept;
@@ -547,10 +548,7 @@ export function DraftEditor({
       // Step a later move deleted — leaves the Start to stand in, the way
       // every other selection that outlives its Step does.
       const restored = move.snapshot;
-      const stepId = Object.hasOwn(
-        restored.document.steps,
-        restored.selectedStepId,
-      )
+      const stepId = hasStep(restored.document, restored.selectedStepId)
         ? restored.selectedStepId
         : restored.document.startStepId;
       // Read before the document moves: the content is one immutable value
@@ -643,7 +641,7 @@ export function DraftEditor({
   const selectedArrow = useMemo(() => {
     if (arrowSelection === null) return null;
 
-    const step = Object.hasOwn(document.steps, arrowSelection.stepId)
+    const step = hasStep(document, arrowSelection.stepId)
       ? document.steps[arrowSelection.stepId]
       : null;
     const alive =
@@ -681,6 +679,10 @@ export function DraftEditor({
    * it in the same breath, and the map zoomed to the box it landed on. The
    * label is left empty — what the Choice is called is the next thing to
    * write, on the Step it leaves.
+   *
+   * Shared by "Add next step" (a box's toolbar or the panel footer) and an
+   * arrow drawn from a box onto bare map: both make a new Step and a Choice
+   * to it in the same motion, with nothing to tell them apart.
    */
   const addNextStep = useCallback(
     (stepId: string) => {
@@ -751,26 +753,6 @@ export function DraftEditor({
     [applyEdit, selectStep],
   );
 
-  /**
-   * An arrow drawn from a box onto bare map: there is no Step there to lead
-   * to, so one is made and the Choice with it, in the one motion — opened
-   * with its title field focused and the map zoomed to where it landed,
-   * exactly as "Add next step" opens the Step it makes. What the Choice is
-   * called is the next thing to write, on the Step it leaves.
-   */
-  const connectToNewStep = useCallback(
-    (stepId: string) => {
-      const created = addChoiceToNewStep(documentRef.current, stepId, {
-        label: "",
-      });
-      if (created.choiceId === "") return;
-
-      applyEdit(created.document, { stepId });
-      selectStep(created.stepId, { focusTitle: true, zoom: true });
-    },
-    [applyEdit, selectStep],
-  );
-
   /** The head of an arrow dropped on another box. */
   const retargetChoice = useCallback(
     (stepId: string, choiceId: string, targetStepId: string) => {
@@ -825,7 +807,7 @@ export function DraftEditor({
 
   // A selection can outlive the Step it names — a restore, or another
   // Member's delete — so the Start stands in until the Author picks again.
-  const selectedStep = Object.hasOwn(document.steps, selectedStepId)
+  const selectedStep = hasStep(document, selectedStepId)
     ? document.steps[selectedStepId]
     : (document.steps[document.startStepId] ?? null);
 
@@ -988,7 +970,7 @@ export function DraftEditor({
           onSetStart={makeStart}
           onDeleteStep={removeStep}
           onConnectChoice={connectSteps}
-          onConnectToNewStep={connectToNewStep}
+          onConnectToNewStep={addNextStep}
           onRetargetChoice={retargetChoice}
           selectedArrow={selectedArrow}
           onSelectArrow={setArrowSelection}

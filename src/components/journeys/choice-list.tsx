@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { GraphDocument, Step } from "@/lib/graph/document";
+import { hasStep, type GraphDocument, type Step } from "@/lib/graph/document";
 import {
   addChoice,
   addChoiceToNewStep,
@@ -131,9 +131,7 @@ export function ChoiceList({
           some browsers drop the implicit role with it. */}
       <ul role="list" aria-label="Choices" className="flex flex-col gap-2">
         {step.choices.map((choice, index) => {
-          // Own property only: `steps` is a plain object parsed from JSON, so
-          // a target id like "toString" must read as missing, not as a Step.
-          const dangling = !Object.hasOwn(document.steps, choice.targetStepId);
+          const dangling = !hasStep(document, choice.targetStepId);
           const marked = choice.id === markedChoiceId;
 
           return (

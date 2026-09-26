@@ -7,9 +7,14 @@ import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
  * still working, and must not break at the moment it becomes a Published
  * Version that participants walk.
  *
- * Pure and deterministic: the same document always produces the same list,
- * grouped by rule and, within a rule, in Step order, so a canvas can render it
- * without sorting.
+ * Pure and deterministic: the same document always produces the same list
+ * regardless of the `steps`/`outcomes` key order Postgres's jsonb hands
+ * back, because Steps are visited breadth-first from the Start, following
+ * each Step's own Choice order — never `layout.ts`'s dagre layout, which
+ * this module must not import (`layout.ts` already imports `PublishProblem`
+ * from here). A Step unreachable from the Start has no such position, so
+ * every unreachable Step is appended last, sorted by id. Within one Step,
+ * problems are grouped by rule so the Publish dialog's list stays stable.
  */
 
 export type PublishProblemCode =
@@ -30,32 +35,45 @@ export type PublishProblem = {
   choiceId?: string;
 };
 
-/** Every Step a participant could arrive at, walking out from the Start. */
-function reachableFrom(document: GraphDocument, startStepId: string) {
+/**
+ * Every Step in publish order: breadth-first from the Start, following each
+ * Step's own Choice order, so the order comes from the graph rather than
+ * from `document.steps`'s own key order (which Postgres's jsonb does not
+ * keep). Any Step the Start cannot reach has no such position, so it is
+ * appended last, sorted by id.
+ */
+function publishOrder(
+  document: GraphDocument,
+  startStepId: string,
+): { order: string[]; reached: Set<string> } {
   const reached = new Set<string>();
+  const order: string[] = [];
   const pending = [startStepId];
 
   while (pending.length > 0) {
-    const stepId = pending.pop();
+    const stepId = pending.shift();
     if (stepId === undefined || reached.has(stepId)) {
       continue;
     }
     if (!hasStep(document, stepId)) {
       continue;
     }
-    const step = document.steps[stepId];
     reached.add(stepId);
-    for (const choice of step.choices) {
+    order.push(stepId);
+    for (const choice of document.steps[stepId].choices) {
       pending.push(choice.targetStepId);
     }
   }
 
-  return reached;
+  const unreached = Object.keys(document.steps)
+    .filter((stepId) => !reached.has(stepId))
+    .sort();
+
+  return { order: [...order, ...unreached], reached };
 }
 
 export function validateForPublish(document: GraphDocument): PublishProblem[] {
   const problems: PublishProblem[] = [];
-  const entries = Object.entries(document.steps);
 
   // `startStepId` is a single pointer, so "more than one Start" cannot be
   // written down; "exactly one Start" is therefore just "the pointer names a
@@ -69,7 +87,15 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
     });
   }
 
-  for (const [stepId, step] of entries) {
+  // With no Start there is nowhere to walk from, so every Step falls back to
+  // the "unreached, sorted by id" order below.
+  const { order, reached } = startExists
+    ? publishOrder(document, document.startStepId)
+    : { order: Object.keys(document.steps).sort(), reached: new Set<string>() };
+
+  for (const stepId of order) {
+    const step = document.steps[stepId];
+
     for (const choice of step.choices) {
       if (!hasStep(document, choice.targetStepId)) {
         problems.push({
@@ -80,13 +106,11 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
         });
       }
     }
-  }
 
-  // A Choice drawn on the map starts with no label, and the editor reads that
-  // as "Untitled choice" while the Author works; a Participant would be shown
-  // a link with no text and no accessible name, so a Published Version may
-  // not carry one. Whitespace is no label either.
-  for (const [stepId, step] of entries) {
+    // A Choice drawn on the map starts with no label, and the editor reads
+    // that as "Untitled choice" while the Author works; a Participant would
+    // be shown a link with no text and no accessible name, so a Published
+    // Version may not carry one. Whitespace is no label either.
     for (const choice of step.choices) {
       if (choice.label.trim().length === 0) {
         problems.push({
@@ -97,31 +121,25 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
         });
       }
     }
-  }
 
-  // With no Start there is nothing to walk out from, and calling every Step
-  // unreachable would bury the one problem worth fixing.
-  if (startExists) {
-    const reached = reachableFrom(document, document.startStepId);
-    for (const [stepId, step] of entries) {
-      if (!reached.has(stepId)) {
-        problems.push({
-          code: "unreachable-step",
-          message: `Step "${stepName(step)}" cannot be reached from the start`,
-          stepId,
-        });
-      }
+    // With no Start there is nothing to walk out from, and calling every
+    // Step unreachable would bury the one problem worth fixing.
+    if (startExists && !reached.has(stepId)) {
+      problems.push({
+        code: "unreachable-step",
+        message: `Step "${stepName(step)}" cannot be reached from the start`,
+        stepId,
+      });
     }
-  }
 
-  for (const [stepId, step] of entries) {
     // An Ending needs no Outcome; a tag naming an Outcome the document no
-    // longer defines is still broken data. Only an Ending carries one at all:
-    // an outcome id left on a Step that still has Choices is ignored.
-    if (!isEnding(step) || step.outcomeId === null) {
-      continue;
-    }
-    if (!hasOutcome(document, step.outcomeId)) {
+    // longer defines is still broken data. Only an Ending carries one at
+    // all: an outcome id left on a Step that still has Choices is ignored.
+    if (
+      isEnding(step) &&
+      step.outcomeId !== null &&
+      !hasOutcome(document, step.outcomeId)
+    ) {
       problems.push({
         code: "unknown-outcome",
         message: `Ending "${stepName(step)}" is tagged with an outcome that no longer exists`,

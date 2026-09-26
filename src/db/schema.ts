@@ -110,13 +110,6 @@ export const project = pgTable("project", {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   title: text("title").notNull(),
-  // The plain-text description ticket 28 added. Superseded by
-  // `descriptionContent` below (ticket 07): nothing reads or writes it any
-  // more, and migration 0007 copied what it held into the rich text. It is
-  // still here because the Migrate action and the Vercel build have no
-  // ordering, so the build before ticket 07 kept selecting and inserting it
-  // while 0007 ran; dropping it is a later migration.
-  description: text("description").notNull().default(""),
   // The Project's description as rich text — the same closed `Content` shape
   // a Step's text has, edited with the same editor and sanitized on write by
   // `sanitizeContent` (see `src/lib/graph/content.ts`). Shown under the title

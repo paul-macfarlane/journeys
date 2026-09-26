@@ -39,4 +39,3 @@ export const projectThemeSchema = z.object({
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type RenameProjectInput = z.infer<typeof renameProjectSchema>;
-export type ProjectThemeInput = z.infer<typeof projectThemeSchema>;

@@ -75,4 +75,3 @@ export const draftVersionSchema = z
 /** What the New Journey dialog sends: the title alone. */
 export type CreateJourneyInput = z.input<typeof createJourneySchema>;
 export type UpdateJourneyInput = z.infer<typeof updateJourneySchema>;
-export type JourneyThemeInput = z.infer<typeof journeyThemeSchema>;

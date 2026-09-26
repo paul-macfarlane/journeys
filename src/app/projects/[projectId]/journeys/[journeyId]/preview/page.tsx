@@ -10,6 +10,7 @@ import {
 import { getDraftForMember } from "@/db/drafts";
 import { getJourneyForMember } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
+import { hasStep } from "@/lib/graph/document";
 import { requireSession } from "@/lib/session";
 import { effectiveTheme } from "@/lib/theme";
 
@@ -66,9 +67,7 @@ export default async function PreviewStartPage({
 
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
-  // Own property only: a Start pointer naming "toString" would otherwise
-  // find a prototype method and render a 500.
-  const hasStart = Object.hasOwn(draft.steps, draft.startStepId);
+  const hasStart = hasStep(draft, draft.startStepId);
 
   return (
     <RunnerFrame
