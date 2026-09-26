@@ -1,6 +1,13 @@
 // @vitest-environment happy-dom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const reloadOnceInBrowser = vi.fn();
+vi.mock("@/lib/chunk-load-browser", () => ({
+  reloadOnceInBrowser: () => reloadOnceInBrowser(),
+}));
 
 import GlobalErrorPage from "./global-error";
 
@@ -23,5 +30,56 @@ describe("global-error.tsx", () => {
     expect(markup).toContain("Try again");
     expect(markup).toContain("Journeys");
     expect(markup).not.toContain(secret);
+  });
+});
+
+/**
+ * Ticket 74: same reload-once path as `error.tsx`, for an error thrown
+ * above every other boundary.
+ */
+describe("global-error.tsx chunk-load recovery", () => {
+  beforeEach(() => {
+    (
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    reloadOnceInBrowser.mockClear();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reloads once for a chunk-load error", () => {
+    const root = createRoot(document.createElement("div"));
+    const error = Object.assign(new Error("Loading chunk 4 failed."), {
+      digest: "digest-1",
+    });
+
+    act(() => {
+      root.render(<GlobalErrorPage error={error} reset={() => {}} />);
+    });
+
+    expect(reloadOnceInBrowser).toHaveBeenCalledOnce();
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it("does not reload for an ordinary error", () => {
+    const root = createRoot(document.createElement("div"));
+    const error = Object.assign(new Error("something else broke"), {
+      digest: "digest-2",
+    });
+
+    act(() => {
+      root.render(<GlobalErrorPage error={error} reset={() => {}} />);
+    });
+
+    expect(reloadOnceInBrowser).not.toHaveBeenCalled();
+
+    act(() => {
+      root.unmount();
+    });
   });
 });

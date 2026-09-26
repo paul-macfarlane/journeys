@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import { APP_NAME, BRAND_COLORS } from "@/lib/brand";
+import { isChunkLoadError } from "@/lib/chunk-load";
+import { reloadOnceInBrowser } from "@/lib/chunk-load-browser";
 
 /**
  * The last-resort error boundary: an error thrown by the root layout
@@ -26,6 +28,12 @@ export default function GlobalErrorPage({
 }) {
   useEffect(() => {
     console.error("[error]", error.digest);
+    // Same reload-once path as `error.tsx` (ticket 74): a chunk-load
+    // failure thrown above every other boundary still gets a reload onto
+    // the new build instead of this last-resort page.
+    if (isChunkLoadError(error)) {
+      reloadOnceInBrowser();
+    }
   }, [error]);
 
   return (

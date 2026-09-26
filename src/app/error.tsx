@@ -5,6 +5,8 @@ import { useEffect } from "react";
 
 import { ProsePage } from "@/components/prose-page";
 import { Button } from "@/components/ui/button";
+import { isChunkLoadError } from "@/lib/chunk-load";
+import { reloadOnceInBrowser } from "@/lib/chunk-load-browser";
 
 /**
  * The one error boundary under the root layout (ticket 83, ticket 72's
@@ -26,6 +28,12 @@ export default function ErrorPage({
 }) {
   useEffect(() => {
     console.error("[error]", error.digest);
+    // A tab open across a deploy throws this on its first client-side
+    // navigation once the old build's assets are gone (ticket 74); reload
+    // once onto the new build rather than showing this page for it.
+    if (isChunkLoadError(error)) {
+      reloadOnceInBrowser();
+    }
   }, [error]);
 
   return (
