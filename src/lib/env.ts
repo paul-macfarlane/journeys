@@ -22,8 +22,9 @@ const envSchema = z.object({
   DISCORD_CLIENT_SECRET: z.string().min(1),
 
   // Optional: the Judge (deciding Prompts) falls back to letting the Participant
-  // choose when this is absent. .env.example tells Authors to leave it empty for
-  // that, so a blank value reads as absent rather than as a configuration error.
+  // choose when this is absent. .env.example tells a developer to leave it
+  // empty for that, so a blank value reads as absent rather than as a
+  // configuration error.
   AI_GATEWAY_API_KEY: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional(),
