@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   createAutosave,
@@ -12,7 +12,27 @@ type Handlers<T> = {
   write: (value: T, baseline: T) => Promise<WriteResult<T>>;
   onSaved: () => void;
   onRefused?: (result: WriteRefusal<T>) => void;
+  onStale?: () => void;
 };
+
+/**
+ * Set once a Member has chosen Reload: from then on no loop on the page asks
+ * the browser to hold the page for an unsaved edit, because the Member has
+ * already been told nothing more can be saved (ticket 73). Module state
+ * rather than per loop, since one page can hold several — the Project
+ * Settings tab has three.
+ */
+let reloading = false;
+
+/**
+ * Reloads the page for a Member whose save was refused as stale, without
+ * the browser asking whether to leave: every loop's `beforeunload` guard
+ * stands down first. The one way out of the stale state.
+ */
+export function reloadPage(): void {
+  reloading = true;
+  window.location.reload();
+}
 
 /**
  * The autosave loop (`src/lib/autosave.ts`) as a surface uses it: one loop
@@ -32,6 +52,7 @@ export function useAutosave<T>({
   write,
   onSaved,
   onRefused,
+  onStale,
 }: {
   /** What the server holds when the surface mounts. */
   initial: T;
@@ -43,18 +64,34 @@ export function useAutosave<T>({
   onSaved: () => void;
   /** A write was refused: where the surface shows why. */
   onRefused?: (result: WriteRefusal<T>) => void;
-}): { status: SaveStatus; autosave: Autosave<T> } {
+  /** A write was refused as stale; `status` says so too. */
+  onStale?: () => void;
+}): {
+  status: SaveStatus;
+  autosave: Autosave<T>;
+  /**
+   * Reloads the page without the browser asking: this loop's `beforeunload`
+   * guard (and every other loop's) stands down first. What a stale
+   * surface's Reload button calls.
+   */
+  reload: () => void;
+} {
   const [status, setStatus] = useState<SaveStatus>("saved");
 
   // Created once, for the life of the surface: the loop holds the timer and
   // the value in flight, neither of which a render may replace. Its
   // handlers are the caller's latest, handed over after each render.
   const [{ autosave, setHandlers }] = useState(() =>
-    startAutosave(initial, equals, setStatus, { write, onSaved, onRefused }),
+    startAutosave(initial, equals, setStatus, {
+      write,
+      onSaved,
+      onRefused,
+      onStale,
+    }),
   );
   useEffect(() => {
-    setHandlers({ write, onSaved, onRefused });
-  }, [setHandlers, write, onSaved, onRefused]);
+    setHandlers({ write, onSaved, onRefused, onStale });
+  }, [setHandlers, write, onSaved, onRefused, onStale]);
 
   // Unmounting with an edit still in the debounce window — the Author
   // opened another tab — is the timer's write made now, through the same
@@ -65,16 +102,24 @@ export function useAutosave<T>({
   // Leaving the page with an edit still in the window: the write is
   // attempted, and the browser asks before the page goes, because neither
   // the attempt nor the answer is something this can wait for.
+  // A stale loop writes nothing here but still asks, so an accidental
+  // navigation does not take the refused edit with it; only Reload is let
+  // through without asking.
+  const [handleBeforeUnload] = useState(() => (event: BeforeUnloadEvent) => {
+    if (reloading) return;
+    if (autosave.unload()) event.preventDefault();
+  });
   useEffect(() => {
-    function handleBeforeUnload(event: BeforeUnloadEvent) {
-      if (autosave.unload()) event.preventDefault();
-    }
-
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [autosave]);
+  }, [handleBeforeUnload]);
 
-  return { status, autosave };
+  const reload = useCallback(() => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+    reloadPage();
+  }, [handleBeforeUnload]);
+
+  return { status, autosave, reload };
 }
 
 /**
@@ -100,6 +145,7 @@ function startAutosave<T>(
       onStatus,
       onSaved: () => handlers.onSaved(),
       onRefused: (result) => handlers.onRefused?.(result),
+      onStale: () => handlers.onStale?.(),
     }),
     setHandlers: (next) => {
       handlers = next;

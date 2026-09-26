@@ -308,6 +308,23 @@ export async function writeDraftDocument(
 }
 
 /**
+ * Writes anything at all into a Journey's Draft row — a document the
+ * contract would refuse included — for the spec that proves an unreadable
+ * Draft is recovered rather than a 500 (ticket 73). `version`, when given,
+ * sets the row's write counter too; otherwise it is left as it is.
+ */
+export async function writeRawDraftRow(
+  journeyId: string,
+  json: unknown,
+  version?: number,
+): Promise<void> {
+  await queryE2eDatabase(
+    'UPDATE "draft" SET document = $1::jsonb, version = COALESCE($3::integer, version), updated_at = now() WHERE journey_id = $2',
+    [JSON.stringify(json), journeyId, version ?? null],
+  );
+}
+
+/**
  * Publishes a document straight into a `published_version` row and points the
  * Journey's live pointer at it, returning the new version's id.
  *

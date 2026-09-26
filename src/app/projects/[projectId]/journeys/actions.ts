@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { firstIssue, type ActionResult } from "@/lib/action-result";
+import {
+  firstIssue,
+  staleResult,
+  type ActionResult,
+} from "@/lib/action-result";
 import { saveDraft } from "@/db/drafts";
+import { isStale } from "@/db/guarded-write";
 import {
   createJourney,
   deleteJourney,
@@ -19,6 +24,7 @@ import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,
+  draftVersionSchema,
   journeyThemeSchema,
   moveDirectionSchema,
   updateJourneySchema,
@@ -63,10 +69,16 @@ export async function createJourneyAction(
   return { ok: true, id: created.id };
 }
 
+/**
+ * Edits the Journey's title and description. `baseline` is what the Member
+ * edited from, parsed by the same schema: another Member's change to a field
+ * this write changes is refused as stale rather than overwritten (ticket 73).
+ */
 export async function updateJourneyAction(
   projectId: string,
   journeyId: string,
   input: unknown,
+  baseline: unknown,
 ): Promise<JourneyActionResult> {
   const session = await requireSession();
 
@@ -74,16 +86,22 @@ export async function updateJourneyAction(
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
+  const previous = updateJourneySchema.safeParse(baseline);
+  if (!previous.success) {
+    return { ok: false, error: firstIssue(previous.error.issues) };
+  }
 
   const updated = await updateJourney(
     projectId,
     journeyId,
     parsed.data,
+    previous.data,
     session.user.id,
   );
   // Not a Member (or no such Journey/Project): same answer as the page's
   // 404.
   if (!updated) return { ok: false, error: "That journey no longer exists" };
+  if (isStale(updated)) return staleResult("journey");
 
   revalidateJourneyPaths();
   return { ok: true, id: updated.id };
@@ -93,11 +111,15 @@ export async function updateJourneyAction(
  * Sets or clears a Journey's Theme override (ticket 11). A null preset is
  * the clear; the schema drops any accent sent with it. The runner reads the
  * rows on every request, so only the Author's pages need revalidating.
+ * `baseline` is the override the Member replaced — the Theme fields' last
+ * saved value, or the checkbox's Theme before it was clicked — and guards
+ * the write (ticket 73).
  */
 export async function setJourneyThemeAction(
   projectId: string,
   journeyId: string,
   input: unknown,
+  baseline: unknown,
 ): Promise<JourneyActionResult> {
   const session = await requireSession();
 
@@ -105,14 +127,20 @@ export async function setJourneyThemeAction(
   if (!parsed.success) {
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
+  const previous = journeyThemeSchema.safeParse(baseline);
+  if (!previous.success) {
+    return { ok: false, error: firstIssue(previous.error.issues) };
+  }
 
   const updated = await setJourneyTheme(
     projectId,
     journeyId,
     parsed.data,
+    previous.data,
     session.user.id,
   );
   if (!updated) return { ok: false, error: "That journey no longer exists" };
+  if (isStale(updated)) return staleResult("journey");
 
   revalidateJourneyPaths();
   return { ok: true, id: updated.id };
@@ -160,28 +188,47 @@ export async function deleteJourneyAction(
 }
 
 /**
- * A failed save carries the Step whose rich text was refused when there is
- * one, so the editor can take the Author to it rather than only saying no.
+ * A saved Draft carries its new version, which the editor's next save is
+ * guarded by. A failed save carries the Step whose rich text was refused
+ * when there is one, so the editor can take the Author to it rather than
+ * only saying no; a stale one says another Member saved first (ticket 73).
  */
 export type SaveDraftActionResult =
-  { ok: true; id: string } | { ok: false; error: string; stepId?: string };
+  | { ok: true; id: string; version: number }
+  | { ok: false; error: string; stepId?: string; stale?: true };
 
-/** Stores a Journey's whole Draft document. */
+/**
+ * Stores a Journey's whole Draft document, guarded by `version`, the Draft
+ * version the editor last read or stored.
+ */
 export async function saveDraftAction(
   projectId: string,
   journeyId: string,
   input: unknown,
+  version: unknown,
 ): Promise<SaveDraftActionResult> {
   const session = await requireSession();
 
-  const saved = await saveDraft(projectId, journeyId, input, session.user.id);
+  const expected = draftVersionSchema.safeParse(version);
+  if (!expected.success) {
+    return { ok: false, error: firstIssue(expected.error.issues) };
+  }
+
+  const saved = await saveDraft(
+    projectId,
+    journeyId,
+    input,
+    expected.data,
+    session.user.id,
+  );
   // Not a Member (or no such Journey/Project): same answer as the page's
   // 404.
   if (!saved) return { ok: false, error: "That journey no longer exists" };
+  if (isStale(saved)) return staleResult("draft");
   if (!saved.ok) return { ok: false, error: saved.error, stepId: saved.stepId };
 
   revalidateJourneyPaths();
-  return { ok: true, id: journeyId };
+  return { ok: true, id: journeyId, version: saved.version };
 }
 
 /**
@@ -190,23 +237,49 @@ export async function saveDraftAction(
  */
 export type PublishJourneyActionResult =
   | { ok: true; versionNumber: number; warning?: string }
-  | { ok: false; error: string; problems?: PublishProblem[] };
+  | {
+      ok: false;
+      error: string;
+      problems?: PublishProblem[];
+      stale?: true;
+    };
 
 /**
  * Publishes a Journey's Draft as its next Published Version. A Draft that
- * fails publish-time validation is refused and nothing is written.
+ * fails publish-time validation is refused and nothing is written. So is a
+ * Draft another Member saved since the page read `version` (ticket 73), and
+ * a Draft whose row cannot be read.
  */
 export async function publishJourneyAction(
   projectId: string,
   journeyId: string,
+  version: unknown,
 ): Promise<PublishJourneyActionResult> {
   const session = await requireSession();
 
-  const published = await publishDraft(projectId, journeyId, session.user.id);
+  const expected = draftVersionSchema.safeParse(version);
+  if (!expected.success) {
+    return { ok: false, error: firstIssue(expected.error.issues) };
+  }
+
+  const published = await publishDraft(
+    projectId,
+    journeyId,
+    expected.data,
+    session.user.id,
+  );
   // Not a Member (or no such Journey/Project): same answer as the page's
   // 404.
   if (!published) return { ok: false, error: "That journey no longer exists" };
+  if (isStale(published)) return staleResult("draft");
   if (!published.ok) {
+    if ("unreadable" in published) {
+      return {
+        ok: false,
+        error:
+          "This journey's draft can't be read. Restore it from a published version before publishing.",
+      };
+    }
     if ("conflict" in published) {
       return {
         ok: false,
@@ -260,23 +333,32 @@ export async function unpublishJourneyAction(
 
 /**
  * Replaces the Draft with a Published Version's document. The version is
- * untouched, and so is whatever participants are walking.
+ * untouched, and so is whatever participants are walking. Guarded by
+ * `draftVersion`, the Draft version the page last read (ticket 73).
  */
 export async function restoreVersionAction(
   projectId: string,
   journeyId: string,
   versionId: string,
+  draftVersion: unknown,
 ): Promise<JourneyActionResult> {
   const session = await requireSession();
+
+  const expected = draftVersionSchema.safeParse(draftVersion);
+  if (!expected.success) {
+    return { ok: false, error: firstIssue(expected.error.issues) };
+  }
 
   const restored = await restoreVersion(
     projectId,
     journeyId,
     versionId,
+    expected.data,
     session.user.id,
   );
   // A version of another Journey answers like a Journey that isn't there.
   if (!restored) return { ok: false, error: "That version no longer exists" };
+  if (isStale(restored)) return staleResult("draft");
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId };

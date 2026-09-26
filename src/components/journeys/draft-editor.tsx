@@ -13,6 +13,8 @@ import {
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { FindStep } from "@/components/journeys/find-step";
+import { useHoldDraftVersion } from "@/components/journeys/publish-controls";
+import { StaleNotice } from "@/components/stale-notice";
 import {
   JourneyCanvas,
   type CanvasArrow,
@@ -64,9 +66,17 @@ import { STATUS_TEXT } from "@/lib/autosave";
  *
  * Why the whole document rather than per-field actions: a Draft is one jsonb
  * row (see `docs/adr/0001-graph-as-one-json-document.md`), so the only write
- * there is to make is "store this document". Last write wins, as the spec
- * says: a Member who saves later overwrites what an earlier one stored.
+ * there is to make is "store this document". Each save is guarded by the
+ * Draft's version (ticket 73): a Member whose editor opened before another
+ * Member's save is refused as stale, keeps their edit on screen, and
+ * reloads to see the other change. Nothing is merged or overwritten.
  */
+
+/**
+ * What the editor's autosave loop holds: the document, and the Draft
+ * version it was read or last stored at, which the next save is guarded by.
+ */
+type HeldDraft = { document: GraphDocument; version: number };
 
 /**
  * The widths at which the Step panel is beside the map: Tailwind's `lg`
@@ -81,12 +91,19 @@ export function DraftEditor({
   projectId,
   journeyId,
   draft,
+  version,
 }: {
   projectId: string;
   journeyId: string;
   draft: GraphDocument;
+  /** The Draft version `draft` was read at. */
+  version: number;
 }) {
   const router = useRouter();
+  const holdDraftVersion = useHoldDraftVersion();
+  // Whether the editor is still on the page: its unmount save can land after
+  // it has gone, when the version it stored is no longer the editor's to hold.
+  const mountedRef = useRef(false);
 
   const [document, setDocument] = useState<GraphDocument>(draft);
   const [selectedStepId, setSelectedStepId] = useState(draft.startStepId);
@@ -162,17 +179,30 @@ export function DraftEditor({
    * at most one waiting behind it, the timer's write made on unmount, and
    * the browser asked before the page goes while an edit is unsaved.
    */
-  const { status, autosave } = useAutosave<GraphDocument>({
-    initial: draft,
-    equals: documentsEqual,
-    write: async (value) => {
-      const result = await saveDraftAction(projectId, journeyId, value);
+  const { status, autosave, reload } = useAutosave<HeldDraft>({
+    initial: { document: draft, version },
+    // The version is the server's to move; two documents are the same save.
+    equals: (a, b) => documentsEqual(a.document, b.document),
+    write: async (value, baseline) => {
+      const result = await saveDraftAction(
+        projectId,
+        journeyId,
+        value.document,
+        baseline.version,
+      );
       if (!result.ok) {
+        if (result.stale) return { kind: "stale" };
         return { kind: "refused", error: result.error, stepId: result.stepId };
       }
       setSaveError(null);
-      return { kind: "saved" };
+      if (mountedRef.current) holdDraftVersion(result.version);
+      return {
+        kind: "saved",
+        saved: { document: value.document, version: result.version },
+      };
     },
+    // Terminal: the notice replaces the status line, and the edit stays.
+    onStale: () => setSaveError(null),
     // Only with nothing left to write: the refresh is what lets the Publish
     // button notice the Draft has moved, and a refresh landing mid-edit
     // would only be answered by another one.
@@ -207,7 +237,7 @@ export function DraftEditor({
     (next: GraphDocument) => {
       documentRef.current = next;
       setDocument(next);
-      autosave.change(next);
+      autosave.change({ document: next, version: autosave.current().version });
     },
     [autosave],
   );
@@ -242,20 +272,30 @@ export function DraftEditor({
   );
 
   /**
-   * A `draft` that differs from what was last stored is someone else's write
-   * or a restore, and last write wins: the editor adopts it. A `draft` equal
-   * to it is this editor's own save coming back around, and is ignored.
+   * A `draft` at a newer version than the editor holds is someone else's
+   * write or a restore: with nothing unsaved, the editor adopts it. A `draft`
+   * at the version and document the editor last stored is its own save
+   * coming back around, and is ignored.
    */
   useEffect(() => {
-    if (documentsEqual(draft, autosave.lastSaved())) return;
+    const held = autosave.lastSaved();
     // A render the server started before the latest save can arrive after
-    // it. While an edit is unsaved or a save is running — either leaves the
-    // loop dirty — what is here is newer than anything the server can show,
-    // so nothing is adopted; the save about to happen wins, as last write
-    // does.
+    // it: an older version is never adopted, or the next save would be
+    // guarded by it and refused.
+    if (version < held.version) return;
+    const sameDocument = documentsEqual(draft, held.document);
+    if (version === held.version && sameDocument) return;
+    // While an edit is unsaved or a save is running — either leaves the loop
+    // dirty — nothing is adopted: the editor keeps the version its edit was
+    // made against, so if another Member saved in between, the save about
+    // to happen is refused as stale rather than overwriting theirs.
     if (autosave.isDirty()) return;
 
-    autosave.adopt(draft);
+    autosave.adopt({ document: draft, version });
+    holdDraftVersion(version);
+    // Only the version moved (the same document stored again): nothing on
+    // screen, and nothing on the history, changes.
+    if (sameDocument) return;
     documentRef.current = draft;
     // Set from the mirror just written, the one the handlers read: the same
     // document, and the React compiler's lint follows state set from a ref
@@ -274,7 +314,18 @@ export function DraftEditor({
     // undo back into one of them would throw away the write that arrived.
     historyRef.current = emptyHistory();
     setHistory(historyRef.current);
-  }, [autosave, draft]);
+  }, [autosave, draft, version, holdDraftVersion]);
+
+  // The Journey page's Publish and Restore are sent with the version this
+  // editor holds while it is open, and the page's own once it closes.
+  useEffect(() => {
+    mountedRef.current = true;
+    holdDraftVersion(autosave.lastSaved().version);
+    return () => {
+      mountedRef.current = false;
+      holdDraftVersion(null);
+    };
+  }, [autosave, holdDraftVersion]);
 
   // Cmd/Ctrl+K from anywhere on the Journey page is the way into "Find step",
   // wherever the Author's hands happen to be. On `window` rather than on the
@@ -816,9 +867,13 @@ export function DraftEditor({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <p role="status" className="text-muted-foreground text-sm">
-            {STATUS_TEXT[status]}
-          </p>
+          {status === "stale" ? (
+            <StaleNotice noun="draft" onReload={reload} />
+          ) : (
+            <p role="status" className="text-muted-foreground text-sm">
+              {STATUS_TEXT[status]}
+            </p>
+          )}
           {liveProblems.length > 0 ? (
             <button
               type="button"

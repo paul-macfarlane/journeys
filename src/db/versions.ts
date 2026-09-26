@@ -6,7 +6,8 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { getDraftForMember } from "@/db/drafts";
+import { writeDraftGuarded } from "@/db/drafts";
+import { guardedWrite, type StaleWrite } from "@/db/guarded-write";
 import { getJourneyForMember } from "@/db/journeys";
 import { draft, journey, publishedVersion, user } from "@/db/schema";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
@@ -109,6 +110,9 @@ export type PublishDraftResult =
   | { ok: true; versionNumber: number; document: GraphDocument }
   | { ok: false; problems: PublishProblem[] }
   | { ok: false; conflict: true }
+  /** The Draft row fails the document contract: nothing to publish. */
+  | { ok: false; unreadable: true }
+  | StaleWrite
   | null;
 
 /**
@@ -129,7 +133,13 @@ function isUniqueViolation(error: unknown): boolean {
  * Publishes a Journey's Draft as the next Published Version and points the
  * Journey at it.
  *
- * Validation first: a Draft with publish-time problems is refused with all of
+ * The Draft is read inside the transaction, locked `FOR SHARE` so no save
+ * lands between the read and the snapshot, and only at `expectedVersion` —
+ * the version the Member holds (ticket 73). Another Member's save since is
+ * answered `stale`, and a row that fails the contract `unreadable`: neither
+ * publishes anything.
+ *
+ * Validation next: a Draft with publish-time problems is refused with all of
  * them and nothing is written, because a participant must never meet a
  * journey with a dangling choice or an ending that means nothing. A valid
  * Draft's document is snapshotted exactly as stored — publish never rewrites
@@ -148,20 +158,53 @@ function isUniqueViolation(error: unknown): boolean {
 export async function publishDraft(
   projectId: string,
   journeyId: string,
+  expectedVersion: number,
   userId: string,
 ): Promise<PublishDraftResult> {
   const existing = await getJourneyForMember(projectId, journeyId, userId);
   if (!existing) return null;
 
-  const stored = await getDraftForMember(projectId, journeyId, userId);
-  if (!stored) return null;
-  const document = stored.document;
-
-  const problems = validateForPublish(document);
-  if (problems.length > 0) return { ok: false, problems };
-
   try {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async (tx): Promise<PublishDraftResult> => {
+      const locked = await guardedWrite(
+        () =>
+          tx
+            .select({ document: draft.document })
+            .from(draft)
+            .where(
+              and(
+                eq(draft.journeyId, existing.id),
+                eq(draft.version, expectedVersion),
+              ),
+            )
+            .for("share"),
+        async () => {
+          const rows = await tx
+            .select({ journeyId: draft.journeyId })
+            .from(draft)
+            .where(eq(draft.journeyId, existing.id))
+            .limit(1);
+          return rows.length > 0;
+        },
+      );
+      if (!locked.ok) return locked.reason === "stale" ? locked : null;
+
+      const parsed = graphDocumentSchema.safeParse(locked.row.document);
+      if (!parsed.success) return { ok: false, unreadable: true };
+      const document = parsed.data;
+
+      const problems = validateForPublish(document);
+      if (problems.length > 0) return { ok: false, problems };
+
+      // The title and description as they read now, inside the
+      // transaction, rather than as the membership check read them.
+      const [current] = await tx
+        .select({ title: journey.title, description: journey.description })
+        .from(journey)
+        .where(eq(journey.id, existing.id))
+        .limit(1);
+      if (!current) return null;
+
       const [highest] = await tx
         .select({ versionNumber: publishedVersion.versionNumber })
         .from(publishedVersion)
@@ -178,8 +221,8 @@ export async function publishDraft(
           versionNumber,
           // The title and description as they read at this moment, so a
           // later rename is the next version's, not this one's.
-          title: existing.title,
-          description: existing.description,
+          title: current.title,
+          description: current.description,
           document,
           publishedBy: userId,
         })
@@ -223,7 +266,8 @@ export async function unpublishJourney(
   return true;
 }
 
-export type RestoreVersionResult = { versionNumber: number } | null;
+export type RestoreVersionResult =
+  { versionNumber: number } | StaleWrite | null;
 
 /**
  * Copies a Published Version's document into the Draft, replacing what the
@@ -236,6 +280,11 @@ export type RestoreVersionResult = { versionNumber: number } | null;
  * from, so it is already in stored shape, and a row that no longer satisfies
  * the contract is a bug worth failing loudly on.
  *
+ * Guarded like a save (ticket 73): `expectedVersion` is the Draft version
+ * the Member's page last read, and a Draft another Member has written since
+ * is answered `stale` and left alone. It is also how a Draft whose row
+ * cannot be read is recovered: the restore replaces the row whole.
+ *
  * Null for a non-Member, an unknown Journey, and a version belonging to some
  * other Journey alike.
  */
@@ -243,6 +292,7 @@ export async function restoreVersion(
   projectId: string,
   journeyId: string,
   versionId: string,
+  expectedVersion: number,
   userId: string,
 ): Promise<RestoreVersionResult> {
   const existing = await getJourneyForMember(projectId, journeyId, userId);
@@ -266,14 +316,12 @@ export async function restoreVersion(
 
   // Upsert for the same reason `saveDraft` is one: a Journey whose Draft row
   // is somehow missing must get one rather than silently update nothing.
-  const restored = {
-    document: graphDocumentSchema.parse(row.document),
-    updatedAt: new Date(),
-  };
-  await db
-    .insert(draft)
-    .values({ journeyId: existing.id, ...restored })
-    .onConflictDoUpdate({ target: draft.journeyId, set: restored });
+  const written = await writeDraftGuarded(
+    existing.id,
+    graphDocumentSchema.parse(row.document),
+    expectedVersion,
+  );
+  if (!written.ok) return written.reason === "stale" ? written : null;
 
   return { versionNumber: row.versionNumber };
 }

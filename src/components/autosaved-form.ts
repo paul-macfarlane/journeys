@@ -11,7 +11,11 @@ import type { z } from "zod";
 
 import { useAutosave } from "@/components/autosave";
 import type { ActionResult } from "@/lib/action-result";
-import type { SaveStatus } from "@/lib/autosave";
+import {
+  keepEditedFields,
+  type SaveStatus,
+  type StaleNoun,
+} from "@/lib/autosave";
 
 /**
  * A record edited in place rather than behind an Edit button: fields that
@@ -27,28 +31,44 @@ import type { SaveStatus } from "@/lib/autosave";
  * `values` are what the server currently holds, as one object memoized on
  * its fields (a fresh object every render would re-adopt every render). A
  * refresh carrying a value this form did not save is another Member's
- * edit: adopted into a field the Author has not touched, and left for the
- * Author's own next save to overwrite in one they are mid-edit in, as last
- * write wins. The refresh a save asks for can land while the next field is
- * being typed into, so the mid-edit text is kept as an edit still to save,
- * never mistaken for the baseline.
+ * edit: adopted into a field the Author has not touched, value and baseline
+ * both. A field the Author is mid-edit in keeps their edit and the baseline
+ * it was made against, so if the other Member changed that same field the
+ * Author's save is refused as stale (ticket 73) rather than overwriting it.
+ * The refresh a save asks for can land while the next field is being typed
+ * into, so the mid-edit text is kept as an edit still to save, never
+ * mistaken for the baseline.
  */
 export function useAutosavedForm<T extends FieldValues>({
   schema,
   values,
   submit,
   onSaved,
+  noun,
 }: {
   /** The zod object the record must parse as; `T` is its output. */
   schema: z.ZodType<T, FieldValues>;
   values: T;
-  /** The server action the whole record goes to. */
-  submit: (values: T) => Promise<ActionResult>;
+  /**
+   * The server action the whole record goes to, with the record as stored
+   * when the edit began (`baseline`), which guards the write.
+   */
+  submit: (values: T, baseline: T) => Promise<ActionResult>;
   /** After a save the server accepted with nothing left to write, typically a router refresh. */
   onSaved: () => void;
+  /**
+   * What the record is, for the sentence a stale save shows. Omitted only
+   * by forms over the Author's own row, which no other Member writes.
+   */
+  noun?: StaleNoun;
 }): {
   form: ReturnType<typeof useForm<T, unknown, T>>;
   status: SaveStatus;
+  /**
+   * Set once a save was refused as stale: what the notice names, and the
+   * Reload that stands the form's unload guard down first.
+   */
+  stale: { noun?: StaleNoun; reload: () => void } | null;
   /** A field has changed: the record is written once typing pauses. */
   change: (field: Path<T>) => void;
   /** A field was left, or a control saves on change: the record is written now. */
@@ -81,7 +101,7 @@ export function useAutosavedForm<T extends FieldValues>({
     [schema],
   );
 
-  const { status, autosave } = useAutosave<T>({
+  const { status, autosave, reload } = useAutosave<T>({
     initial: values,
     equals: sameStored,
     // The schema is run here rather than through `form.handleSubmit`: that
@@ -93,7 +113,7 @@ export function useAutosavedForm<T extends FieldValues>({
     // once locally and once on CI, 2026-09-24). `value` is what the loop
     // read the moment `change` stored it, so validating it directly checks
     // exactly what `handleSubmit` would have.
-    write: async (value) => {
+    write: async (value, baseline) => {
       const parsed = schema.safeParse(value);
       if (!parsed.success) {
         form.clearErrors();
@@ -117,8 +137,13 @@ export function useAutosavedForm<T extends FieldValues>({
       form.clearErrors();
       // A submit that throws is refused by the loop itself, as the server
       // not reached, and lands in `onRefused` like any other refusal.
-      const result = await submit(parsed.data);
-      if (!result.ok) return { kind: "refused", error: result.error };
+      // The baseline is what was stored, so it parses; as it is otherwise.
+      const result = await submit(parsed.data, asStored(schema, baseline));
+      if (!result.ok) {
+        return result.stale
+          ? { kind: "stale" }
+          : { kind: "refused", error: result.error };
+      }
 
       // The schema trims, so the baseline is what was stored; what is on
       // screen is left as typed, because the Author may still be typing it
@@ -160,14 +185,9 @@ export function useAutosavedForm<T extends FieldValues>({
       }
     }
     // The loop's own view of the same thing: the record it writes next is
-    // the server's values with the Author's edits over them.
-    autosave.adopt(values, (incoming, edited, lastSaved) => {
-      const merged = { ...incoming };
-      for (const key of Object.keys(incoming) as Path<T>[]) {
-        if (edited[key] !== lastSaved[key]) merged[key] = edited[key];
-      }
-      return merged;
-    });
+    // the server's values with the Author's edits over them, and the
+    // baseline under each edit is still the one it was made against.
+    autosave.adopt(values, keepEditedFields);
   }, [autosave, form, values]);
 
   const change = useCallback(
@@ -197,7 +217,14 @@ export function useAutosavedForm<T extends FieldValues>({
     event.currentTarget.blur();
   }
 
-  return { form, status, change, flush, handleEnterKeyDown };
+  return {
+    form,
+    status,
+    stale: status === "stale" ? { noun, reload } : null,
+    change,
+    flush,
+    handleEnterKeyDown,
+  };
 }
 
 /** What the record would be stored as; as typed, if it would be refused. */

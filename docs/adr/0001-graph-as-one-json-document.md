@@ -3,6 +3,7 @@
 - Status: Accepted
 - Amended by: ADR-0002 (2026-09-21) — the "walk in circles" publish rule is withdrawn; cycles are allowed.
 - Amended by: ticket 24 (2026-09-22; `spec.md` `[SCOPE CHANGE]` of that date) — the "Ending with no Outcome" publish rule is withdrawn; an Ending may carry an Outcome or not.
+- Amended by: ticket 73 (2026-09-26) — writes are no longer last-write-wins: a Draft write is guarded by a version counter, and a Project or Journey settings write by the previous value of each field it changes; a stale write is refused, never merged.
 - Decided: 2026-09-18 (grilling session); written up 2026-09-19
 - Deciders: Paul Macfarlane
 
@@ -122,10 +123,37 @@ Choices in a side panel, expecting the whole Draft saved.
   many Steps have Prompts" means reading documents or querying them with
   `jsonb` operators and indexes, which is sufficient for the needs we can
   foresee; nothing asks for it today.
-- Writes are whole-document and last-write-wins. Two Members editing one Draft
-  at the same time will overwrite each other. Acceptable while Projects are
-  small; if it stops being acceptable, the fix is per-Step patching or
-  optimistic concurrency on the Draft row, not a different storage shape.
+- Writes are whole-document, so two Members editing one Draft at once edit
+  the same value. Since ticket 73 (2026-09-26) the second write is refused
+  rather than overwriting the first: nothing is merged, the refused Member
+  keeps their edit on screen, is told another Member changed it, and reloads
+  to see the change. There is no presence, lock, or real-time editing.
+  - **The Draft carries a version counter.** `draft.version` (migration
+    0011, an additive column with a default so the code already deployed
+    keeps working while Migrate runs) counts the Draft's writes. Every save,
+    restore, and publish sends the version the Member read; the write is an
+    upsert whose conflict branch updates only while `draft.version` still
+    matches, incrementing it, and publish reads the Draft inside its
+    transaction under `FOR SHARE` at that version. A counter rather than a
+    compared value because the document can be large, and sending it twice
+    per save would double the payload.
+  - **Settings compare the previous value, per field.** A Project or Journey
+    settings write (title, description, Theme, and the Journey's "use a
+    different theme" checkbox) sends the values it was edited from and
+    writes only the fields that differ from them, each guarded by
+    `IS NOT DISTINCT FROM` its previous value. One counter per row would make
+    a Member conflict with themselves — three loops write one Project row,
+    and publish, unpublish, and move write the Journey row — while a
+    per-field compare lets them all pass each other. The previous value is
+    what the server stored (titles trimmed, content sanitized), never what
+    the client sent, or every second save would be refused.
+  - **What a value compare cannot see.** A field changed A → B → A by
+    another Member passes the guard, because the value is what it was when
+    the edit began. For a title or a Theme that is the right answer: nothing
+    the Member overwrites differs from what they saw.
+  - Both guards run through one data-layer helper (`src/db/guarded-write.ts`)
+    that tells a failed guard (`stale`) from a row that went away
+    (`not-found`) by reading the row again.
 - Document size grows with the Journey. At 36–64 Steps of text this is
   comfortable; a Journey an order of magnitude larger would need revisiting.
 - Changing the shape means bumping `schemaVersion` and writing an in-code

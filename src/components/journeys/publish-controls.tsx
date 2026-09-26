@@ -58,6 +58,14 @@ type Acknowledgement = {
 type PublishScopeValue = {
   acknowledgement: Acknowledgement | null;
   acknowledge: (acknowledgement: Acknowledgement) => void;
+  /**
+   * The Draft version the Member holds (ticket 73), which a publish and a
+   * restore are guarded by: the open editor's, which knows the moment its
+   * own save lands, else the page's.
+   */
+  draftVersion: number;
+  /** The open editor saying which version it holds; null as it closes. */
+  holdDraftVersion: (version: number | null) => void;
 };
 
 const PublishScopeContext = createContext<PublishScopeValue | null>(null);
@@ -71,7 +79,26 @@ function usePublishScope(caller: string): PublishScopeValue {
 }
 
 /**
- * Holds the acknowledgement of the last publish for everything beneath it.
+ * The Draft version a publish or a restore is sent with: the one the Member
+ * holds, from the editor while it is open, else from the page.
+ */
+export function useDraftVersion(): number {
+  return usePublishScope("useDraftVersion").draftVersion;
+}
+
+const holdNothing = () => {};
+
+/**
+ * How the Draft editor tells the Journey page's publish and restore controls
+ * which Draft version it holds. Outside a `PublishScope` nothing listens.
+ */
+export function useHoldDraftVersion(): (version: number | null) => void {
+  return useContext(PublishScopeContext)?.holdDraftVersion ?? holdNothing;
+}
+
+/**
+ * Holds the acknowledgement of the last publish for everything beneath it,
+ * and the Draft version the Member holds (see `useDraftVersion`).
  *
  * The line stays until the Draft changes again — the moment the page says
  * "Unpublished changes" — or the page is left, which unmounts this. The
@@ -83,12 +110,18 @@ function usePublishScope(caller: string): PublishScopeValue {
  */
 export function PublishScope({
   hasUnpublishedChanges,
+  draftVersion,
   children,
 }: {
   /** The header's own: false only while the live version matches the Draft. */
   hasUnpublishedChanges: boolean;
+  /** The Draft version the page read. */
+  draftVersion: number;
   children: ReactNode;
 }) {
+  // The page's version trails the editor's own save by a refresh; while the
+  // editor is open, what it holds is what the Member is looking at.
+  const [editorVersion, setEditorVersion] = useState<number | null>(null);
   const [acknowledgement, setAcknowledgement] =
     useState<Acknowledgement | null>(null);
   const [sawUnpublishedChanges, setSawUnpublishedChanges] = useState(
@@ -108,6 +141,8 @@ export function PublishScope({
         // edit the reset above has not yet seen.
         acknowledgement: hasUnpublishedChanges ? null : acknowledgement,
         acknowledge: setAcknowledgement,
+        draftVersion: editorVersion ?? draftVersion,
+        holdDraftVersion: setEditorVersion,
       }}
     >
       {children}
@@ -161,13 +196,17 @@ export function PublishButton({
   /** `sm` beside the Versions tab's row actions; the page header's is full size. */
   size?: "default" | "sm";
 }) {
-  const { acknowledge } = usePublishScope("PublishButton");
+  const { acknowledge, draftVersion } = usePublishScope("PublishButton");
   const [pending, startTransition] = useTransition();
   const [refusal, setRefusal] = useState<Refusal | null>(null);
 
   function publish() {
     startTransition(async () => {
-      const result = await publishJourneyAction(projectId, journeyId);
+      const result = await publishJourneyAction(
+        projectId,
+        journeyId,
+        draftVersion,
+      );
 
       if (!result.ok) {
         setRefusal({ error: result.error, problems: result.problems ?? [] });

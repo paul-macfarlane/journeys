@@ -61,6 +61,12 @@ export const journeyThemeSchema = z
     accent: preset === null ? null : accent,
   }));
 
+/**
+ * The Draft version a save, a restore, or a publish was made against
+ * (ticket 73): the counter the Member's page last read or stored.
+ */
+export const draftVersionSchema = z.number().int().nonnegative();
+
 /** What the New Journey dialog sends: the title alone. */
 export type CreateJourneyInput = z.input<typeof createJourneySchema>;
 export type UpdateJourneyInput = z.infer<typeof updateJourneySchema>;

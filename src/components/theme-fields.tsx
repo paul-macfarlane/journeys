@@ -5,8 +5,9 @@ import { useId, useMemo } from "react";
 import { z } from "zod";
 
 import { useAutosavedForm } from "@/components/autosaved-form";
+import { StaleNotice } from "@/components/stale-notice";
 import type { ActionResult } from "@/lib/action-result";
-import { STATUS_TEXT } from "@/lib/autosave";
+import { STATUS_TEXT, type StaleNoun } from "@/lib/autosave";
 import { BRAND_COLORS } from "@/lib/brand";
 import {
   accentColorSchema,
@@ -28,6 +29,14 @@ const themeFormSchema = z.object({
 
 type ThemeFormInput = z.infer<typeof themeFormSchema>;
 
+/** The picker's shape as the Theme the action receives. */
+function toTheme(value: ThemeFormInput): Theme {
+  return {
+    preset: value.preset,
+    accent: value.accent === "" ? null : value.accent,
+  };
+}
+
 /** What a fresh accent starts as when the checkbox is ticked: the app's spruce. */
 const FIRST_ACCENT = BRAND_COLORS.spruce;
 
@@ -46,11 +55,17 @@ export function ThemeFields({
   theme,
   submit,
   onSaved,
+  noun,
 }: {
   /** The Theme as stored, which the fields read until edited. */
   theme: Theme;
-  /** The server action the whole Theme goes to. */
-  submit: (theme: Theme) => Promise<ActionResult>;
+  /**
+   * The server action the whole Theme goes to, with the Theme it replaces
+   * as stored, which guards the write (ticket 73).
+   */
+  submit: (theme: Theme, baseline: Theme) => Promise<ActionResult>;
+  /** Whose Theme this is, for the sentence a stale save shows. */
+  noun: StaleNoun;
   /** After a save the server accepted, typically a router refresh. */
   onSaved: () => void;
 }) {
@@ -59,14 +74,11 @@ export function ThemeFields({
     () => ({ preset: theme.preset, accent: theme.accent ?? "" }),
     [theme.preset, theme.accent],
   );
-  const { form, status, change, flush } = useAutosavedForm({
+  const { form, status, stale, change, flush } = useAutosavedForm({
     schema: themeFormSchema,
     values,
-    submit: (next) =>
-      submit({
-        preset: next.preset,
-        accent: next.accent === "" ? null : next.accent,
-      }),
+    noun,
+    submit: (next, baseline) => submit(toTheme(next), toTheme(baseline)),
     onSaved,
   });
   const { errors } = form.formState;
@@ -162,9 +174,13 @@ export function ThemeFields({
         ) : null}
       </div>
 
-      <p role="status" className="text-muted-foreground text-xs">
-        {STATUS_TEXT[status]}
-      </p>
+      {stale ? (
+        <StaleNotice noun={stale.noun} onReload={stale.reload} />
+      ) : (
+        <p role="status" className="text-muted-foreground text-xs">
+          {STATUS_TEXT[status]}
+        </p>
+      )}
     </div>
   );
 }

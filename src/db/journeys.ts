@@ -6,6 +6,12 @@ import "server-only";
 import { and, asc, count, eq, inArray, max } from "drizzle-orm";
 
 import { db } from "@/db";
+import {
+  changedFields,
+  guardedWrite,
+  stillHolds,
+  type StaleWrite,
+} from "@/db/guarded-write";
 import { draft, journey, member, project, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
 import { moveInOrder, type MoveDirection } from "@/lib/journey-order";
@@ -268,62 +274,123 @@ export async function getJourneyForMember(
   return toSummary(row, stateOf(row, versionCounts.get(row.id) ?? 0));
 }
 
+/** The Journey fields its title form and Theme settings write, by column. */
+type JourneyFields = {
+  title: string;
+  description: string;
+  themePreset: string | null;
+  themeAccent: string | null;
+};
+
+const journeyFieldColumns = {
+  title: journey.title,
+  description: journey.description,
+  themePreset: journey.themePreset,
+  themeAccent: journey.themeAccent,
+} as const;
+
 /**
- * Edits a Journey's title and description. Its id — and so its URL — is
- * untouched. Returns null when the Author is not a Member of the Journey's
- * Project, or the Journey doesn't exist under that Project.
+ * The guarded write `updateJourney` and `setJourneyTheme` share (ticket 73),
+ * the Journey's twin of `@/db/projects`' own: only the fields whose value
+ * differs from `baseline` are written, each only while the row still holds
+ * its baseline value, so another Member's change to the same field since is
+ * answered `stale`. Publish, unpublish, and move write other columns and
+ * never make these stale. Null when the Author is not a Member of the
+ * Journey's Project, or the Journey doesn't exist under that Project.
  */
-export async function updateJourney(
+async function updateJourneyForMember(
   projectId: string,
   journeyId: string,
-  input: { title: string; description: string },
   userId: string,
-): Promise<JourneySummary | null> {
+  next: Partial<JourneyFields>,
+  baseline: Partial<JourneyFields>,
+): Promise<JourneySummary | StaleWrite | null> {
   const existing = await getJourneyForMember(projectId, journeyId, userId);
   if (!existing) return null;
 
-  const [updated] = await db
-    .update(journey)
-    .set({
-      title: input.title,
-      description: input.description,
-      updatedAt: new Date(),
-    })
-    .where(eq(journey.id, existing.id))
-    .returning(journeyColumns);
+  const fields = changedFields(next, baseline);
+  if (fields.length === 0) return existing;
 
-  // A title and a description are all this changes; publish state is
+  const written = await guardedWrite(
+    () =>
+      db
+        .update(journey)
+        .set({
+          ...Object.fromEntries(fields.map((field) => [field, next[field]])),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(journey.id, existing.id),
+            ...fields.map((field) =>
+              stillHolds(journeyFieldColumns[field], baseline[field]),
+            ),
+          ),
+        )
+        .returning(journeyColumns),
+    async () => {
+      const rows = await db
+        .select({ id: journey.id })
+        .from(journey)
+        .where(eq(journey.id, existing.id))
+        .limit(1);
+      return rows.length > 0;
+    },
+  );
+  if (!written.ok) return written.reason === "stale" ? written : null;
+  // Title, description, and Theme are all this changes; publish state is
   // whatever the membership check already read.
-  return updated ? toSummary(updated, existing.publishState) : null;
+  return toSummary(written.row, existing.publishState);
+}
+
+/**
+ * Edits a Journey's title and description. Its id — and so its URL — is
+ * untouched. `baseline` is what the Member edited from.
+ */
+export function updateJourney(
+  projectId: string,
+  journeyId: string,
+  input: { title: string; description: string },
+  baseline: { title: string; description: string },
+  userId: string,
+): Promise<JourneySummary | StaleWrite | null> {
+  return updateJourneyForMember(
+    projectId,
+    journeyId,
+    userId,
+    { title: input.title, description: input.description },
+    { title: baseline.title, description: baseline.description },
+  );
+}
+
+/** A Theme override as its two columns: no preset, no accent. */
+function themeColumns(theme: ThemeOverride) {
+  return {
+    themePreset: theme.preset,
+    themeAccent: theme.preset === null ? null : theme.accent,
+  };
 }
 
 /**
  * Sets or clears a Journey's Theme override. A null preset clears it (the
  * Journey goes back to its Project's Theme); a set preset is taken whole
- * with `theme.accent` or none. The caller has already parsed the pair
- * through the Journey Theme schema. Returns null when the Author is not a
- * Member of the Journey's Project, or the Journey doesn't exist under it.
+ * with `theme.accent` or none. The caller has already parsed the pair, and
+ * the baseline it replaces, through the Journey Theme schema.
  */
-export async function setJourneyTheme(
+export function setJourneyTheme(
   projectId: string,
   journeyId: string,
   theme: ThemeOverride,
+  baseline: ThemeOverride,
   userId: string,
-): Promise<JourneySummary | null> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
-  const [updated] = await db
-    .update(journey)
-    .set({
-      themePreset: theme.preset,
-      themeAccent: theme.preset === null ? null : theme.accent,
-      updatedAt: new Date(),
-    })
-    .where(eq(journey.id, existing.id))
-    .returning(journeyColumns);
-
-  return updated ? toSummary(updated, existing.publishState) : null;
+): Promise<JourneySummary | StaleWrite | null> {
+  return updateJourneyForMember(
+    projectId,
+    journeyId,
+    userId,
+    themeColumns(theme),
+    themeColumns(baseline),
+  );
 }
 
 /**

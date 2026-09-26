@@ -7,6 +7,12 @@ import { and, desc, eq } from "drizzle-orm";
 import { cache } from "react";
 
 import { db } from "@/db";
+import {
+  changedFields,
+  guardedWrite,
+  stillHolds,
+  type StaleWrite,
+} from "@/db/guarded-write";
 import { member, project } from "@/db/schema";
 import { contentSchema, type Content } from "@/lib/graph/content";
 import { toThemePreset, type Theme } from "@/lib/theme";
@@ -165,73 +171,131 @@ export const getPublicProject = cache(
   },
 );
 
+/** The Project fields the Settings tab writes, by their column. */
+type ProjectFields = {
+  title: string;
+  descriptionContent: Content;
+  themePreset: string;
+  themeAccent: string | null;
+};
+
+const projectFieldColumns = {
+  title: project.title,
+  descriptionContent: project.descriptionContent,
+  themePreset: project.themePreset,
+  themeAccent: project.themeAccent,
+} as const;
+
 /**
- * The one write shape every Settings-tab edit has: the Member check, the
- * update stamped with `updatedAt` (which is what moves the Project up the
- * navbar's switcher), and the row read back. Null when the Author is not a
- * Member of `projectId`.
+ * The one write shape every Settings-tab edit has: the Member check, then
+ * the guarded update (ticket 73). Only the fields whose value differs from
+ * `baseline` — what the Member edited against — are written, and each is
+ * written only while the row still holds its baseline value, so another
+ * Member's change to the same field since is answered `stale` and
+ * nothing is overwritten. The title, description, and Theme loops each
+ * guard only their own fields and never make each other stale. The update is
+ * stamped with `updatedAt` (which is what moves the Project up the navbar's
+ * switcher), and the row read back. Null when the Author is not a Member of
+ * `projectId`, or the Project went away.
  */
 async function updateProjectForMember(
   projectId: string,
   userId: string,
-  changes: Partial<{
-    title: string;
-    descriptionContent: Content;
-    themePreset: string;
-    themeAccent: string | null;
-  }>,
-): Promise<ProjectSummary | null> {
+  next: Partial<ProjectFields>,
+  baseline: Partial<ProjectFields>,
+): Promise<ProjectSummary | StaleWrite | null> {
   const existing = await getProjectForMember(projectId, userId);
   if (!existing) return null;
 
-  const [updated] = await db
-    .update(project)
-    .set({ ...changes, updatedAt: new Date() })
-    .where(eq(project.id, existing.id))
-    .returning(projectColumns);
+  const fields = changedFields(next, baseline);
+  if (fields.length === 0) return existing;
 
-  return updated ? toSummary(updated) : null;
+  const written = await guardedWrite(
+    () =>
+      db
+        .update(project)
+        .set({
+          ...Object.fromEntries(fields.map((field) => [field, next[field]])),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(project.id, existing.id),
+            ...fields.map((field) =>
+              stillHolds(projectFieldColumns[field], baseline[field]),
+            ),
+          ),
+        )
+        .returning(projectColumns),
+    async () => {
+      const rows = await db
+        .select({ id: project.id })
+        .from(project)
+        .where(eq(project.id, existing.id))
+        .limit(1);
+      return rows.length > 0;
+    },
+  );
+  if (!written.ok) return written.reason === "stale" ? written : null;
+  return toSummary(written.row);
 }
 
-/** Renames a Project. Its id — and so its URL — is untouched. */
+/**
+ * Renames a Project. Its id — and so its URL — is untouched. `baseline` is
+ * the title the Member edited from.
+ */
 export function renameProject(
   projectId: string,
   input: { title: string },
+  baseline: { title: string },
   userId: string,
-): Promise<ProjectSummary | null> {
-  return updateProjectForMember(projectId, userId, { title: input.title });
+): Promise<ProjectSummary | StaleWrite | null> {
+  return updateProjectForMember(
+    projectId,
+    userId,
+    { title: input.title },
+    { title: baseline.title },
+  );
 }
 
 /**
  * Replaces a Project's rich-text description. The caller has already put
- * `description` through `sanitizeContent`; this stores what it was given.
+ * `description` and `baseline` through `sanitizeContent`; this stores what
+ * it was given, while the row still holds `baseline`.
  */
 export function editProjectDescription(
   projectId: string,
   description: Content,
+  baseline: Content,
   userId: string,
-): Promise<ProjectSummary | null> {
-  return updateProjectForMember(projectId, userId, {
-    descriptionContent: description,
-  });
+): Promise<ProjectSummary | StaleWrite | null> {
+  return updateProjectForMember(
+    projectId,
+    userId,
+    { descriptionContent: description },
+    { descriptionContent: baseline },
+  );
 }
 
 /**
  * Sets a Project's Theme: the preset every Journey in it is painted in
  * unless the Journey overrides it, and the optional accent. The caller has
- * already parsed both through the Theme schemas; this stores what it was
- * given. The runner and the public page read the row on every request, so
- * the change shows the moment it is stored.
+ * already parsed both, and the baseline, through the Theme schemas; this
+ * stores what it was given. The runner and the public page read the row on
+ * every request, so the change shows the moment it is stored.
  */
 export function setProjectTheme(
   projectId: string,
   theme: Theme,
+  baseline: Theme,
   userId: string,
-): Promise<ProjectSummary | null> {
-  return updateProjectForMember(projectId, userId, {
-    themePreset: theme.preset,
-    themeAccent: theme.accent,
-  });
+): Promise<ProjectSummary | StaleWrite | null> {
+  return updateProjectForMember(
+    projectId,
+    userId,
+    { themePreset: theme.preset, themeAccent: theme.accent },
+    { themePreset: baseline.preset, themeAccent: baseline.accent },
+  );
 }
 
 /**
