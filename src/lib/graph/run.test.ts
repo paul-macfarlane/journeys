@@ -778,6 +778,91 @@ describe("Completion (completedAt, endingStepId)", () => {
     expect(atB.endingStepId).toBe("b");
     expect(atB.outcomeId).toBe("outcome-b");
   });
+
+  function atA2(document: GraphDocument): RunState {
+    const atA = (
+      navigateTo(document, startRun(document, t1), "a", t1) as {
+        state: RunState;
+      }
+    ).state;
+    return (navigateTo(document, atA, "a2", t2) as { state: RunState }).state;
+  }
+
+  it("keeps the Completion through a Back that names its path index (rule 2)", () => {
+    const document = branchingDocument();
+    const moved = navigateTo(document, atA2(document), "a", t3, 1);
+
+    expect(moved).toMatchObject({
+      kind: "moved",
+      state: {
+        path: ["start", "a"],
+        endedAt: null,
+        completedAt: t2,
+        endingStepId: "a2",
+        outcomeId: "outcome-a2",
+      },
+    });
+  });
+
+  it("carries the Completion forward onto a Step that is not an Ending, reached from a cached page (rule 6)", () => {
+    const document = branchingDocument();
+    const atB = (
+      navigateTo(document, startRun(document, t1), "b", t2) as {
+        state: RunState;
+      }
+    ).state;
+    const moved = navigateTo(document, atB, "a", t3);
+
+    expect(moved).toMatchObject({
+      kind: "moved",
+      state: {
+        path: ["start", "a"],
+        endedAt: null,
+        completedAt: t2,
+        endingStepId: "b",
+        outcomeId: "outcome-b",
+      },
+    });
+  });
+
+  it("does not move completedAt when the Run reaches the same Ending again", () => {
+    const document = branchingDocument();
+    const backAtA = (
+      navigateTo(document, atA2(document), "a", t3) as { state: RunState }
+    ).state;
+    const again = (
+      navigateTo(document, backAtA, "a2", t4) as {
+        state: RunState;
+      }
+    ).state;
+
+    expect(again.endedAt).toEqual(t4);
+    expect(again.completedAt).toEqual(t2);
+    expect(again.endingStepId).toBe("a2");
+  });
+
+  it("reads a Run the previous code left resting on an Ending as completed there, so a Back keeps it (deploy window)", () => {
+    const document = branchingDocument();
+    const legacy: RunState = {
+      path: ["start", "a", "a2"],
+      backtrackCount: 0,
+      endedAt: t2,
+      completedAt: null,
+      endingStepId: null,
+      outcomeId: "outcome-a2",
+    };
+    const moved = navigateTo(document, legacy, "a", t3);
+
+    expect(moved).toMatchObject({
+      kind: "moved",
+      state: {
+        endedAt: null,
+        completedAt: t2,
+        endingStepId: "a2",
+        outcomeId: "outcome-a2",
+      },
+    });
+  });
 });
 
 /** The `?at=` parameter arrives from a Participant's browser: distrust it. */

@@ -107,7 +107,7 @@ type Source = {
   prompt: {
     journeyId: string;
     step: string;
-    /** Written in the panel; null when the seed already asks a deciding Prompt there. */
+    /** Written in the panel; null when the seed already asks a required Prompt there. */
     text: string | null;
   };
   richText: { journeyId: string; step: string };

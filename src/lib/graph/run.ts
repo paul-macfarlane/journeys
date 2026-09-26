@@ -110,6 +110,12 @@ export type NavigateResult =
  * `endingStepId`, and `outcomeId` carry forward from `previous` untouched
  * unless `stepId` is itself an Ending, in which case they are set (or
  * replaced) to it — `completedAt` only the first time.
+ *
+ * A Run the previous code brought to an Ending while migration 0013 was
+ * rolling out rests on it with `endedAt` set and `completedAt` still null;
+ * resting on an Ending is itself a Completion, so that is read as
+ * `completedAt` and the resting Step as `endingStepId` before anything
+ * carries forward — otherwise a Back off it would lose the Completion.
  */
 function landingState(
   document: GraphDocument,
@@ -121,13 +127,18 @@ function landingState(
 ): RunState {
   const step = document.steps[stepId];
   const ended = step.choices.length === 0;
+  const resting = previous.endedAt !== null;
+  const completedAt =
+    previous.completedAt ?? (resting ? previous.endedAt : null);
+  const endingStepId =
+    previous.endingStepId ?? (resting ? currentStepId(previous) : null);
 
   return {
     path,
     backtrackCount,
     endedAt: ended ? now : null,
-    completedAt: ended ? (previous.completedAt ?? now) : previous.completedAt,
-    endingStepId: ended ? stepId : previous.endingStepId,
+    completedAt: ended ? (completedAt ?? now) : completedAt,
+    endingStepId: ended ? stepId : endingStepId,
     outcomeId: ended ? outcomeIdOf(document, stepId) : previous.outcomeId,
   };
 }

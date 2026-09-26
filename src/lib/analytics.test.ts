@@ -502,6 +502,24 @@ describe("analyticsForVersion", () => {
       ).toMatchObject({ runs: 1 });
     });
 
+    it("groups under the Ending the Run rests on over a stale endingStepId the previous code left behind", () => {
+      // The new code took the Run to waved-through; the previous code, still
+      // serving during the deploy, backed it off and walked it to
+      // turned-back without touching ending_step_id.
+      const result = analyticsForVersion(VERSION, runnerDocument(), [
+        run(["start", "turned-back"], VERSION, {
+          completedAt: COMPLETED_AT,
+          endingStepId: "waved-through",
+        }),
+      ]);
+
+      expect(result).toMatchObject({ starts: 1, completions: 1 });
+      expect(
+        result.outcomes.find((group) => group.key === "outcome:turned-away"),
+      ).toMatchObject({ runs: 1 });
+      expect(result.steps["waved-through"]).toMatchObject({ ended: 0 });
+    });
+
     it("still counts a legacy Run (no completedAt) that is resting on an Ending", () => {
       // A row written before ticket 75, or by the previous code during the
       // deploy window: completedAt/endingStepId are null, but the path still

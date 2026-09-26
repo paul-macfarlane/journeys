@@ -146,7 +146,7 @@ function OutcomeChart({
         <p className="text-muted-foreground text-sm">
           {starts === 0
             ? "No runs yet. Once participants walk this version, each outcome's share appears here."
-            : "Each run counts once: under the outcome of the ending it reached, under the ending's own title when it has no outcome, or as abandoned."}
+            : "Each run counts once: under the outcome of the latest ending it reached, under that ending's own title when it has no outcome, or as abandoned."}
         </p>
       </div>
 

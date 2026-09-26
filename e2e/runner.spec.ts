@@ -452,6 +452,7 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     // backtrack, even though it is no longer resting on that Ending.
     expect(afterBrowserBack[0].completed_at).not.toBeNull();
     expect(afterBrowserBack[0].outcome_id).toBe("reached-care");
+    expect(afterBrowserBack[0].ending_step_id).toBe("waved-through");
 
     // The in-app Back control does exactly the same thing.
     await participant.getByRole("link", { name: "← Back" }).click();

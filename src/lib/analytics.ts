@@ -8,7 +8,8 @@ import {
 
 /**
  * Analytics for one Published Version, computed from its Runs' paths and
- * nothing else — there is no event table (spec, "Run"). Pure and
+ * their Completion record (`completedAt`, `endingStepId`) — there is no
+ * event table (spec, "Run"). Pure and
  * database-free: the page reads the version's document and its Run rows,
  * and this turns them into every number the Analytics tab shows, so the
  * whole of the arithmetic can be checked by hand in `analytics.test.ts`.
@@ -59,9 +60,9 @@ export type StepStat = {
   stepId: string;
   /** Path entries naming this Step, across every Run — repeats included. */
   visits: number;
-  /** Runs whose last entry is this Step while it is not an Ending. */
+  /** Runs that never completed and whose last entry is this Step. */
   abandoned: number;
-  /** Runs whose last entry is this Step while it is an Ending. */
+  /** Completions whose latest Ending is this Step. */
   ended: number;
 };
 
@@ -165,17 +166,19 @@ export function analyticsForVersion(
 
     completions += 1;
 
-    // The Completion's Ending: the latest one the reducer recorded, when it
-    // still names an Ending of this document, else the fallback reading off
-    // the last path entry (a pre-ticket-75 or mid-deploy row).
-    const endingStepId =
-      run.endingStepId !== null &&
-      hasStep(document, run.endingStepId) &&
-      isEnding(document.steps[run.endingStepId])
+    // The Completion's Ending: the one the Run rests on, when it rests on
+    // one — an Ending has no Choices, so it can only be the last entry, and
+    // is then by construction the latest reached, even for a row the
+    // previous code moved during a deploy without touching
+    // `ending_step_id`. Otherwise the latest Ending the reducer recorded,
+    // when it still names an Ending of this document.
+    const endingStepId = lastIsEnding
+      ? last
+      : run.endingStepId !== null &&
+          hasStep(document, run.endingStepId) &&
+          isEnding(document.steps[run.endingStepId])
         ? run.endingStepId
-        : lastIsEnding
-          ? last
-          : null;
+        : null;
 
     if (endingStepId === null) continue;
 

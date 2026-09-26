@@ -358,7 +358,7 @@ function formResponding(text: string, targetStepId?: string): FormData {
 }
 
 describe("respondAndChooseAction on a Step with a required Prompt", () => {
-  it("saves the Response and takes the Choice, as a non-deciding Prompt already does", async () => {
+  it("saves the Response and takes the pressed Choice", async () => {
     runOnQueue("run-1");
 
     const to = await redirectOf(

@@ -2,7 +2,7 @@ import type { Page, Request, Route } from "@playwright/test";
 
 /**
  * A server action held in flight, so a state that lasts only as long as the
- * write does ("Saving…", "Deciding…", the leave guard) can be read for as
+ * write does ("Saving…", the leave guard) can be read for as
  * long as a spec needs, and a race with the write can be made certain.
  */
 export type HeldServerAction = {

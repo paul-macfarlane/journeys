@@ -134,6 +134,7 @@ Paul does this himself. `/privacy` and `/terms` are live on staging and producti
 
 A Run is created by every first Choice (`POST /j/<journey-id>`), and nothing in the app limits that. The cost is database growth and polluted Analytics. The limit belongs at the edge, so it is a Paul-owned setting rather than code. Agents never change cloud configuration.
 
-- [ ] Vercel → `journeys` → Firewall → Rules → add a **Rate Limit** rule: request path starts with `/j/`, method `POST`, **30 requests per 60 seconds per IP**, action **Deny** (429). Apply it to Production, and to Preview too so staging behaves the same.
-- Expected result: a normal Participant (a few Choices a minute) is never affected, and a script posting Choices in a loop is refused after 30 in a minute.
+- [ ] Vercel → `journeys` → Firewall → Rules → add a **Rate Limit** rule: method `POST`, request path **matches the regex `^/j/[^/]+$`** (the Start screen only, where a Run is created; a Step's own `/j/<id>/<step>` form posts are left alone), **30 requests per 60 seconds per IP**, action **Deny** (429). Apply it to Production, and to Preview too so staging behaves the same.
+- Why only the Start: every Choice on a Step with a Prompt also posts, and Participants behind one address (a classroom) share an IP. Limiting only Run creation keeps their walks unaffected while still capping how fast Runs can be minted.
+- Expected result: a normal Participant (one Start per walk) is never affected, and a script creating Runs in a loop is refused after 30 in a minute.
 - Post-check: in the Firewall's live traffic view the rule shows as active. Optionally, send 31 quick `POST`s to a staging Journey's `/j/<id>` from one machine; the last one returns 429.

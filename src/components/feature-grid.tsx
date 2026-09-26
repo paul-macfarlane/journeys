@@ -25,7 +25,7 @@ const FEATURES = [
   },
   {
     slug: "prompt",
-    title: "Prompts, read by the authors",
+    title: "Prompts, read by the members",
     text: "A step can ask an open question before its choices. Every answer is kept with the run, for the project's members to read.",
   },
   {

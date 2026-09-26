@@ -8,7 +8,7 @@ const FEATURE_HEADINGS = [
   "Publish immutable versions",
   "Anonymous runs, no account",
   "Analytics on the graph",
-  "Prompts, read by the authors",
+  "Prompts, read by the members",
   "Themes",
   "Rich text with images and credits",
 ];

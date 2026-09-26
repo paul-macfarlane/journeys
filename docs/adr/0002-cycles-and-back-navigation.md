@@ -146,8 +146,8 @@ abandonment off the path's last entry alone, which meant a Participant who
 backed off the Ending they had just reached counted as an abandonment. Paul's
 Q7/Q9 ruling (`CONTEXT.md` "Completion"): a Run is a **Completion** once it
 has reached an Ending at all, and a backtrack afterward does not undo that.
-The `run` table gained two additive columns the reducer (`src/lib/graph/
-run.ts`) now maintains alongside the path: `completed_at`, set the first time
+The `run` table gained two additive columns the reducer
+(`src/lib/graph/run.ts`) now maintains alongside the path: `completed_at`, set the first time
 any Ending is reached and never cleared or moved later, and `ending_step_id`,
 the latest Ending the Run has reached, kept through a backtrack and replaced
 only by reaching another Ending. The analytics contract above now reads:
@@ -155,9 +155,16 @@ only by reaching another Ending. The analytics contract above now reads:
 - A Run is a Completion when `completed_at` is set, or — for a Run written
   before this change, or by the previous code during the deploy window —
   when its last path entry is an Ending of the document.
-- Its group (the Outcome bar, or its own bar for an untagged Ending, ticket 24) and the Step whose `ended` count it adds to come from `ending_step_id`
-  when it still names an Ending of the document, else from the same
-  last-path-entry fallback.
+- Its group (the Outcome bar, or its own bar for an untagged Ending,
+  ticket 24) and the Step whose `ended` count it adds to come from the
+  Ending the Run rests on, when its last path entry is one — an Ending has
+  no Choices, so it is then the latest reached, even for a row the previous
+  code moved during the deploy window — else from `ending_step_id` when it
+  still names an Ending of the document.
+- A Run the previous code left resting on an Ending during the deploy
+  window (`ended_at` set, `completed_at` null) is read by the reducer as
+  completed on that Ending before its next move, so a Back off it keeps the
+  Completion.
 - Abandonment is "never completed", read on the last path entry only, of a
   Run that is not a Completion. `abandoned = starts - completions` is
   unchanged. Visits and a Choice's take-rate are unchanged — the path alone.
