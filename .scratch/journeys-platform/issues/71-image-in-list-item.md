@@ -53,6 +53,6 @@ PR: https://github.com/paul-macfarlane/journeys/pull/97 (base `staging`, compari
 
 **Deviations.** None from the contract. Out of scope, raised as a separate task chip: a pasted heading inside a list item still loses its words at save (the same trap, StarterKit's `paragraph block*` list item).
 
-**Queued for Paul (non-blocking, also in the PR).** `happy-dom` resolves through `@tiptap/html`'s peer; `pnpm add -D happy-dom` would declare it (lockfile commit is yours).
+**Queued for Paul (non-blocking, also in the PR).** Done: Paul declared `happy-dom` as a devDependency in 50c74ec.
 
 **Next in Paul's order:** 72 (codebase design review, its own thread) → 73.
