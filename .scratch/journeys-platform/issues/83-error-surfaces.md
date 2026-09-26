@@ -1,8 +1,8 @@
 # 83: Error pages and unreadable Published Versions
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude Opus 5.5 (chunk 1, `feat/chunk-1-saves-and-unreadable-rows`)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (changes how Published Versions and Runs are read)
@@ -30,3 +30,22 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`polish`). Never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Origin: ticket 72; ticket 15 ("Corrupt-row handling", the non-Draft half).
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-26 — Claude Opus 5.5 (`/atlas-implement`, chunk 1, Route: contract)
+
+Deliverable D3 of chunk 1 (see ticket 73's `[EXECUTION PLAN]` for the branch, worktree, env, and sequencing); runs after 73 so it reuses 73's `CannotBeRead` notice.
+
+**Resolved decisions.**
+
+- `src/app/error.tsx` and `src/app/global-error.tsx`: client components in the app's layout and voice with "Try again" (`reset`) and a link home; the error's message and stack never render; `console.error` carries only the digest. No test-only throwing route is added to the app, so the `error-page` criterion is proven by a unit render (`react-dom/server` under vitest), as the ticket allows.
+- `safeParse` at every non-Draft site. `getLiveVersion` answers `{ kind: "unreadable", versionId, versionNumber }` beside the readable shape; `getAnalyticsForMember` the same; the Journey page passes the unreadable version to the Versions and Analytics tabs, which show the `CannotBeRead` notice as a banner naming "Version N", and the Draft and other versions keep working. `getPublicJourney` answers `{ kind: "unavailable" }`, `getRunForJourney` null (the runner restarts as on a replaced version), `restoreVersion` `{ ok: false, reason: "unreadable" }`, and the two `contentSchema` sites fall back to the empty document. Each failure logs `journeyId`/`versionId` (or the Project/Author id), never the document.
+- A Run `path` that fails `z.array(idSchema)` restarts from the Start.
+
+**Verification map** (contract; chain once at the chunk's end):
+
+| Criterion | Proof | Evidence | Earliest |
+|---|---|---|---|
+| AC1 unit per `safeParse` site | vitest, one test per site | unit line in `test-results/chunk-1-commands.txt`, `test-results/83-ac-1-safeparse-unit.txt` | after D3 |
+| AC2 e2e `unreadable-version` | seeded bad `published_version` row: runner 200 + unavailable page, Journey Editor tab loads, Versions banner | `test-results/unreadable-version/` | after D3 |
+| AC3 `error-page` | unit render of `error.tsx` (no throwing route without a test hook; said so here) | `test-results/83-ac-3-error-page-unit.txt` | after D3 |
+| AC4 one full `pnpm test:e2e` | the chunk chain | `test-results/chunk-1-commands.txt` | end of chunk |
