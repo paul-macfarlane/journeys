@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
+import { reloadOnceInBrowser } from "@/components/chunk-load-recovery";
 import { ProsePage } from "@/components/prose-page";
 import { Button } from "@/components/ui/button";
 import { isChunkLoadError } from "@/lib/chunk-load";
-import { reloadOnceInBrowser } from "@/lib/chunk-load-browser";
 
 /**
  * The one error boundary under the root layout (ticket 83, ticket 72's

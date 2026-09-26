@@ -1,14 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { isChunkLoadError, reloadOnceForChunkError } from "@/lib/chunk-load";
+import {
+  CHUNK_RELOAD_MARKER_KEY,
+  forgetChunkReload,
+  isChunkLoadError,
+  reloadOnceForChunkError,
+} from "@/lib/chunk-load";
 
 /**
  * Ticket 74: a tab opened before a deploy throws a chunk-load failure on
  * its first client-side navigation after the old build's assets are gone.
  * `isChunkLoadError` recognizes that failure across the bundler/runtime
  * combinations Next can produce; `reloadOnceForChunkError` reloads once,
- * marking a short window in `sessionStorage` so a second failure right
- * after the reload does not loop, while a later deploy can reload again.
+ * leaving a marker in `sessionStorage` so a second failure does not loop,
+ * and `forgetChunkReload` clears the marker once a client-side navigation
+ * has succeeded, so a later deploy can reload again.
  */
 describe("isChunkLoadError", () => {
   it.each([
@@ -45,10 +51,17 @@ function fakeStorage(initial: Record<string, string> = {}) {
     setItem: (key: string, value: string) => {
       store.set(key, value);
     },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
   } as unknown as Storage;
 }
 
 describe("reloadOnceForChunkError", () => {
+  it("keeps its marker under the app's own storage key", () => {
+    expect(CHUNK_RELOAD_MARKER_KEY).toBe("journeys:chunk-reload");
+  });
+
   it("reloads when no marker exists", () => {
     const storage = fakeStorage();
     const reload = vi.fn();
@@ -56,38 +69,44 @@ describe("reloadOnceForChunkError", () => {
     const reloaded = reloadOnceForChunkError({
       storage: () => storage,
       reload,
-      now: () => 1_000,
     });
 
     expect(reloaded).toBe(true);
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it("does not reload again inside the window", () => {
+  it("does not reload a second time while the marker is present, however long after", () => {
     const storage = fakeStorage();
     const reload = vi.fn();
-    const deps = { storage: () => storage, reload, now: () => 1_000 };
+    const deps = { storage: () => storage, reload };
 
     reloadOnceForChunkError(deps);
     reload.mockClear();
 
-    const reloaded = reloadOnceForChunkError({ ...deps, now: () => 5_000 });
-
-    expect(reloaded).toBe(false);
+    expect(reloadOnceForChunkError(deps)).toBe(false);
     expect(reload).not.toHaveBeenCalled();
   });
 
-  it("reloads again once the window has passed", () => {
+  it("does not reload when a marker is already stored", () => {
+    const storage = fakeStorage({ "journeys:chunk-reload": "1" });
+    const reload = vi.fn();
+
+    expect(reloadOnceForChunkError({ storage: () => storage, reload })).toBe(
+      false,
+    );
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("reloads again once a successful navigation has cleared the marker", () => {
     const storage = fakeStorage();
     const reload = vi.fn();
-    const deps = { storage: () => storage, reload, now: () => 1_000 };
+    const deps = { storage: () => storage, reload };
 
     reloadOnceForChunkError(deps);
+    forgetChunkReload(deps);
     reload.mockClear();
 
-    const reloaded = reloadOnceForChunkError({ ...deps, now: () => 20_000 });
-
-    expect(reloaded).toBe(true);
+    expect(reloadOnceForChunkError(deps)).toBe(true);
     expect(reload).toHaveBeenCalledOnce();
   });
 
@@ -99,7 +118,6 @@ describe("reloadOnceForChunkError", () => {
         throw new Error("storage disabled");
       },
       reload,
-      now: () => 1_000,
     });
 
     expect(reloaded).toBe(false);
@@ -118,7 +136,6 @@ describe("reloadOnceForChunkError", () => {
     const reloaded = reloadOnceForChunkError({
       storage: () => storage,
       reload,
-      now: () => 1_000,
     });
 
     expect(reloaded).toBe(false);
@@ -137,10 +154,21 @@ describe("reloadOnceForChunkError", () => {
     const reloaded = reloadOnceForChunkError({
       storage: () => storage,
       reload,
-      now: () => 1_000,
     });
 
     expect(reloaded).toBe(false);
     expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe("forgetChunkReload", () => {
+  it("swallows a storage that throws", () => {
+    expect(() =>
+      forgetChunkReload({
+        storage: () => {
+          throw new Error("storage disabled");
+        },
+      }),
+    ).not.toThrow();
   });
 });
