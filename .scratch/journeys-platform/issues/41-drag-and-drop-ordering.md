@@ -1,6 +1,6 @@
 # 41: Drag-and-drop Journey ordering
 
-Status: ready-for-agent
+Status: wontfix
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -26,3 +26,7 @@ Acceptance criteria:
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `polish`): commit only the screenshot directories of the specs this ticket names; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-22, item 4.
 
 ## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+Paul, 2026-09-26: keep it only if simple. Judged medium: two new dependencies (a lockfile commit), optimistic ordering with rollback on refusal, and a drag spec, for something Move up / Move down already does from the keyboard. Reopen if Authors with long Journey lists ask for it.

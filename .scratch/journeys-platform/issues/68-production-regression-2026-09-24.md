@@ -1,6 +1,6 @@
 # 68: Production regression test, 2026-09-24
 
-Status: needs-triage
+Status: done
 Blocked by:
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -99,3 +99,14 @@ AND started_at BETWEEN '2026-09-25 00:29:00+00' AND '2026-09-25 00:31:30+00';
 Acceptance criteria: triage findings 2–7 into tickets or `wontfix` lines here; finding 1 is Paul's data change.
 
 Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul, 2026-09-24, "final pre-hackathon regression test of production".
+
+## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+`[CLOSEOUT]` Every finding has a disposition:
+
+- **Ticket 42:** 1's post-hackathon half (seed description, preview fallback), 7 (carried from 66).
+- **Ticket 71:** 2 (image in a list item, data loss).
+- **Ticket 79:** 3 (Untitled step), 5 (Restore acknowledgement), 6 (clipboard fallback).
+- **Ticket 78:** 4 (runner headings).
