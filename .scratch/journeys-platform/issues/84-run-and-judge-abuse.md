@@ -4,7 +4,7 @@ Status: needs-triage
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: proposed by ticket 72 (2026-09-26); Paul to approve the order and the two decisions below.
+Priority: see `.scratch/journeys-platform/backlog.md`. Paul settles the two decisions below before work starts.
 Route: contract (a runner route contract changes; Paul-owned cloud settings)
 
 **Why:** ticket 72, finding Q-abuse (its three parts are A1–A3 below); ticket 15 ("rate limiting and abuse protection", moved to 72).
