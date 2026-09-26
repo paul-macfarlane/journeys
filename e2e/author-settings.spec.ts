@@ -229,3 +229,57 @@ test("author-settings", async ({ page, context }) => {
     fullPage: true,
   });
 });
+
+/**
+ * A refused link stays refused on screen while the page refreshes under it.
+ * Every save on Settings refreshes the page, and the refresh hands the
+ * "Author page" form the server's values again; the refused edit is kept,
+ * and so is the sentence saying why it was refused. Before this held, a
+ * refresh landing just after a refusal wiped the alert and left the field
+ * showing a link nothing would save (author-settings under the load recipe,
+ * 2026-09-26: the LinkedIn save's refresh landed after the Website refusal).
+ * The Display name save is used to make the refresh certain.
+ */
+test("author-settings-refusal-survives-refresh", async ({ page, context }) => {
+  page.on("dialog", (dialog) => void dialog.accept());
+
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  await page.goto("/projects/settings");
+
+  const alerts = page.getByRole("main").getByRole("alert");
+  const refusal = alerts.filter({ hasText: "Use a link on github.com" });
+  const githubField = page.getByRole("textbox", { name: "GitHub" });
+  // The first edit after the navigation is made until it takes: hydration
+  // writes the stored value over a `fill` that lands first.
+  await expect(async () => {
+    await githubField.fill("https://linkedin.com/in/ada");
+    await expect(githubField).toHaveValue("https://linkedin.com/in/ada", {
+      timeout: 1_000,
+    });
+    await githubField.blur();
+    await expect(refusal).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 20_000 });
+
+  // The name is saved and the page refreshes: the navbar reads the new name
+  // once the refresh has landed.
+  const newName = `Grace Hopper ${uniqueSuffix()}`;
+  const nameField = page.getByRole("textbox", { name: "Display name" });
+  await nameField.fill(newName);
+  await nameField.blur();
+  await expect
+    .poll(async () => (await readAuthor(author.id)).name)
+    .toBe(newName);
+  await expect(
+    page.getByRole("button", { name: `Account: ${newName}` }),
+  ).toBeVisible();
+
+  await expect(refusal).toBeVisible();
+  await expect(githubField).toHaveValue("https://linkedin.com/in/ada");
+  await expect(
+    page
+      .getByRole("region", { name: "Author page", exact: true })
+      .getByRole("status"),
+  ).toHaveText("Unsaved changes");
+  expect((await readAuthor(author.id)).links).toEqual([]);
+});
