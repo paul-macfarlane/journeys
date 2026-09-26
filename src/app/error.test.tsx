@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const reloadOnceInBrowser = vi.fn();
-vi.mock("@/lib/chunk-load-browser", () => ({
+vi.mock("@/components/chunk-load-recovery", () => ({
   reloadOnceInBrowser: () => reloadOnceInBrowser(),
 }));
 

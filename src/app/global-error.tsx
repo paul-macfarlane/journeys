@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
+import { reloadOnceInBrowser } from "@/components/chunk-load-recovery";
 import { APP_NAME, BRAND_COLORS } from "@/lib/brand";
 import { isChunkLoadError } from "@/lib/chunk-load";
-import { reloadOnceInBrowser } from "@/lib/chunk-load-browser";
 
 /**
  * The last-resort error boundary: an error thrown by the root layout
