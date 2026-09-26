@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → **78** → 79 → 53 → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish
 
 **Why:** ticket 15 ("Accessibility pass": nobody has done the full screen-reader and keyboard walk), plus the specific findings from the regression passes.

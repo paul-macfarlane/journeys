@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: 55
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → **57** → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish
 
 **Why:** Paul, 2026-09-24: the `/guide` page (55) is the hackathon answer; "we can add [in-app help] post hackathon." First-time Authors land on an empty Projects page and an empty canvas with no teaching copy.

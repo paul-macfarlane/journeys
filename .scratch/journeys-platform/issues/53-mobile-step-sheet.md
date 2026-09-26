@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: 48
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → **53** → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish
 
 **Why:** Paul, 2026-09-23, item 7: "On mobile … editing a step in the canvas is a little inconvenient because you have to click then scroll down, I almost wonder if the step should slide up or a modal comes up. We should think through this at some point." Ticket 48 takes the cheap half (scroll the stacked panel into view); this is the rest.

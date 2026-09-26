@@ -130,3 +130,35 @@ above is the `contract` ladder. A `polish` ticket writes only the
 and skips `[EXECUTION PLAN]` and `[PROGRESS]`; `[SCOPE CHANGE]` and
 `[BLOCKED]` are still written whenever they happen. Both routes still set
 `Status: done` in the closeout commit on the PR.
+
+## Priority (team policy, Paul, 2026-09-26)
+
+`.scratch/<feature-slug>/backlog.md` is the single source of truth for the
+order of work. For this repository that is
+`.scratch/journeys-platform/backlog.md`. Tickets never carry the order
+themselves.
+
+- **Choosing work.** The next ticket is the first row of the backlog's
+  "Ordered" table that is not `done` and is available to claim (see
+  "Readiness"). Never pick by ticket number, by a ticket's own text, or by a
+  chat transcript. If the backlog and a ticket disagree, the backlog wins; say
+  so in the ticket's first record.
+- **Status column.** Each work package's closeout commit sets its row's status
+  to `done`, with the PR number, in the same commit that sets the ticket's
+  `Status: done`, so both land on `staging` when Paul merges. Any other
+  transition an agent records on a ticket updates the row in the same commit.
+- **New tickets.** A PR that creates a ticket adds it to "Awaiting a place in
+  the order" unless Paul has already placed it. Only Paul orders, re-orders,
+  parks, or withdraws. An agent may propose a place, but the row moves only on
+  his word, recorded in the PR or the ticket.
+- **Re-orders.** Change the table and the "Last re-ordered" line together. When
+  a re-order changes scope, the reason goes in a spec `[SCOPE CHANGE]`, never
+  in this file.
+- **Ticket files.** A ticket's `Priority:` line reads
+  ``see `.scratch/<feature-slug>/backlog.md` `` plus, at most, a note that
+  belongs to the ticket itself (for example "run in its own thread"). It never
+  restates the order.
+
+Wayfinder efforts (`map.md` and "Frontier" above) keep their own
+first-by-number rule inside the effort. The backlog orders efforts and tickets
+across the feature.

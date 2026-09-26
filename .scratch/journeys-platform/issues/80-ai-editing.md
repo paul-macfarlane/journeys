@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → **80**; parked 44, 39, 45. A reach goal: "a small quality of life improvement for editors … a low priority one."
+Priority: see `.scratch/journeys-platform/backlog.md`. A reach goal: "a small quality of life improvement for editors … a low priority one."
 Route: contract (a new AI call and an editor surface)
 
 **Why:** Paul, 2026-09-26: AI authoring is cut ("I don't want to encourage AI writing for the stories"; ticket 14 is `wontfix`). AI *editing* stays as a small aid for Authors.

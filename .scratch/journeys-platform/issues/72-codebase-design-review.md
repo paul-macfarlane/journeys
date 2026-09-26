@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → **72** → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45. Run in its own thread. 73 and 74 wait for it; its findings may reshape anything after it.
+Priority: see `.scratch/journeys-platform/backlog.md`. Run in its own thread. 73 and 74 wait for it; its findings may reshape anything after it.
 Route: polish (no code; findings become tickets)
 
 **Why:** Paul, 2026-09-26: the hackathon is over and the priority is "bug fixes, stability, and a clean technical design", with no new bloat. Seventy tickets were delivered fast, one thread at a time; nobody has read the codebase as a whole since the Foundation.
