@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → 73 → 74 → **75** → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (Runs, schema, ADR-0002)
 
 **Why:** ticket 66 finding 6. A Run that reached the Ending "Sunlit path" read as Starts 1, Completions 0, Abandoned 1 after the Participant pressed Back on that Ending. Completion is read off the path alone (ADR-0002, ticket 10), and `navigateTo` (`src/lib/graph/run.ts`) clears `endedAt` and `outcomeId` when leaving an Ending.

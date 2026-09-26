@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: post-hackathon order (Paul, 2026-09-26): 71 → 72 → 73 → 74 → 75 → **76** → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (the deciding-Prompt contract in the spec)
 
 **Why:** ticket 15, "Ticket 43 leftovers". A hedging Response such as "I'm not sure…" scores 0.65–0.75 against one Choice and advances a live Run at the 0.5 threshold, so the Judge decides for a Participant who did not decide.

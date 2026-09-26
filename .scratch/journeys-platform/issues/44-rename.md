@@ -4,7 +4,7 @@ Status: needs-info
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: parked (Paul, 2026-09-26): Paul wants to explore a name; no feature work until one is chosen. Product order: 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`. Parked: Paul wants to explore a name; no feature work until one is chosen.
 Route: polish
 
 **Why:** Paul, 2026-09-22, item 2: "I might wanna rethink the name. Journeys is a decent name, but the domain name is almost certainly not available."

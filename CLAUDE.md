@@ -6,6 +6,8 @@
 
 Issues and specs live as local markdown files under `.scratch/<feature-slug>/`. See `docs/agents/issue-tracker.md`.
 
+The order of work lives only in `.scratch/journeys-platform/backlog.md`. Read it before choosing what to work on next, and keep it current as `docs/agents/issue-tracker.md` ("Priority") describes.
+
 ### Triage labels
 
 The five canonical triage roles, used verbatim as label strings. See `docs/agents/triage-labels.md`.
@@ -37,7 +39,7 @@ repository keeps its own base SHA, branch, verification result, and pull request
 - `CONTEXT.md` — Domain glossary; use its terms in all agent output
 - `docs/adr/` — Architecture decision records
 - `docs/agents/` — Agent-facing tracker, triage-label, planning, testing, tooling, and guardrail guidance
-- `.scratch/<feature-slug>/` — Committed specs, decisions, and ticket files (local markdown tracker)
+- `.scratch/<feature-slug>/` — Committed specs, decisions, and ticket files (local markdown tracker); `backlog.md` there is the source of truth for priority
 - `src/app/` — Next.js 16 App Router routes, layouts, and the better-auth route handler
 - `src/components/` — shadcn/ui primitives and app components
 - `src/db/` — Drizzle schema, database client (Neon in deployments, `pg` locally), and per-table data access (`projects.ts`, `journeys.ts`); every file here except `schema.ts` is `server-only`

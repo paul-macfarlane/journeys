@@ -4,7 +4,7 @@ Status: needs-info
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: parked (Paul, 2026-09-26): harness work, in its own session whenever Paul has one. Product order: 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
+Priority: see `.scratch/journeys-platform/backlog.md`. Parked: harness work, in its own session whenever Paul has one.
 Route: polish
 
 **Why:** Paul, 2026-09-22, item 10: "I'd like to Update Atlas setup, a grill me for that alone might be good."
