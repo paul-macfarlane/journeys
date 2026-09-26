@@ -141,6 +141,34 @@ Steps visited":
 - A Choice's take-rate counts every traversal of it across every Run, so a
   Choice walked twice in one Run (once each way around a loop) counts twice.
 
+**[AMENDMENT, 2026-09-26, ticket 75]** The rule above read Completion and
+abandonment off the path's last entry alone, which meant a Participant who
+backed off the Ending they had just reached counted as an abandonment. Paul's
+Q7/Q9 ruling (`CONTEXT.md` "Completion"): a Run is a **Completion** once it
+has reached an Ending at all, and a backtrack afterward does not undo that.
+The `run` table gained two additive columns the reducer (`src/lib/graph/
+run.ts`) now maintains alongside the path: `completed_at`, set the first time
+any Ending is reached and never cleared or moved later, and `ending_step_id`,
+the latest Ending the Run has reached, kept through a backtrack and replaced
+only by reaching another Ending. The analytics contract above now reads:
+
+- A Run is a Completion when `completed_at` is set, or — for a Run written
+  before this change, or by the previous code during the deploy window —
+  when its last path entry is an Ending of the document.
+- Its group (the Outcome bar, or its own bar for an untagged Ending, ticket 24) and the Step whose `ended` count it adds to come from `ending_step_id`
+  when it still names an Ending of the document, else from the same
+  last-path-entry fallback.
+- Abandonment is "never completed", read on the last path entry only, of a
+  Run that is not a Completion. `abandoned = starts - completions` is
+  unchanged. Visits and a Choice's take-rate are unchanged — the path alone.
+
+Older Runs that backtracked off an Ending before this change keep their old
+(abandoned) reading: their path was truncated when they backed away, so
+there is nothing left to backfill `ending_step_id` from. The migration
+backfills `completed_at`/`ending_step_id` only for rows where `ended_at` was
+already set (a Run still resting on an Ending), from the last entry of
+`path`.
+
 ## Considered alternatives
 
 ### Keep the no-cycles rule; seed case 1 and case 2 as Drafts that never publish

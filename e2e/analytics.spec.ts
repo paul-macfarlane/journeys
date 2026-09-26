@@ -491,3 +491,119 @@ test("analytics-direction-toggle", async ({ page, context, browser }) => {
   await expectAnchorsOn(page, { source: "bottom", target: "top" });
   await expectMapFitted(analyticsMap(page));
 });
+
+/**
+ * Ticket 75: a Run's Completion survives a backtrack off the Ending it
+ * reached, and its Outcome bar follows the latest Ending it reached — read
+ * through the Analytics tab the way `analytics-two-runs-to-different-endings`
+ * reads every other number.
+ */
+test("analytics-backtrack-after-ending", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const { projectId, journeyId } = await startJourney(page);
+  const versionId = await publishDocument(journeyId, runnerDocument());
+  const analyticsUrl = `/projects/${projectId}/journeys/${journeyId}?tab=analytics`;
+
+  // One Participant reaches "Waved through", backs off it with the in-app
+  // Back control, and leaves without choosing again.
+  const firstContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+  try {
+    const participant = await firstContext.newPage();
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    await participant.getByRole("link", { name: "Show your papers" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Waved through" }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "← Back" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+  } finally {
+    await firstContext.close();
+  }
+
+  expect(await readRuns(versionId)).toHaveLength(1);
+
+  // Reading it off the path alone would call this an abandonment on the
+  // queue Step. The reducer's own record of what the Run achieved says
+  // otherwise: a Completion, under "Waved through"'s Outcome.
+  await page.goto(analyticsUrl);
+  await openTab(page, "Analytics");
+  await expectTotals(page, {
+    starts: 1,
+    completions: 1,
+    abandoned: 0,
+    rate: "100%",
+  });
+  await expectOutcomeRow(
+    page,
+    "outcome:reached-care",
+    "Reached care",
+    1,
+    "100%",
+  );
+  await expectOutcomeRow(page, "abandoned", "Abandoned", 0, "0%");
+
+  await page.screenshot({
+    path: evidencePath(
+      "analytics-backtrack-after-ending",
+      "analytics-backtrack-after-ending.png",
+    ),
+    fullPage: true,
+  });
+
+  // A second Participant reaches "Waved through", backs off it, then
+  // reaches "Turned back": counted once, under "Turned back" only.
+  const secondContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+  try {
+    const participant = await secondContext.newPage();
+    await participant.goto(`/j/${journeyId}`);
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+    await participant.getByRole("link", { name: "Show your papers" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Waved through" }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "← Back" }).click();
+    await expect(
+      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+    ).toBeVisible();
+
+    await participant.getByRole("link", { name: "Leave the queue" }).click();
+    await expect(
+      participant.getByRole("heading", { name: "Turned back" }),
+    ).toBeVisible();
+  } finally {
+    await secondContext.close();
+  }
+
+  expect(await readRuns(versionId)).toHaveLength(2);
+
+  await page.goto(analyticsUrl);
+  await openTab(page, "Analytics");
+  await expectTotals(page, {
+    starts: 2,
+    completions: 2,
+    abandoned: 0,
+    rate: "100%",
+  });
+  await expectOutcomeRow(
+    page,
+    "outcome:reached-care",
+    "Reached care",
+    1,
+    "50%",
+  );
+  await expectOutcomeRow(page, "outcome:turned-away", "Turned away", 1, "50%");
+  await expectOutcomeRow(page, "abandoned", "Abandoned", 0, "0%");
+});

@@ -22,11 +22,27 @@ import { hasStep } from "@/lib/graph/document";
  * to makes it a backtrack rather than a Choice.
  */
 
-/** The reducer's own copy of a Run's mutable state — mirrors the `run` row. */
+/**
+ * The reducer's own copy of a Run's mutable state — mirrors the `run` row.
+ *
+ * `endedAt` is "resting on an Ending right now": set on landing on an Ending,
+ * cleared the moment the Participant leaves it (including a backtrack). The
+ * Start page's "Continue where you left off" and the resume path read it.
+ *
+ * `completedAt`, `endingStepId`, and `outcomeId` are "what the Run has
+ * achieved", which a backtrack never undoes (ticket 75). `completedAt` is set
+ * the first time any Ending is reached and never cleared or moved later.
+ * `endingStepId` is the latest Ending the Run has reached — kept through a
+ * backtrack, replaced only by reaching another Ending (the same one again, or
+ * a different one). `outcomeId` is that Ending's Outcome, or null when it is
+ * untagged.
+ */
 export type RunState = {
   path: string[];
   backtrackCount: number;
   endedAt: Date | null;
+  completedAt: Date | null;
+  endingStepId: string | null;
   outcomeId: string | null;
 };
 
@@ -55,15 +71,15 @@ function outcomeIdOf(document: GraphDocument, stepId: string): string | null {
 export function startRun(document: GraphDocument, now: Date): RunState {
   const { startStepId } = document;
   const startStep = document.steps[startStepId];
+  const ended = startStep.choices.length === 0;
 
   return {
     path: [startStepId],
     backtrackCount: 0,
-    endedAt: startStep.choices.length === 0 ? now : null,
-    outcomeId:
-      startStep.choices.length === 0
-        ? outcomeIdOf(document, startStepId)
-        : null,
+    endedAt: ended ? now : null,
+    completedAt: ended ? now : null,
+    endingStepId: ended ? startStepId : null,
+    outcomeId: ended ? outcomeIdOf(document, startStepId) : null,
   };
 }
 
@@ -88,9 +104,16 @@ export type NavigateResult =
   | { kind: "moved"; state: RunState }
   | { kind: "refused"; currentStepId: string; reason: RefusalReason };
 
-/** State for landing on `stepId`: an Ending sets both, anything else clears them. */
+/**
+ * State for landing on `stepId`, given the state being moved from.
+ * `endedAt` is set on an Ending and cleared otherwise. `completedAt`,
+ * `endingStepId`, and `outcomeId` carry forward from `previous` untouched
+ * unless `stepId` is itself an Ending, in which case they are set (or
+ * replaced) to it — `completedAt` only the first time.
+ */
 function landingState(
   document: GraphDocument,
+  previous: RunState,
   path: string[],
   backtrackCount: number,
   stepId: string,
@@ -103,7 +126,9 @@ function landingState(
     path,
     backtrackCount,
     endedAt: ended ? now : null,
-    outcomeId: ended ? outcomeIdOf(document, stepId) : null,
+    completedAt: ended ? (previous.completedAt ?? now) : previous.completedAt,
+    endingStepId: ended ? stepId : previous.endingStepId,
+    outcomeId: ended ? outcomeIdOf(document, stepId) : previous.outcomeId,
   };
 }
 
@@ -148,9 +173,13 @@ function offers(
  *    appended.
  * 7. Otherwise refused.
  *
- * Landing on an Ending (from any of these) sets `endedAt` and `outcomeId`;
- * landing anywhere else clears both. A refusal returns the unmodified
- * `currentStepId` with its reason, and changes nothing.
+ * Landing on an Ending (from any of these) sets `endedAt`, `completedAt` (the
+ * first time only), `endingStepId`, and `outcomeId`. Landing anywhere else
+ * clears `endedAt` but leaves `completedAt`, `endingStepId`, and `outcomeId`
+ * exactly as they were — a backtrack off an Ending does not undo the Run's
+ * Completion or the Outcome of the latest Ending it reached (ticket 75). A
+ * refusal returns the unmodified `currentStepId` with its reason, and changes
+ * nothing.
  */
 export function navigateTo(
   document: GraphDocument,
@@ -182,6 +211,7 @@ export function navigateTo(
       kind: "moved",
       state: landingState(
         document,
+        state,
         state.path.slice(0, at + 1),
         state.backtrackCount + 1,
         stepId,
@@ -209,6 +239,7 @@ export function navigateTo(
       kind: "moved",
       state: landingState(
         document,
+        state,
         [...state.path, stepId],
         state.backtrackCount,
         stepId,
@@ -223,6 +254,7 @@ export function navigateTo(
       kind: "moved",
       state: landingState(
         document,
+        state,
         state.path.slice(0, returningTo + 1),
         state.backtrackCount + 1,
         stepId,
@@ -254,6 +286,7 @@ export function navigateTo(
     kind: "moved",
     state: landingState(
       document,
+      state,
       [...state.path.slice(0, offeringIndex + 1), stepId],
       state.backtrackCount + 1,
       stepId,

@@ -193,6 +193,8 @@ describe("chooseFromStartAction", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     });
     expect(doubles.cookieStore.set).toHaveBeenCalledTimes(1);
@@ -221,6 +223,8 @@ describe("chooseFromStartAction", () => {
       backtrackCount: 0,
       endedAt: NOW,
       outcomeId: "reached-care",
+      completedAt: NOW,
+      endingStepId: "done",
     });
     // …the old Run neither read nor written, abandoned exactly where it was…
     expect(doubles.runs.saveRunState).not.toHaveBeenCalled();
@@ -377,6 +381,8 @@ function runOnQueue(): string {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     },
     version: {
       title: "Border Crossing",
@@ -415,6 +421,8 @@ describe("respondAndChooseAction on a deciding Prompt", () => {
       backtrackCount: 0,
       endedAt: NOW,
       outcomeId: "reached-care",
+      completedAt: NOW,
+      endingStepId: "done",
     });
     // The judge saw this Step's Response, and nothing was judged twice.
     expect(doubles.judge).toHaveBeenCalledTimes(1);
@@ -511,6 +519,8 @@ describe("respondAndChooseAction on a deciding Prompt", () => {
       backtrackCount: 0,
       endedAt: NOW,
       outcomeId: "turned-away",
+      completedAt: NOW,
+      endingStepId: "turned",
     });
   });
 });
@@ -547,6 +557,8 @@ describe("chooseFromStartAction on a deciding Prompt", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
       response: { stepId: "start", text: RESPONSE },
     });

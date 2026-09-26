@@ -294,11 +294,22 @@ export const publishedVersion = pgTable(
 // `path` is the route walked from the Start, one entry per visit — repeats
 // included since ADR-0002 — owned by the pure reducer in
 // `src/lib/graph/run.ts`; the current Step is its last entry.
-// `backtrackCount`, `endedAt`, and
-// `outcomeId` are that reducer's other state, mirrored here so a resumed Run
-// reads back exactly the state it left off at. `outcomeId` names an Outcome
-// inside the pinned version's document, not a foreign key — Outcomes live
-// inside the document (see ADR-0001), not in a table of their own.
+// `backtrackCount` and `endedAt` are that reducer's other current-position
+// state, mirrored here so a resumed Run reads back exactly the Step it left
+// off at (`endedAt` means "resting on an Ending right now"; a backtrack
+// clears it). `completedAt`, `endingStepId`, and `outcomeId` (ticket 75) are
+// what the Run has achieved rather than where it is: `completedAt` is set the
+// first time any Ending is reached and never cleared or moved later;
+// `endingStepId` is the latest Ending the Run has reached, kept through a
+// backtrack and replaced only by reaching another Ending; `outcomeId` is that
+// Ending's Outcome. Both `endingStepId` and `outcomeId` name things inside
+// the pinned version's document, not foreign keys — Steps and Outcomes live
+// inside the document (see ADR-0001), not in tables of their own. Both
+// columns are nullable and additive so code from before ticket 75 keeps
+// inserting and updating this table without them; migration 0013 backfills
+// `completed_at`/`ending_step_id` for rows that already had `ended_at` set,
+// from the last entry of `path` (the only reading available for a Run that
+// had already backtracked off an Ending before this change).
 export const run = pgTable(
   "run",
   {
@@ -315,6 +326,8 @@ export const run = pgTable(
       .notNull()
       .defaultNow(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    endingStepId: text("ending_step_id"),
     outcomeId: text("outcome_id"),
   },
   // Ticket 10's per-version analytics read every Run of a version.

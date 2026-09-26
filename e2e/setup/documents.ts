@@ -430,6 +430,9 @@ export type RunRow = {
   path: string[];
   backtrack_count: number;
   ended_at: Date | null;
+  // Ticket 75: what the Run has achieved, kept through a backtrack.
+  completed_at: Date | null;
+  ending_step_id: string | null;
   outcome_id: string | null;
 };
 
@@ -440,7 +443,7 @@ export type RunRow = {
  */
 export function readRuns(versionId: string): Promise<RunRow[]> {
   return queryE2eDatabase<RunRow>(
-    'SELECT id, participant_id, path, backtrack_count, ended_at, outcome_id FROM "run" WHERE version_id = $1 ORDER BY started_at',
+    'SELECT id, participant_id, path, backtrack_count, ended_at, completed_at, ending_step_id, outcome_id FROM "run" WHERE version_id = $1 ORDER BY started_at',
     [versionId],
   );
 }
