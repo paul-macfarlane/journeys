@@ -1,6 +1,6 @@
 # 17: Manual layout
 
-Status: ready-for-agent
+Status: wontfix
 Blocked by: 16, 21, 22
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -25,3 +25,7 @@ Verification and evidence follow `docs/agents/testing.md`: cite the exact comman
 ### Note from the ticket 21 decision (Paul, 2026-09-21)
 
 Ticket 21 adds a per-Journey `layoutDirection` to the document. Stored positions belong to the direction they were placed in: switching direction while positions exist asks with this ticket's Auto-arrange confirmation and clears every position, so the map lays itself out again in the new direction. Auto-arrange itself stays as written here (Paul: a hand-arranged map must always be able to go back to auto layout "in case they find themselves making a mess").
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+Paul, 2026-09-26: "only worth adding if someone requires it." Reopen when an Author asks for hand-placed boxes.

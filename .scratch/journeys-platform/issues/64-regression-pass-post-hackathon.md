@@ -1,6 +1,6 @@
 # 64: Post-hackathon findings from the staging regression pass
 
-Status: needs-triage
+Status: done
 Blocked by: 56
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -32,3 +32,16 @@ Route: polish
 Acceptance criteria: triage each numbered item into its own ticket or a `wontfix` line here; nothing is implemented on this ticket.
 
 Spec: `.scratch/journeys-platform/spec.md`. Origin: ticket 56's `[FINDINGS]`.
+
+## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+`[CLOSEOUT]` Every finding has a disposition:
+
+- **Ticket 78:** 1 (page titles), 2 (editor axe).
+- **Ticket 79:** 3 (fit view), 4 (image toolbar), 5 (copy link name), 6 (local timestamps), 7 (accent default), 14 (sign-up copy).
+- **Ticket 57:** 8 (placeholders).
+- **Ticket 42:** 9 (public page header), 11 (sign-in links), 12 (`metadataBase` fallback).
+- **Ticket 76:** 15 (drop the "(100%)").
+- **`wontfix`:** 10, because landing on the Start from a deep link needs no explanation; 13, because the pane's media policy is not the product (it plays in real browsers).

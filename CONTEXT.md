@@ -68,6 +68,10 @@ _Avoid_: Release, revision, snapshot
 One participant's walk through one published version, from start to an ending or abandonment. Created when a participant takes their first choice, never by merely opening the journey; pinned to the version it began on; its path is the participant's current route, not every detour.
 _Avoid_: Session, playthrough, attempt
 
+**Completion**:
+A run that has reached an ending at least once. Backtracking from the ending afterwards does not undo it; a run that never reaches an ending is abandoned. The run's outcome is that of the latest ending it reached.
+_Avoid_: Finish, success
+
 **Backtrack**:
 A participant returning to an earlier step in their run to choose differently.
 _Avoid_: Undo, rewind
@@ -75,7 +79,7 @@ _Avoid_: Undo, rewind
 ## Participation
 
 **Judge**:
-The AI reader that picks a choice for a deciding prompt's response. Sees only the step it is asked about, never an ending, an outcome, another step, or another participant's response; falls back to the participant choosing when it has no answer.
+The AI reader that picks a choice for a deciding prompt's response. Sees only the step it is asked about, never an ending, an outcome, another step, or another participant's response; may find a response unclear; when it does, or has no answer, the participant chooses instead.
 _Avoid_: AI, judge model, evaluator
 
 **Preview**:

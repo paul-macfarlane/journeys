@@ -1,6 +1,6 @@
 # 59: Production promotion gate: seed, publish, and domains
 
-Status: ready-for-human
+Status: done
 Blocked by: 56
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -34,3 +34,7 @@ No verification chain and no evidence directory: this is a human gate. Spec: `.s
 ### 2026-09-24 — Claude (Fable 5.1), domain decision and the anonymous checks
 
 The custom domain was dropped; production is `https://journeys-mvp-prod.vercel.app` (renamed from `journeys-ten-virid.vercel.app`, which still serves the same deployment). Step 1 is therefore replaced by the checklist in `human-prerequisites.md` §3–4 and §9 (new redirect URIs, `BETTER_AUTH_URL` for the staging environment). Step 2 is done: `staging` → `main` merged as PR #78 (it deleted `staging`, which Paul recreated from `96b3525`). Step 3 checked with `curl` on the new origin at 19:50 ET: `/`, `/about`, `/guide`, and `/p/00000000-5eed-4000-8000-000000000001` are 200, the Project lists Case 1, 2, and 3, and `og:image` names `journeys-mvp-prod.vercel.app`. Step 4 (the signed-in throwaway Journey) and the form remain Paul's.
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+The hackathon is over (2026-09-25); the gate served its purpose. Nothing further.

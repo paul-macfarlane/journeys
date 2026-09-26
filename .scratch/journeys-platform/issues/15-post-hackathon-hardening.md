@@ -1,6 +1,6 @@
 # 15: Post-hackathon hardening
 
-Status: needs-triage
+Status: done
 Blocked by: None (not part of the hackathon priority order; pick up after 2026-09-25)
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -32,3 +32,15 @@ Parent: `.scratch/journeys-platform/spec.md`
 Verification and evidence follow `docs/agents/testing.md`: cite the exact commands run; commit any artifact used as PASS evidence under `test-results/`; never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`.
 
 ## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+`[CLOSEOUT]` Split by theme at Paul's request (2026-09-26, Q5); this list is no longer the place to add deferrals. Each bullet's new home:
+
+- Concurrent Draft writes, Metadata forms last write wins, Corrupt-row handling → **73**.
+- Querying inside graph documents, Explicit Step order, Rate limiting and abuse protection on Runs → **72** (design review decides; nothing built until then).
+- Rich-text contract gaps (image in a list item) → **71**.
+- Deploy window → **74** (already policy in `CLAUDE.md`; closes there).
+- Accessibility pass → **78**.
+- Manual layout (17) → `wontfix`; Drag-and-drop ordering (41) → `wontfix`; SEO (42) → kept, narrowed; Renaming (44) → parked; Atlas refresh (45) → parked; Step panel sheet (53) → kept; Author pages (52) → delivered.
+- Ticket 43 leftovers → **76**.
