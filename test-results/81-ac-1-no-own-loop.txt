@@ -1,0 +1,5 @@
+# Ticket 81 AC1 — draft-editor.tsx holds no save loop of its own (at e29037d)
+$ grep -n "savingRef\|queuedRef\|timerRef\|lastSavedRef\|saveDraftAction" src/components/journeys/draft-editor.tsx
+7:import { saveDraftAction } from "@/app/projects/[projectId]/journeys/actions";
+184:      const result = await saveDraftAction(
+(only the import and the one call inside the write handed to useAutosave)
