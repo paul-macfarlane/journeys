@@ -1,19 +1,31 @@
 import { mergeAttributes, Node, wrappingInputRule } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
+import {
+  Fragment,
+  Slice,
+  type Node as ProseMirrorNode,
+  type NodeType,
+} from "@tiptap/pm/model";
+import {
+  NodeSelection,
+  Plugin,
+  PluginKey,
+  type Transaction,
+} from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
+
+/** What the Image control writes onto an image. */
+export type ImageAttrs = { src: string; alt: string; caption: string };
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     captionedImage: {
       /**
-       * Inserts an image at the cursor, or directly after the list or quote
-       * the cursor sits in, since an image cannot live inside either.
+       * Inserts an image in place of the selection, or directly after the
+       * list or quote the selection sits in, since an image cannot live
+       * inside either.
        */
-      insertImage: (attrs: {
-        src: string;
-        alt: string;
-        caption: string;
-      }) => ReturnType;
+      insertImage: (attrs: ImageAttrs) => ReturnType;
     };
   }
 }
@@ -48,8 +60,8 @@ declare module "@tiptap/core" {
  * Like `ParagraphQuote`, it sits in a group of its own that only
  * `QuoteDocument` admits (ticket 71): the stored shape gives a list item and
  * a quote paragraphs only, so an image the editor let into either vanished
- * at the next save. Inserted or pasted there, it is lifted out to the top of
- * the document instead.
+ * at the next save. Inserted, pasted, or dropped there, it goes directly
+ * after that list or quote instead (`replaceLiftingImages`).
  */
 export const CaptionedImage = Image.extend({
   group: "figure",
@@ -57,19 +69,57 @@ export const CaptionedImage = Image.extend({
   addCommands() {
     return {
       ...this.parent?.(),
-      // `insertContent` would fit the image in by splitting the list or
-      // quote at the cursor; the Image control places it after the whole
-      // block instead. A paste or drop still lands where it is aimed.
       insertImage:
         (attrs) =>
-        ({ state, commands }) => {
-          const image = { type: this.name, attrs };
-          const { $from } = state.selection;
-          return $from.depth > 1
-            ? commands.insertContentAt($from.after(1), image)
-            : commands.insertContent(image);
+        ({ state, tr, dispatch, commands }) => {
+          const image = this.type.create(attrs);
+          const { from, to } = state.selection;
+          if (!dispatch) return true;
+          return (
+            replaceLiftingImages(
+              tr,
+              from,
+              to,
+              new Slice(Fragment.from(image), 0, 0),
+              this.type,
+            ) || commands.insertContent(image.toJSON())
+          );
         },
     };
+  },
+
+  addProseMirrorPlugins() {
+    const type = this.type;
+    return [
+      ...(this.parent?.() ?? []),
+      new Plugin({
+        key: new PluginKey("liftImages"),
+        props: {
+          handlePaste(view, _event, slice) {
+            const { from, to } = view.state.selection;
+            const tr = view.state.tr;
+            if (!replaceLiftingImages(tr, from, to, slice, type)) return false;
+            view.dispatch(tr.scrollIntoView().setMeta("uiEvent", "paste"));
+            return true;
+          },
+          handleDrop(view, event, slice, moved) {
+            const target = view.posAtCoords({
+              left: event.clientX,
+              top: event.clientY,
+            });
+            if (!target) return false;
+            const tr = view.state.tr;
+            // A moved image leaves where it was, as ProseMirror's own drop
+            // does; an unhandled drop discards this transaction.
+            if (moved) tr.deleteSelection();
+            const pos = tr.mapping.map(target.pos);
+            if (!replaceLiftingImages(tr, pos, pos, slice, type)) return false;
+            view.dispatch(tr.setMeta("uiEvent", "drop"));
+            return true;
+          },
+        },
+      }),
+    ];
   },
 
   addAttributes() {
@@ -104,6 +154,76 @@ export const CaptionedImage = Image.extend({
       : ["figure", {}, img];
   },
 });
+
+/**
+ * Replaces `from`–`to` with `slice` when the range sits inside a list or a
+ * quote and the slice carries an image (ticket 71): the rest of the slice
+ * goes in where it was aimed and every image goes directly after that whole
+ * list or quote, selected, so neither is split around it. Returns false,
+ * touching nothing, for any other range or slice — ProseMirror's own fitting
+ * is right there. Only lists and quotes nest a block, so "inside one" is a
+ * depth past the document's own children.
+ */
+export function replaceLiftingImages(
+  tr: Transaction,
+  from: number,
+  to: number,
+  slice: Slice,
+  imageType: NodeType,
+): boolean {
+  const $from = tr.doc.resolve(from);
+  if ($from.depth <= 1) return false;
+  const images: ProseMirrorNode[] = [];
+  const rest = withoutImages(slice.content, imageType, images);
+  if (images.length === 0) return false;
+
+  const after = $from.after(1);
+  // A side the slice closed only because an image stood there opens as far
+  // as what is left allows, so pasted words join the item they land in; any
+  // other side keeps the openness it had, within what is left.
+  const most = Slice.maxOpen(rest);
+  const openStart =
+    slice.content.firstChild?.type === imageType
+      ? most.openStart
+      : Math.min(slice.openStart, most.openStart);
+  const openEnd =
+    slice.content.lastChild?.type === imageType
+      ? most.openEnd
+      : Math.min(slice.openEnd, most.openEnd);
+  tr.replaceRange(from, to, new Slice(rest, openStart, openEnd));
+  const $at = tr.doc.resolve(tr.mapping.map(after));
+  const at = $at.depth === 0 ? $at.pos : $at.after(1);
+  tr.insert(at, images);
+  const last = images[images.length - 1];
+  tr.setSelection(
+    NodeSelection.create(
+      tr.doc,
+      at + Fragment.from(images).size - last.nodeSize,
+    ),
+  );
+  return true;
+}
+
+/** `fragment` with every image taken out, at any depth, into `images`. */
+function withoutImages(
+  fragment: Fragment,
+  imageType: NodeType,
+  images: ProseMirrorNode[],
+): Fragment {
+  const kept: ProseMirrorNode[] = [];
+  fragment.forEach((node) => {
+    if (node.type === imageType) {
+      images.push(node);
+    } else {
+      kept.push(
+        node.isLeaf
+          ? node
+          : node.copy(withoutImages(node.content, imageType, images)),
+      );
+    }
+  });
+  return Fragment.fromArray(kept);
+}
 
 /**
  * A quote that holds paragraphs and nothing else (ticket 40), the shape
