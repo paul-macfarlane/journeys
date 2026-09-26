@@ -10,6 +10,7 @@ import { writeDraftGuarded } from "@/db/drafts";
 import { guardedWrite, type StaleWrite } from "@/db/guarded-write";
 import { getJourneyForMember } from "@/db/journeys";
 import { draft, journey, publishedVersion, user } from "@/db/schema";
+import { logUnreadable } from "@/db/unreadable";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 
@@ -70,11 +71,40 @@ export async function listVersionsForMember(
 }
 
 /** What participants see of a version: its title, description, and graph. */
-export type LiveVersion = {
+export type LiveVersion =
+  | { kind: "ok"; title: string; description: string; document: GraphDocument }
+  /**
+   * A live Published Version whose row fails the document contract (ticket
+   * 83): the runner treats it as no live version at all, and the Journey
+   * page's Versions and Analytics tabs name it in a banner instead of
+   * rendering it.
+   */
+  | { kind: "unreadable"; versionId: string; versionNumber: number };
+
+/** A `published_version` row read through the document contract, never trusted. */
+export function toLiveVersion(row: {
+  versionId: string;
+  versionNumber: number;
   title: string;
   description: string;
-  document: GraphDocument;
-};
+  document: unknown;
+}): LiveVersion {
+  const parsed = graphDocumentSchema.safeParse(row.document);
+  if (parsed.success) {
+    return {
+      kind: "ok",
+      title: row.title,
+      description: row.description,
+      document: parsed.data,
+    };
+  }
+  logUnreadable("published version", { versionId: row.versionId });
+  return {
+    kind: "unreadable",
+    versionId: row.versionId,
+    versionNumber: row.versionNumber,
+  };
+}
 
 /**
  * The version participants are walking right now, or null when the Journey
@@ -91,6 +121,8 @@ export async function getLiveVersion(
 
   const [row] = await db
     .select({
+      versionId: publishedVersion.id,
+      versionNumber: publishedVersion.versionNumber,
       title: publishedVersion.title,
       description: publishedVersion.description,
       document: publishedVersion.document,
@@ -100,9 +132,7 @@ export async function getLiveVersion(
     .where(eq(journey.id, existing.id))
     .limit(1);
 
-  return row
-    ? { ...row, document: graphDocumentSchema.parse(row.document) }
-    : null;
+  return row ? toLiveVersion(row) : null;
 }
 
 export type PublishDraftResult =
@@ -267,7 +297,32 @@ export async function unpublishJourney(
 }
 
 export type RestoreVersionResult =
-  { versionNumber: number } | StaleWrite | null;
+  | { versionNumber: number }
+  /** The version being restored fails the document contract (ticket 83). */
+  | { ok: false; unreadable: true; versionNumber: number }
+  | StaleWrite
+  | null;
+
+/** Whether a `restoreVersion` answer is the unreadable refusal. */
+export function isUnreadableVersion(
+  result: RestoreVersionResult,
+): result is { ok: false; unreadable: true; versionNumber: number } {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    (result as { unreadable?: unknown }).unreadable === true
+  );
+}
+
+/**
+ * A stored Published Version document, parsed rather than trusted (ticket
+ * 83): null for a row that fails the document contract, so `restoreVersion`
+ * can refuse it by name instead of throwing.
+ */
+export function parseVersionDocument(document: unknown): GraphDocument | null {
+  const parsed = graphDocumentSchema.safeParse(document);
+  return parsed.success ? parsed.data : null;
+}
 
 /**
  * Copies a Published Version's document into the Draft, replacing what the
@@ -314,11 +369,17 @@ export async function restoreVersion(
 
   if (!row) return null;
 
+  const document = parseVersionDocument(row.document);
+  if (document === null) {
+    logUnreadable("published version", { versionId, journeyId: existing.id });
+    return { ok: false, unreadable: true, versionNumber: row.versionNumber };
+  }
+
   // Upsert for the same reason `saveDraft` is one: a Journey whose Draft row
   // is somehow missing must get one rather than silently update nothing.
   const written = await writeDraftGuarded(
     existing.id,
-    graphDocumentSchema.parse(row.document),
+    document,
     expectedVersion,
   );
   if (!written.ok) return written.reason === "stale" ? written : null;

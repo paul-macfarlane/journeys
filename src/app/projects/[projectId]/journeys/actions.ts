@@ -17,7 +17,12 @@ import {
   updateJourney,
 } from "@/db/journeys";
 import { getProjectForMember } from "@/db/projects";
-import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
+import {
+  isUnreadableVersion,
+  publishDraft,
+  restoreVersion,
+  unpublishJourney,
+} from "@/db/versions";
 import { env } from "@/lib/env";
 import { isDeciding } from "@/lib/graph/prompt";
 import type { PublishProblem } from "@/lib/graph/validate";
@@ -359,6 +364,14 @@ export async function restoreVersionAction(
   // A version of another Journey answers like a Journey that isn't there.
   if (!restored) return { ok: false, error: "That version no longer exists" };
   if (isStale(restored)) return staleResult("draft");
+  // The version being restored fails the document contract (ticket 83):
+  // there is nothing in it to copy into the Draft.
+  if (isUnreadableVersion(restored)) {
+    return {
+      ok: false,
+      error: `Version ${restored.versionNumber} can't be read, so it can't be restored.`,
+    };
+  }
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId };

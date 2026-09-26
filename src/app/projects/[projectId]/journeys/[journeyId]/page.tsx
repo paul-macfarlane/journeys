@@ -109,36 +109,54 @@ export default async function JourneyPage({
           analyticsVersionId,
           session.user.id,
         );
-  const selectedAnalytics: SelectedVersionAnalytics | null = analyticsSource
-    ? {
-        versionId: analyticsSource.version.id,
-        document: analyticsSource.version.document,
-        analytics: analyticsForVersion(
-          analyticsSource.version.id,
-          analyticsSource.version.document,
-          analyticsSource.runs,
-        ),
-      }
-    : null;
+  const selectedAnalytics: SelectedVersionAnalytics | null =
+    analyticsSource?.kind === "ok"
+      ? {
+          versionId: analyticsSource.version.id,
+          document: analyticsSource.version.document,
+          analytics: analyticsForVersion(
+            analyticsSource.version.id,
+            analyticsSource.version.document,
+            analyticsSource.runs,
+          ),
+        }
+      : null;
+  // The selected Published Version's row fails the document contract
+  // (ticket 83): the Analytics tab names it in a banner instead of the
+  // map and chart.
+  const unreadableAnalyticsVersion =
+    analyticsSource?.kind === "unreadable"
+      ? {
+          versionId: analyticsSource.versionId,
+          versionNumber: analyticsSource.versionNumber,
+        }
+      : null;
 
   // Publish has nothing to do while participants already see exactly this:
   // the Draft, the title, and the description. An unpublished or
   // never-published Journey always has something to publish.
   const live = await getLiveVersion(projectId, journeyId, session.user.id);
+  const liveOk = live?.kind === "ok" ? live : null;
   const titleOrDescriptionPending =
-    live === null ||
-    live.title !== journey.title ||
-    live.description !== journey.description;
-  // A Draft that cannot be read is never what participants see; Publish
-  // stays on offer and refuses it with the reason.
+    liveOk === null ||
+    liveOk.title !== journey.title ||
+    liveOk.description !== journey.description;
+  // A Draft that cannot be read is never what participants see, and
+  // neither is a live version that cannot be (ticket 83); Publish stays on
+  // offer and refuses either with the reason.
   const hasUnpublishedChanges =
     titleOrDescriptionPending ||
     draft === null ||
-    !documentsEqual(draft, live.document);
+    liveOk === null ||
+    !documentsEqual(draft, liveOk.document);
+  // Named on the Versions tab, above the list, while the Journey's live
+  // pointer names a Published Version that cannot be read.
+  const unreadableLiveVersion =
+    live?.kind === "unreadable" ? { versionNumber: live.versionNumber } : null;
 
   // Responses are arranged by the Draft's Steps, or — with a Draft that
   // cannot be read — by the live version's, else not at all.
-  const responseDocument = draft ?? live?.document ?? null;
+  const responseDocument = draft ?? liveOk?.document ?? null;
   const responseGroups =
     responseDocument === null
       ? []
@@ -263,6 +281,7 @@ export default async function JourneyPage({
                     versions={versions}
                     hasUnpublishedChanges={hasUnpublishedChanges}
                     draftUpdatedAt={draftEditedAt}
+                    unreadableLive={unreadableLiveVersion}
                   />
                 ),
               },
@@ -273,6 +292,7 @@ export default async function JourneyPage({
                   <AnalyticsTab
                     versions={versions}
                     selected={selectedAnalytics}
+                    unreadable={unreadableAnalyticsVersion}
                   />
                 ),
               },

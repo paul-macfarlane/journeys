@@ -5,10 +5,16 @@ import "server-only";
 
 import { and, eq } from "drizzle-orm";
 import { cache } from "react";
+import { z } from "zod";
 
 import { db } from "@/db";
 import { journey, project, publishedVersion, response, run } from "@/db/schema";
-import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
+import { logUnreadable } from "@/db/unreadable";
+import {
+  graphDocumentSchema,
+  idSchema,
+  type GraphDocument,
+} from "@/lib/graph/document";
 import type { RunState } from "@/lib/graph/run";
 import {
   effectiveTheme,
@@ -76,8 +82,46 @@ export type PublicJourney =
       projectTitle: string;
     }
   // The unavailable screen sits in the same frame, so it carries the Theme
-  // too: a Journey taken down still belongs to a Project with a look.
+  // too: a Journey taken down still belongs to a Project with a look, and a
+  // live version that fails the document contract (ticket 83) reads the
+  // same way — a Participant never meets a 500 for it.
   | { kind: "unavailable"; theme: Theme };
+
+/**
+ * A `published_version` row read through the document contract, never
+ * trusted: a row that fails it reads as "unavailable," the same as a
+ * Journey with no live version at all (ticket 83).
+ */
+export function toPublicJourney(row: {
+  journeyId: string;
+  versionId: string;
+  title: string;
+  description: string;
+  document: unknown;
+  theme: Theme;
+  projectId: string;
+  projectTitle: string;
+}): PublicJourney {
+  const parsed = graphDocumentSchema.safeParse(row.document);
+  if (!parsed.success) {
+    logUnreadable("published version", {
+      journeyId: row.journeyId,
+      versionId: row.versionId,
+    });
+    return { kind: "unavailable", theme: row.theme };
+  }
+
+  return {
+    kind: "live",
+    versionId: row.versionId,
+    title: row.title,
+    description: row.description,
+    document: parsed.data,
+    theme: row.theme,
+    projectId: row.projectId,
+    projectTitle: row.projectTitle,
+  };
+}
 
 /**
  * What an anonymous Participant may see of a Journey by id: its live
@@ -129,16 +173,16 @@ export const getPublicJourney = cache(async function getPublicJourney(
     return { kind: "unavailable", theme };
   }
 
-  return {
-    kind: "live",
+  return toPublicJourney({
+    journeyId,
     versionId,
     title,
     description,
-    document: graphDocumentSchema.parse(document),
+    document,
     theme,
     projectId: row.projectId,
     projectTitle: row.projectTitle,
-  };
+  });
 });
 
 /**
@@ -201,6 +245,43 @@ export type RunForJourney = {
 };
 
 /**
+ * A Run's row read through the document contract, never trusted — and its
+ * `path` validated the same way (ticket 83): a Run whose Published Version
+ * document no longer parses, or whose stored path is not an array of Step
+ * ids, answers null exactly as an unknown Run id does, so the step page
+ * restarts it from the Start instead of 500ing.
+ */
+export function toRunForJourney(row: {
+  run: {
+    id: string;
+    versionId: string;
+    participantId: string;
+    path: unknown;
+    backtrackCount: number;
+    startedAt: Date;
+    endedAt: Date | null;
+    outcomeId: string | null;
+  };
+  version: { title: string; description: string; document: unknown };
+  project: { id: string; title: string };
+  theme: Theme;
+}): RunForJourney | null {
+  const document = graphDocumentSchema.safeParse(row.version.document);
+  const path = z.array(idSchema).safeParse(row.run.path);
+  if (!document.success || !path.success) {
+    logUnreadable("run", { runId: row.run.id, versionId: row.run.versionId });
+    return null;
+  }
+
+  return {
+    run: { ...row.run, path: path.data },
+    version: { ...row.version, document: document.data },
+    project: row.project,
+    theme: row.theme,
+  };
+}
+
+/**
  * The Run named by a Run cookie, together with the Published Version it is
  * pinned to — joined through `published_version` and refused (null) when
  * that version does not belong to `journeyId`, so a Run cookie minted on one
@@ -243,15 +324,7 @@ export async function getRunForJourney(
 
   if (!row) return null;
 
-  return {
-    run: row.run,
-    version: {
-      ...row.version,
-      document: graphDocumentSchema.parse(row.version.document),
-    },
-    project: row.project,
-    theme: toTheme(row.theme),
-  };
+  return toRunForJourney({ ...row, theme: toTheme(row.theme) });
 }
 
 /**

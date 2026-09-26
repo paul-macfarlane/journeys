@@ -8,6 +8,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { getJourneyForMember } from "@/db/journeys";
 import { publishedVersion, run } from "@/db/schema";
+import { logUnreadable } from "@/db/unreadable";
 import type { RunPath } from "@/lib/analytics";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 
@@ -24,14 +25,47 @@ import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
  * is all analytics reads (spec: "every metric is computed from paths").
  */
 
-export type AnalyticsSource = {
-  version: {
-    id: string;
-    versionNumber: number;
-    document: GraphDocument;
+export type AnalyticsSource =
+  | {
+      kind: "ok";
+      version: {
+        id: string;
+        versionNumber: number;
+        document: GraphDocument;
+      };
+      runs: RunPath[];
+    }
+  /**
+   * The selected Published Version's row fails the document contract
+   * (ticket 83): the Analytics tab names it in a banner instead of
+   * rendering a map for it.
+   */
+  | { kind: "unreadable"; versionId: string; versionNumber: number };
+
+/** A `published_version` row read through the document contract, never trusted. */
+export function toAnalyticsSource(
+  version: { id: string; versionNumber: number; document: unknown },
+  runs: RunPath[],
+): AnalyticsSource {
+  const parsed = graphDocumentSchema.safeParse(version.document);
+  if (parsed.success) {
+    return {
+      kind: "ok",
+      version: {
+        id: version.id,
+        versionNumber: version.versionNumber,
+        document: parsed.data,
+      },
+      runs,
+    };
+  }
+  logUnreadable("published version", { versionId: version.id });
+  return {
+    kind: "unreadable",
+    versionId: version.id,
+    versionNumber: version.versionNumber,
   };
-  runs: RunPath[];
-};
+}
 
 /**
  * One Published Version of a Journey and every Run pinned to it, for one of
@@ -71,12 +105,5 @@ export async function getAnalyticsForMember(
     .from(run)
     .where(eq(run.versionId, version.id));
 
-  return {
-    version: {
-      id: version.id,
-      versionNumber: version.versionNumber,
-      document: graphDocumentSchema.parse(version.document),
-    },
-    runs,
-  };
+  return toAnalyticsSource(version, runs);
 }

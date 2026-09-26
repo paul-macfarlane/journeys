@@ -14,7 +14,8 @@ import {
   type StaleWrite,
 } from "@/db/guarded-write";
 import { member, project } from "@/db/schema";
-import { contentSchema, type Content } from "@/lib/graph/content";
+import { logUnreadable } from "@/db/unreadable";
+import { contentSchema, emptyContent, type Content } from "@/lib/graph/content";
 import { toThemePreset, type Theme } from "@/lib/theme";
 
 /**
@@ -46,24 +47,28 @@ const projectColumns = {
 };
 
 /**
- * The description is parsed with `contentSchema` on the way out, as
- * `@/db/versions` parses a document: what reached storage went through
- * `sanitizeContent` (or migration 0007's backfill), so a row that does not
- * parse is a bug worth failing loudly on rather than rendering. The Theme's
- * preset is read more gently (`toThemePreset`): a retired preset id would
- * mean the app's palette, never a 404 on a public page.
+ * The description is read with `contentSchema.safeParse`, falling back to
+ * empty rich text on a row that fails it (ticket 83) rather than throwing:
+ * a Project's title and Theme must keep working beside a description no
+ * Author can read. The Theme's preset is read more gently still
+ * (`toThemePreset`): a retired preset id would mean the app's palette,
+ * never a 404 on a public page.
  */
-function toSummary(row: {
+export function toProjectSummary(row: {
   id: string;
   title: string;
   descriptionContent: unknown;
   themePreset: string;
   themeAccent: string | null;
 }): ProjectSummary {
+  const parsed = contentSchema.safeParse(row.descriptionContent);
+  if (!parsed.success)
+    logUnreadable("project description", { projectId: row.id });
+
   return {
     id: row.id,
     title: row.title,
-    description: contentSchema.parse(row.descriptionContent),
+    description: parsed.success ? parsed.data : emptyContent,
     theme: { preset: toThemePreset(row.themePreset), accent: row.themeAccent },
   };
 }
@@ -79,7 +84,7 @@ export async function listProjectsForAuthor(
     .where(eq(member.userId, userId))
     .orderBy(desc(project.createdAt));
 
-  return rows.map(toSummary);
+  return rows.map(toProjectSummary);
 }
 
 /**
@@ -101,7 +106,7 @@ export async function listRecentProjectsForAuthor(
     .orderBy(desc(project.updatedAt), desc(project.createdAt), desc(project.id))
     .limit(limit);
 
-  return rows.map(toSummary);
+  return rows.map(toProjectSummary);
 }
 
 /**
@@ -121,7 +126,7 @@ export async function createProject(
 
     await tx.insert(member).values({ projectId: created.id, userId });
 
-    return toSummary(created);
+    return toProjectSummary(created);
   });
 }
 
@@ -144,7 +149,7 @@ export const getProjectForMember = cache(
       .where(and(eq(project.id, projectId), eq(member.userId, userId)))
       .limit(1);
 
-    return row ? toSummary(row) : null;
+    return row ? toProjectSummary(row) : null;
   },
 );
 
@@ -167,7 +172,7 @@ export const getPublicProject = cache(
       .where(eq(project.id, projectId))
       .limit(1);
 
-    return row ? toSummary(row) : null;
+    return row ? toProjectSummary(row) : null;
   },
 );
 
@@ -237,7 +242,7 @@ async function updateProjectForMember(
     },
   );
   if (!written.ok) return written.reason === "stale" ? written : null;
-  return toSummary(written.row);
+  return toProjectSummary(written.row);
 }
 
 /**

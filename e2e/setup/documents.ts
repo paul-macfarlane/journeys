@@ -366,6 +366,37 @@ export async function publishDocument(
   return versionId;
 }
 
+/**
+ * Publishes anything at all as a Journey's live Published Version — a
+ * document the contract would refuse included — for the spec that proves
+ * an unreadable Published Version reads as unavailable to a Participant
+ * and is named on the Author's Versions and Analytics tabs, rather than
+ * 500ing (ticket 83). Sets the Journey's live pointer, as `publishDocument`
+ * does.
+ */
+export async function publishRawDocument(
+  journeyId: string,
+  json: unknown,
+): Promise<string> {
+  const versionId = randomUUID();
+
+  await queryE2eDatabase(
+    `INSERT INTO "published_version" (id, journey_id, version_number, title, description, document)
+     SELECT $1, j.id,
+            COALESCE((SELECT MAX(v.version_number) FROM "published_version" v WHERE v.journey_id = j.id), 0) + 1,
+            j.title, j.description, $3::jsonb
+     FROM "journey" j WHERE j.id = $2`,
+    [versionId, journeyId, JSON.stringify(json)],
+  );
+
+  await queryE2eDatabase(
+    'UPDATE "journey" SET live_version_id = $1 WHERE id = $2',
+    [versionId, journeyId],
+  );
+
+  return versionId;
+}
+
 /** A `run` row as the specs read it back — the whole of what a Run records. */
 export type RunRow = {
   id: string;
