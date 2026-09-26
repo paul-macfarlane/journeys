@@ -1,0 +1,196 @@
+$ pnpm exec vitest run --reporter=verbose <ticket 85 unit files> (at 7b692b6)
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 .
+
+ ✓ src/lib/run-cookies.test.ts > runCookieName > names the cookie after the Journey it belongs to 1ms
+ ✓ src/lib/run-cookies.test.ts > runCookiePath > scopes the path to that one Journey 0ms
+ ✓ src/lib/run-cookies.test.ts > participantCookieOptions > is scoped to /j, not to one Journey 0ms
+ ✓ src/lib/run-cookies.test.ts > participantCookieOptions > is always httpOnly 0ms
+ ✓ src/lib/run-cookies.test.ts > participantCookieOptions > is secure only in production 0ms
+ ✓ src/lib/run-cookies.test.ts > runCookieOptions > scopes the path to /j/<journeyId> 0ms
+ ✓ src/lib/run-cookies.test.ts > runCookieOptions > is always httpOnly 0ms
+ ✓ src/lib/run-cookies.test.ts > runCookieOptions > is secure only in production 0ms
+ ✓ src/lib/response-list.test.ts > groupResponsesByStep > lists every Step with a Prompt in walk order from the Start, empty or not 1ms
+ ✓ src/lib/response-list.test.ts > groupResponsesByStep > files each row under its Step, keeping the rows' own order 0ms
+ ✓ src/lib/response-list.test.ts > groupResponsesByStep > puts a prompted Step the Start cannot reach after the ones it can 0ms
+ ✓ src/lib/response-list.test.ts > groupResponsesByStep > keeps rows for a Step that no longer has a Prompt, or no longer exists 0ms
+ ✓ src/lib/response-list.test.ts > groupResponsesByStep > never carries a Run or Participant identifier through 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > counts starts, completions, and abandonment from the paths alone 13ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > counts every visit to a Step and the Runs that stop on it 1ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > rates each Choice by its traversals over visits to its Step 1ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > groups completed Runs by Outcome, with Abandoned last 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > orders Outcome groups by Runs, most first, then by label 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > groups an Ending with no Outcome under its own title 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > lists every Outcome and untagged Ending even when nothing reached it 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > reads all zeros and no rates for a version with no Runs 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > reads zero for a Journey whose Start is an Ending, which records no Run 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > reads every Run as abandoned when none reached an Ending 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > ignores Runs pinned to another version 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > counts a Choice once per traversal when a loop is walked twice 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > gives two Choices to the same Step the same number 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > survives a path naming a Step the version does not have 0ms
+ ✓ src/lib/analytics.test.ts > chooseVersionId > takes the version the address names 0ms
+ ✓ src/lib/analytics.test.ts > chooseVersionId > falls back to the live version, then the newest 0ms
+ ✓ src/lib/analytics.test.ts > chooseVersionId > has nothing to choose for a Journey never published 0ms
+ ✓ src/lib/analytics.test.ts > formatShare > rounds a share to a whole percent 0ms
+ ✓ src/lib/analytics.test.ts > formatShare > shows a dash when there is nothing to divide by 0ms
+ ✓ src/lib/graph/key-order.test.ts > key-order invariance (steps and outcomes) > documents differ only in key order, not in content 1ms
+ ✓ src/lib/graph/key-order.test.ts > key-order invariance (steps and outcomes) > layoutGraph places every node and edge identically 18ms
+ ✓ src/lib/graph/key-order.test.ts > key-order invariance (steps and outcomes) > mapOrder gives the same map order 4ms
+ ✓ src/lib/graph/key-order.test.ts > key-order invariance (steps and outcomes) > validateForPublish gives the same problem list 0ms
+ ✓ src/lib/graph/key-order.test.ts > key-order invariance (steps and outcomes) > analyticsForVersion gives the same numbers 1ms
+ ✓ src/lib/graph/key-order.test.ts > key-order invariance (steps and outcomes) > groupResponsesByStep gives the same groups 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > returns already-valid content unchanged 2ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > always returns content that satisfies contentSchema 4ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > refuses input that is not a document with a list of blocks 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes a blockquote nested inside a blockquote, keeping the outer one 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes a blockquote nested inside a list item 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes anything but paragraphs from a blockquote 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes a blockquote left with no paragraphs 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes a codeBlock block 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > keeps a hardBreak in a paragraph or heading, dropping anything on it 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes inline elements other than text and line breaks 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > keeps strike and underline marks, drops code, and keeps the text 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > strips a javascript: link and keeps the text 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > strips a link whose href is a relative path 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > strips a link whose href is a protocol-relative host 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > strips a link whose href is a mailto address 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > strips a link whose href is an inline data payload 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > keeps the link http://example.test/log and forces rel on it 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > keeps the link https://example.test/log and forces rel on it 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes an image whose src is a data: payload 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes an image whose src is a relative path 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > keeps an image without a caption, defaulting alt and caption to empty strings 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > trims a caption that is only whitespace down to nothing 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > reads a stored credit as the caption when no caption is present 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > keeps a captioned image with its alt text and drops attrs it does not know 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > drops attrs it does not understand 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > coerces a heading level outside 1-6 to 1 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > drops empty text and leaves an emptied paragraph in Tiptap's shape 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes a list left with no items 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > keeps a list item that nests another list 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > removes a heading nested inside a list item 0ms
+ ✓ src/lib/graph/content.test.ts > sanitizeContent > produces schema-valid content even from unfriendly input 0ms
+ ✓ src/lib/graph/content.test.ts > contentSchema > reads a stored image whose caption is still named credit 0ms
+ ✓ src/lib/graph/content.test.ts > contentSchema > reads an image with a caption and alt text unchanged 0ms
+ ✓ src/lib/graph/content.test.ts > contentSchema > prefers a present caption over a stale credit 0ms
+ ✓ src/lib/graph/content.test.ts > contentPreview > reads the paragraphs, headings, and list items in document order 0ms
+ ✓ src/lib/graph/content.test.ts > contentPreview > collapses the whitespace inside and between blocks 0ms
+ ✓ src/lib/graph/content.test.ts > contentPreview > reads a line break as a space, so the words either side stay apart 0ms
+ ✓ src/lib/graph/content.test.ts > contentPreview > has nothing to show for a Step whose content is only an image 0ms
+ ✓ src/lib/graph/content.test.ts > contentPreview > leaves content exactly the length of the limit whole 0ms
+ ✓ src/lib/graph/content.test.ts > contentPreview > cuts content one character past the limit and marks the cut 0ms
+ ✓ src/lib/graph/content.test.ts > contentPreview > cuts at the limit it is given 0ms
+ ✓ src/lib/graph/content.test.ts > textPreview > collapses whitespace and leaves text within the limit whole 0ms
+ ✓ src/lib/graph/content.test.ts > textPreview > cuts text past the limit and marks the cut, as contentPreview does 0ms
+ ✓ src/lib/graph/content.test.ts > textPreview > is empty for blank text 0ms
+ ✓ src/lib/graph/content.test.ts > isBlankContent > is blank with no blocks at all, which is what a new Project holds 0ms
+ ✓ src/lib/graph/content.test.ts > isBlankContent > is blank when every block is empty or whitespace 0ms
+ ✓ src/lib/graph/content.test.ts > isBlankContent > is not blank once a quote holds a word 0ms
+ ✓ src/lib/graph/content.test.ts > isBlankContent > is not blank once there is a word anywhere, even inside a list 0ms
+ ✓ src/lib/graph/content.test.ts > isBlankContent > is not blank with an image, which has no words to preview 0ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > case 1 parses and every Step's content sanitizes unchanged 4ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > case 2 parses and every Step's content sanitizes unchanged 3ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > case 3 parses and every Step's content sanitizes unchanged 1ms
+ ✓ src/lib/graph/content.test.ts > documents stored before ticket 40 > the large fixture parses and every Step's content sanitizes unchanged 1ms
+ ✓ src/lib/graph/content.test.ts > readStoredImageAttrs > falls back to credit as the caption when no caption is present 0ms
+ ✓ src/lib/graph/content.test.ts > readStoredImageAttrs > prefers caption over credit when both are present 0ms
+ ✓ src/lib/graph/content.test.ts > readStoredImageAttrs > reads a non-string alt (the null documents before ticket 30 stored) as an empty string 0ms
+ ✓ src/lib/graph/content.test.ts > readStoredImageAttrs > reads attrs that are not a record as entirely absent 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > finds nothing wrong with the large journey fixture 1ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > finds nothing wrong with a small, complete journey 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Start that names no Step 1ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > does not call every Step unreachable when the Start is missing 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Choice pointing at a Step that no longer exists 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Choice whose label is only whitespace 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Choice whose label is empty 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > files an unlabelled Choice after dangling targets and before unreachable Steps 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports a Step that cannot be reached from the Start 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts an Ending with no Outcome 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports an Ending tagged with an Outcome that does not exist 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > ignores an outcome id on a Step that is not an Ending 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts a two-step loop 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts a Choice that points at its own Step 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > accepts branches that merge back together 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > does not mistake a prototype method for a Step or an Outcome 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > still finds a Step or Outcome whose id happens to be a method name 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > carries the ids the canvas needs on every problem 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > reports problems grouped by rule and then breadth-first from the Start, so the list is stable 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > orders each rule's Steps breadth-first from the Start, never by key order, with unreachable Steps last by id 0ms
+ ✓ src/lib/graph/validate.test.ts > validateForPublish > gives every problem a message an Author can read 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' parses as a graph document 5ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' parses as a graph document 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' parses as a graph document 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' is publishable 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' is publishable 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' is publishable 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' starts at the Preface 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' starts at the Preface 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' starts at the Preface 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' holds every Step and Choice the legacy case has 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' holds every Step and Choice the legacy case has 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' holds every Step and Choice the legacy case has 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > case 1 and case 2 carry the legacy looping Choices, with their labels and targets 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' tags every Ending with an Outcome it defines 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' tags every Ending with an Outcome it defines 2ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' tags every Ending with an Outcome it defines 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 1' captions every image and links it over http(s) 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 2' captions every image and links it over http(s) 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded Journey Stories documents > 'Case 3' captions every image and links it over http(s) 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded demo Journey (ticket 58) > parses as a graph document and is publishable 1ms
+ ✓ src/lib/graph/validate.test.ts > the seeded demo Journey (ticket 58) > is the small map the landing page records: ten Steps, three Endings, two Outcomes, one loop 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded demo Journey (ticket 58) > carries the one image, at its committed address, with alt text and a caption 0ms
+ ✓ src/lib/graph/validate.test.ts > the seeded demo Journey (ticket 58) > asks one deciding Prompt, on the Step with three Choices 0ms
+ ✓ src/lib/graph/document.test.ts > createDraftDocument > creates a Draft holding exactly one Step 2ms
+ ✓ src/lib/graph/document.test.ts > createDraftDocument > makes that one Step the Start, with no Choices and no Outcomes 1ms
+ ✓ src/lib/graph/document.test.ts > createDraftDocument > gives the Start an empty paragraph, exactly as the editor emits it 0ms
+ ✓ src/lib/graph/document.test.ts > createDraftDocument > gives each Draft its own Start id 0ms
+ ✓ src/lib/graph/document.test.ts > createDraftDocument > parses unchanged, so what is stored is what was built 2ms
+ ✓ src/lib/graph/document.test.ts > createDraftDocument > survives a round trip through JSON unchanged 0ms
+ ✓ src/lib/graph/document.test.ts > the large journey fixture > is a real-sized journey: 44 Steps, 6 Endings, 3 Outcomes 0ms
+ ✓ src/lib/graph/document.test.ts > the large journey fixture > parses unchanged 5ms
+ ✓ src/lib/graph/document.test.ts > the large journey fixture > survives a round trip through JSON unchanged 1ms
+ ✓ src/lib/graph/document.test.ts > isEnding > calls a Step with no Choices an Ending 0ms
+ ✓ src/lib/graph/document.test.ts > isEnding > does not call a Step with Choices an Ending 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > rejects a steps key that disagrees with the Step's own id 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > rejects an outcomes key that disagrees with the Outcome's own id 1ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > rejects a Prompt of any type other than free text 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > accepts a free-text Prompt 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > defaults a Prompt's decides to false when the stored shape does not carry it (ticket 43) 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > round-trips a Prompt with decides: true 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > rejects a schema version it was not written for 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > rejects an empty Step id 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > rejects a title longer than 200 characters 0ms
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > accepts readable Step ids so the seed can use them 1ms
+ ✓ src/lib/graph/document.test.ts > layoutDirection > parses a document without the field as layoutDirection: "TB" 0ms
+ ✓ src/lib/graph/document.test.ts > layoutDirection > round-trips "LR" through the schema and prepareDocumentForWrite 1ms
+ ✓ src/lib/graph/document.test.ts > layoutDirection > refuses a layoutDirection other than "TB" or "LR" 0ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > stores the rel the contract requires, whatever the editor emitted 0ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > keeps a line break between the words around it (ticket 40) 0ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > strips a javascript link and keeps the words it wrapped 0ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > keeps an image with neither alt text nor caption, filling both with empty strings 0ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > reports a broken envelope without ever reaching the sanitizer 0ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > reports a steps key that disagrees with the Step's own id 0ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > leaves a journey whose content is already clean unchanged 2ms
+ ✓ src/lib/graph/document.test.ts > prepareDocumentForWrite > leaves a brand-new Draft unchanged 0ms
+ ✓ src/lib/graph/document.test.ts > documentsEqual > calls a document equal to a copy of itself with keys in another order 9ms
+ ✓ src/lib/graph/document.test.ts > documentsEqual > tells a Draft that changed one Step title from the version it came from 1ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > large-journey fixture still parses, with decides: false on every Prompt 1ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > legacy case-1.json still parses, with decides: false on every Prompt 1ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > legacy case-2.json still parses, with decides: false on every Prompt 2ms
+ ✓ src/lib/graph/document.test.ts > decides defaults to false on every stored Prompt (ticket 43) > legacy case-3.json still parses, with decides: false on every Prompt 0ms
+ ✓ src/lib/graph/document.test.ts > hasStep > is true for a Step the document holds 0ms
+ ✓ src/lib/graph/document.test.ts > hasStep > is false for an id the document does not hold 0ms
+ ✓ src/lib/graph/document.test.ts > hasStep > is false for a prototype key such as constructor, not a false positive from bare indexing 0ms
+ ✓ src/lib/graph/document.test.ts > hasOutcome > is true for an Outcome the document holds 0ms
+ ✓ src/lib/graph/document.test.ts > hasOutcome > is false for an id the document does not hold 0ms
+ ✓ src/lib/graph/document.test.ts > hasOutcome > is false for a prototype key such as constructor 0ms
+
+ Test Files  7 passed (7)
+      Tests  183 passed (183)
+   Start at  18:01:12
+   Duration  346ms (transform 534ms, setup 0ms, import 1.11s, tests 130ms, environment 0ms)
+

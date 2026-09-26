@@ -1,0 +1,12 @@
+$ grep -n "description" src/db/schema.ts
+113:  // The Project's description as rich text — the same closed `Content` shape
+118:  descriptionContent: jsonb("description_content")
+189:  description: text("description").notNull().default(""),
+267:    // The title and description participants saw with this version. They
+273:    description: text("description").notNull().default(""),
+exit=0
+
+No project.description column remains; the matches are journey.description, published_version.description, and the project's descriptionContent.
+
+$ git diff 4f2e8c7 --stat -- drizzle
+exit=0 (empty: no migration in this PR)
