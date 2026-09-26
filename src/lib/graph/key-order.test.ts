@@ -120,11 +120,36 @@ function buildDocument(reverseKeys: boolean): GraphDocument {
 
 /** One Run into each Ending, so every group ties with another on runs. */
 const runs: RunPath[] = [
-  { versionId: "v1", path: ["start", "left", "found"] },
-  { versionId: "v1", path: ["start", "right", "home"] },
-  { versionId: "v1", path: ["start", "left", "dead-end-a"] },
-  { versionId: "v1", path: ["start", "right", "dead-end-b"] },
-  { versionId: "v1", path: ["start", "left"] },
+  {
+    versionId: "v1",
+    path: ["start", "left", "found"],
+    completedAt: null,
+    endingStepId: null,
+  },
+  {
+    versionId: "v1",
+    path: ["start", "right", "home"],
+    completedAt: null,
+    endingStepId: null,
+  },
+  {
+    versionId: "v1",
+    path: ["start", "left", "dead-end-a"],
+    completedAt: null,
+    endingStepId: null,
+  },
+  {
+    versionId: "v1",
+    path: ["start", "right", "dead-end-b"],
+    completedAt: null,
+    endingStepId: null,
+  },
+  {
+    versionId: "v1",
+    path: ["start", "left"],
+    completedAt: null,
+    endingStepId: null,
+  },
 ];
 
 const responseRows: ResponseRow[] = [

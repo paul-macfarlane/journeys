@@ -21,8 +21,9 @@ import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
  * the Journey is resolved through `getJourneyForMember` first, and the
  * version is selected under that Journey's id, so a version id lifted from
  * another Journey answers null exactly as an unknown one does. Runs come
- * back as paths and nothing more — no participant id, no timestamps — which
- * is all analytics reads (spec: "every metric is computed from paths").
+ * back as a path plus the reducer's Completion state (`completedAt`,
+ * `endingStepId`, ticket 75) — no participant id, no other timestamp — which
+ * is all analytics reads.
  */
 
 export type AnalyticsSource =
@@ -109,7 +110,12 @@ export async function getAnalyticsForMember(
 
   // Selected by the index ticket 06 left for exactly this read.
   const runs = await db
-    .select({ versionId: run.versionId, path: run.path })
+    .select({
+      versionId: run.versionId,
+      path: run.path,
+      completedAt: run.completedAt,
+      endingStepId: run.endingStepId,
+    })
     .from(run)
     .where(eq(run.versionId, version.id));
 
