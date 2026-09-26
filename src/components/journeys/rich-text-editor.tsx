@@ -372,10 +372,9 @@ export function RichTextEditor({
     if (imageMode === "edit") {
       editor.chain().focus().updateAttributes("image", attrs).run();
     } else {
-      // `insertContent` rather than `setImage`: the caption is an attribute
-      // of this app's image node, which `setImage`'s own options do not
-      // carry.
-      editor.chain().focus().insertContent({ type: "image", attrs }).run();
+      // `insertImage` rather than `setImage`: it carries the caption, and
+      // it places the image after a list or quote the cursor sits in.
+      editor.chain().focus().insertImage(attrs).run();
     }
     setImageOpen(false);
   }

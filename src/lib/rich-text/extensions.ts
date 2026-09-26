@@ -2,6 +2,22 @@ import { mergeAttributes, Node, wrappingInputRule } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import StarterKit from "@tiptap/starter-kit";
 
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    captionedImage: {
+      /**
+       * Inserts an image at the cursor, or directly after the list or quote
+       * the cursor sits in, since an image cannot live inside either.
+       */
+      insertImage: (attrs: {
+        src: string;
+        alt: string;
+        caption: string;
+      }) => ReturnType;
+    };
+  }
+}
+
 /**
  * The two Tiptap extension sets the app shares: `richTextExtensions` is what
  * the runner renders stored rich text with, and `editorExtensions` is what
@@ -28,8 +44,34 @@ import StarterKit from "@tiptap/starter-kit";
  * reaches these extensions, and the sanitizer never writes it back; it is
  * declared here only so a document that skipped the schema still shows its
  * caption instead of silently losing the attr.
+ *
+ * Like `ParagraphQuote`, it sits in a group of its own that only
+ * `QuoteDocument` admits (ticket 71): the stored shape gives a list item and
+ * a quote paragraphs only, so an image the editor let into either vanished
+ * at the next save. Inserted or pasted there, it is lifted out to the top of
+ * the document instead.
  */
 export const CaptionedImage = Image.extend({
+  group: "figure",
+
+  addCommands() {
+    return {
+      ...this.parent?.(),
+      // `insertContent` would fit the image in by splitting the list or
+      // quote at the cursor; the Image control places it after the whole
+      // block instead. A paste or drop still lands where it is aimed.
+      insertImage:
+        (attrs) =>
+        ({ state, commands }) => {
+          const image = { type: this.name, attrs };
+          const { $from } = state.selection;
+          return $from.depth > 1
+            ? commands.insertContentAt($from.after(1), image)
+            : commands.insertContent(image);
+        },
+    };
+  },
+
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -117,11 +159,14 @@ export const ParagraphQuote = Node.create({
   },
 });
 
-/** StarterKit's document, admitting a quote beside the blocks at its top. */
+/**
+ * StarterKit's document, admitting a quote and an image beside the blocks at
+ * its top.
+ */
 export const QuoteDocument = Node.create({
   name: "doc",
   topNode: true,
-  content: "(block|quote)+",
+  content: "(block|quote|figure)+",
 });
 
 /**
