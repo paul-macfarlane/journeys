@@ -1,0 +1,7 @@
+$ grep -rni "ai authoring" .env.example README.md src docs/adr
+docs/adr/0001-graph-as-one-json-document.md:7:- Note (2026-09-26): ticket 14 (AI authoring) was withdrawn as `wontfix` before its code merged; the "projection" this ADR mentions below was never built. The decision text below is left as written.
+docs/adr/0001-graph-as-one-json-document.md:35:Journey, the runner loads a whole Published Version, the AI authoring feature
+docs/adr/0001-graph-as-one-json-document.md:114:  tests run against, the seeded content, and the shape the AI authoring feature
+exit=0
+
+Only ADR-0001 matches: the dated note (line 7) and two lines of the original decision text, which ticket 85 says not to rewrite.

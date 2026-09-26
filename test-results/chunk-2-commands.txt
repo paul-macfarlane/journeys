@@ -1,0 +1,100 @@
+Chunk 2 verified run at 7b692b6 (worktree, dummy env, e2e database journeys_e2e_c2, port 3185).
+Command: sh node_modules/.atlas-c2/run.sh sh node_modules/.atlas-c2/chain.sh
+
+## 85-AC-2 no react-query in package.json
+$ sh -c grep -c "@tanstack/react-query" package.json; true
+0
+exit=0
+
+## 74-AC-3 Skew Protection listed
+$ grep -n Skew Protection .scratch/journeys-platform/human-prerequisites.md
+132:## 14. Skew Protection (ticket 74)
+134:- [ ] Vercel → `journeys` → Settings → Advanced → turn on Skew Protection, so a tab opened before a deploy keeps loading its own build's assets.
+exit=0
+
+## format:check
+$ pnpm format:check
+
+> journeys@0.1.0 format:check .
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+exit=0
+
+## lint
+$ pnpm lint
+
+> journeys@0.1.0 lint .
+> eslint
+
+exit=0
+
+## typecheck
+$ pnpm typecheck
+
+> journeys@0.1.0 typecheck .
+> tsc --noEmit
+
+exit=0
+
+## test
+$ pnpm test
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 .
+
+
+ Test Files  52 passed (52)
+      Tests  669 passed (669)
+   Start at  17:50:44
+   Duration  2.17s (transform 2.11s, setup 0ms, import 9.10s, tests 1.15s, environment 1.52s)
+
+exit=0
+
+## build
+$ pnpm build
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+├ ƒ /projects/settings
+├ ƒ /sign-in
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+exit=0
+
+## db:migrate (journeys_e2e_c2)
+$ env DATABASE_URL=postgresql://postgres:postgres@localhost:5436/journeys_e2e_c2 pnpm db:migrate
+
+> journeys@0.1.0 db:migrate .
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file './drizzle.config.ts'
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!exit=0
+
+## e2e
+$ pnpm test:e2e:prebuilt
+  ✓  112 [chromium] › e2e/canvas.spec.ts:2783:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (10.0s)
+case-3 crossing pairs: f24a106 baseline=15 now=14
+  ✓  116 [chromium] › e2e/canvas.spec.ts:1268:7 › the seeded map › canvas-case-3-map (1.8s)
+  ✓  114 [chromium] › e2e/canvas.spec.ts:3164:7 › authoring from the map › canvas-build-left-to-right-and-walk (10.9s)
+  ✓  117 [chromium] › e2e/canvas.spec.ts:3241:7 › authoring from the map › canvas-build-branch-and-publish (4.9s)
+  ✓  115 [chromium] › e2e/canvas.spec.ts:3642:7 › undo and redo › canvas-undo-delete-direction-retarget (14.8s)
+  ✓  119 [chromium] › e2e/canvas.spec.ts:3895:5 › canvas-dark-controls (2.5s)
+  ✓  118 [chromium] › e2e/canvas.spec.ts:3300:7 › authoring from the map › canvas-undo-drawn-choice (4.9s)
+  ✓  120 [chromium] › e2e/canvas.spec.ts:3954:5 › canvas-lr-labels-apart (2.8s)
+  ✓  121 [chromium] › e2e/canvas.spec.ts:4005:5 › canvas-stacked-panel-scroll (1.8s)
+
+  121 passed (2.2m)
+exit=0
+
