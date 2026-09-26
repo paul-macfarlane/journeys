@@ -27,8 +27,8 @@ Output, as the `[CLOSEOUT]` on this ticket:
 
 Acceptance criteria:
 
-- [ ] The findings list covers all five scope areas, including any that turned up nothing.
-- [ ] Tickets 73 and 74 carry a comment naming the design they should follow.
+- [x] The findings list covers all five scope areas, including any that turned up nothing.
+- [x] Tickets 73 and 74 carry a comment naming the design they should follow.
 - [ ] Paul has approved the proposed ticket order.
 
 Use `CONTEXT.md` vocabulary. Origin: Paul's post-hackathon grilling, 2026-09-26 (Q6, Q15).
@@ -72,7 +72,7 @@ Severity: **H** means it causes or will cause a defect or blocks a planned ticke
 | W7 | L | The Theme checkbox writes the `journey` row outside the Theme fields' loop. | `journey-theme-settings.tsx:40-61` | 73, comment point 7 |
 | W8 | L | Publish depends on the editor's blur flush having dispatched the pending save before the publish action. It does (server actions run in order), but only implicitly. | `draft-editor.tsx:403-407`, `publish-controls.tsx` | `wontfix`: once 73 lands, publish sends the Draft version and refuses a mismatch, which makes the ordering explicit. |
 
-The recommendation for 73 is written as a comment on ticket 73.
+The recommendation for 73 is written as a comment on ticket 73. "Written once" there means one data-layer helper (a guarded write that answers `stale` or `not-found`) and one terminal `stale` state in the one autosave loop. The helper takes two kinds of guard, because a single counter per row fails W3: a `version` counter for the Draft, and compare-previous-value for settings fields.
 
 #### 3. Dead code and leftovers
 
@@ -94,8 +94,8 @@ No TODO, FIXME, or commented-out code; every file is imported; every `package.js
 |---|---|---|---|---|
 | T1 | M | The pure core is well covered: every `src/lib/graph` module has a test, and all 21 edit functions are tested. Gaps: `hasStep`, `hasOutcome`, `readStoredImageAttrs`, and `run-cookies.ts`. Nothing asserts results are independent of `steps` key order, which Postgres `jsonb` reorders. `validateForPublish` lists problems in raw key order. | `content.ts:158`, `validate.ts:58` | **85** |
 | T2 | H | e2e patterns that are sensitive to load: a transient "Unsaved changes" assertion, `expectSaved` passing before the status leaves "Saved" ahead of a direct database write (about 12 sites), one-shot reads, immediate negative assertions, and two specs on 20 s `toPass` blocks under the 30 s default. | `projects-and-journeys.spec.ts:622, 652`; `canvas.spec.ts:287, 1153, 1520, 1901, 2130, 2628`; `analytics.spec.ts:349` | 74, comment |
-| T3 | M | Spec helpers are copied: `readDraft` ×5 under three names, `startJourney` ×4, and the held-server-action route ×3, among about 10 others. | as listed on 74 | 74, comment |
-| T4 | L | `src/db` has no unit tests; it is covered by e2e only. | — | `wontfix`: the e2e suite runs against a real database, which is the right seam. Mocking Drizzle would test the mock. 73 and 83 add unit tests where they add pure logic. |
+| T3 | M | Spec helpers are copied: `readDraft` ×5 under three names, `startJourney` ×4, and the held-server-action route ×3, among about 10 others. | `canvas.spec.ts:91, 105, 113`, `prompts.spec.ts:58, 68`, `step-editing.spec.ts:53, 74, 82`, `projects-and-journeys.spec.ts:643, 767`, `runner.spec.ts:461`; the full list is in the comment on 74 | 74, comment |
+| T4 | L | `src/db` has no unit tests; it is covered by e2e only. | `ls src/db` shows no `*.test.ts`; `vitest.config.ts` sets no coverage thresholds | `wontfix`: the e2e suite runs against a real database, which is the right seam. Mocking Drizzle would test the mock. 73 and 83 add unit tests where they add pure logic. |
 
 #### 5. Ticket 15's design questions
 
@@ -104,16 +104,16 @@ No TODO, FIXME, or commented-out code; every file is imported; every `package.js
 | Q-order | L | Explicit Step order in the document | `steps` is a record keyed by id (`document.ts:141`). Every order the app shows is derived: `mapOrder` (`layout.ts:853`, y then x), Choice order, and breadth-first from the Start (`response-list.ts:45-55`). Analytics sorts to be stable (`analytics.ts:198`). | `wontfix` for an explicit order field: every surface already derives a meaningful order, and a stored order would be a second truth to keep in sync. The one real risk, results changing with key order, is covered by **85**'s key-order invariance test and the `validate.ts` ordering fix. |
 | Q-jsonb | L | jsonb querying | Production never queries inside a document; it loads whole rows. Analytics reads one version plus each Run's `path` through `run_version_id_idx` and computes in JS. | `wontfix`: the documents are small, and analytics is one version at a time. Revisit only if the Analytics tab measures slow on a real Journey; a GIN index then is additive. |
 | Q-corrupt | H | Corrupt-row handling | Eight throwing parses in `src/db` and no `error.tsx` or `global-error.tsx`, so a bad row is Next's default 500. A bad Published Version breaks every live Run on it. A Run's `path` is never validated. | The Draft is 73 (comment point 5); everything else is **83**. |
-| Q-abuse | H | Rate limiting and abuse | An undecided Start Response travels in the address (`j/[journeyId]/actions.ts:131`). The Judge's only limit is 1/s per key in per-instance memory, keyed by free-to-mint cookies, with no per-Run cap or budget and uncapped model input (`judge.ts:19-20`, `decide.ts:67`). Run creation is unlimited. | **84**, with two decisions for Paul |
+| Q-abuse (A1–A3) | H | Rate limiting and abuse | An undecided Start Response travels in the address (`j/[journeyId]/actions.ts:131`). The Judge's only limit is 1/s per key in per-instance memory, keyed by free-to-mint cookies, with no per-Run cap or budget and uncapped model input (`judge.ts:19-20`, `decide.ts:67`). Run creation is unlimited. | **84**, with two decisions for Paul |
 | A4 | L | The run cookie is not tied to the participant cookie | `respondAndChooseAction` treats the Run cookie as the whole credential. | `wontfix`: the cookie is a random UUID, `httpOnly`, scoped to its Journey's path (`run-cookies.ts:56-70`). Binding it to a second cookie from the same browser adds nothing against a thief who has both. |
 
 #### Tickets written
 
-- **81** One autosave loop (polish; blocks 73 in practice)
-- **82** One membership seam and one data-layer result shape (polish)
-- **83** Error pages and unreadable Published Versions (polish)
+- **81** One autosave loop (polish; 73 is now `Blocked by: 72, 81`)
+- **82** One membership seam and one data-layer result shape (contract, because membership is the authorization rule)
+- **83** Error pages and unreadable Published Versions (contract)
 - **84** Abuse limits on Runs and the Judge, and no Response in the address (contract; `needs-triage`, two decisions for Paul)
-- **85** Leftovers sweep: AI-authoring text, dead code, pure-core test gaps (polish)
+- **85** Leftovers sweep: AI-authoring text, dead code, pure-core test gaps (contract, because `schema.ts` changes)
 - **86** Split the canvas, the Draft editor, and the layout module (polish; blocked by 81)
 - Comments on **73** (the design to follow) and **74** (flake suspects, shared helpers, chunk-load placement)
 
@@ -133,5 +133,24 @@ Why this order:
 
 - Route: polish, with no code changed. Commands run: read-only `grep`, `sed`, and `find`, plus `git fetch`. No test suite was run, because nothing executable changed.
 - Evidence: this record plus the ticket files 81–86 and the comments on 73 and 74.
-- Reviewer: the orchestrator re-read each kept finding at its cited lines. The mattpocock `/code-review` pass is run on the branch diff before the PR.
-- Acceptance criteria: all five areas are covered, including those that turned up little (5, Q-order and Q-jsonb). 73 and 74 carry the design comment. Paul's approval of the order is this PR's merge.
+- Reviewer: the orchestrator re-read each kept finding at its cited lines. Then `/code-review` ran against `origin/staging` as two parallel sub-agents.
+  - **Standards:** 8 findings. Fixed:
+    - the dangling finding ids in 83 and 84;
+    - "visitor" in 83;
+    - `Route:` lines 82, 83, and 85 raised to `contract`;
+    - "edge" in 86's file name;
+    - 73 lacking a `Blocked by` edge on 81;
+    - 82's open-ended union and its "or re-export";
+    - 81's `detail: unknown`.
+
+    Kept, with the reason stated in 81: 81's unused-until-73 `baseline` parameter. Kept as a judgement call for 86 to weigh: `onEdit(command)` switching on the command.
+  - **Spec:** 7 findings. Fixed:
+    - the 73 design now covers the Draft upsert's guard, restore beside the open editor, `stale` versus `not-found`, one `adopt` shape, and the A → B → A limit of a value compare;
+    - "written once" is stated above;
+    - T3 and T4 carry evidence.
+
+    Kept: `Status: done` in this commit, as `docs/agents/issue-tracker.md` requires. Paul's approval of the order is still open (see the acceptance criteria).
+- Acceptance criteria:
+  - 1 met: all five areas are covered, including those that turned up little (Q-order, Q-jsonb).
+  - 2 met: 73 and 74 carry the design comment.
+  - 3 is **open**: Paul approves the order, or changes it, on the PR. If he changes it, the order above is amended before merge.

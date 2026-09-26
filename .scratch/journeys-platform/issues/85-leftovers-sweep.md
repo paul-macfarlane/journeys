@@ -5,9 +5,9 @@ Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: proposed by ticket 72 (2026-09-26) to go early, right after 74, because it is cheap and removes docs that now mislead; Paul to approve the order.
-Route: polish (no schema change in the first PR; see the two-deploy note)
+Route: contract (`schema.ts` changes, although this PR commits no migration; see the two-deploy note)
 
-**Why:** ticket 72, findings D1–D6 and T1. Ticket 14 (AI authoring) is `wontfix`. Its code never merged, but its text did. The deletion test also finds a few exports and one dependency with no caller.
+**Why:** ticket 72, findings D1–D5, M6, and T1. Ticket 14 (AI authoring) is `wontfix`. Its code never merged, but its text did. The deletion test also finds a few exports and one dependency with no caller.
 
 **What to build:**
 
