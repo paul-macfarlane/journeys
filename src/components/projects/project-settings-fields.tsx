@@ -57,11 +57,10 @@ export function ProjectSettingsFields({
 
   // The description's own loop. What the editor holds and what the server
   // last accepted live in the loop, not in state: neither is rendered, and
-  // the loop compares the two whenever it is asked to write. The editor is
-  // never reset from a refresh — its `resetKey` is the Project's id, which
-  // does not change — so its baseline stays the description it was opened
-  // on, and a save after another Member changed the description is refused
-  // as stale rather than overwriting theirs (ticket 73).
+  // the loop compares the two whenever it is asked to write. A save after
+  // another Member changed the description is refused as stale rather than
+  // overwriting theirs (ticket 73); a clean editor shows their change instead
+  // (below).
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const {
     status: descriptionStatus,
@@ -93,7 +92,24 @@ export function ProjectSettingsFields({
     onSaved: () => router.refresh(),
   });
   // The refresh's description, adopted only while nothing is unsaved: an
-  // edit in hand keeps the baseline it was made against.
+  // edit in hand keeps the baseline it was made against. An adopted
+  // description that differs from what was last stored is another Member's
+  // (or the Settings tab remounting on props older than its own save): the
+  // editor is reset to show it, because a baseline the screen does not show
+  // would let the next edit overwrite that change instead of being refused.
+  // Worked out while rendering (React's "adjusting state when a prop
+  // changes"), so the reset lands in the same pass as the new props.
+  const [seenDescription, setSeenDescription] = useState(description);
+  const [descriptionRevision, setDescriptionRevision] = useState(0);
+  if (seenDescription !== description) {
+    setSeenDescription(description);
+    if (
+      !descriptionAutosave.isDirty() &&
+      !sameContent(description, descriptionAutosave.lastSaved())
+    ) {
+      setDescriptionRevision((revision) => revision + 1);
+    }
+  }
   useEffect(
     () => descriptionAutosave.adopt(description),
     [descriptionAutosave, description],
@@ -129,7 +145,7 @@ export function ProjectSettingsFields({
           Description
         </p>
         <RichTextEditor
-          resetKey={projectId}
+          resetKey={`${projectId}:${descriptionRevision}`}
           label="Description"
           content={description}
           onChange={(content) => descriptionAutosave.change(content)}
