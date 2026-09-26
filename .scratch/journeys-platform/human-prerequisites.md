@@ -131,5 +131,5 @@ Paul does this himself. `/privacy` and `/terms` are live on staging and producti
 
 ## 14. Skew Protection (ticket 74)
 
-- [ ] Vercel → `journeys` → Settings → Advanced → turn on Skew Protection, so a tab opened before a deploy keeps loading its own build's assets.
+- [x] Vercel → `journeys` → Settings → Advanced → turn on Skew Protection, so a tab opened before a deploy keeps loading its own build's assets. Done by Paul, 2026-09-26.
 - Expected result: the chunk-load reload (`ChunkLoadRecovery`, `error.tsx`, `global-error.tsx`) is rarely needed. Agents never change this setting.
