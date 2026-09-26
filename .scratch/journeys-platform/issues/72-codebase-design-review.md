@@ -155,3 +155,7 @@ Why this order:
   - 1 met: all five areas are covered, including those that turned up little (Q-order, Q-jsonb).
   - 2 met: 73 and 74 carry the design comment.
   - 3 is **open**: Paul approves the order, or changes it, on the PR. If he changes it, the order above is amended before merge.
+
+### 2026-09-26 — Claude (Opus 5.5), order approved as chunks
+
+Acceptance criterion 3 is met. Paul approved the proposed order, grouped into chunks (one thread and one PR each), with three moves: 83 joins chunk 1 with 81 and 73 so the corrupt-Draft page and unreadable Published Versions share one design; 76 runs before 75 inside the runner chunk; 57 runs with 79 before 86 and 53. The backlog now holds the order; the chunk rules are in `docs/agents/issue-tracker.md` ("Priority", "Chunks").

@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: proposed by ticket 72 (2026-09-26) to go before 77 (account deletion leans on membership); Paul to approve the order.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (the membership rule is the app's authorization; behaviour-preserving, no schema change)
 
 **Why:** ticket 72, findings M1–M4. Authentication is one seam (`requireSession`, `src/lib/session.ts:20`). The membership check is not. About 15 `src/db` functions each open with `const existing = await getJourneyForMember(...); if (!existing) return null`. Three functions run separate membership joins (`getJourneyForMember` `src/db/journeys.ts:246`, `getDraftForMember` `src/db/drafts.ts:46`, `getProjectForMember` `src/db/projects.ts:132`). Three functions trust the caller to have checked first:

@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: 81
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: proposed by ticket 72 (2026-09-26) after 79, where it makes 53's sheet work easier; Paul to approve the order.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish (behaviour-preserving; no schema, auth, or route change)
 
 **Why:** ticket 72, findings S1–S4. Three modules hold most of the editor, and each mixes jobs that change for different reasons:

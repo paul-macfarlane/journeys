@@ -4,7 +4,7 @@ Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: proposed by ticket 72 (2026-09-26); Paul to approve the order.
+Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (changes how Published Versions and Runs are read)
 
 **Why:** ticket 72, finding Q-corrupt. `src/app` has no `error.tsx` and no `global-error.tsx`; only `not-found.tsx`. A thrown error anywhere reaches Next's default error page, which is unbranded and gives the Participant or Author no way back.
