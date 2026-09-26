@@ -1,6 +1,6 @@
 # 14: AI authoring
 
-Status: ready-for-agent
+Status: wontfix
 Blocked by: 08
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -26,3 +26,7 @@ Provider wiring moves from the AI SDK's Anthropic provider to the Vercel AI Gate
 ### 2026-09-24 — Claude Opus 5.5, noted for Paul
 
 Paul will try this as a spike in its own thread and worktree, to see how well whole-Draft generation works before deciding whether it ships. The spike does not block 38 or 54, and they do not wait for it. If the spike lands, ticket 54's feature list names it.
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+`[SCOPE CHANGE]` Paul, 2026-09-26: AI authoring is cut ("I don't want to encourage AI writing for the stories"). Whole-Draft generation will not ship. Branch `feat/14-ai-authoring` is kept unmerged as a reference: its per-Step rewrite (`04d1b5a`, `2b44c83`) is the starting point for ticket 80, AI editing (proofread and tighten, each change reviewed before it applies).

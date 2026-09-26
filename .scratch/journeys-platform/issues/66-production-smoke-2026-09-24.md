@@ -1,6 +1,6 @@
 # 66: Production smoke test, 2026-09-24
 
-Status: needs-triage
+Status: done
 Blocked by:
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -35,3 +35,15 @@ Route: polish (no code; findings become tickets)
 Acceptance criteria: triage items 3–9 into tickets or `wontfix` lines here; items 1 and 2 are handled as stated.
 
 Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul, 2026-09-24, "smoke test of prod".
+
+## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), post-hackathon triage
+
+`[CLOSEOUT]` Items 1 and 2 were handled at the time. The rest:
+
+- **Ticket 42:** 1's seed follow-up (explicit `position`), 4 (404 for unavailable pages), 5 (robots and sitemap).
+- **Ticket 74:** 3 (`ChunkLoadError`).
+- **Ticket 75:** 6 (Completion survives Back; decided 2026-09-26).
+- **Ticket 79:** 7 (Add choice hand-off).
+- **No change:** 8 (the demo Journey is a Draft by design), 9 (DOM order is fine).

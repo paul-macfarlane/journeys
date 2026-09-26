@@ -4,7 +4,7 @@ Status: needs-info
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
-Priority: staging feedback round 3 (Paul, 2026-09-22, grilled the same day): sweep 1 (hackathon) 33 → 34 → 35 → 36 → 37; sweep 2 (nice to have before the judges) 38 → 39 → 40 → 43; sweep 3 (post-hackathon) 41 → 42 → 44 → **45**. 14 stays available; 17 is post-hackathon. Any time Paul has a session for it. Harness work, not app work.
+Priority: parked (Paul, 2026-09-26): harness work, in its own session whenever Paul has one. Product order: 71 → 72 → 73 → 74 → 75 → 76 → 77 → 42 → 78 → 79 → 53 → 57 → 80; parked 44, 39, 45.
 Route: polish
 
 **Why:** Paul, 2026-09-22, item 10: "I'd like to Update Atlas setup, a grill me for that alone might be good."
