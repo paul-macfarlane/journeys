@@ -1,3 +1,4 @@
+import { CannotBeRead } from "@/components/cannot-be-read";
 import { AnalyticsCanvas } from "@/components/journeys/analytics-canvas";
 import { AnalyticsVersionSelect } from "@/components/journeys/analytics-version-select";
 import type { VersionSummary } from "@/db/versions";
@@ -30,13 +31,20 @@ export type SelectedVersionAnalytics = {
 export function AnalyticsTab({
   versions,
   selected,
+  unreadable,
 }: {
   /** Newest first. Empty for a Journey never published. */
   versions: VersionSummary[];
-  /** Null exactly when there is no version to read. */
+  /** Null exactly when there is no readable version selected. */
   selected: SelectedVersionAnalytics | null;
+  /**
+   * The selected Published Version, when its row fails the document
+   * contract (ticket 83): named in a banner in place of the map and chart.
+   * Every other version — the selector included — still works.
+   */
+  unreadable: { versionId: string; versionNumber: number } | null;
 }) {
-  if (versions.length === 0 || selected === null) {
+  if (versions.length === 0) {
     return (
       <section aria-label="Analytics" className="flex flex-col gap-2">
         <p className="text-muted-foreground">
@@ -47,14 +55,14 @@ export function AnalyticsTab({
     );
   }
 
-  const { analytics } = selected;
-
   return (
     <section aria-label="Analytics" className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <AnalyticsVersionSelect
           versions={versions}
-          selectedId={selected.versionId}
+          selectedId={
+            selected?.versionId ?? unreadable?.versionId ?? versions[0].id
+          }
         />
         <p className="text-muted-foreground text-sm">
           Every number is computed from runs of this version alone. Runs are
@@ -62,16 +70,33 @@ export function AnalyticsTab({
         </p>
       </div>
 
-      <Totals analytics={analytics} />
+      {unreadable ? (
+        <CannotBeRead
+          title={`Version ${unreadable.versionNumber} can't be read`}
+        >
+          <p>
+            Version {unreadable.versionNumber} is stored in a shape analytics
+            can&apos;t read. Choose another version above to see its numbers.
+          </p>
+        </CannotBeRead>
+      ) : selected ? (
+        <>
+          <Totals analytics={selected.analytics} />
 
-      {/* Remounted per version, so the map fits the version it now shows. */}
-      <AnalyticsCanvas
-        key={selected.versionId}
-        document={selected.document}
-        analytics={analytics}
-      />
+          {/* Remounted per version, so the map fits the version it now
+              shows. */}
+          <AnalyticsCanvas
+            key={selected.versionId}
+            document={selected.document}
+            analytics={selected.analytics}
+          />
 
-      <OutcomeChart groups={analytics.outcomes} starts={analytics.starts} />
+          <OutcomeChart
+            groups={selected.analytics.outcomes}
+            starts={selected.analytics.starts}
+          />
+        </>
+      ) : null}
     </section>
   );
 }

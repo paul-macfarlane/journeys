@@ -1,8 +1,8 @@
 # 73: Stale saves are refused, never silently overwritten
 
-Status: ready-for-agent
+Status: done
 Blocked by: 72, 81
-Owner:
+Owner: Claude Opus 5.5 (chunk 1, `feat/chunk-1-saves-and-unreadable-rows`)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (schema and every write path)
@@ -88,3 +88,97 @@ Ticket 72 reviewed the write path. Follow this design; each point cites 72's fin
 **6. Result shape.** Add `stale` to the data-layer failure union that ticket 82 standardises. If 82 has not landed, add it as `{ ok: false, reason: "stale" }` so 82 can fold the rest in around it.
 
 **7. Writes outside the loop.** These use the same helper and the same compare-previous-value guard, not a third mechanism. The Journey's "Use the Project's Theme" checkbox writes the `journey` row through `useOptimistic`, beside the Theme fields' own loop (`journey-theme-settings.tsx:40-61`). It sends the preset it replaced as its guard, and a stale answer shows the same message. Account settings (`author-settings.tsx`) edit the Author's own row, not a shared one, so they stay out of scope.
+
+### [EXECUTION PLAN] 2026-09-26 — Claude Opus 5.5 (`/atlas-implement`, chunk 1, Route: contract)
+
+Chunk 1 ("Saves and unreadable rows": 81 → 73 → 83) is one work package on `feat/chunk-1-saves-and-unreadable-rows` (off `origin/staging` at `ebb8178`), one PR to `staging`, in the worktree `.claude/worktrees/chunk-1-saves/journeys` with a dummy env (never `.env.local`), e2e on port 3181 against `journeys_e2e_c1`. Three sequential deliverables, one worker each: D1 = ticket 81 (opus), D2 = this ticket (opus), D3 = ticket 83 (sonnet). Sequential because D2 and D3 both edit `src/db/versions.ts`, `src/db/projects.ts`, the Journey page, and `e2e/setup/documents.ts`, and 83 reuses this ticket's "cannot be read" notice; D1 could run beside D3 but two `next build` + Playwright runs on one Mac fail unrelated specs.
+
+**Resolved decisions (this ticket's 2026-09-26 design comment is followed as written; these fill its gaps).**
+
+- Migration `drizzle/0011_draft_version.sql`: `ALTER TABLE "draft" ADD COLUMN "version" integer DEFAULT 0 NOT NULL`. Proof against the previous code: after `pnpm db:migrate`, the exact upsert the deployed `saveDraft` issues (no `version` column) is run against the migrated database and succeeds — captured to `test-results/73-ac-migration.txt`.
+- The data-layer helper is `guardedWrite` in `src/db/guarded-write.ts`: it takes the guarded statement (returning rows) and an existence re-read, and answers `{ ok: true, row } | { ok: false, reason: "stale" } | { ok: false, reason: "not-found" }`. Every guarded write (`saveDraft`, `restoreVersion`, `publishDraft`'s check, `updateProjectForMember`, the new `updateJourneyForMember`) goes through it. Ticket 82 has not landed, so `stale` is added as `{ ok: false, reason: "stale" }`.
+- Loop: `SaveStatus` gains terminal `stale`; the write result gains `{ kind: "stale" }`. `STATUS_TEXT.stale` is the generic sentence and `staleText(noun)` names the surface ("Someone else changed this draft since you opened it. Reload to see their changes."). The Reload button is `useAutosave`'s `reload()`: it detaches the loop's `beforeunload` guard, then `window.location.reload()`, so the Member who chose Reload is not asked again; an accidental navigation while stale is still asked (`unload()` writes nothing, returns true).
+- Settings guards compare previous values per field through `IS NOT DISTINCT FROM` (jsonb for the Content description); the action receives `(id, next, baseline)`, runs both through the same schema, and sends only fields whose stored value differs. The Theme checkbox sends the preset it replaced.
+- Corrupt Draft: `getDraftForMember` answers `{ kind: "ok", document, version, updatedAt } | { kind: "unreadable", version, updatedAt } | null`. The Journey page keeps its header and tabs; the Editor tab shows the shared `CannotBeRead` notice (`src/components/cannot-be-read.tsx`, which 83 reuses) naming the Journey, with "Restore from Version N" (newest Published Version, through `RestoreVersionDialog` carrying the unreadable row's version) or, with none, what happened. Publish refuses an unreadable Draft server-side.
+- e2e helpers: `writeRawDraftRow(journeyId, json, version?)` in `e2e/setup/documents.ts` seeds the bad row.
+
+**Verification map** (`docs/agents/testing.md`, contract; the chain runs once at the chunk's end):
+
+| Criterion | Proof | Evidence | Earliest |
+|---|---|---|---|
+| AC1 two contexts, Draft; refusal, edit kept, Reload shows A's change | e2e `draft-stale-save` | `test-results/draft-stale-save/` | after D2 |
+| AC2 Project title in two contexts | e2e `settings-stale-save` | `test-results/settings-stale-save/` | after D2 |
+| AC3 a lone Member never sees it | existing autosave/undo specs unchanged in the full run; loop unit tests | `test-results/chunk-1-commands.txt` | end of chunk |
+| AC4 corrupt Draft row → recovery page, Restore works | unit (`drafts` result mapping) + e2e `draft-unreadable` seeded with a bad row | `test-results/draft-unreadable/`, unit line in commands | after D2 |
+| AC5 ticket 15's three bullets closed | static read of `15-post-hackathon-hardening.md` | `test-results/73-ac-5-ticket-15.txt` | after D2 |
+| Migration works with the previous code | `pnpm db:migrate` + old upsert against the migrated database | `test-results/73-ac-migration.txt` | after D2 |
+| ADR-0001 amended | `docs/adr/0001-*.md` amendment section | in the diff | after D2 |
+| Chain | `pnpm format:check; pnpm lint; pnpm typecheck; pnpm test; pnpm db:migrate; E2E_EVIDENCE=draft-stale-save,settings-stale-save,draft-unreadable,unreadable-version pnpm test:e2e` | `test-results/chunk-1-commands.txt` | end of chunk |
+
+Human gates: none before dispatch. Announced for later: Paul merges the PR (Migrate runs on `staging`), runs `pnpm db:migrate` on his dev database, and smokes staging.
+
+### [AI CODE REVIEW] 2026-09-26 — two readers (correctness and spec; coding standards), diff `ebb8178...b72a3de`, judged by the orchestrator
+
+*Correctness and spec:*
+
+- **Blocking, fixed in 5adb888.** A lone Member clicking Publish straight after typing was refused as stale. The blur started a save at version N, publish sent N, and the save committed N+1 first. Publish and Restore now await the open editor's flush, through the new `draft-version.tsx` scope, and then read the held version from a ref. The new e2e `draft-publish-right-after-edit` proves it; a red run was confirmed first.
+- **Non-blocking, all fixed in 5adb888:**
+  - An adopt during an in-flight write was undone when the write landed. A per-field `rebase` now keeps the adopted baseline for fields the write did not change.
+  - A retired Theme preset went stale forever. The preset guard now also passes when the stored preset is no longer valid.
+  - An unreadable Project description went stale on every edit. The description guard is skipped when the stored value fails the contract, and this is logged.
+  - The Journey Theme checkbox guarded with a prop older than the Member's own Theme save. It now holds the last acknowledged override.
+  - The Project description loop never adopted. It now adopts when clean, and e29037d resets the editor so the screen shows the adopted baseline; without that, the next edit could have overwritten another Member's change.
+  - The Draft version schema had no upper bound. It is now capped at the int4 maximum.
+- **Rejected:** returning the stored Draft document as `saved`. The guard is the counter, and adoption behaves as before.
+
+*Standards:*
+
+- **Fixed in 5adb888:**
+  - "unreadable" is now `reason: "unreadable"`, like `stale`.
+  - A shared `rowExists`.
+  - The draft-version context moved out of `publish-controls.tsx`.
+  - `keepEditedFields` now documents that it compares with `===`.
+  - Comment and header corrections.
+  - The `stale: undefined` placeholder is gone.
+- **Rejected:** importing `emptyContent` into `schema.ts`. It keeps its literal default and imports only types from `src/lib`.
+
+Conformity: every AC and design point (1–7, 3a–3c) is met after the fixes. Approved deviations:
+- `PublishScope` carries the Draft version the Member holds.
+- The editor ignores renders older than its stored version.
+- `useAutosavedForm`'s `noun` is optional, because Account settings cannot go stale.
+- The preview redirects on an unreadable Draft.
+- A stale publish shows the sentence as text.
+- `ActionResult` failures carry `stale?: true`, with the sentence as `error`.
+
+### [CLOSEOUT] 2026-09-26 — Claude Opus 5.5 (`/atlas-implement`, chunk 1, Route: contract)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/101 (base `staging`, comparison SHA `ebb8178`), shared with 81 and 83. Status set to `done` in this commit; merging the PR is Paul's acceptance. State log: ready-for-agent → in-progress → ai-review → ready-for-human → done (this commit). The backlog's "Blocked by 81" note is dropped because 81 closed on this branch.
+
+**Deliverables.**
+- D2, worker (opus): 95c5435.
+- F1 review fixes, worker (opus): 5adb888.
+- Orchestrator fix: e29037d, the description editor reset.
+
+**Seams.**
+- `src/db/guarded-write.ts`: `guardedWrite`, `changedFields`, `stillHolds`, `stillHoldsOrRetired`, `rowExists`.
+- The loop's terminal `stale`, a per-field `keep`/`rebase`, and `current` following a `saved` value.
+- `StaleNotice` with Reload, which skips the unload prompt.
+- `getDraftForMember` → `ok | unreadable | null`, with the `CannotBeRead` notice.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| Two contexts on one Draft: A saves; B's next save is refused with the message and B's edit stays; after Reload B sees A's change | PASS | `test-results/draft-stale-save/draft-stale-save.png` (viewed), e2e `draft-stale-save` |
+| The same for a Project title | PASS | `test-results/settings-stale-save/settings-stale-save.png` (viewed) |
+| A Member editing alone never sees the message, including rapid autosaves and undo/redo | PASS | full e2e 120/120 with every existing autosave and undo spec unchanged, plus `draft-publish-right-after-edit`; `test-results/chunk-1-commands.txt` |
+| A Draft row that fails the schema renders the recovery page, and Restore works from it | PASS | `src/db/drafts.test.ts`; e2e `draft-unreadable` (status 200, restore, row equals Version 1 at version 3→4); `test-results/draft-unreadable/draft-unreadable.png` (viewed) |
+| Ticket 15's three bullets are closed | PASS | `test-results/73-ac-5-ticket-15.txt` |
+| `pnpm db:migrate` and proof against the previous code | PASS | `test-results/73-ac-migration.txt`; chain `db:migrate` exit 0 |
+| ADR-0001 amendment | PASS | `docs/adr/0001-graph-as-one-json-document.md` |
+
+**Verified run command.** Commit e29037d: format:check, lint, typecheck, unit 616/616, `db:migrate`, `E2E_EVIDENCE=draft-stale-save,settings-stale-save,draft-unreadable,unreadable-version pnpm test:e2e` 120/120 with 0 flaky; every step `exit=0`.
+
+**Deploy window (for Paul).** Saves from the previously deployed build do not bump `draft.version`. For the minutes the old and new builds overlap, an old-build save cannot make a new-build save stale. After that, every write is guarded.
+
+**Remaining risk.** A value compare cannot see A → B → A, which the ADR amendment records. No e2e covers two Members editing the Project description (rich text); the reset is unit-reasoned and covered only by the Settings specs passing.
+
+**Paul owes.** Merge #101; run `pnpm db:migrate` on the dev database; smoke staging: two tabs on one Draft, and Publish right after typing.

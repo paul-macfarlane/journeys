@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   editProjectDescriptionAction,
@@ -10,10 +10,11 @@ import {
 import { useAutosave } from "@/components/autosave";
 import { useAutosavedForm } from "@/components/autosaved-form";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
+import { StaleNotice } from "@/components/stale-notice";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { STATUS_TEXT, type SaveStatus } from "@/lib/autosave";
-import type { Content } from "@/lib/graph/content";
+import { sanitizeContent, type Content } from "@/lib/graph/content";
 import {
   renameProjectSchema,
   type RenameProjectInput,
@@ -25,8 +26,10 @@ import {
  * form field (see `useAutosavedForm`); the description is rich text (ticket
  * 07), written in the same editor a Step's content is and saved by the same
  * loop (`useAutosave`), when what it holds differs from what was last
- * stored. One status line under the two says where the pair stands. The
- * Project is addressed by its id, so a rename never moves the page.
+ * stored. One status line under the two says where the pair stands; a save
+ * another Member's change made stale replaces it with the notice and a
+ * Reload (ticket 73). The Project is addressed by its id, so a rename never
+ * moves the page.
  */
 export function ProjectSettingsFields({
   projectId,
@@ -39,46 +42,78 @@ export function ProjectSettingsFields({
 }) {
   const router = useRouter();
   const values = useMemo<RenameProjectInput>(() => ({ title }), [title]);
-  const { form, status, change, flush, handleEnterKeyDown } = useAutosavedForm({
-    schema: renameProjectSchema,
-    values,
-    submit: (next) => renameProjectAction(projectId, next),
-    // The header above the tabs and the Delete confirmation read the title
-    // off the page's own props.
-    onSaved: () => router.refresh(),
-  });
+  const { form, status, stale, change, flush, handleEnterKeyDown } =
+    useAutosavedForm({
+      schema: renameProjectSchema,
+      values,
+      noun: "project",
+      submit: (next, baseline) =>
+        renameProjectAction(projectId, next, baseline),
+      // The header above the tabs and the Delete confirmation read the title
+      // off the page's own props.
+      onSaved: () => router.refresh(),
+    });
   const { errors } = form.formState;
 
   // The description's own loop. What the editor holds and what the server
   // last accepted live in the loop, not in state: neither is rendered, and
-  // the loop compares the two whenever it is asked to write. The editor is
-  // never reset from a refresh — its `resetKey` is the Project's id, which
-  // does not change — so another Member's edit arriving mid-typing is
-  // overwritten by this Author's next save, as last write wins on the
-  // title too.
+  // the loop compares the two whenever it is asked to write. A save after
+  // another Member changed the description is refused as stale rather than
+  // overwriting theirs (ticket 73); a clean editor shows their change instead
+  // (below).
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
-  const { status: descriptionStatus, autosave: descriptionAutosave } =
-    useAutosave<Content>({
-      initial: description,
-      equals: sameContent,
-      write: async (next) => {
-        const result = await editProjectDescriptionAction(
-          projectId,
-          next,
-        ).catch(() => ({
-          ok: false as const,
-          error: "the server could not be reached",
-        }));
-        if (!result.ok) {
-          setDescriptionError(`Couldn't save: ${result.error}`);
-          return false;
-        }
-        setDescriptionError(null);
-        return true;
-      },
-      // The header above the tabs shows the description's opening line.
-      onSaved: () => router.refresh(),
-    });
+  const {
+    status: descriptionStatus,
+    autosave: descriptionAutosave,
+    reload: reloadDescription,
+  } = useAutosave<Content>({
+    initial: description,
+    equals: sameContent,
+    write: async (next, baseline) => {
+      const result = await editProjectDescriptionAction(
+        projectId,
+        next,
+        baseline,
+      );
+      if (!result.ok) {
+        return result.stale
+          ? { kind: "stale" }
+          : { kind: "refused", error: result.error };
+      }
+      setDescriptionError(null);
+      // The baseline the next save is guarded by is what the server
+      // stored, which is the content cleaned the way it cleans it.
+      const stored = sanitizeContent(next);
+      return { kind: "saved", saved: stored.ok ? stored.content : next };
+    },
+    onRefused: (result) =>
+      setDescriptionError(`Couldn't save: ${result.error}`),
+    // The header above the tabs shows the description's opening line.
+    onSaved: () => router.refresh(),
+  });
+  // The refresh's description, adopted only while nothing is unsaved: an
+  // edit in hand keeps the baseline it was made against. An adopted
+  // description that differs from what was last stored is another Member's
+  // (or the Settings tab remounting on props older than its own save): the
+  // editor is reset to show it, because a baseline the screen does not show
+  // would let the next edit overwrite that change instead of being refused.
+  // Worked out while rendering (React's "adjusting state when a prop
+  // changes"), so the reset lands in the same pass as the new props.
+  const [seenDescription, setSeenDescription] = useState(description);
+  const [descriptionRevision, setDescriptionRevision] = useState(0);
+  if (seenDescription !== description) {
+    setSeenDescription(description);
+    if (
+      !descriptionAutosave.isDirty() &&
+      !sameContent(description, descriptionAutosave.lastSaved())
+    ) {
+      setDescriptionRevision((revision) => revision + 1);
+    }
+  }
+  useEffect(
+    () => descriptionAutosave.adopt(description),
+    [descriptionAutosave, description],
+  );
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
@@ -110,7 +145,7 @@ export function ProjectSettingsFields({
           Description
         </p>
         <RichTextEditor
-          resetKey={projectId}
+          resetKey={`${projectId}:${descriptionRevision}`}
           label="Description"
           content={description}
           onChange={(content) => descriptionAutosave.change(content)}
@@ -126,25 +161,33 @@ export function ProjectSettingsFields({
         ) : null}
       </div>
 
-      <p className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
-        <span role="status">
-          {STATUS_TEXT[combinedStatus(status, descriptionStatus)]}
-        </span>
-        <span>
-          Every member sees your changes; the project&apos;s address stays the
-          same.
-        </span>
-      </p>
+      {stale || descriptionStatus === "stale" ? (
+        <StaleNotice
+          noun="project"
+          onReload={stale ? stale.reload : reloadDescription}
+        />
+      ) : (
+        <p className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
+          <span role="status">
+            {STATUS_TEXT[combinedStatus(status, descriptionStatus)]}
+          </span>
+          <span>
+            Every member sees your changes; the project&apos;s address stays the
+            same.
+          </span>
+        </p>
+      )}
     </div>
   );
 }
 
 /**
- * Two surfaces, one line: anything still unsaved is what the Author needs
- * to know about, then anything still being written, and "Saved" only when
- * both have landed.
+ * Two surfaces, one line: a save refused as stale first, since nothing more
+ * will be saved until the Author reloads; then anything still unsaved, then
+ * anything still being written, and "Saved" only when both have landed.
  */
 function combinedStatus(a: SaveStatus, b: SaveStatus): SaveStatus {
+  if (a === "stale" || b === "stale") return "stale";
   if (a === "unsaved" || b === "unsaved") return "unsaved";
   if (a === "saving" || b === "saving") return "saving";
   return "saved";

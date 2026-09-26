@@ -1,8 +1,8 @@
 # 81: One autosave loop
 
-Status: ready-for-agent
+Status: done
 Blocked by: None
-Owner:
+Owner: Claude Opus 5.5 (chunk 1, `feat/chunk-1-saves-and-unreadable-rows`)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish (no schema, auth, or route change; behaviour-preserving)
@@ -28,3 +28,23 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`polish`). Use `CONTEXT.md` vocabulary. Origin: ticket 72.
 
 ## Comments
+
+### [CLOSEOUT] 2026-09-26 — Claude Opus 5.5 (`/atlas-implement`, chunk 1, Route: polish within a contract chunk)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/101 (base `staging`, comparison SHA `ebb8178`), shared with tickets 73 and 83 (chunk 1). Status set to `done` in this commit; merging the PR is Paul's acceptance. State log: ready-for-agent → in-progress → ai-review → ready-for-human → done (this commit).
+
+**Deliverable.** D1, one worker (opus): commit 03fd38e. Review follow-ups for the shared loop landed with 73's fixes (5adb888).
+
+**Unload choice (asked for above).** `unload()` goes through the single-flight path. While a write is in flight it sets the loop's queue flag, so the running write goes round once more with the newest value, and returns true. Otherwise it starts the loop's save without waiting and returns true. It never calls `write` directly.
+
+**Stable unmount (W6).** Proven by `src/components/autosave.test.tsx`: a re-render with new handler identities keeps the loop and writes nothing, and unmount writes the unsaved edit.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| `draft-editor.tsx` holds no save loop of its own | PASS | `test-results/81-ac-1-no-own-loop.txt` (only the import and the call inside `write`) |
+| `autosave.test.ts` covers the widened contract (refusal → `onRefused`, `saved` replaces `lastSaved`, `baseline` is the last saved value, no unload write beside an in-flight one) | PASS | `test-results/81-ac-2-autosave-unit.txt` (26/26 at e29037d) |
+| Existing Draft, undo/redo, canvas, and metadata specs pass unchanged, plus one full `pnpm test:e2e` | PASS | `test-results/chunk-1-commands.txt` (120/120, 0 flaky) |
+
+**Reviewer verdict.** The chunk's two AI readers found no defect in 81's slice. Two accepted deviations: a `refusedBySchema` ref tells a schema refusal from a server one in `useAutosavedForm`, and the adopt effect sets state from the ref it just wrote, to satisfy the React compiler lint.
+
+**Verified run command.** `sh node_modules/.atlas-c1/run.sh sh chain.sh` (format:check, lint, typecheck, test, db:migrate, `E2E_EVIDENCE=… pnpm test:e2e`), every step `exit=0`.

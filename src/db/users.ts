@@ -8,8 +8,9 @@ import { cache } from "react";
 
 import { db } from "@/db";
 import { journey, member, project, user } from "@/db/schema";
+import { logUnreadable } from "@/db/unreadable";
 import { readAuthorLinks, type AuthorLink } from "@/lib/author";
-import { contentSchema, type Content } from "@/lib/graph/content";
+import { contentSchema, emptyContent, type Content } from "@/lib/graph/content";
 
 /**
  * Data access for an Author's account fields (ticket 52): the display name,
@@ -169,6 +170,28 @@ export type PublicAuthorProject = {
 };
 
 /**
+ * A Project row an Author's public page lists, with its description read
+ * with `contentSchema.safeParse` — empty rich text on a row that fails it
+ * (ticket 83), rather than a throw, so the Project still lists with its
+ * title and link.
+ */
+export function toPublicAuthorProject(row: {
+  id: string;
+  title: string;
+  descriptionContent: unknown;
+}): PublicAuthorProject {
+  const parsed = contentSchema.safeParse(row.descriptionContent);
+  if (!parsed.success)
+    logUnreadable("project description", { projectId: row.id });
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: parsed.success ? parsed.data : emptyContent,
+  };
+}
+
+/**
  * The Projects an Author's public page lists: every Project they are a
  * Member of that has at least one Journey with a live Published Version, in
  * the same order `listRecentProjectsForAuthor` in `@/db/projects` uses
@@ -202,11 +225,7 @@ export async function listPublicProjectsForAuthor(
       desc(project.id),
     );
 
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    description: contentSchema.parse(row.descriptionContent),
-  }));
+  return rows.map(toPublicAuthorProject);
 }
 
 export type PublicAuthorSummary = {

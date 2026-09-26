@@ -1,9 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import {
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
-import { setJourneyThemeAction } from "@/app/projects/[projectId]/journeys/actions";
+import {
+  setJourneyThemeAction,
+  type JourneyActionResult,
+} from "@/app/projects/[projectId]/journeys/actions";
+import { StaleNotice } from "@/components/stale-notice";
 import { ThemeFields } from "@/components/theme-fields";
 import { THEME_PRESETS, type Theme, type ThemeOverride } from "@/lib/theme";
 
@@ -29,6 +39,9 @@ export function JourneyThemeSettings({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // Another Member changed the override since this page read it: the box
+  // is put back by itself, and nothing more is sent until a reload.
+  const [stale, setStale] = useState(false);
   // The box flips the moment it is clicked and settles on what the server
   // holds once the refresh lands: `useOptimistic` shows `on` for the length
   // of the transition below and then reads the prop again, so a refused
@@ -36,6 +49,15 @@ export function JourneyThemeSettings({
   const overriding = theme.preset !== null;
   const [checked, setChecked] = useOptimistic(overriding);
   const [, startTransition] = useTransition();
+  // The override as last acknowledged by the server: the props' once a
+  // refresh lands, and before that the Member's own save's, so a box
+  // unticked just after a preset pick is guarded by that pick rather than
+  // by the props' older value — a Member's own save never makes their
+  // next one stale (ticket 73).
+  const acknowledged = useRef<ThemeOverride>(theme);
+  useEffect(() => {
+    acknowledged.current = { preset: theme.preset, accent: theme.accent };
+  }, [theme.preset, theme.accent]);
 
   function toggle(on: boolean) {
     startTransition(async () => {
@@ -43,18 +65,27 @@ export function JourneyThemeSettings({
       const next: ThemeOverride = on
         ? { preset: projectTheme.preset, accent: projectTheme.accent }
         : { preset: null, accent: null };
+      // The override it replaces is the guard (ticket 73), so a click on
+      // a page older than another Member's change is refused, not applied.
       const result = await setJourneyThemeAction(
         projectId,
         journeyId,
         next,
-      ).catch(() => ({
-        ok: false as const,
+        acknowledged.current,
+      ).catch((): JourneyActionResult => ({
+        ok: false,
         error: "the server could not be reached",
       }));
       if (!result.ok) {
+        if (result.stale) {
+          setError(null);
+          setStale(true);
+          return;
+        }
         setError(`Couldn't save: ${result.error}`);
         return;
       }
+      acknowledged.current = next;
       setError(null);
       router.refresh();
     });
@@ -81,6 +112,7 @@ export function JourneyThemeSettings({
           type="checkbox"
           className="accent-primary size-4"
           checked={checked}
+          disabled={stale}
           onChange={(event) => toggle(event.target.checked)}
         />
         Use a different theme for this journey
@@ -90,12 +122,19 @@ export function JourneyThemeSettings({
           {error}
         </p>
       ) : null}
+      {stale ? <StaleNotice noun="journey" /> : null}
 
       {theme.preset !== null ? (
         <ThemeFields
           theme={{ preset: theme.preset, accent: theme.accent }}
-          submit={(next) => setJourneyThemeAction(projectId, journeyId, next)}
+          noun="journey"
+          submit={(next, baseline) =>
+            setJourneyThemeAction(projectId, journeyId, next, baseline)
+          }
           onSaved={() => router.refresh()}
+          onStored={(saved) => {
+            acknowledged.current = saved;
+          }}
         />
       ) : null}
     </section>

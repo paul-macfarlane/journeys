@@ -7,9 +7,18 @@ import { and, desc, eq } from "drizzle-orm";
 import { cache } from "react";
 
 import { db } from "@/db";
+import {
+  changedFields,
+  guardedWrite,
+  rowExists,
+  stillHolds,
+  stillHoldsOrRetired,
+  type StaleWrite,
+} from "@/db/guarded-write";
 import { member, project } from "@/db/schema";
-import { contentSchema, type Content } from "@/lib/graph/content";
-import { toThemePreset, type Theme } from "@/lib/theme";
+import { logUnreadable } from "@/db/unreadable";
+import { contentSchema, emptyContent, type Content } from "@/lib/graph/content";
+import { themePresetSchema, toThemePreset, type Theme } from "@/lib/theme";
 
 /**
  * Data access for Projects. Their Members live in `@/db/members`; only the
@@ -40,24 +49,28 @@ const projectColumns = {
 };
 
 /**
- * The description is parsed with `contentSchema` on the way out, as
- * `@/db/versions` parses a document: what reached storage went through
- * `sanitizeContent` (or migration 0007's backfill), so a row that does not
- * parse is a bug worth failing loudly on rather than rendering. The Theme's
- * preset is read more gently (`toThemePreset`): a retired preset id would
- * mean the app's palette, never a 404 on a public page.
+ * The description is read with `contentSchema.safeParse`, falling back to
+ * empty rich text on a row that fails it (ticket 83) rather than throwing:
+ * a Project's title and Theme must keep working beside a description no
+ * Author can read. The Theme's preset is read more gently still
+ * (`toThemePreset`): a retired preset id would mean the app's palette,
+ * never a 404 on a public page.
  */
-function toSummary(row: {
+export function toProjectSummary(row: {
   id: string;
   title: string;
   descriptionContent: unknown;
   themePreset: string;
   themeAccent: string | null;
 }): ProjectSummary {
+  const parsed = contentSchema.safeParse(row.descriptionContent);
+  if (!parsed.success)
+    logUnreadable("project description", { projectId: row.id });
+
   return {
     id: row.id,
     title: row.title,
-    description: contentSchema.parse(row.descriptionContent),
+    description: parsed.success ? parsed.data : emptyContent,
     theme: { preset: toThemePreset(row.themePreset), accent: row.themeAccent },
   };
 }
@@ -73,7 +86,7 @@ export async function listProjectsForAuthor(
     .where(eq(member.userId, userId))
     .orderBy(desc(project.createdAt));
 
-  return rows.map(toSummary);
+  return rows.map(toProjectSummary);
 }
 
 /**
@@ -95,7 +108,7 @@ export async function listRecentProjectsForAuthor(
     .orderBy(desc(project.updatedAt), desc(project.createdAt), desc(project.id))
     .limit(limit);
 
-  return rows.map(toSummary);
+  return rows.map(toProjectSummary);
 }
 
 /**
@@ -115,7 +128,7 @@ export async function createProject(
 
     await tx.insert(member).values({ projectId: created.id, userId });
 
-    return toSummary(created);
+    return toProjectSummary(created);
   });
 }
 
@@ -138,7 +151,7 @@ export const getProjectForMember = cache(
       .where(and(eq(project.id, projectId), eq(member.userId, userId)))
       .limit(1);
 
-    return row ? toSummary(row) : null;
+    return row ? toProjectSummary(row) : null;
   },
 );
 
@@ -161,77 +174,180 @@ export const getPublicProject = cache(
       .where(eq(project.id, projectId))
       .limit(1);
 
-    return row ? toSummary(row) : null;
+    return row ? toProjectSummary(row) : null;
   },
 );
 
+/** The Project fields the Settings tab writes, by their column. */
+type ProjectFields = {
+  title: string;
+  descriptionContent: Content;
+  themePreset: string;
+  themeAccent: string | null;
+};
+
+const projectFieldColumns = {
+  title: project.title,
+  descriptionContent: project.descriptionContent,
+  themePreset: project.themePreset,
+  themeAccent: project.themeAccent,
+} as const;
+
+/** Whether a description is the empty rich text an unreadable one reads as. */
+function isEmptyContent(value: unknown): boolean {
+  return JSON.stringify(value) === JSON.stringify(emptyContent);
+}
+
 /**
- * The one write shape every Settings-tab edit has: the Member check, the
- * update stamped with `updatedAt` (which is what moves the Project up the
- * navbar's switcher), and the row read back. Null when the Author is not a
- * Member of `projectId`.
+ * Whether a description write is guarded by its baseline (ticket 73 with
+ * ticket 83). A stored description that fails `contentSchema` reads back as
+ * empty rich text, so that is the baseline the Member edits from — and the
+ * row never holds it, so a guard would refuse every description save as
+ * stale. Such a write, from empty rich text over a stored description that
+ * cannot be read, is unguarded; every other one is guarded.
+ */
+export function guardsDescription(baseline: unknown, stored: unknown): boolean {
+  if (!isEmptyContent(baseline)) return true;
+  return contentSchema.safeParse(stored).success;
+}
+
+/** The description as the row holds it, unparsed: what `guardsDescription` reads. */
+async function storedDescription(projectId: string): Promise<unknown> {
+  const [row] = await db
+    .select({ descriptionContent: project.descriptionContent })
+    .from(project)
+    .where(eq(project.id, projectId))
+    .limit(1);
+  return row?.descriptionContent;
+}
+
+/** The guard on one changed field: the preset also passes a retired id. */
+function fieldGuard(field: keyof ProjectFields, previous: unknown) {
+  return field === "themePreset"
+    ? stillHoldsOrRetired(
+        projectFieldColumns.themePreset,
+        previous,
+        themePresetSchema.options,
+      )
+    : stillHolds(projectFieldColumns[field], previous);
+}
+
+/**
+ * The one write shape every Settings-tab edit has: the Member check, then
+ * the guarded update (ticket 73). Only the fields whose value differs from
+ * `baseline` — what the Member edited against — are written, and each is
+ * written only while the row still holds its baseline value, so another
+ * Member's change to the same field since is answered `stale` and
+ * nothing is overwritten. The title, description, and Theme loops each
+ * guard only their own fields and never make each other stale. The update is
+ * stamped with `updatedAt` (which is what moves the Project up the navbar's
+ * switcher), and the row read back. Null when the Author is not a Member of
+ * `projectId`, or the Project went away. A description edited from the
+ * empty rich text an unreadable description reads as is written unguarded
+ * (`guardsDescription`), and logged.
  */
 async function updateProjectForMember(
   projectId: string,
   userId: string,
-  changes: Partial<{
-    title: string;
-    descriptionContent: Content;
-    themePreset: string;
-    themeAccent: string | null;
-  }>,
-): Promise<ProjectSummary | null> {
+  next: Partial<ProjectFields>,
+  baseline: Partial<ProjectFields>,
+): Promise<ProjectSummary | StaleWrite | null> {
   const existing = await getProjectForMember(projectId, userId);
   if (!existing) return null;
 
-  const [updated] = await db
-    .update(project)
-    .set({ ...changes, updatedAt: new Date() })
-    .where(eq(project.id, existing.id))
-    .returning(projectColumns);
+  const fields = changedFields(next, baseline);
+  if (fields.length === 0) return existing;
 
-  return updated ? toSummary(updated) : null;
+  let guarded = fields;
+  if (
+    fields.includes("descriptionContent") &&
+    isEmptyContent(baseline.descriptionContent) &&
+    !guardsDescription(
+      baseline.descriptionContent,
+      await storedDescription(existing.id),
+    )
+  ) {
+    logUnreadable("project description", { projectId: existing.id });
+    guarded = fields.filter((field) => field !== "descriptionContent");
+  }
+
+  const written = await guardedWrite(
+    () =>
+      db
+        .update(project)
+        .set({
+          ...Object.fromEntries(fields.map((field) => [field, next[field]])),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(project.id, existing.id),
+            ...guarded.map((field) => fieldGuard(field, baseline[field])),
+          ),
+        )
+        .returning(projectColumns),
+    () => rowExists(project, project.id, existing.id),
+  );
+  if (!written.ok) return written.reason === "stale" ? written : null;
+  return toProjectSummary(written.row);
 }
 
-/** Renames a Project. Its id — and so its URL — is untouched. */
+/**
+ * Renames a Project. Its id — and so its URL — is untouched. `baseline` is
+ * the title the Member edited from.
+ */
 export function renameProject(
   projectId: string,
   input: { title: string },
+  baseline: { title: string },
   userId: string,
-): Promise<ProjectSummary | null> {
-  return updateProjectForMember(projectId, userId, { title: input.title });
+): Promise<ProjectSummary | StaleWrite | null> {
+  return updateProjectForMember(
+    projectId,
+    userId,
+    { title: input.title },
+    { title: baseline.title },
+  );
 }
 
 /**
  * Replaces a Project's rich-text description. The caller has already put
- * `description` through `sanitizeContent`; this stores what it was given.
+ * `description` and `baseline` through `sanitizeContent`; this stores what
+ * it was given, while the row still holds `baseline`.
  */
 export function editProjectDescription(
   projectId: string,
   description: Content,
+  baseline: Content,
   userId: string,
-): Promise<ProjectSummary | null> {
-  return updateProjectForMember(projectId, userId, {
-    descriptionContent: description,
-  });
+): Promise<ProjectSummary | StaleWrite | null> {
+  return updateProjectForMember(
+    projectId,
+    userId,
+    { descriptionContent: description },
+    { descriptionContent: baseline },
+  );
 }
 
 /**
  * Sets a Project's Theme: the preset every Journey in it is painted in
  * unless the Journey overrides it, and the optional accent. The caller has
- * already parsed both through the Theme schemas; this stores what it was
- * given. The runner and the public page read the row on every request, so
- * the change shows the moment it is stored.
+ * already parsed both, and the baseline, through the Theme schemas; this
+ * stores what it was given. The runner and the public page read the row on
+ * every request, so the change shows the moment it is stored.
  */
 export function setProjectTheme(
   projectId: string,
   theme: Theme,
+  baseline: Theme,
   userId: string,
-): Promise<ProjectSummary | null> {
-  return updateProjectForMember(projectId, userId, {
-    themePreset: theme.preset,
-    themeAccent: theme.accent,
-  });
+): Promise<ProjectSummary | StaleWrite | null> {
+  return updateProjectForMember(
+    projectId,
+    userId,
+    { themePreset: theme.preset, themeAccent: theme.accent },
+    { themePreset: baseline.preset, themeAccent: baseline.accent },
+  );
 }
 
 /**

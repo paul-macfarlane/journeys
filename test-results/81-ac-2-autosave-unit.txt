@@ -1,0 +1,30 @@
+# Ticket 81 AC2 — widened loop contract unit tests (rerun at e29037d, after 73 and the review fixes)
+$ pnpm exec vitest run src/lib/autosave.test.ts src/components/autosave.test.tsx --reporter=verbose
+ ✓ src/lib/autosave.test.ts > createAutosave > names the four states as the Draft editor does, and names the surface a stale save was refused on 2ms
+ ✓ src/lib/autosave.test.ts > createAutosave > writes an edit once typing pauses, then reports saved and settled 1ms
+ ✓ src/lib/autosave.test.ts > createAutosave > flush writes now, waiting out a write already running 1ms
+ ✓ src/lib/autosave.test.ts > createAutosave > an edit during a write with no flush waits for its own timer 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a write that fails leaves the edit unsaved for the next one, and reports nothing saved 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a write that throws counts as one the server could not be reached for 1ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a refusal reaches onRefused with its error and the Step it names 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a saved value handed back by the write replaces the last saved value 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > each write is handed the last saved value as its baseline 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > an edit back to what was saved writes nothing 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > adopts the server's values when clean, and keeps the edit over them when not 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a value adopted during a write is written after it, with the edit kept 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > dispose writes what the timer was about to, once, and drops the timer 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > dispose with nothing unsaved writes nothing 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > unload during a write never writes beside it: the running write goes round once more with the newest value 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > unload fires a best-effort write and asks the browser to prompt only while dirty 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a saved write with no edit during it takes the stored value as the current one too 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a Draft's saved version is carried by the value as well as the baseline 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > a stale write is terminal: the edit stays on screen and nothing is written again 0ms
+ ✓ src/lib/autosave.test.ts > createAutosave > an edit queued behind a write that comes back stale is not written 0ms
+ ✓ src/lib/autosave.test.ts > adopting another Member's change mid-edit > keepEditedFields merges value and baseline per field 0ms
+ ✓ src/lib/autosave.test.ts > adopting another Member's change mid-edit > a change to the same field the Member is editing makes their write stale 0ms
+ ✓ src/lib/autosave.test.ts > adopting another Member's change mid-edit > a change to a different field is adopted, and the Member's write is saved 0ms
+ ✓ src/lib/autosave.test.ts > a write landing after an adoption > keeps the adopted value as the baseline of a field the write did not change 0ms
+ ✓ src/components/autosave.test.tsx > useAutosave > a re-render with new handler identities keeps the loop and writes nothing; unmount writes the unsaved edit 10ms
+ ✓ src/components/autosave.test.tsx > useAutosave > a refusal reaches the surface's latest onRefused 1ms
+ Test Files  2 passed (2)
+      Tests  26 passed (26)

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CannotBeRead } from "@/components/cannot-be-read";
 import { PublishButton } from "@/components/journeys/publish-controls";
 import { RestoreVersionDialog } from "@/components/journeys/restore-version-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ export function VersionList({
   versions,
   hasUnpublishedChanges,
   draftUpdatedAt,
+  unreadableLive,
 }: {
   projectId: string;
   journeyId: string;
@@ -52,9 +54,25 @@ export function VersionList({
    * later title or description edit while that is what is pending.
    */
   draftUpdatedAt: Date;
+  /**
+   * The Journey's live Published Version, when its row fails the document
+   * contract (ticket 83): named in a banner above the list, which still
+   * renders every version — restoring an earlier one is the way back.
+   */
+  unreadableLive: { versionNumber: number } | null;
 }) {
   return (
     <section aria-label="Versions" className="flex flex-col gap-4">
+      {unreadableLive ? (
+        <CannotBeRead
+          title={`Version ${unreadableLive.versionNumber} can't be read`}
+        >
+          <p>
+            {`The live version, Version ${unreadableLive.versionNumber}, is stored in a shape participants can’t read, so it shows as unavailable to them. Restoring an earlier version and publishing again replaces it.`}
+          </p>
+        </CannotBeRead>
+      ) : null}
+
       {hasUnpublishedChanges || versions.length > 0 ? (
         // role="list" is explicit: the flex layout strips the list marker,
         // and some browsers drop the implicit role with it.

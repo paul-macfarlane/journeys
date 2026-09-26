@@ -33,7 +33,7 @@ export async function previewChooseAction(
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
   const stored = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!stored) redirect(journeyHref);
+  if (!stored || stored.kind === "unreadable") redirect(journeyHref);
   const draft = stored.document;
 
   const base = `${journeyHref}/preview`;

@@ -81,6 +81,13 @@ export type Block =
 
 export type Content = { type: "doc"; content: Block[] };
 
+/**
+ * What a row that fails `contentSchema` reads back as (ticket 83): empty
+ * rich text rather than a throw, since a rename or a bio edit still has to
+ * work beside it.
+ */
+export const emptyContent: Content = { type: "doc", content: [] };
+
 const markSchema: z.ZodType<Mark> = z.union([
   z.object({ type: z.literal("bold") }),
   z.object({ type: z.literal("italic") }),
