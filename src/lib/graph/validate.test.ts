@@ -312,10 +312,8 @@ describe("validateForPublish", () => {
       { startStepId: "valueOf" },
     );
 
-    // No Start means no breadth-first order, so remaining Steps fall back to
-    // id order: "step-end" sorts before "step-start".
     expect(validateForPublish(document).map((problem) => problem.code)).toEqual(
-      ["missing-start", "unknown-outcome", "dangling-choice-target"],
+      ["missing-start", "dangling-choice-target", "unknown-outcome"],
     );
   });
 
@@ -355,7 +353,7 @@ describe("validateForPublish", () => {
     expect(problems[1].choiceId).toBeUndefined();
   });
 
-  it("reports problems breadth-first from the Start, so the list is stable", () => {
+  it("reports problems grouped by rule and then breadth-first from the Start, so the list is stable", () => {
     const document = graph([
       step("step-start", [
         choice("choice-a", "step-two"),
