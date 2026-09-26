@@ -194,6 +194,42 @@ export function hasOutcome(
 }
 
 /**
+ * Every Step in walk order: the Start, then breadth-first through each
+ * Step's Choices in their own order, then every Step the Start cannot reach,
+ * sorted by id. The order comes from the graph, never from `document.steps`'s
+ * own key order, which Postgres's jsonb does not keep. With no Start there is
+ * nowhere to walk from, so every Step is in the sorted tail. `reached` is the
+ * set the walk found, for callers that need to tell the two parts apart.
+ */
+export function walkSteps(document: GraphDocument): {
+  order: string[];
+  reached: Set<string>;
+} {
+  const reached = new Set<string>();
+  const order: string[] = [];
+  const pending = hasStep(document, document.startStepId)
+    ? [document.startStepId]
+    : [];
+
+  while (pending.length > 0) {
+    const stepId = pending.shift();
+    if (stepId === undefined || reached.has(stepId)) continue;
+    if (!hasStep(document, stepId)) continue;
+    reached.add(stepId);
+    order.push(stepId);
+    for (const choice of document.steps[stepId].choices) {
+      pending.push(choice.targetStepId);
+    }
+  }
+
+  const unreached = Object.keys(document.steps)
+    .filter((stepId) => !reached.has(stepId))
+    .sort();
+
+  return { order: [...order, ...unreached], reached };
+}
+
+/**
  * The first problem with the path it was found at, because a caller showing
  * an Author one message is better served by a precise one.
  */
