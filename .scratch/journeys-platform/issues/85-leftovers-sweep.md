@@ -1,8 +1,8 @@
 # 85: Leftovers sweep: AI-authoring text, dead code, and pure-core test gaps
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude (/atlas-implement, chunk 2)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (`schema.ts` changes, although this PR commits no migration; see the two-deploy note)
@@ -44,3 +44,37 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`polish`). Use `CONTEXT.md` vocabulary. Origin: ticket 72.
 
 ## Comments
+
+### [EXECUTION PLAN] 2026-09-26 — Claude Fable 5.1 (`/atlas-implement`, chunk 2 "Cleanup and stability": 85 → 74)
+
+Chunk record for both tickets (74 is `Route: polish` and carries only its `[CLOSEOUT]`). Backlog and tickets agree on the order: 85 then 74. Comparison SHA `4f2e8c7` (staging), branch `feat/chunk-2-cleanup-and-stability`, one worktree beneath `.claude/worktrees/chunk-2-cleanup-and-stability/journeys` with a dummy env (port 3185, database `journeys_e2e_c2`), one PR to `staging`.
+
+**Structure: sequential, three deliverables.** Parallelism rejected: D1 and D2 both edit `.scratch/journeys-platform/human-prerequisites.md` (§6 rewrite vs. a new Skew Protection section), D1 edits `src/components/journeys/draft-editor.tsx` while D3's flake hunt must run over the integrated app (D1's `validateForPublish` ordering changes what the Publish dialog lists; D2 mounts a client component in the root layout), and one Docker database and port serve the checkout. Re-checked at closeout against the real diffs.
+
+| Deliverable | Ticket slice | Worker |
+|---|---|---|
+| D1 | 85 items 1–6 (AI-authoring text, `@tanstack/react-query`, dead exports and `hasStep`, `position` comments, `project.description` off the schema with no migration, pure-core tests and `validateForPublish` ordering) | sonnet |
+| D2 | 74 chunk-load recovery: `isChunkLoadError` shared with `error.tsx`/`global-error.tsx`, reload-once client component in the root layout with a `sessionStorage` marker in try/catch, unit tests; Skew Protection in `human-prerequisites.md`; ticket 15's deploy-window bullet closed with a pointer to the `CLAUDE.md` rule | sonnet |
+| D3 | 74 flake hunt: shared helpers into `e2e/setup/` (ticket 72 T3 list, including `holdServerAction`), the T2 suspects fixed at their cause, `--repeat-each 3` under the load recipe, the recipe written into `docs/agents/testing.md` | opus |
+
+**Resolved decisions.**
+- `validateForPublish` orders problems breadth-first from the Start (Choice order within a Step), then unreachable Steps by id; it never imports `layout.ts` (which already imports `PublishProblem`).
+- Key-order invariance is a table test over `layoutGraph`, `validateForPublish`, `mapOrder`, `analyticsForVersion`, and `groupResponsesByStep` with the fixture's `steps` keys reversed.
+- The drop migration for `project.description` is a follow-up PR after Paul promotes this one to production, and before ticket 84 (the next migration).
+- The lockfile change from `pnpm remove @tanstack/react-query` stays uncommitted for Paul's own commit on this branch; CI's `--frozen-lockfile` step stays red until then.
+- 74-AC-1's staging check needs a deploy, which only the merge produces: it is recorded in the closeout as Paul's post-merge step with the exact recipe, not as `PASS`.
+
+**Verification map** (`docs/agents/testing.md`, contract chain once at the chunk's end).
+
+| Criterion | Command / action | Expected | Evidence | Earliest | Invalidated by |
+|---|---|---|---|---|---|
+| 85-AC-1 | `grep -rni "ai authoring" .env.example README.md src docs/adr` | only the dated ADR-0001 note | `test-results/85-ac-1-ai-authoring-grep.txt` | D1 integrated | any edit to those files |
+| 85-AC-2 | `grep -c "@tanstack/react-query" package.json` | `0` | in `test-results/chunk-2-commands.txt` | D1 integrated | `package.json` edit |
+| 85-AC-3 | `grep -n "description" src/db/schema.ts`; `git diff 4f2e8c7 --stat -- drizzle` | no `project.description` column; no migration in the diff | `test-results/85-ac-3-schema-no-migration.txt` | D1 integrated | `schema.ts` or `drizzle/` edit |
+| 85-AC-4 | `pnpm test`, then the chunk's full `pnpm test:e2e` | all green, new tests listed | `test-results/85-ac-4-unit.txt`, `test-results/chunk-2-commands.txt` | D1 (unit) / final (e2e) | any `src` or `e2e` edit |
+| 74-AC-1 | `pnpm test src/components/chunk-load-recovery` (handler: reloads once on a chunk-load error, never twice, tolerant of throwing storage); human gate: Paul loads a page on staging, merges a later deploy, navigates, sees one reload onto the new build | unit green; staging check recorded by Paul after merge | `test-results/74-ac-1-chunk-load-unit.txt`; closeout | D2 / post-merge | handler or error-page edit |
+| 74-AC-2 | `pnpm test:e2e:prebuilt --repeat-each 3` under the load recipe, over a fresh build | every test passes ×3, 0 flaky; recipe present in `docs/agents/testing.md` | `test-results/74-ac-2-repeat-each-under-load.txt` | D3 integrated (final code) | any `src` or `e2e` edit |
+| 74-AC-3 | `grep -n "Skew Protection" .scratch/journeys-platform/human-prerequisites.md` | a checklist item for Paul | in `test-results/chunk-2-commands.txt` | D2 integrated | file edit |
+| DoD | `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm db:migrate && E2E_EVIDENCE=… pnpm test:e2e` | every step `exit=0` | `test-results/chunk-2-commands.txt` | final integration | any edit |
+
+Run surface: local; deployed only for 74-AC-1's post-merge check. Fixtures: the e2e suite's own seeded Journeys; no participant Responses in evidence. Human gates: Skew Protection (Paul, Vercel settings, any time) and the post-merge staging check (Paul, after merging this PR).

@@ -1,8 +1,8 @@
 # 74: Deploy and test stability
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 72
-Owner:
+Owner: Claude (/atlas-implement, chunk 2)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish (no schema, auth, or route change)
