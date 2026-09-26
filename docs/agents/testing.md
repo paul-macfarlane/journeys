@@ -96,6 +96,48 @@ for an approved exception with the attempted command and reason. Sanitize every
 retained artifact before storage or sharing.
 <!-- atlas-v3:testing:end -->
 
+## Flaky tests: the load recipe (team policy, ticket 74, 2026-09-26)
+
+"Flaky tests" above says what a flake is and what to do with one. This is
+how to go looking for them before CI does, and it sits outside the managed
+section so a setup rerun leaves it alone.
+
+**What it is.** The full suite, three times over, while five CPU busy-loops
+compete with it for the machine. A busy machine is when the suite's timing
+assumptions break — a check that lands after a short-lived state has gone,
+a read taken mid-animation, a typing that hydration writes over — and
+tickets 60 to 69 each saw unrelated specs fail that way.
+
+**Why five.** The development machine has ten cores and Playwright runs
+five workers, so five busy-loops take the half of the machine the workers
+are not using, and every worker, the Next server, and the browsers are left
+contending for the rest. A parallel `pnpm build` loop is not used: it
+rewrites the `.next` the e2e server is serving.
+
+**The command.** Build once, then run the suite against that build with
+the load on, and take the load off afterwards whatever the result:
+
+```sh
+pnpm build
+for i in 1 2 3 4 5; do node -e 'for(;;){}' & done
+pnpm test:e2e:prebuilt --repeat-each 3; rc=$?
+kill $(jobs -p)
+echo "e2e exit $rc"
+```
+
+Written as a script, put the `kill` in an `EXIT` trap so it runs on a
+failure or an interrupt too. A pass is 0 failed and 0 flaky across all
+three repeats.
+
+**A flake it surfaces is diagnosed to its cause, never retried.** Open the
+failing test's `trace.zip` under `test-results/playwright/` (parse it with
+`node`), find what the page was doing when the assertion ran, and where the
+question is timing, reproduce it deterministically by holding the
+`next-action` POST with `holdServerAction` from `e2e/setup/server-action.ts`.
+Then fix the app or the spec at that cause. Rerunning until it passes,
+raising a timeout or `retries`, or marking the test skip, `fixme`, or slow
+is not a fix, as "Flaky tests" above already says.
+
 ## Proportional verification (team policy, Paul, 2026-09-21)
 
 Verification effort follows the ticket's `Route:` line, not a fixed ladder.
