@@ -69,6 +69,9 @@ export function useAutosavedForm<T extends FieldValues>({
   // The field a refused save is blamed on: the one last typed into, since
   // with a timer doing the saving there is no blur to name one.
   const lastEditedField = useRef<Path<T> | null>(null);
+  // Whether the refusal the loop is about to report was the schema's, whose
+  // field errors `write` has already set, rather than the server's.
+  const refusedBySchema = useRef(false);
 
   // Two records are the same when they would be stored the same, which is
   // after the schema has trimmed them: a trailing space left on screen is
@@ -103,32 +106,42 @@ export function useAutosavedForm<T extends FieldValues>({
           blamed.add(field);
           form.setError(field, { type: "validate", message: issue.message });
         }
-        return false;
+        refusedBySchema.current = true;
+        return {
+          kind: "refused",
+          error: parsed.error.issues[0]?.message ?? "invalid",
+        };
       }
 
+      refusedBySchema.current = false;
       form.clearErrors();
-      const result = await submit(parsed.data).catch(() => ({
-        ok: false as const,
-        error: "the server could not be reached",
-      }));
-
-      if (!result.ok) {
-        const field =
-          lastEditedField.current ?? (Object.keys(value)[0] as Path<T>);
-        form.setError(field, {
-          type: "server",
-          message: `Couldn't save: ${result.error}`,
-        });
-        return false;
-      }
+      // A submit that throws is refused by the loop itself, as the server
+      // not reached, and lands in `onRefused` like any other refusal.
+      const result = await submit(parsed.data);
+      if (!result.ok) return { kind: "refused", error: result.error };
 
       // The schema trims, so the baseline is what was stored; what is on
       // screen is left as typed, because the Author may still be typing it
       // — `flush` puts the stored form on screen once the field is left.
       form.reset(parsed.data, { keepValues: true });
-      return true;
+      return { kind: "saved", saved: parsed.data };
     },
     onSaved,
+    // The server's refusal is blamed on the field last typed into; the
+    // schema's has already been shown under the fields it names.
+    onRefused: (result) => {
+      if (refusedBySchema.current) {
+        refusedBySchema.current = false;
+        return;
+      }
+      const field =
+        lastEditedField.current ??
+        (Object.keys(form.getValues())[0] as Path<T>);
+      form.setError(field, {
+        type: "server",
+        message: `Couldn't save: ${result.error}`,
+      });
+    },
   });
 
   useEffect(() => {

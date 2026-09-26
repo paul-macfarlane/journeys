@@ -5,6 +5,7 @@ import {
   SAVE_DEBOUNCE_MS,
   STATUS_TEXT,
   type SaveStatus,
+  type WriteResult,
 } from "./autosave";
 
 /**
@@ -22,18 +23,30 @@ const equals = (a: Metadata, b: Metadata) =>
 /** A write the test resolves by hand, so the loop's states can be watched. */
 function deferredWrite() {
   const calls: Metadata[] = [];
-  const resolvers: ((ok: boolean) => void)[] = [];
-  const write = (value: Metadata) =>
-    new Promise<boolean>((resolve) => {
+  const baselines: Metadata[] = [];
+  const resolvers: ((result: WriteResult<Metadata>) => void)[] = [];
+  const write = (value: Metadata, baseline: Metadata) =>
+    new Promise<WriteResult<Metadata>>((resolve) => {
       calls.push(value);
+      baselines.push(baseline);
       resolvers.push(resolve);
     });
   return {
     write,
     calls,
-    /** Settle the oldest write still waiting. */
-    settle: async (ok = true) => {
-      resolvers.shift()?.(ok);
+    baselines,
+    /**
+     * Settle the oldest write still waiting: accepted, refused, or with the
+     * result spelled out.
+     */
+    settle: async (result: boolean | WriteResult<Metadata> = true) => {
+      resolvers.shift()?.(
+        result === true
+          ? { kind: "saved" }
+          : result === false
+            ? { kind: "refused", error: "refused" }
+            : result,
+      );
       await flushMicrotasks();
     },
   };
@@ -44,10 +57,16 @@ async function flushMicrotasks() {
 }
 
 function setup(
-  options: { write?: (value: Metadata) => Promise<boolean> } = {},
+  options: {
+    write?: (
+      value: Metadata,
+      baseline: Metadata,
+    ) => Promise<WriteResult<Metadata>>;
+  } = {},
 ) {
   const statuses: SaveStatus[] = [];
   const saved = vi.fn();
+  const refused = vi.fn();
   const writer = deferredWrite();
   const autosave = createAutosave<Metadata>({
     initial: { title: "Border", description: "" },
@@ -55,8 +74,9 @@ function setup(
     write: options.write ?? writer.write,
     onStatus: (status) => statuses.push(status),
     onSaved: saved,
+    onRefused: refused,
   });
-  return { autosave, statuses, saved, writer };
+  return { autosave, statuses, saved, refused, writer };
 }
 
 beforeEach(() => {
@@ -174,14 +194,82 @@ describe("createAutosave", () => {
     expect(writer.calls).toHaveLength(2);
   });
 
-  it("a write that throws counts as one that failed", async () => {
-    const { autosave, statuses } = setup({
+  it("a write that throws counts as one the server could not be reached for", async () => {
+    const { autosave, statuses, refused } = setup({
       write: () => Promise.reject(new Error("offline")),
     });
     autosave.change({ title: "One", description: "" });
     await autosave.flush();
     expect(statuses.at(-1)).toBe("unsaved");
     expect(autosave.isDirty()).toBe(true);
+    expect(refused).toHaveBeenCalledWith({
+      kind: "refused",
+      error: "the server could not be reached",
+    });
+  });
+
+  it("a refusal reaches onRefused with its error and the Step it names", async () => {
+    const { autosave, statuses, saved, refused, writer } = setup();
+
+    autosave.change({ title: "One", description: "" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    await writer.settle({
+      kind: "refused",
+      error: "A Choice points at a Step that does not exist",
+      stepId: "step-2",
+    });
+
+    expect(refused).toHaveBeenCalledTimes(1);
+    expect(refused).toHaveBeenCalledWith({
+      kind: "refused",
+      error: "A Choice points at a Step that does not exist",
+      stepId: "step-2",
+    });
+    expect(statuses.at(-1)).toBe("unsaved");
+    expect(autosave.isDirty()).toBe(true);
+    expect(saved).not.toHaveBeenCalled();
+  });
+
+  it("a saved value handed back by the write replaces the last saved value", async () => {
+    const { autosave, refused, writer } = setup();
+
+    autosave.change({ title: "  Spaced  ", description: "" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    await writer.settle({
+      kind: "saved",
+      saved: { title: "Spaced", description: "" },
+    });
+
+    expect(autosave.lastSaved()).toEqual({ title: "Spaced", description: "" });
+    expect(refused).not.toHaveBeenCalled();
+  });
+
+  it("each write is handed the last saved value as its baseline", async () => {
+    const { autosave, writer } = setup();
+
+    autosave.change({ title: "One", description: "" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(writer.baselines).toEqual([{ title: "Border", description: "" }]);
+    await writer.settle({
+      kind: "saved",
+      saved: { title: "One (stored)", description: "" },
+    });
+
+    autosave.change({ title: "Two", description: "" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(writer.baselines).toEqual([
+      { title: "Border", description: "" },
+      { title: "One (stored)", description: "" },
+    ]);
+    await writer.settle();
+
+    // A refused write leaves the baseline where it was.
+    autosave.change({ title: "Three", description: "" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    await writer.settle(false);
+    autosave.change({ title: "Four", description: "" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(writer.baselines.at(-1)).toEqual({ title: "Two", description: "" });
   });
 
   it("an edit back to what was saved writes nothing", async () => {
@@ -271,6 +359,33 @@ describe("createAutosave", () => {
     const { autosave, writer } = setup();
     autosave.dispose();
     expect(writer.calls).toEqual([]);
+  });
+
+  it("unload during a write never writes beside it: the running write goes round once more with the newest value", async () => {
+    const { autosave, statuses, saved, writer } = setup();
+
+    autosave.change({ title: "One", description: "" });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(writer.calls).toHaveLength(1);
+
+    autosave.change({ title: "Two", description: "" });
+    expect(autosave.unload()).toBe(true);
+    await flushMicrotasks();
+    expect(writer.calls).toHaveLength(1);
+
+    await writer.settle();
+    expect(writer.calls).toEqual([
+      { title: "One", description: "" },
+      { title: "Two", description: "" },
+    ]);
+
+    await writer.settle();
+    expect(statuses.at(-1)).toBe("saved");
+    expect(saved).toHaveBeenCalledTimes(1);
+    // The edit's own timer, cleared by nothing, finds nothing left to write.
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    await flushMicrotasks();
+    expect(writer.calls).toHaveLength(2);
   });
 
   it("unload fires a best-effort write and asks the browser to prompt only while dirty", () => {

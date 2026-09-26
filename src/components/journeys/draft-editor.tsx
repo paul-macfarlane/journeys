@@ -4,10 +4,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 
-import {
-  saveDraftAction,
-  type SaveDraftActionResult,
-} from "@/app/projects/[projectId]/journeys/actions";
+import { saveDraftAction } from "@/app/projects/[projectId]/journeys/actions";
+import { useAutosave } from "@/components/autosave";
 import {
   counted,
   dialogIsOpen,
@@ -56,7 +54,7 @@ import {
 import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
 import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
-import { SAVE_DEBOUNCE_MS, STATUS_TEXT, type SaveStatus } from "@/lib/autosave";
+import { STATUS_TEXT } from "@/lib/autosave";
 
 /**
  * The Draft editor: the map of the Journey beside a panel on the Step the
@@ -102,7 +100,6 @@ export function DraftEditor({
    * component, as `document` is the Draft.
    */
   const [history, setHistory] = useState<History>(emptyHistory);
-  const [status, setStatus] = useState<SaveStatus>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   // Whether the live "All problems" list is open. Left as the Author set it
   // across document changes — it is the count reaching zero, not a toggle,
@@ -141,9 +138,9 @@ export function DraftEditor({
    */
   const [fitRequest, setFitRequest] = useState(0);
 
-  // The save loop reads these rather than state: it runs from a timer and
-  // from an event handler, both of which would otherwise see whatever render
-  // they were created in.
+  // The document as the handlers see it, rather than state: they run from
+  // timers and events, both of which would otherwise see whatever render
+  // they were created in. Always what the autosave loop last received.
   const documentRef = useRef(draft);
   const historyRef = useRef<History>(emptyHistory());
   /**
@@ -152,108 +149,52 @@ export function DraftEditor({
    * read off it, because an edit and a shortcut are both handlers.
    */
   const selectedStepIdRef = useRef(draft.startStepId);
-  const lastSavedRef = useRef(draft);
-  const savingRef = useRef(false);
-  const queuedRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   /**
-   * `selectStep` is declared below `save`, which opens a Step when a write is
-   * refused over that Step; this is how the earlier of the two reaches the
-   * later without either depending on the other's identity.
+   * `selectStep` is declared below the autosave loop, which opens a Step
+   * when a write is refused over that Step; this is how the earlier of the
+   * two reaches the later without either depending on the other's identity.
    */
   const selectStepRef = useRef<SelectStep>(() => {});
 
   /**
-   * One save in flight at a time with at most one waiting behind it: an edit
-   * during a save sets the flag, and the loop picks up whatever the document
-   * has become rather than queueing a save per keystroke.
+   * The one autosave loop (`useAutosave`): one save in flight at a time with
+   * at most one waiting behind it, the timer's write made on unmount, and
+   * the browser asked before the page goes while an edit is unsaved.
    */
-  const save = useCallback(async () => {
-    if (savingRef.current) {
-      queuedRef.current = true;
-      return;
-    }
-    savingRef.current = true;
-
-    try {
-      for (;;) {
-        const pending = documentRef.current;
-        if (documentsEqual(pending, lastSavedRef.current)) {
-          setStatus("saved");
-          return;
-        }
-
-        setStatus("saving");
-        const result = await saveDraftAction(
-          projectId,
-          journeyId,
-          pending,
-        ).catch((): SaveDraftActionResult => ({
-          ok: false,
-          error: "the server could not be reached",
-        }));
-
-        if (!result.ok) {
-          // Editing continues and the next edit retries; nothing the Author
-          // has typed is thrown away because a write failed.
-          setSaveError(result.error);
-          setStatus("unsaved");
-          queuedRef.current = false;
-          // A refusal that names a Step is about that Step, so it is opened
-          // the way every other opening opens one — the panel comes back for
-          // it if it was away, and the map goes to its box.
-          if (
-            result.stepId !== undefined &&
-            Object.hasOwn(documentRef.current.steps, result.stepId)
-          ) {
-            selectStepRef.current(result.stepId);
-          }
-          return;
-        }
-
-        setSaveError(null);
-        lastSavedRef.current = pending;
-
-        if (!documentsEqual(documentRef.current, pending)) {
-          // An edit arrived during the save. A flush asked for it to be
-          // written now; otherwise its own timer is about to ask, and the
-          // status stays "unsaved" until it does.
-          if (queuedRef.current) {
-            queuedRef.current = false;
-            continue;
-          }
-          return;
-        }
-        queuedRef.current = false;
-
-        setStatus("saved");
-        // Only with nothing left to write: the refresh is what lets the
-        // Publish button notice the Draft has moved, and a refresh landing
-        // mid-edit would only be answered by another one.
-        router.refresh();
-        return;
+  const { status, autosave } = useAutosave<GraphDocument>({
+    initial: draft,
+    equals: documentsEqual,
+    write: async (value) => {
+      const result = await saveDraftAction(projectId, journeyId, value);
+      if (!result.ok) {
+        return { kind: "refused", error: result.error, stepId: result.stepId };
       }
-    } finally {
-      savingRef.current = false;
-    }
-  }, [journeyId, projectId, router]);
-
-  const clearTimer = useCallback(() => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
+      setSaveError(null);
+      return { kind: "saved" };
+    },
+    // Only with nothing left to write: the refresh is what lets the Publish
+    // button notice the Draft has moved, and a refresh landing mid-edit
+    // would only be answered by another one.
+    onSaved: () => router.refresh(),
+    onRefused: (result) => {
+      // Editing continues and the next edit retries; nothing the Author has
+      // typed is thrown away because a write failed.
+      setSaveError(result.error);
+      // A refusal that names a Step is about that Step, so it is opened the
+      // way every other opening opens one — the panel comes back for it if
+      // it was away, and the map goes to its box.
+      if (
+        result.stepId !== undefined &&
+        Object.hasOwn(documentRef.current.steps, result.stepId)
+      ) {
+        selectStepRef.current(result.stepId);
+      }
+    },
+  });
 
   /** Waits out a save already running, then writes whatever is still unsaved. */
-  const flushSave = useCallback(async () => {
-    clearTimer();
-    while (savingRef.current) {
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-    await save();
-  }, [clearTimer, save]);
+  const flushSave = useCallback(() => autosave.flush(), [autosave]);
 
   /**
    * The document becoming another one, written the way every change to it is:
@@ -266,15 +207,9 @@ export function DraftEditor({
     (next: GraphDocument) => {
       documentRef.current = next;
       setDocument(next);
-      setStatus("unsaved");
-
-      clearTimer();
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        void save();
-      }, SAVE_DEBOUNCE_MS);
+      autosave.change(next);
     },
-    [clearTimer, save],
+    [autosave],
   );
 
   /**
@@ -312,23 +247,20 @@ export function DraftEditor({
    * to it is this editor's own save coming back around, and is ignored.
    */
   useEffect(() => {
-    if (documentsEqual(draft, lastSavedRef.current)) return;
+    if (documentsEqual(draft, autosave.lastSaved())) return;
     // A render the server started before the latest save can arrive after
-    // it. While an edit is unsaved or a save is running, what is here is
-    // newer than anything the server can show, so nothing is adopted; the
-    // save about to happen wins, as last write does.
-    if (
-      savingRef.current ||
-      timerRef.current !== null ||
-      !documentsEqual(documentRef.current, lastSavedRef.current)
-    ) {
-      return;
-    }
+    // it. While an edit is unsaved or a save is running — either leaves the
+    // loop dirty — what is here is newer than anything the server can show,
+    // so nothing is adopted; the save about to happen wins, as last write
+    // does.
+    if (autosave.isDirty()) return;
 
-    lastSavedRef.current = draft;
+    autosave.adopt(draft);
     documentRef.current = draft;
-    setDocument(draft);
-    setStatus("saved");
+    // Set from the mirror just written, the one the handlers read: the same
+    // document, and the React compiler's lint follows state set from a ref
+    // in an effect where it would refuse the prop directly.
+    setDocument(documentRef.current);
     setRevision((current) => current + 1);
 
     const kept = Object.hasOwn(draft.steps, selectedStepIdRef.current)
@@ -342,37 +274,7 @@ export function DraftEditor({
     // undo back into one of them would throw away the write that arrived.
     historyRef.current = emptyHistory();
     setHistory(historyRef.current);
-  }, [draft]);
-
-  // Unmounting with an edit still unsaved — the Author opened the Versions
-  // tab inside the debounce window — is the timer's save made now, through
-  // the same path: a save already running is asked to go round once more,
-  // and the refresh at the end is what hands the next mount of this editor
-  // the document as saved rather than the one the page was opened with.
-  useEffect(
-    () => () => {
-      clearTimer();
-      void save();
-    },
-    [clearTimer, save],
-  );
-
-  // Leaving the page with an edit still in the debounce window: the write is
-  // attempted, and the browser asks before the page goes, because neither the
-  // attempt nor the answer is something this can wait for.
-  useEffect(() => {
-    function handleBeforeUnload(event: BeforeUnloadEvent) {
-      if (documentsEqual(documentRef.current, lastSavedRef.current)) return;
-
-      void saveDraftAction(projectId, journeyId, documentRef.current).catch(
-        () => {},
-      );
-      event.preventDefault();
-    }
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [journeyId, projectId]);
+  }, [autosave, draft]);
 
   // Cmd/Ctrl+K from anywhere on the Journey page is the way into "Find step",
   // wherever the Author's hands happen to be. On `window` rather than on the

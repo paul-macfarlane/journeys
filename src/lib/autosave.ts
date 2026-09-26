@@ -23,6 +23,18 @@ export const STATUS_TEXT: Record<SaveStatus, string> = {
   unsaved: "Unsaved changes",
 };
 
+/**
+ * What a write came back with. `saved`: the server stored it, and when it
+ * hands back what it stored (server-owned state, or the value as stored)
+ * that becomes the baseline instead of the value sent. `refused`: nothing
+ * was stored, with the reason and, for a Draft, the Step it is about.
+ */
+export type WriteResult<T> =
+  | { kind: "saved"; saved?: T }
+  | { kind: "refused"; error: string; stepId?: string };
+
+export type WriteRefusal<T> = Extract<WriteResult<T>, { kind: "refused" }>;
+
 export type Autosave<T> = {
   /** The value has changed: shown as unsaved, written once typing pauses. */
   change(value: T): void;
@@ -49,7 +61,9 @@ export type Autosave<T> = {
   /**
    * The page going away: a best-effort write of what is unsaved, and whether
    * the browser should ask before it lets the page go. Neither the attempt
-   * nor the answer is anything this can wait for.
+   * nor the answer is anything this can wait for. The write goes through
+   * the same single-flight path as every other: a write already running is
+   * asked to go round once more rather than joined by a second beside it.
    */
   unload(): boolean;
 };
@@ -60,16 +74,23 @@ export function createAutosave<T>({
   write,
   onStatus,
   onSaved,
+  onRefused,
   debounceMs = SAVE_DEBOUNCE_MS,
 }: {
   initial: T;
   /** Whether two values would be stored the same. */
   equals: (a: T, b: T) => boolean;
-  /** The write itself; resolves to whether the server accepted it. */
-  write: (value: T) => Promise<boolean>;
+  /**
+   * The write itself. `baseline` is the last saved value, the one the edit
+   * was made against. A write that throws counts as refused, the server
+   * not reached.
+   */
+  write: (value: T, baseline: T) => Promise<WriteResult<T>>;
   onStatus: (status: SaveStatus) => void;
   /** A write landed with nothing left to write: the caller's refresh. */
   onSaved: () => void;
+  /** A write was refused: the caller shows why, the edit stays unsaved. */
+  onRefused?: (result: WriteRefusal<T>) => void;
   /** The tests' clock; every surface uses `SAVE_DEBOUNCE_MS`. */
   debounceMs?: number;
 }): Autosave<T> {
@@ -114,17 +135,23 @@ export function createAutosave<T>({
         }
 
         onStatus("saving");
-        const accepted = await write(pending).catch(() => false);
+        const result = await write(pending, lastSaved).catch(
+          (): WriteResult<T> => ({
+            kind: "refused",
+            error: "the server could not be reached",
+          }),
+        );
 
-        if (!accepted) {
+        if (result.kind === "refused") {
           // Editing continues and the next edit retries; nothing typed is
           // thrown away because a write failed.
+          onRefused?.(result);
           onStatus("unsaved");
           queued = false;
           return;
         }
 
-        lastSaved = pending;
+        lastSaved = result.saved !== undefined ? result.saved : pending;
 
         if (!equals(current, pending)) {
           // Something arrived during the write: an edit, or another
@@ -189,7 +216,13 @@ export function createAutosave<T>({
 
     unload() {
       if (!isDirty()) return false;
-      void write(current).catch(() => {});
+      if (saving) {
+        // The write running now goes round once more for what is newer.
+        queued = true;
+        return true;
+      }
+      clearTimer();
+      void save();
       return true;
     },
   };

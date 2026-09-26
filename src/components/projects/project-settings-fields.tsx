@@ -62,20 +62,13 @@ export function ProjectSettingsFields({
       initial: description,
       equals: sameContent,
       write: async (next) => {
-        const result = await editProjectDescriptionAction(
-          projectId,
-          next,
-        ).catch(() => ({
-          ok: false as const,
-          error: "the server could not be reached",
-        }));
-        if (!result.ok) {
-          setDescriptionError(`Couldn't save: ${result.error}`);
-          return false;
-        }
+        const result = await editProjectDescriptionAction(projectId, next);
+        if (!result.ok) return { kind: "refused", error: result.error };
         setDescriptionError(null);
-        return true;
+        return { kind: "saved" };
       },
+      onRefused: (result) =>
+        setDescriptionError(`Couldn't save: ${result.error}`),
       // The header above the tabs shows the description's opening line.
       onSaved: () => router.refresh(),
     });

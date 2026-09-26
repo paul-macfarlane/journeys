@@ -1,21 +1,28 @@
 import { useEffect, useState } from "react";
 
-import { createAutosave, type Autosave, type SaveStatus } from "@/lib/autosave";
+import {
+  createAutosave,
+  type Autosave,
+  type SaveStatus,
+  type WriteRefusal,
+  type WriteResult,
+} from "@/lib/autosave";
 
 type Handlers<T> = {
-  write: (value: T) => Promise<boolean>;
+  write: (value: T, baseline: T) => Promise<WriteResult<T>>;
   onSaved: () => void;
+  onRefused?: (result: WriteRefusal<T>) => void;
 };
 
 /**
  * The autosave loop (`src/lib/autosave.ts`) as a surface uses it: one loop
  * for the life of the component, its status as state for the line beside
  * the fields, the timer's write made on unmount, and the browser asked
- * before the page goes while an edit is unsaved. The metadata forms
- * (`useAutosavedForm`) and the rich-text Project description are the
- * callers; the Draft editor keeps its own copy of the same loop.
+ * before the page goes while an edit is unsaved. The Draft editor, the
+ * metadata forms (`useAutosavedForm`), and the rich-text Project
+ * description are the callers.
  *
- * `write` and `onSaved` are read fresh on every call rather than closed
+ * `write`, `onSaved`, and `onRefused` are read fresh on every call rather than closed
  * over: they carry the caller's router and props, which change per render,
  * while the loop is created once.
  */
@@ -24,15 +31,18 @@ export function useAutosave<T>({
   equals,
   write,
   onSaved,
+  onRefused,
 }: {
   /** What the server holds when the surface mounts. */
   initial: T;
   /** Whether two values would be stored the same. */
   equals: (a: T, b: T) => boolean;
-  /** The write itself; resolves to whether the server accepted it. */
-  write: (value: T) => Promise<boolean>;
+  /** The write itself, against the last saved value; see `createAutosave`. */
+  write: (value: T, baseline: T) => Promise<WriteResult<T>>;
   /** A write landed with nothing left to write: typically a router refresh. */
   onSaved: () => void;
+  /** A write was refused: where the surface shows why. */
+  onRefused?: (result: WriteRefusal<T>) => void;
 }): { status: SaveStatus; autosave: Autosave<T> } {
   const [status, setStatus] = useState<SaveStatus>("saved");
 
@@ -40,11 +50,11 @@ export function useAutosave<T>({
   // the value in flight, neither of which a render may replace. Its
   // handlers are the caller's latest, handed over after each render.
   const [{ autosave, setHandlers }] = useState(() =>
-    startAutosave(initial, equals, setStatus, { write, onSaved }),
+    startAutosave(initial, equals, setStatus, { write, onSaved, onRefused }),
   );
   useEffect(() => {
-    setHandlers({ write, onSaved });
-  }, [setHandlers, write, onSaved]);
+    setHandlers({ write, onSaved, onRefused });
+  }, [setHandlers, write, onSaved, onRefused]);
 
   // Unmounting with an edit still in the debounce window — the Author
   // opened another tab — is the timer's write made now, through the same
@@ -70,7 +80,7 @@ export function useAutosave<T>({
 /**
  * The loop, with a handle for replacing what it calls. Nothing here runs
  * during a render: the loop calls `write` from its timer and from a flush,
- * and `onSaved` after a write has landed. A ref would be the usual home
+ * and `onSaved` or `onRefused` after a write has settled. A ref would be the usual home
  * for the latest handlers, but the React compiler's lint reads a ref
  * handed to a `useState` initializer as a ref read during render; this
  * closure is the same thing said in a way it can follow.
@@ -86,9 +96,10 @@ function startAutosave<T>(
     autosave: createAutosave<T>({
       initial,
       equals,
-      write: (value) => handlers.write(value),
+      write: (value, baseline) => handlers.write(value, baseline),
       onStatus,
       onSaved: () => handlers.onSaved(),
+      onRefused: (result) => handlers.onRefused?.(result),
     }),
     setHandlers: (next) => {
       handlers = next;
