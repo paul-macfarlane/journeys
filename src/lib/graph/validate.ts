@@ -1,5 +1,11 @@
 import type { GraphDocument } from "@/lib/graph/document";
-import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
+import {
+  hasOutcome,
+  hasStep,
+  isEnding,
+  stepName,
+  walkSteps,
+} from "@/lib/graph/document";
 
 /**
  * Publish-time validation. Structural validation (`graphDocumentSchema`) runs
@@ -9,11 +15,11 @@ import { hasOutcome, hasStep, isEnding, stepName } from "@/lib/graph/document";
  *
  * Pure and deterministic: the same document always produces the same list
  * regardless of the `steps`/`outcomes` key order Postgres's jsonb hands
- * back, because Steps are visited breadth-first from the Start, following
- * each Step's own Choice order — never `layout.ts`'s dagre layout, which
- * this module must not import (`layout.ts` already imports `PublishProblem`
- * from here). A Step unreachable from the Start has no such position, so
- * every unreachable Step is appended last, sorted by id. Problems are
+ * back, because Steps are visited in `walkSteps` order: breadth-first from
+ * the Start, following each Step's own Choice order, then every unreachable
+ * Step sorted by id — never `layout.ts`'s dagre layout, which this module
+ * must not import (`layout.ts` already imports `PublishProblem` from
+ * here). Problems are
  * grouped by rule and, within a rule, in that Step order, so the Publish
  * dialog and the canvas can render the list without sorting.
  */
@@ -36,43 +42,6 @@ export type PublishProblem = {
   choiceId?: string;
 };
 
-/**
- * Every Step in publish order: breadth-first from the Start, following each
- * Step's own Choice order, so the order comes from the graph rather than
- * from `document.steps`'s own key order (which Postgres's jsonb does not
- * keep). Any Step the Start cannot reach has no such position, so it is
- * appended last, sorted by id.
- */
-function publishOrder(
-  document: GraphDocument,
-  startStepId: string,
-): { order: string[]; reached: Set<string> } {
-  const reached = new Set<string>();
-  const order: string[] = [];
-  const pending = [startStepId];
-
-  while (pending.length > 0) {
-    const stepId = pending.shift();
-    if (stepId === undefined || reached.has(stepId)) {
-      continue;
-    }
-    if (!hasStep(document, stepId)) {
-      continue;
-    }
-    reached.add(stepId);
-    order.push(stepId);
-    for (const choice of document.steps[stepId].choices) {
-      pending.push(choice.targetStepId);
-    }
-  }
-
-  const unreached = Object.keys(document.steps)
-    .filter((stepId) => !reached.has(stepId))
-    .sort();
-
-  return { order: [...order, ...unreached], reached };
-}
-
 export function validateForPublish(document: GraphDocument): PublishProblem[] {
   const problems: PublishProblem[] = [];
 
@@ -88,11 +57,9 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
     });
   }
 
-  // With no Start there is nowhere to walk from, so every Step falls back to
-  // the "unreached, sorted by id" order below.
-  const { order, reached } = startExists
-    ? publishOrder(document, document.startStepId)
-    : { order: Object.keys(document.steps).sort(), reached: new Set<string>() };
+  // With no Start there is nowhere to walk from, so every Step falls in
+  // `walkSteps`'s "unreached, sorted by id" tail.
+  const { order, reached } = walkSteps(document);
 
   const steps = order.map(
     (stepId) => [stepId, document.steps[stepId]] as const,

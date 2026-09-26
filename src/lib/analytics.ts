@@ -84,7 +84,7 @@ export type VersionAnalytics = {
   completionRate: number | null;
   steps: Record<string, StepStat>;
   choices: Record<string, ChoiceStat>;
-  /** Most Runs first, ties by label; Abandoned always last. */
+  /** Most Runs first, ties by label then key; Abandoned always last. */
   outcomes: OutcomeGroup[];
 };
 
@@ -194,8 +194,9 @@ function groupKeyOf(document: GraphDocument, stepId: string): string {
  * Every group the document can produce — each Outcome it defines and each
  * Ending without one — whether or not any Run reached it, so an Outcome
  * nothing reaches is a bar at zero rather than a bar that is missing; then
- * Abandoned. Most Runs first, ties broken by label so the order is stable
- * across renders and Postgres's reordering of jsonb keys.
+ * Abandoned. Most Runs first, ties broken by label and then by key (two
+ * untagged Endings may share a title) so the order is stable across renders
+ * and Postgres's reordering of jsonb keys.
  */
 function outcomeGroups(
   document: GraphDocument,
@@ -231,7 +232,12 @@ function outcomeGroups(
     });
   }
 
-  groups.sort((a, b) => b.runs - a.runs || a.label.localeCompare(b.label));
+  groups.sort(
+    (a, b) =>
+      b.runs - a.runs ||
+      a.label.localeCompare(b.label) ||
+      (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
+  );
 
   groups.push({
     key: "abandoned",

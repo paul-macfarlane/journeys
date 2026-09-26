@@ -370,6 +370,40 @@ describe("validateForPublish", () => {
     ]);
   });
 
+  it("orders each rule's Steps breadth-first from the Start, never by key order, with unreachable Steps last by id", () => {
+    // Written in neither breadth-first nor id order: the Start's first Choice
+    // leads to step-y, its second to step-x, so the walk is start, y, x.
+    const document = graph(
+      [
+        step("step-orphan-b", []),
+        step("step-x", [choice("choice-x-gone", "step-gone-2")]),
+        step("step-start", [
+          { ...choice("choice-start-y", "step-y"), label: "" },
+          choice("choice-start-x", "step-x"),
+        ]),
+        step("step-orphan-a", []),
+        step("step-y", [
+          choice("choice-y-gone", "step-gone-1"),
+          { ...choice("choice-y-x", "step-x"), label: " " },
+        ]),
+      ],
+      { startStepId: "step-start" },
+    );
+
+    const problems = validateForPublish(document);
+    const stepsFor = (code: string) =>
+      problems
+        .filter((problem) => problem.code === code)
+        .map((problem) => problem.stepId);
+
+    expect(stepsFor("dangling-choice-target")).toEqual(["step-y", "step-x"]);
+    expect(stepsFor("empty-choice-label")).toEqual(["step-start", "step-y"]);
+    expect(stepsFor("unreachable-step")).toEqual([
+      "step-orphan-a",
+      "step-orphan-b",
+    ]);
+  });
+
   it("gives every problem a message an Author can read", () => {
     const document = graph([
       step("step-start", [choice("choice-1", "step-end")]),
