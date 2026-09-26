@@ -1,6 +1,6 @@
 # 74: Deploy and test stability
 
-Status: ai-review
+Status: done
 Blocked by: 72
 Owner: Claude (/atlas-implement, chunk 2)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -61,3 +61,63 @@ Ticket 72 read the e2e suite for load sensitivity. Take these into the flake hun
 Each helper keeps its strictest variant (the canvas `startJourney` adds the `overflowAnchor` init script).
 
 **Chunk-load recovery placement.** Mount the handler once in the root layout as a small client component. Wrap every `sessionStorage` access in try/catch. Ticket 83 adds `error.tsx` and `global-error.tsx`; a `ChunkLoadError` that reaches them should also get the reload-once path, so share one `isChunkLoadError` helper between the handler and the error pages.
+
+### [CLOSEOUT] 2026-09-26 — Claude Opus 5.5 (`/atlas-implement`, chunk 2, Route: polish within a contract chunk)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/102 (base `staging`, comparison SHA `4f2e8c7`), shared with ticket 85. The chunk's `[EXECUTION PLAN]` and `[AI CODE REVIEW]` are on ticket 85. Status set to `done` in this commit; merging the PR is Paul's acceptance. State log: ready-for-agent → in-progress → ai-review → ready-for-human → done (this commit).
+
+**Deliverables.**
+
+| Deliverable | Worker | Commits | What it did |
+|---|---|---|---|
+| D2 chunk-load recovery | sonnet | `4884f53` | Reload once after a chunk-load failure |
+| D3 flake hunt and shared helpers | opus | `a2755ef`, `78d916e` | Helpers moved to `e2e/setup/`, suspects fixed, load recipe |
+| Review fixes | opus | `63d6649`, `7d7553d` | Reload guard, e2e helper fixes |
+| D-flake | opus | `7b692b6` | Fix for the one flake the load run found |
+
+**Chunk-load recovery.**
+- `isChunkLoadError` lives in `src/lib/chunk-load.ts`. It matches the name `ChunkLoadError` and the "Failed to load chunk" message, which is what Next 16's Turbopack runtime throws, plus the webpack and ESM wordings.
+- `ChunkLoadRecovery` is mounted once in the root layout. `error.tsx` and `global-error.tsx` call the same `reloadOnceInBrowser`.
+- A `sessionStorage` marker (`journeys:chunk-reload`) allows one reload. It is cleared only when a client-side navigation succeeds, so a failure on every load cannot loop.
+- If storage throws, there is no reload: without the marker a loop could not be ruled out.
+- The listener also reloads on a chunk-load failure the user did not start. That is accepted: the leave guard still asks before an unsaved edit is lost.
+
+**Flakes found, with their causes.**
+1. `author-settings`, found by the load run at `7d7553d` (1 of 360 failed, repeat 1, line 195).
+   - Cause: a real app race. `useAutosavedForm`'s adopt effect calls `form.reset(values)` whenever the page refreshes, and every save on the page refreshes it. That reset cleared the refusal on a field the Author had just edited, while keeping the refused text.
+   - Trace: the Website refusal is in the DOM snapshot at 95800 ms and gone at 95803 ms, when the revalidated tree from the earlier LinkedIn save committed.
+   - The same thing happens with no load: any save elsewhere on Settings erased a visible refusal.
+   - Fixed in `7b692b6`: edited fields keep their errors across the reset.
+   - Proven by `author-settings-refusal-survives-refresh`, which failed before the fix, and a unit test in `src/components/autosaved-form.test.tsx`.
+2. `metadata-autosave`: its 20 s `toPass` had a latent race, found by reading the code (`a2755ef`). The leave guard was asked after typing, so once the save had landed, a retry typed the same text, which is no edit and can never pass. The spec now holds the write and asks the guard while it is held.
+3. Ticket 72's other T2 suspects were fixed at their cause (`a2755ef`):
+   - A transient "Unsaved changes" assertion became an await on the held request.
+   - Eleven `expectSaved`-then-database-write sites go through `seedDraft`, which moves the Draft's version so a pending save is refused as stale rather than overwriting the seeded document.
+   - One-shot reads are now polled.
+   - The positive state is asserted before each absence.
+
+   The other 20 s budgets (`metadata-autosave` title, `author-settings`) were not touched: no failure pointed at them.
+
+Before the fixes, D3's two loaded runs, at `a2755ef` and `78d916e`, each passed 360/360.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| A page on build A, navigated after build B replaces it, reloads once onto B | Unit half: PASS. Staging half: open, Paul after merge | `test-results/74-ac-1-chunk-load-unit.txt`. Staging recipe below. |
+| `pnpm test:e2e --repeat-each 3` passes in full under the load recipe, and the recipe is in `docs/agents/testing.md` | PASS | `test-results/74-ac-2-repeat-each-under-load.txt` (363 passed, 0 failed, 0 flaky at `7b692b6`). Recipe: `docs/agents/testing.md`, "Flaky tests: the load recipe". |
+| Skew Protection is listed in `human-prerequisites.md` for Paul | PASS | §14; `test-results/chunk-2-commands.txt` |
+
+**Deviations.** The load recipe is its own team-owned section right after the `atlas-v3:testing` end marker. "Flaky tests" sits inside the managed markers, which a setup rerun would overwrite.
+
+**Deploy window (ticket 15).** Closed with a pointer to the `CLAUDE.md` rule.
+
+**Paul owes:**
+- **Skew Protection:** Vercel → `journeys` → Settings → Advanced (`human-prerequisites.md` §14).
+- **The staging half of AC 1, after merging:**
+  1. Open any staging page and leave the tab open.
+  2. Merge any later PR so staging redeploys.
+  3. Back in the old tab, click an in-app link.
+  4. Expected: the page reloads once onto the new build, with no error page.
+
+  With Skew Protection on, the old assets keep serving, so the reload may not be needed at all. Either outcome passes.
+
+**Verified run command.** The chain as on ticket 85, then `sh node_modules/.atlas-c2/load.sh pnpm test:e2e:prebuilt --repeat-each 3` over the chain's build.

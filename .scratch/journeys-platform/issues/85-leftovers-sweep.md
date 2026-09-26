@@ -1,6 +1,6 @@
 # 85: Leftovers sweep: AI-authoring text, dead code, and pure-core test gaps
 
-Status: ai-review
+Status: done
 Blocked by: None
 Owner: Claude (/atlas-implement, chunk 2)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -78,3 +78,61 @@ Chunk record for both tickets (74 is `Route: polish` and carries only its `[CLOS
 | DoD | `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm db:migrate && E2E_EVIDENCE=… pnpm test:e2e` | every step `exit=0` | `test-results/chunk-2-commands.txt` | final integration | any edit |
 
 Run surface: local; deployed only for 74-AC-1's post-merge check. Fixtures: the e2e suite's own seeded Journeys; no participant Responses in evidence. Human gates: Skew Protection (Paul, Vercel settings, any time) and the post-merge staging check (Paul, after merging this PR).
+
+### [AI CODE REVIEW] 2026-09-26 — Claude Opus 5.5 (`/atlas-implement`, chunk 2: 85 and 74)
+
+The chunk's single formal review, over `4f2e8c7..78d916e`. It was read by two fresh Opus reviewers, one on technical implementation and spec conformity and one on coding standards. The orchestrator adjudicated every finding. The fixes landed in `651044d`, `63d6649`, `ca3f366`, and `7d7553d`, and the tracker record in `739c026`.
+
+**Technical implementation and spec conformity**
+
+| # | Severity | Finding | Paths | Disposition |
+|---|---|---|---|---|
+| T1 | blocking | The key-order test compared two empty problem lists, so `validateForPublish`'s new order was untested. | `src/lib/graph/key-order.test.ts`, `validate.test.ts` | Resolved (`651044d`): the fixture now has problems under every rule, and a `validate.test.ts` case uses a key order that is neither breadth-first nor id order. |
+| T2 | blocking | Two live key-order dependencies: `groupResponsesByStep` appended unreachable Steps in raw key order, and analytics broke Outcome-group ties by label only. The fixture could not show either. | `src/lib/response-list.ts`, `src/lib/analytics.ts` | Resolved (`651044d`): one `walkSteps` in `document.ts` serves validation, Responses, and layout, and analytics ties now break by key. The widened test also exposed that `layoutGraph` fed dagre in key order; it now uses `walkSteps` too. Four tests failed before the fix. |
+| T3 | non-blocking | The 10 s reload window could loop on a load slower than 10 s. | `src/lib/chunk-load.ts`, `src/components/chunk-load-recovery.tsx` | Resolved (`63d6649`): one reload, then none until a client-side navigation succeeds. |
+| T4 | non-blocking | The listener reloads on any unhandled chunk-load failure, not only a navigation. | `src/components/chunk-load-recovery.tsx` | Accepted as designed: a chunk that cannot load is a stale build wherever it fails, and the leave guard still asks before an unsaved edit is lost. |
+| T5 | non-blocking | `human-prerequisites.md` §6 dropped the budget alert. | §6 | Resolved (`ca3f366`). |
+| T6 | non-blocking | `addStepFromCanvas` read the box count once. | `e2e/canvas.spec.ts` | Resolved (`7d7553d`): polls until two reads agree. |
+| T7 | non-blocking | A held request that never arrives hung to the test timeout. | `e2e/setup/server-action.ts` | Resolved (`7d7553d`): rejects with a message after 10 s. |
+
+**Coding standards**
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| S1 | non-blocking | `docs/agents/planning.md` still listed TanStack Query. | Resolved (`ca3f366`) |
+| S2 | non-blocking | §6 heading said "jev"; stale "defer until 43". | Resolved (`ca3f366`) |
+| S3, S4 | non-blocking | `spec.md:216` pointed at a bullet that does not exist; `spec.md:160` claimed PR previews. | Resolved (`ca3f366`) |
+| S5–S7 | non-blocking | A `"use client"` lib module; `//` docs, first person, `interface`, and a dotted storage key in `chunk-load.ts`; a doc naming the wrong function. | Resolved (`63d6649`): `chunk-load-browser.ts` deleted, its helpers live in the component |
+| S8 | non-blocking | Outcomes were never reversed in the key-order test. | Resolved (`651044d`) |
+| S9–S11 | non-blocking | Duplicate or unsorted e2e imports; `release` removed every route on the page; a missing return type. | Resolved (`7d7553d`): `release` now unroutes only its own handler and waits for it |
+| S12, S13 | non-blocking | Wording of the `CLAUDE.md` `src/lib/` line; "Authors" for developers in `env.ts`. | Resolved (`ca3f366`) |
+| S14 | non-blocking | Record the `ai-review` transition. | Resolved (`739c026`) |
+
+No blocking finding is open.
+
+Remaining risks:
+- Dagre now receives Steps in walk order, so an existing Draft's map may lay out a little differently on staging.
+- The dagre layout of a Draft is otherwise unchanged. All layout unit tests and the canvas crossing baseline pass.
+
+### [CLOSEOUT] 2026-09-26 — Claude Opus 5.5 (`/atlas-implement`, chunk 2, Route: contract)
+
+PR: https://github.com/paul-macfarlane/journeys/pull/102 (base `staging`, comparison SHA `4f2e8c7`), shared with ticket 74. Status set to `done` in this commit; merging the PR is Paul's acceptance. State log: ready-for-agent → in-progress → ai-review → ready-for-human → done (this commit).
+
+**Deliverables.**
+- D1, one worker (sonnet): `57b39dd`. Orchestrator fix `20984e1` kept the problem list grouped by rule, with breadth-first Step order inside each rule; the worker had grouped by Step.
+- Review fixes, one worker (opus): `651044d`, `ca3f366`.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| `grep -rni "ai authoring" .env.example README.md src docs/adr` finds only the dated ADR note | PASS, with a deviation | `test-results/85-ac-1-ai-authoring-grep.txt`. ADR-0001's decision text keeps its two original mentions (lines 35, 114), because this ticket says not to rewrite the decision. |
+| `@tanstack/react-query` is gone from `package.json` | PASS | `test-results/chunk-2-commands.txt` (`grep -c` prints 0). The `pnpm-lock.yaml` change is uncommitted, for Paul's commit. |
+| `project.description` is gone from `schema.ts` and no migration is committed; the follow-up is recorded | PASS | `test-results/85-ac-3-schema-no-migration.txt`; follow-up below |
+| New unit tests pass, including key-order invariance; existing suites pass; one full `pnpm test:e2e` | PASS | `test-results/85-ac-4-unit.txt` (183 tests in the ticket's files; 669 in the full suite); `test-results/chunk-2-commands.txt` (e2e 121/121, 0 flaky) |
+
+**Drop-migration follow-up.** After Paul promotes this PR to production, and before ticket 84 (the next ticket that adds a migration), open one PR that commits what `pnpm db:generate` produces: a single `ALTER TABLE "project" DROP COLUMN "description"`. Until it lands, any other ticket that runs `db:generate` must delete that stray drop from its own migration.
+
+**Paul owes:**
+- Commit `pnpm-lock.yaml` on this branch (`pnpm install` already rewrote it). CI's `--frozen-lockfile` step fails until he does.
+- The drop-migration follow-up above.
+
+**Verified run command.** `sh node_modules/.atlas-c2/run.sh sh node_modules/.atlas-c2/chain.sh`: `format:check`, `lint`, `typecheck`, `test`, `build`, `db:migrate` (on the chunk's e2e database), and `pnpm test:e2e:prebuilt`. Every step `exit=0` at `7b692b6`.
