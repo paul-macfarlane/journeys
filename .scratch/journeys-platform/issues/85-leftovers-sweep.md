@@ -1,6 +1,6 @@
 # 85: Leftovers sweep: AI-authoring text, dead code, and pure-core test gaps
 
-Status: in-progress
+Status: ai-review
 Blocked by: None
 Owner: Claude (/atlas-implement, chunk 2)
 Parent: `.scratch/journeys-platform/spec.md`

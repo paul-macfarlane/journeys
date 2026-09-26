@@ -1,6 +1,6 @@
 # 74: Deploy and test stability
 
-Status: in-progress
+Status: ai-review
 Blocked by: 72
 Owner: Claude (/atlas-implement, chunk 2)
 Parent: `.scratch/journeys-platform/spec.md`
