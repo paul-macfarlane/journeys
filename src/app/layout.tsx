@@ -5,6 +5,7 @@ import "./globals.css";
 // Fail fast on invalid configuration (validated once, server-only).
 import { env } from "@/lib/env";
 
+import { ChunkLoadRecovery } from "@/components/chunk-load-recovery";
 import { ThemeProvider } from "@/components/theme-provider";
 import { APP_NAME, APP_TAGLINE, BRAND_COLORS } from "@/lib/brand";
 
@@ -61,6 +62,7 @@ export default function RootLayout({
       className={`${displayFont.variable} ${textFont.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <ChunkLoadRecovery />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

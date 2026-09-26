@@ -127,3 +127,8 @@ Paul does this himself. `/privacy` and `/terms` are live on staging and producti
 - [ ] Google Cloud Console → OAuth consent screen: app name, logo, home page, privacy policy URL (`/privacy`), terms URL (`/terms`).
 - [ ] Discord Developer Portal → the application: name, icon, terms of service URL, privacy policy URL.
 - Expected result: both sign-in buttons show the app name and logo; ticket 31's remaining human gate closes. Post-check: a fresh sign-in on staging with each provider. If ticket 44 renames the app, repeat.
+
+## 14. Skew Protection (ticket 74)
+
+- [ ] Vercel → `journeys` → Settings → Advanced → turn on Skew Protection, so a tab opened before a deploy keeps loading its own build's assets.
+- Expected result: the chunk-load reload (`ChunkLoadRecovery`, `error.tsx`, `global-error.tsx`) is rarely needed. Agents never change this setting.
