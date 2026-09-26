@@ -8,16 +8,16 @@ import {
   openFindStep,
   tagWithOutcome,
 } from "./setup/authoring";
-import { E2E_BASE_URL } from "./setup/e2e-env";
-import { evidencePath } from "./setup/evidence";
-import { cleanup, closePools } from "./setup/session";
 import { readDraft } from "./setup/documents";
+import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   addChoiceToStep,
   expectSaved,
   renameStep,
   startJourney,
 } from "./setup/editor";
+import { evidencePath } from "./setup/evidence";
+import { cleanup, closePools } from "./setup/session";
 
 /**
  * Seam B for ticket 08: an Author building a Journey out of Steps, Choices,

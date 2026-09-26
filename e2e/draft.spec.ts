@@ -9,6 +9,7 @@ import {
   openFindStep,
   uniqueSuffix,
 } from "./setup/authoring";
+import { readDraftRow } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
@@ -17,7 +18,6 @@ import {
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
-import { readDraftRow } from "./setup/documents";
 
 /**
  * Seam B for ticket 03: a Journey's Draft, from the browser and from the row

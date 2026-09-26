@@ -8,6 +8,7 @@ import {
   QUEUE_PROMPT,
   QUEUE_STEP_ID,
   QUEUE_STEP_TITLE,
+  readDraft,
   readResponses,
   readRuns,
   START_PROMPT,
@@ -16,11 +17,10 @@ import {
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
-import { evidencePath } from "./setup/evidence";
-import { cleanup, closePools, signInAs } from "./setup/session";
-import { readDraft } from "./setup/documents";
 import { startJourney } from "./setup/editor";
+import { evidencePath } from "./setup/evidence";
 import { promptBox } from "./setup/runner";
+import { cleanup, closePools, signInAs } from "./setup/session";
 
 /**
  * Seam B for ticket 12: an Author attaches a Prompt to a Step, a Participant
