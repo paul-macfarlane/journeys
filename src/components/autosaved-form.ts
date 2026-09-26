@@ -180,12 +180,21 @@ export function useAutosavedForm<T extends FieldValues>({
     // the new defaults, so a refresh landing while a field is mid-edit —
     // the previous save refreshing the page — makes the edit look already
     // saved, and the save that follows writes nothing.
+    // A kept edit keeps its refusal too: `reset` clears every error, and
+    // every save on the page refreshes it, so without this a refusal shown
+    // a moment before the refresh landed vanished while the refused text
+    // stayed on screen, unsaved and unexplained (the author-settings spec
+    // under the load recipe, 2026-09-26).
     const before = form.formState.defaultValues as Partial<T> | undefined;
     const current = form.getValues();
+    const edited = (Object.keys(values) as Path<T>[])
+      .filter((key) => before && current[key] !== before[key])
+      .map((key) => ({ key, error: form.getFieldState(key).error }));
     form.reset(values);
-    for (const key of Object.keys(values) as Path<T>[]) {
-      if (before && current[key] !== before[key]) {
-        form.setValue(key, current[key], { shouldDirty: true });
+    for (const { key, error } of edited) {
+      form.setValue(key, current[key], { shouldDirty: true });
+      if (error) {
+        form.setError(key, { type: error.type, message: error.message });
       }
     }
     // The loop's own view of the same thing: the record it writes next is
