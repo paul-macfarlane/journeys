@@ -12,7 +12,7 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 |---|---|---|---|---|---|
 | – | – | [71 An image inside a list item is never silently dropped](issues/71-image-in-list-item.md) | contract | done | PR #97 |
 | – | – | [72 Codebase design review](issues/72-codebase-design-review.md) | polish | done | PR #99 |
-| 1 | **1 Saves and unreadable rows** (contract) | [81 One autosave loop](issues/81-one-autosave-loop.md) | polish | in-progress | |
+| 1 | **1 Saves and unreadable rows** (contract) | [81 One autosave loop](issues/81-one-autosave-loop.md) | polish | done | PR #101 |
 | 2 | 1 | [73 Stale saves are refused](issues/73-stale-saves-refused.md) | contract | in-progress | Blocked by 81 |
 | 3 | 1 | [83 Error pages and unreadable Published Versions](issues/83-error-surfaces.md) | contract | in-progress | One "cannot be read" design with 73's corrupt-Draft page |
 | 4 | **2 Cleanup and stability** (contract) | [85 Leftovers sweep](issues/85-leftovers-sweep.md) | contract | ready-for-agent | Drop-migration follow-up after promotion; lockfile commit is Paul's |
