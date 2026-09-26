@@ -132,3 +132,218 @@ export async function emptySpot(page: Page): Promise<Point> {
   expect(spot!.clear).toBeGreaterThan(60);
   return { x: spot!.x, y: spot!.y };
 }
+
+/** Every box on the map, by the mark the app puts on each one's button. */
+export function canvasNodes(page: Page): Locator {
+  return canvas(page).locator("button[data-kind]");
+}
+
+export type Box = { x: number; y: number; width: number; height: number };
+
+/** Sub-pixel rounding, so a node flush against the edge is not "outside". */
+export const TOLERANCE = 1;
+
+/**
+ * Every node's box in one round trip. `getBoundingClientRect` is what
+ * Playwright's own `boundingBox()` reads, and thirty-six separate calls inside
+ * a poll would take longer than the layout they are watching for.
+ */
+function nodeBoxes(page: Page): Promise<Box[]> {
+  return canvasNodes(page).evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }),
+  );
+}
+
+function overlaps(a: Box, b: Box): boolean {
+  return (
+    a.x + TOLERANCE < b.x + b.width &&
+    b.x + TOLERANCE < a.x + a.width &&
+    a.y + TOLERANCE < b.y + b.height &&
+    b.y + TOLERANCE < a.y + a.height
+  );
+}
+
+/**
+ * Everything wrong with the map right now, as sentences — empty is a map that
+ * fits: the expected number of nodes, each one inside the Canvas, none of them
+ * on top of another. Polled rather than slept on, because laying out and
+ * fitting the view is work the browser finishes when it finishes.
+ */
+export async function mapFaults(
+  page: Page,
+  expected: number,
+): Promise<string[]> {
+  const frame = await canvas(page).boundingBox();
+  if (frame === null) return ["the canvas has no box yet"];
+
+  const boxes = await nodeBoxes(page);
+  if (boxes.length !== expected) {
+    return [`${boxes.length} nodes on the map, expected ${expected}`];
+  }
+
+  const faults: string[] = [];
+  for (const box of boxes) {
+    if (box.width === 0 || box.height === 0) {
+      faults.push("a node has not been sized yet");
+      continue;
+    }
+    const outside =
+      box.x < frame.x - TOLERANCE ||
+      box.y < frame.y - TOLERANCE ||
+      box.x + box.width > frame.x + frame.width + TOLERANCE ||
+      box.y + box.height > frame.y + frame.height + TOLERANCE;
+    if (outside) {
+      faults.push(
+        `a node lies outside the canvas at ${Math.round(box.x)},${Math.round(box.y)}`,
+      );
+    }
+  }
+
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      if (overlaps(boxes[i], boxes[j])) {
+        faults.push(
+          `two nodes overlap at ${Math.round(boxes[i].x)},${Math.round(boxes[i].y)}`,
+        );
+      }
+    }
+  }
+
+  return faults;
+}
+
+/**
+ * Where each box sits relative to the Canvas frame right now: whether the
+ * whole box is inside it, whether any of it shows at all, and whether a click
+ * on its middle would reach the box rather than an overlay (the Controls)
+ * sitting on top of it.
+ */
+export type NodeView = {
+  title: string;
+  fullyInside: boolean;
+  showing: boolean;
+  clickable: boolean;
+};
+
+export async function nodeViews(page: Page): Promise<NodeView[]> {
+  const frame = await canvas(page).boundingBox();
+  if (frame === null) return [];
+
+  return canvasNodes(page).evaluateAll(
+    (elements, f) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        const centerX = rect.x + rect.width / 2;
+        const centerY = rect.y + rect.height / 2;
+        const atCenter = window.document.elementFromPoint(centerX, centerY);
+        return {
+          title: element.getAttribute("aria-label") ?? "",
+          fullyInside:
+            rect.x >= f.x - 1 &&
+            rect.y >= f.y - 1 &&
+            rect.x + rect.width <= f.x + f.width + 1 &&
+            rect.y + rect.height <= f.y + f.height + 1,
+          showing:
+            rect.x + rect.width > f.x &&
+            rect.x < f.x + f.width &&
+            rect.y + rect.height > f.y &&
+            rect.y < f.y + f.height,
+          clickable: atCenter !== null && element.contains(atCenter),
+        };
+      }),
+    frame,
+  );
+}
+
+/**
+ * The whole map again, asked for from the Controls' own "fit view". A Step
+ * added takes the map to its own box and a Choice gives the Step it leads to
+ * a new rank of its own, which moves its box — and neither is the map asking
+ * to be fitted, so on a map zoomed in far enough a box can stand off the
+ * frame. An Author reaching for something takes the whole map back first, and
+ * so does a spec.
+ *
+ * The map is waited out before it is asked: the zoom to a box is an animation,
+ * and a "fit view" landing in the middle of one is undone as that animation
+ * runs on to where it was going.
+ */
+export async function fitWholeMap(page: Page, boxes: number): Promise<void> {
+  await settledTransform(page);
+
+  // Reaching for the Controls at the foot of the map scrolls the page down to
+  // them, which can leave the top of the map above the window; the whole
+  // frame is put back in it before the drags that follow.
+  await canvas(page)
+    .getByRole("button", { name: /fit view/i })
+    .click();
+  await mapInView(page);
+
+  await expect
+    .poll(() => mapFaults(page, boxes), { timeout: 20_000 })
+    .toEqual([]);
+}
+
+/**
+ * One box clicked, the way an Author clicks one: once the map has stopped
+ * moving. Adding a Step, opening the problems list above the map, or a
+ * fit-to-view can all still be moving the box when the next line runs, and
+ * a click made while it moves lands where the box was.
+ */
+export async function clickBox(page: Page, title: string): Promise<void> {
+  await settledTransform(page);
+  // Said outright when the box's middle — where the click lands — is not on
+  // the map or on screen: Playwright would scroll the pane to reach it,
+  // React Flow scrolls the pane straight back, and the click retries until
+  // the test times out with no word about why.
+  await expect
+    .poll(
+      async () =>
+        (await nodeViews(page)).find((view) => view.title === title)?.clickable,
+      { timeout: 10_000, message: `the box "${title}" is not clickable` },
+    )
+    .toBe(true);
+  await canvasNode(page, title).click();
+}
+
+/**
+ * Every box on a map lies inside that map's own frame: the fit held. `map`
+ * is the map's region — the Canvas, or the Analytics map.
+ */
+export async function expectMapFitted(map: Locator): Promise<void> {
+  const frame = await map.boundingBox();
+  expect(frame).not.toBeNull();
+  if (frame === null) return;
+
+  await expect
+    .poll(async () => {
+      const boxes = await map
+        .locator(".react-flow__node")
+        .evaluateAll((elements) =>
+          elements.map((element) => element.getBoundingClientRect()),
+        );
+      return boxes.every(
+        (rect) =>
+          rect.left >= frame.x &&
+          rect.top >= frame.y &&
+          rect.right <= frame.x + frame.width &&
+          rect.bottom <= frame.y + frame.height,
+      );
+    })
+    .toBe(true);
+}
+
+/**
+ * Which way a map is asked to run, as the control in its "Map controls" row
+ * says it. `map` is the map's region — the Canvas, or the Analytics map.
+ */
+export function directionRadio(
+  map: Locator,
+  name: "Top to bottom" | "Left to right",
+): Locator {
+  return map
+    .getByRole("group", { name: "Map controls" })
+    .getByRole("radio", { name, exact: true });
+}

@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import {
+  publishDocument,
+  runnerDocument,
+  writeDraftDocument,
+} from "./documents";
 import { queryE2eDatabase } from "./session";
 
 /**
@@ -243,4 +248,30 @@ export async function createJourney(
   }
 
   return journeyId;
+}
+
+/**
+ * A Project with one published Journey, made through the UI as an Author:
+ * the Project and the Journey through the dialogs, the Draft and its
+ * Published Version written straight into their rows with `runnerDocument()`.
+ * Starts from the Projects list and leaves the page on the new Journey's page.
+ */
+export async function publishOne(
+  page: Page,
+  label: string,
+  description: string,
+): Promise<{ projectId: string; journeyId: string }> {
+  const suffix = uniqueSuffix();
+  await page.goto("/projects");
+  const projectId = await createProject(page, `${label} ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `${label} journey ${suffix}`,
+    description,
+  );
+  await writeDraftDocument(journeyId, runnerDocument());
+  await publishDocument(journeyId, runnerDocument());
+  return { projectId, journeyId };
 }

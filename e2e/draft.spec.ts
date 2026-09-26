@@ -17,6 +17,7 @@ import {
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
+import { readDraftRow } from "./setup/documents";
 
 /**
  * Seam B for ticket 03: a Journey's Draft, from the browser and from the row
@@ -35,15 +36,6 @@ test.afterAll(async () => {
   await cleanup(mintedAuthorIds);
   await closePools();
 });
-
-type DraftRow = { document: unknown };
-
-function readDraftRow(journeyId: string): Promise<DraftRow[]> {
-  return queryE2eDatabase<DraftRow>(
-    'SELECT document FROM "draft" WHERE journey_id = $1',
-    [journeyId],
-  );
-}
 
 test("journey-draft", async ({ page, context }) => {
   const author = await signInAs(context);
@@ -80,9 +72,7 @@ test("journey-draft", async ({ page, context }) => {
 
   // What the page summarizes is what the row holds.
   const created = await readDraftRow(journeyId);
-  expect(created).toHaveLength(1);
-
-  const draft = graphDocumentSchema.parse(created[0].document);
+  const draft = graphDocumentSchema.parse(created.document);
   const stepIds = Object.keys(draft.steps);
   expect(stepIds).toHaveLength(1);
   expect(draft.startStepId).toBe(stepIds[0]);
@@ -108,8 +98,7 @@ test("journey-draft", async ({ page, context }) => {
 
   // The round trip that matters: stored and read back, unchanged.
   const stored = await readDraftRow(journeyId);
-  expect(stored).toHaveLength(1);
-  expect(stored[0].document).toEqual(largeJourney);
+  expect(stored.document).toEqual(largeJourney);
 
   await page.screenshot({
     path: evidencePath("journey-draft", "journey-draft.png"),
