@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, LinkIcon } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +16,12 @@ const noSubscription = () => () => {};
  * its own to show there — ticket 42, decision 4 — since before then that
  * address leads nowhere too). The whole URL is in the button's tooltip too,
  * for anyone who would rather select it by hand.
+ *
+ * A browser that refuses `navigator.clipboard.writeText` — it rejects, or
+ * there is no `navigator.clipboard` at all (ticket 79 item 5) — gets a
+ * second way to the same address: a read-only field beside the button,
+ * holding the whole address selected, so copying it by hand is one
+ * keystroke away. It stays until the page changes; nothing clears it back.
  */
 export function CopyLinkButton({
   path,
@@ -38,6 +44,8 @@ export function CopyLinkButton({
   );
   const href = origin === null ? null : `${origin}${path}`;
   const [copied, setCopied] = useState(false);
+  const [clipboardRefused, setClipboardRefused] = useState(false);
+  const fallbackRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!copied) return;
@@ -45,28 +53,45 @@ export function CopyLinkButton({
     return () => clearTimeout(timer);
   }, [copied]);
 
+  useEffect(() => {
+    if (clipboardRefused) fallbackRef.current?.select();
+  }, [clipboardRefused]);
+
   async function copy() {
     if (href === null) return;
     try {
       await navigator.clipboard.writeText(href);
       setCopied(true);
     } catch {
-      // A browser that refuses the clipboard still shows the address in the
-      // tooltip, so there is nothing more to say here.
+      // Neither a rejected `writeText` nor a missing `clipboard` altogether
+      // (both land here) leaves the Member with nothing: the field beside
+      // the button holds the address, selected, ready to copy by hand.
+      setClipboardRefused(true);
     }
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      aria-label={label}
-      title={href ?? undefined}
-      disabled={href === null}
-      onClick={() => void copy()}
-    >
-      {copied ? <CheckIcon aria-hidden /> : <LinkIcon aria-hidden />}
-      <span aria-live="polite">{copied ? "Copied" : "Copy link"}</span>
-    </Button>
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={label}
+        title={href ?? undefined}
+        disabled={href === null}
+        onClick={() => void copy()}
+      >
+        {copied ? <CheckIcon aria-hidden /> : <LinkIcon aria-hidden />}
+        <span aria-live="polite">{copied ? "Copied" : "Copy link"}</span>
+      </Button>
+      {clipboardRefused && href !== null ? (
+        <input
+          ref={fallbackRef}
+          readOnly
+          aria-label="Link to copy"
+          value={href}
+          className="border-input h-8 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm"
+        />
+      ) : null}
+    </span>
   );
 }

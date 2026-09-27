@@ -136,6 +136,16 @@ test("author-page", async ({ page, context, browser }) => {
     await queryE2eDatabase('UPDATE "user" SET "public" = true WHERE id = $1', [
       author.id,
     ]);
+
+    // The signed-in Author's own Settings page names the control by the
+    // words it starts with, "Copy link" (ticket 78's WCAG 2.5.3 choice),
+    // then whose link it is — already "Copy link to your Author page", not
+    // "participant", so ticket 79 item 9 is already satisfied here.
+    await page.goto("/projects/settings");
+    await expect(
+      page.getByRole("button", { name: "Copy link to your Author page" }),
+    ).toBeVisible();
+
     const onPage = await participant.goto(`/authors/${author.id}`);
     expect(onPage?.status()).toBe(200);
 

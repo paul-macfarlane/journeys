@@ -595,6 +595,222 @@ test("publish-acknowledged", async ({ page, context }) => {
   await expect(acknowledgement).toHaveCount(0);
 });
 
+/**
+ * Ticket 79 item 4: a restore is acknowledged the same way a publish is,
+ * in the header, even when the version restored held exactly what the
+ * Draft already did and so changed nothing on the page.
+ */
+test("restore-acknowledged", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  const original = publishableDocument();
+  await writeDraftDocument(journeyId, original);
+
+  const header = page.locator("main header");
+  const acknowledgement = header
+    .getByRole("status")
+    .filter({ hasText: "Restored Version" });
+
+  // Version 1: the Draft is exactly what it published.
+  await page.goto(journeyPath);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  await openTab(page, "Versions");
+  const versionOne = page
+    .getByRole("list", { name: "Versions" })
+    .getByRole("listitem")
+    .filter({ hasText: "Version 1" });
+
+  // Restoring version 1 onto a Draft that already holds version 1's
+  // document changes nothing — and is acknowledged all the same.
+  await versionOne.getByRole("button", { name: "Restore" }).click();
+  await page.getByRole("button", { name: "Restore version" }).click();
+  await expect(page.getByRole("alertdialog")).toBeHidden();
+  await expect(acknowledgement).toContainText(
+    "Restored Version 1 into the Draft.",
+  );
+  await expect(header.getByText("Unpublished changes")).toHaveCount(0);
+
+  // A document edit and a second publish leave the Draft matching version 2,
+  // which now holds different content from version 1.
+  const edited = {
+    ...original,
+    steps: {
+      ...original.steps,
+      [START_STEP_ID]: {
+        ...original.steps[START_STEP_ID],
+        title: "Border post at night",
+      },
+    },
+  };
+  await writeDraftDocument(journeyId, edited);
+  await page.goto(journeyPath);
+  await expect(acknowledgement).toHaveCount(0);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Publish", exact: true }),
+  ).toBeDisabled();
+
+  // Restoring version 1 again now replaces a Draft that matched version 2
+  // with one that no longer matches anything live: a changed Draft, still
+  // acknowledged, and now flagged unpublished too.
+  await openTab(page, "Versions");
+  await versionOne.getByRole("button", { name: "Restore" }).click();
+  await page.getByRole("button", { name: "Restore version" }).click();
+  await expect(page.getByRole("alertdialog")).toBeHidden();
+  await expect(acknowledgement).toContainText(
+    "Restored Version 1 into the Draft.",
+  );
+  await expect(header.getByText("Unpublished changes")).toBeVisible();
+
+  await page.screenshot({
+    path: evidencePath("restore-acknowledged", "restore-acknowledged.png"),
+    fullPage: true,
+  });
+});
+
+/**
+ * Ticket 79 item 5: a browser that refuses the clipboard still hands the
+ * Member the address, in a field beside the button, selected so copying it
+ * by hand is one keystroke.
+ */
+test("copy-link-fallback", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  // Every navigation from here on carries a `clipboard.writeText` that
+  // always rejects, the way a browser without clipboard permission does.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: () => Promise.reject(new Error("clipboard refused")),
+      },
+    });
+  });
+
+  const suffix = uniqueSuffix();
+  const projectTitle = `Refugee Health ${suffix}`;
+  const journeyTitle = `Border Crossing ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+  const participantUrl = `${E2E_BASE_URL}/j/${journeyId}`;
+  // Two such buttons exist right after a publish (the badge row's own, and
+  // the acknowledgement line's, `journey-share-link`); this test is about
+  // the badge row's.
+  const copyLink = page
+    .getByRole("button", { name: "Copy link for participants" })
+    .and(page.locator(':not([role="status"] *)'));
+  await copyLink.click();
+
+  const fallback = page.getByRole("textbox", { name: "Link to copy" });
+  await expect(fallback).toBeVisible();
+  await expect(fallback).toHaveValue(participantUrl);
+  const selection = await fallback.evaluate((input: HTMLInputElement) => ({
+    start: input.selectionStart,
+    end: input.selectionEnd,
+    length: input.value.length,
+  }));
+  expect(selection).toEqual({
+    start: 0,
+    end: participantUrl.length,
+    length: participantUrl.length,
+  });
+
+  await page.screenshot({
+    path: evidencePath("copy-link-fallback", "copy-link-fallback.png"),
+    fullPage: true,
+  });
+});
+
+/**
+ * Ticket 79 item 6: Versions show the viewer's own local time and zone, not
+ * the server's UTC — proven with the context pinned to a zone and the
+ * expected text computed from the fixture instant the same way, so the spec
+ * fails if the app ever drifts from `Intl.DateTimeFormat`'s own output.
+ */
+test.describe("local time zone", () => {
+  test.use({ timezoneId: "America/New_York" });
+
+  test("local-timestamps", async ({ page, context }) => {
+    const author = await signInAs(context);
+    mintedAuthorIds.push(author.id);
+
+    const suffix = uniqueSuffix();
+    const projectTitle = `Refugee Health ${suffix}`;
+    const journeyTitle = `Border Crossing ${suffix}`;
+
+    await page.goto("/projects");
+    const projectId = await createProject(page, projectTitle);
+    await page.goto(`/projects/${projectId}`);
+    const journeyId = await createJourney(page, projectId, journeyTitle);
+
+    await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+    await page.getByRole("button", { name: "Publish", exact: true }).click();
+    await expect(page.getByText("Published", { exact: true })).toBeVisible();
+
+    const [version] = await readVersionRows(journeyId);
+    const publishedAt = await queryE2eDatabase<{ published_at: Date }>(
+      'SELECT published_at FROM "published_version" WHERE id = $1',
+      [version.id],
+    );
+    const instant = new Date(publishedAt[0].published_at);
+    // Two calls, not one: `Intl.DateTimeFormat` refuses `dateStyle`/
+    // `timeStyle` combined with `timeZoneName` in the same options object
+    // (`local-time.tsx`'s `formatLocal`), so the expected text is built the
+    // same way.
+    const expectedMain = new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "America/New_York",
+    }).format(instant);
+    const expectedZone = new Intl.DateTimeFormat("en-US", {
+      timeZoneName: "short",
+      hour: "numeric",
+      timeZone: "America/New_York",
+    })
+      .formatToParts(instant)
+      .find((part) => part.type === "timeZoneName")?.value;
+    const expectedText = `${expectedMain} ${expectedZone}`;
+
+    await openTab(page, "Versions");
+    const versionRow = page
+      .getByRole("list", { name: "Versions" })
+      .getByRole("listitem")
+      .filter({ hasText: "Version 1" });
+    await expect(versionRow.locator("time")).toHaveText(expectedText);
+    await expect(versionRow.locator("time")).toHaveAttribute(
+      "datetime",
+      instant.toISOString(),
+    );
+
+    await page.screenshot({
+      path: evidencePath("local-timestamps", "local-timestamps.png"),
+      fullPage: true,
+    });
+  });
+});
+
 test("versions-tab-shows-draft", async ({ page, context }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
