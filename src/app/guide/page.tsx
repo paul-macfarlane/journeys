@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Guide",
   description:
     "How to write, publish, and share a Journey as an Author, and what to expect when you walk one as a Participant.",
+  alternates: { canonical: "/guide" },
 };
 
 /**

@@ -384,7 +384,10 @@ export function StepPanel({
           aria-label="Step problems"
           className="flex flex-col gap-2 rounded-xl px-4 py-3 ring-1 ring-destructive/40"
         >
-          <h4 className="text-sm font-medium">Problems</h4>
+          {/* One level under the Editor tab's "Steps" (`h2`, in
+              `draft-editor.tsx`), as the panel's other headings are (ticket
+              78, axe `heading-order`). */}
+          <h3 className="text-sm font-medium">Problems</h3>
           <ul
             role="list"
             aria-label="Step problems list"

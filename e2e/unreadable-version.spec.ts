@@ -51,10 +51,11 @@ test("unreadable-version", async ({ page, context }) => {
     steps: "broken",
   });
 
-  // The runner: not a 500, and the same screen a never-published Journey
-  // shows — no Run is started against a version that cannot be read.
+  // The runner: not a 500, and the same 404 a never-published Journey gets
+  // (ticket 42, decision 4) — no Run is started against a version that
+  // cannot be read.
   const runnerResponse = await page.goto(`/j/${journeyId}`);
-  expect(runnerResponse?.status()).toBe(200);
+  expect(runnerResponse?.status()).toBe(404);
   await expect(
     page.getByRole("heading", { name: "This journey isn't available" }),
   ).toBeVisible();

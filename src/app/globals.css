@@ -457,4 +457,42 @@
   --xy-node-color: var(--foreground);
   --xy-node-background-color: var(--card);
   --xy-node-border: 1px solid var(--border);
+  /* React Flow's own attribution box takes the map's own background
+     (ticket 78) rather than its default translucent white, which read as a
+     stale light box over the map in the dark theme. */
+  --xy-attribution-background-color: var(--background);
+}
+
+/* The attribution link itself has no variable to win with — React Flow's
+   own stylesheet hardcodes `color: #999`, 4.24:1 against the box above at
+   10px, short of WCAG's 4.5:1 in either scheme.
+   `.react-flow .react-flow__attribution a` is more specific than React
+   Flow's own `.react-flow__attribution a`, so it wins regardless of which
+   stylesheet Next.js orders after the other (ticket 35's trap, here for a
+   hardcoded property rather than a variable). The link stays — React
+   Flow's licence asks for the attribution — just legible: the map's own
+   foreground, which already reads at contrast against its own background
+   everywhere else on the page. */
+.react-flow .react-flow__attribution a {
+  color: var(--foreground);
+}
+
+/* Reduced motion (ticket 78's walk). The dialogs, menus, tooltips, and
+   sheets animate in and out through `tw-animate-css`, and the buttons and
+   fields ease their colors, none of it with a `motion-reduce:` variant of
+   its own: a reader who has asked for less motion gets every one of them
+   finished at once instead. Near zero rather than none, so Base UI still
+   sees each exit animation end and unmounts the popup behind it. Unlayered
+   and important, so it outranks every layered utility's own normal
+   declaration. The map's pan-and-zoom moves are React Flow's, not CSS:
+   `mapMoveDuration()` in `@/lib/reduced-motion` answers for those. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

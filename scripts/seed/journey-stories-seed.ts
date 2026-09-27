@@ -24,6 +24,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "@/db/schema";
 import { SEED_JOURNEY_IDS, SEED_PROJECT_ID } from "@/lib/demo";
+import type { Content } from "@/lib/graph/content";
 import {
   graphDocumentSchema,
   isEnding,
@@ -38,6 +39,14 @@ import case3 from "./journey-stories/case-3.json";
 
 export { SEED_PROJECT_ID };
 export const SEED_PROJECT_TITLE = "Journey Stories";
+
+/** A `Content` document holding one plain paragraph, for a seed Project's description (ticket 42, decision 6). */
+function oneParagraph(text: string): Content {
+  return {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  };
+}
 
 /**
  * The second seed Project (ticket 58): one small, original Journey that the
@@ -84,16 +93,27 @@ export const DEMO_JOURNEYS = [
   },
 ] as const;
 
-/** Every seed Project with the Journeys it holds, in the order they are written. */
+/**
+ * Every seed Project with the Journeys it holds, in the order they are
+ * written, and the rich-text description each carries on the public
+ * Project page — one sentence, so a link preview and `/p/<id>` both always
+ * have something to show (ticket 42, decision 6; 66 finding 1, 68 finding 1).
+ */
 export const SEED_PROJECTS = [
   {
     projectId: SEED_PROJECT_ID,
     title: SEED_PROJECT_TITLE,
+    descriptionContent: oneParagraph(
+      "Three interactive cases for trauma-informed healthcare education.",
+    ),
     journeys: SEED_JOURNEYS,
   },
   {
     projectId: DEMO_PROJECT_ID,
     title: DEMO_PROJECT_TITLE,
+    descriptionContent: oneParagraph(
+      "A short Journey about keeping your aunt's allotment plot through the summer.",
+    ),
     journeys: DEMO_JOURNEYS,
   },
 ] as const;
@@ -158,10 +178,21 @@ export async function seedJourneyStories(
     for (const project of SEED_PROJECTS) {
       await tx
         .insert(schema.project)
-        .values({ id: project.projectId, title: project.title })
+        .values({
+          id: project.projectId,
+          title: project.title,
+          descriptionContent: project.descriptionContent,
+        })
         .onConflictDoUpdate({
           target: schema.project.id,
-          set: { title: project.title, updatedAt: now },
+          set: {
+            title: project.title,
+            // The seed is the source of truth for the description too (68
+            // finding 1): a rerun rewrites it rather than leaving a stale
+            // one an Author edited by hand.
+            descriptionContent: project.descriptionContent,
+            updatedAt: now,
+          },
         });
       await tx
         .insert(schema.member)
@@ -169,7 +200,14 @@ export async function seedJourneyStories(
         .onConflictDoNothing();
     }
 
+    // Position within its own Project, 0 first, in the listed order — reset
+    // per Project, since `journey.position` orders a Project's own list
+    // (ticket 42, decision 6; `@/lib/journey-order`).
+    const positionByProject = new Map<string, number>();
     for (const journey of journeys) {
+      const position = positionByProject.get(journey.projectId) ?? 0;
+      positionByProject.set(journey.projectId, position + 1);
+
       await tx
         .insert(schema.journey)
         .values({
@@ -177,6 +215,7 @@ export async function seedJourneyStories(
           projectId: journey.projectId,
           title: journey.title,
           description: journey.description,
+          position,
         })
         .onConflictDoUpdate({
           target: schema.journey.id,
@@ -184,6 +223,7 @@ export async function seedJourneyStories(
             projectId: journey.projectId,
             title: journey.title,
             description: journey.description,
+            position,
             updatedAt: now,
           },
         });

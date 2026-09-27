@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
+
 import { AppNavbar } from "@/components/navbar/app-navbar";
 import { SiteFooter } from "@/components/site-footer";
+
+// Author-only: a layout's metadata merges into every page beneath it
+// (ticket 42), so this alone keeps every page under `/projects` out of a
+// search index, on top of `robots.ts` disallowing the whole tree.
+export const metadata: Metadata = {
+  robots: { index: false },
+};
 
 /**
  * The navbar above the Projects list. It is a sibling of the layout under

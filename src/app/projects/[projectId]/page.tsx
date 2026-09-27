@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -15,6 +16,26 @@ import { listJourneysForProject } from "@/db/journeys";
 import { listMembers } from "@/db/members";
 import { contentPreview } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
+
+/**
+ * The tab title (ticket 78): the Project's title, with the root layout's
+ * template appending "· Journeys". `requireSession` and `projectForMember`
+ * are `cache()`d, so the page below pays no second query. An id that is not
+ * this Author's — or never existed — is the same 404 as the page itself
+ * (ticket 60): metadata streams in after the page, so a title returned for
+ * a missing Project would replace the not-found page's own.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}): Promise<Metadata> {
+  const session = await requireSession();
+  const { projectId } = await params;
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) notFound();
+  return { title: project.title };
+}
 
 export default async function ProjectPage({
   params,
@@ -35,6 +56,9 @@ export default async function ProjectPage({
     listMembers(project),
   ]);
   const descriptionPreview = contentPreview(project.description);
+  const hasLiveJourney = journeys.some(
+    (journey) => journey.publishState === "published",
+  );
 
   return (
     <>
@@ -57,15 +81,27 @@ export default async function ProjectPage({
             <h1 className="text-2xl font-semibold tracking-tight">
               {project.title}
             </h1>
-            <div className="flex items-center gap-1">
-              <Link
-                href={`/p/${project.id}`}
-                className="text-muted-foreground text-sm underline underline-offset-4 hover:text-foreground"
-              >
-                Public page
-              </Link>
-              <CopyLinkButton path={`/p/${project.id}`} />
-            </div>
+            {/* The public page is a 404 for a Project with no live Journey
+                (ticket 42, decision 4), so the link is shown only once one
+                is published — before then it would lead nowhere. */}
+            {hasLiveJourney ? (
+              <div className="flex items-center gap-1">
+                <Link
+                  href={`/p/${project.id}`}
+                  className="text-muted-foreground text-sm underline underline-offset-4 hover:text-foreground"
+                >
+                  Public page
+                </Link>
+                <CopyLinkButton path={`/p/${project.id}`} />
+              </div>
+            ) : (
+              // A Project with no live Journey has no public page to link
+              // to yet — `/p/<id>` is a 404 until one publishes (ticket 42,
+              // decision 4) — so there is nothing here to point at.
+              <p className="text-muted-foreground text-sm">
+                Publish a journey to share this project.
+              </p>
+            )}
           </div>
           {descriptionPreview ? (
             <p className="text-muted-foreground">{descriptionPreview}</p>

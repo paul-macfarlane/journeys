@@ -9,6 +9,10 @@ import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Sign in",
+  // Not a page anyone should land on from a search result (ticket 42): it
+  // is reached only from the front page or a redirect, and offers a
+  // crawler nothing of its own to index.
+  robots: { index: false },
 };
 
 // The one place an Author chooses a provider. src/proxy.ts bounces requests
@@ -35,8 +39,15 @@ export default async function SignInPage() {
         </div>
         <SignInButtons />
         <p className="text-muted-foreground text-xs leading-relaxed">
-          By signing in you agree to the terms of service and privacy policy
-          below.
+          By signing in you agree to the{" "}
+          <Link href="/terms" className="underline underline-offset-4">
+            terms of service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline underline-offset-4">
+            privacy policy
+          </Link>
+          .
         </p>
       </main>
       <SiteFooter />

@@ -22,12 +22,21 @@ test("sign-in page offers Google and Discord with their logos", async ({
     page.getByRole("heading", { name: "Sign in", level: 1 }),
   ).toBeVisible();
 
-  const google = page.getByRole("button", { name: "Sign in with Google" });
-  const discord = page.getByRole("button", { name: "Sign in with Discord" });
+  // Each button is named by its words alone; the logo beside them is
+  // shown but decorative, so the name is not "Google Sign in with Google"
+  // (ticket 78).
+  const google = page.getByRole("button", {
+    name: "Sign in with Google",
+    exact: true,
+  });
+  const discord = page.getByRole("button", {
+    name: "Sign in with Discord",
+    exact: true,
+  });
   await expect(google).toBeVisible();
   await expect(discord).toBeVisible();
-  await expect(google.getByRole("img", { name: "Google" })).toBeVisible();
-  await expect(discord.getByRole("img", { name: "Discord" })).toBeVisible();
+  await expect(google.locator('svg[aria-hidden="true"]')).toBeVisible();
+  await expect(discord.locator('svg[aria-hidden="true"]')).toBeVisible();
 
   await page.screenshot({
     path: evidencePath("sign-in", "sign-in.png"),
@@ -45,4 +54,33 @@ test("a signed-in Author visiting /sign-in is sent to their projects", async ({
   await page.goto("/sign-in");
 
   await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);
+});
+
+/**
+ * Ticket 42: `/sign-in` carries `noindex` (nobody should land on it from a
+ * search result), and the paragraph under the buttons links both legal
+ * pages rather than naming one only "below" — a phrase that means nothing
+ * once a reader has scrolled.
+ */
+test("sign-in-links", async ({ page }) => {
+  await page.goto("/sign-in");
+
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
+
+  const legal = page.getByText(/By signing in you agree/);
+  await expect(
+    legal.getByRole("link", { name: "terms of service" }),
+  ).toHaveAttribute("href", "/terms");
+  await expect(
+    legal.getByRole("link", { name: "privacy policy" }),
+  ).toHaveAttribute("href", "/privacy");
+  await expect(page.getByText("below")).toHaveCount(0);
+
+  await page.screenshot({
+    path: evidencePath("sign-in-links", "sign-in-links.png"),
+    fullPage: true,
+  });
 });

@@ -48,6 +48,7 @@ import {
   EDGE_LABEL_MAX_WIDTH,
   layoutGraph,
 } from "@/lib/graph/layout";
+import { mapMoveDuration } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
 
 import "@xyflow/react/dist/style.css";
@@ -342,7 +343,7 @@ function AnalyticsFlow({
   useEffect(() => {
     if (lastDirection.current === direction) return;
     lastDirection.current = direction;
-    void fitView({ duration: 200 });
+    void fitView({ duration: mapMoveDuration() });
   }, [direction, fitView]);
 
   const colorMode = useCanvasColorMode();

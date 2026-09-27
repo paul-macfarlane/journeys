@@ -125,7 +125,10 @@ export function ChoiceList({
 
   return (
     <div className="flex flex-col gap-3">
-      <h4 className="text-sm font-medium">Choices</h4>
+      {/* One level under the Editor tab's "Steps" (`h2`, in
+          `draft-editor.tsx`), alongside the panel's "Problems" (ticket 78,
+          axe `heading-order`). */}
+      <h3 className="text-sm font-medium">Choices</h3>
 
       {/* role="list" is explicit: the flex layout strips the list marker, and
           some browsers drop the implicit role with it. */}

@@ -21,8 +21,8 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 7 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | done | PR #106 |
 | 9 | **4 Membership and accounts** (contract) | [82 One membership seam](issues/82-one-membership-seam.md) | contract | done | PR #108 |
 | 10 | 4 | [77 Account deletion](issues/77-account-deletion.md) | contract | done | PR #108 |
-| 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | ready-for-agent | Rescoped 2026-09-26 |
-| 12 | 5 | [78 Accessibility pass](issues/78-accessibility-pass.md) | polish | ready-for-agent | |
+| 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | done | PR #111 |
+| 12 | 5 | [78 Accessibility pass](issues/78-accessibility-pass.md) | polish | done | PR #111 |
 | 13 | **6 Authoring polish** (polish) | [79 Authoring rough edges](issues/79-authoring-rough-edges.md) | polish | ready-for-agent | |
 | 14 | 6 | [57 Empty states and placeholders](issues/57-in-app-help.md) | polish | ready-for-agent | Rescoped 2026-09-26 |
 | 15 | **7 Editor split and phone sheet** (polish) | [86 Split the canvas, the Draft editor, and the layout module](issues/86-split-editor-modules.md) | polish | ready-for-agent | Blocked by 81 (chunk 1) |
@@ -35,6 +35,11 @@ New tickets land here until Paul places them.
 
 | Ticket | Route | Status | Note |
 |---|---|---|---|
+| [88 Canvas arrows: keyboard focus and order](issues/88-canvas-arrow-focus.md) | polish | needs-triage | From 78's walk (chunk 5) |
+| [89 Choice target combobox: Enter retargets on open](issues/89-choice-target-enter.md) | contract | needs-triage | From 78's walk; keyboard-only Draft change |
+| [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | needs-triage | From 78's walk |
+| [91 Preview page title](issues/91-preview-title.md) | polish | needs-triage | From 78's walk |
+| [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | needs-triage | From 78's walk |
 | [93 Home, guide, and legal pages: stills, copy, and the footer](issues/93-public-pages-copy-and-stills.md) | polish | needs-triage | Paul's 2026-09-27 read of `/`, `/guide`, `/privacy`, `/terms`; after chunk 5 (same files) |
 | [94 Look at an older Published Version before restoring it](issues/94-view-a-published-version.md) | contract | needs-triage | Read-only map and Preview per Version |
 

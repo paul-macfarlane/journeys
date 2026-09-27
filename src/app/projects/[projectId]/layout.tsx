@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
+
 import { AppNavbar } from "@/components/navbar/app-navbar";
+
+// Author-only, like the sibling `(list)` layout's (ticket 42): merges into
+// every page beneath `[projectId]`, so the Editor, Preview, and Settings
+// tabs stay out of a search index too.
+export const metadata: Metadata = {
+  robots: { index: false },
+};
 
 /**
  * The navbar above a Project and everything inside it — its Journeys and

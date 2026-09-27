@@ -5,8 +5,10 @@ import { ProsePage } from "@/components/prose-page";
 import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 
 // The layout's template appends "· Journeys", so the title is the bare
-// phrase. This segment's metadata replaces the page's own when a page calls
-// `notFound()`, which is what gives `/p/<unknown>` and `/nope` one title.
+// phrase. This segment's metadata replaces the page's own when a page with
+// no closer `not-found.tsx` of its own calls `notFound()`, which is what
+// gives `/nope` this title. `/p/<unknown>` and `/j/<unknown>` each have a
+// closer segment `not-found.tsx` instead, titled for what is missing there.
 export const metadata: Metadata = {
   title: "Page not found",
 };

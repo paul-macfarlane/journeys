@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { DarkModeToggle } from "@/components/appearance-control";
+import { Wordmark } from "@/components/brand";
 import { SiteFooter } from "@/components/site-footer";
 import { themeStyle, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -27,10 +28,11 @@ const wayOutClassName =
 
 /**
  * The shell every participant screen sits in — the Start Step, each later
- * Step, the unavailable screen, and since ticket 07 the public Project page
- * — and, since ticket 27, every Preview screen too, so the surfaces cannot
- * drift: what differs between walking a Draft and walking a live Journey is
- * a banner, never the frame.
+ * Step, and since ticket 07 the public Project page — and, since ticket 27,
+ * every Preview screen too, so the surfaces cannot drift: what differs
+ * between walking a Draft and walking a live Journey is a banner, never the
+ * frame. A Journey with nothing live to show never reaches this frame at
+ * all: it is a 404 instead (ticket 42, decision 4).
  *
  * The Journey's title is the frame's header, on every screen that has a
  * Journey to name; a Participant is never inside a Journey without seeing
@@ -48,6 +50,16 @@ const wayOutClassName =
  * Last at the right, on every screen with a header, is the "Dark mode"
  * button (ticket 70), so a reader can change the scheme without scrolling
  * to the footer.
+ *
+ * `home` (ticket 42) is the header's third shape, for the public Project
+ * and Author pages: neither names a Journey, so there is no title to show
+ * and nothing to start over, but a Participant landing straight on one of
+ * those pages — from a link, never from a browse — still deserves the way
+ * home the runner's own screens get from their Project link. The wordmark
+ * takes that place instead, linking to `/`; "Dark mode" still sits at the
+ * right. The two are exclusive: a page never passes both `title` and
+ * `home`.
+ *
  * The header sticks to the top of the viewport so the way out stays in
  * reach on a long Step — beneath the Author navbar (`top-14`, its height)
  * on Preview, where that bar sticks first.
@@ -85,9 +97,10 @@ export function RunnerFrame({
   project,
   startOver,
   theme,
+  home,
   children,
 }: {
-  /** The Journey's title; absent only on the unavailable screen. */
+  /** The Journey's title; absent only on `home`. */
   title?: string;
   /** Shown beneath the header — the Start Step passes it, nothing else does. */
   description?: string;
@@ -99,8 +112,12 @@ export function RunnerFrame({
   startOver?: StartOverControl;
   /** The effective Theme: the Journey's override, else the Project's. */
   theme: Theme;
+  /** The public Project and Author pages' header (ticket 42): the wordmark as the way home in place of a Journey's title. */
+  home?: boolean;
   children: ReactNode;
 }) {
+  const Header = preview ? "section" : "header";
+
   return (
     <div
       data-slot="runner-frame"
@@ -111,8 +128,16 @@ export function RunnerFrame({
       style={themeStyle(theme) as CSSProperties}
       className="bg-background text-foreground flex flex-1 flex-col border-t-4 border-t-primary"
     >
+      {/* On Preview the page already has a banner, the Author navbar's, so
+          the frame's header is a region named "Journey" there rather than a
+          second banner, and the Preview bar is a region of its own: one
+          banner, and nothing on the page outside a landmark (axe
+          `landmark-no-duplicate-banner`, `region`; ticket 78's walk). */}
       {preview ? (
-        <div className="bg-muted text-muted-foreground text-sm">
+        <section
+          aria-label="Preview"
+          className="bg-muted text-muted-foreground text-sm"
+        >
           <div className="mx-auto flex w-full max-w-prose flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 sm:px-6">
             <span>Preview — nothing is recorded.</span>
             <a
@@ -122,11 +147,12 @@ export function RunnerFrame({
               Back to editor
             </a>
           </div>
-        </div>
+        </section>
       ) : null}
 
-      {title ? (
-        <header
+      {title || home ? (
+        <Header
+          aria-label={preview ? "Journey" : undefined}
           className={cn(
             "bg-background sticky z-30 border-b",
             preview ? "top-14" : "top-0",
@@ -134,15 +160,26 @@ export function RunnerFrame({
         >
           <div className="mx-auto flex w-full max-w-prose items-center justify-between gap-x-4 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 flex-col break-words">
-              {project ? (
-                <a
-                  href={project.href}
-                  className={cn(wayOutClassName, "self-start")}
-                >
-                  {project.title}
+              {home ? (
+                // A plain anchor on purpose, as `SiteFooter`'s own wordmark
+                // link is: this frame's navigations are whole-document.
+                // eslint-disable-next-line @next/next/no-html-link-for-pages
+                <a href="/" className="inline-flex">
+                  <Wordmark className="text-base" markClassName="size-5" />
                 </a>
-              ) : null}
-              <p className="font-display text-base font-medium">{title}</p>
+              ) : (
+                <>
+                  {project ? (
+                    <a
+                      href={project.href}
+                      className={cn(wayOutClassName, "self-start")}
+                    >
+                      {project.title}
+                    </a>
+                  ) : null}
+                  <p className="font-display text-base font-medium">{title}</p>
+                </>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-x-3">
               {startOver ? (
@@ -166,7 +203,7 @@ export function RunnerFrame({
               <DarkModeToggle className={wayOutClassName} />
             </div>
           </div>
-        </header>
+        </Header>
       ) : null}
 
       <main className="mx-auto flex w-full max-w-prose flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">

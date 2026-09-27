@@ -43,6 +43,13 @@ declare module "@tiptap/core" {
  * caption. Everything else StarterKit would bring is switched off. `editorExtensions` additionally leaves undo/redo, the drop
  * cursor, and the gap cursor enabled — editing conveniences that emit no
  * content of their own, so the closed content set stays the same either way.
+ *
+ * The runner's one-level shift (ticket 78) — `RichText` renders every stored
+ * heading one level below what it was written at, H1 → `h2` through H3 →
+ * `h4`, since a Step's own title is already the page's `h1` — needs no
+ * extension change: Tiptap's Heading allows levels 1–6 by default, so none
+ * of the three sets below overrides `levels`, and the shifted level is
+ * always one Heading already recognizes.
  */
 
 /**
@@ -323,7 +330,7 @@ export const richTextExtensions = [
 ];
 
 export const editorExtensions = [
-  StarterKit.configure({ ...sharedStarterKitOptions }),
+  StarterKit.configure(sharedStarterKitOptions),
   QuoteDocument,
   ParagraphQuote,
   CaptionedImage,
@@ -342,7 +349,10 @@ export const editorExtensions = [
  * there is.
  */
 export const draftEditorExtensions = [
-  StarterKit.configure({ ...sharedStarterKitOptions, undoRedo: false }),
+  StarterKit.configure({
+    ...sharedStarterKitOptions,
+    undoRedo: false,
+  }),
   QuoteDocument,
   ParagraphQuote,
   CaptionedImage,

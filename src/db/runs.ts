@@ -81,11 +81,11 @@ export type PublicJourney =
       projectId: string;
       projectTitle: string;
     }
-  // The unavailable screen sits in the same frame, so it carries the Theme
-  // too: a Journey taken down still belongs to a Project with a look, and a
-  // live version that fails the document contract (ticket 83) reads the
-  // same way — a Participant never meets a 500 for it.
-  | { kind: "unavailable"; theme: Theme };
+  // A Journey with no live version, one taken down, and a live version
+  // that fails the document contract (ticket 83) all read the same way: a
+  // 404 (ticket 42, decision 4), before any page reaches a `RunnerFrame` or
+  // a Theme to paint it in — a Participant never meets a 500 for it.
+  | { kind: "unavailable" };
 
 /**
  * A `published_version` row read through the document contract, never
@@ -108,7 +108,7 @@ export function toPublicJourney(row: {
       journeyId: row.journeyId,
       versionId: row.versionId,
     });
-    return { kind: "unavailable", theme: row.theme };
+    return { kind: "unavailable" };
   }
 
   return {
@@ -158,8 +158,6 @@ export const getPublicJourney = cache(async function getPublicJourney(
 
   if (!row) return null;
 
-  const theme = toTheme(row.theme);
-
   // The left join fills every `published_version` column from one row or
   // none, so the four are null together; narrowing on all of them keeps the
   // types honest without asserting.
@@ -170,7 +168,7 @@ export const getPublicJourney = cache(async function getPublicJourney(
     description === null ||
     document === null
   ) {
-    return { kind: "unavailable", theme };
+    return { kind: "unavailable" };
   }
 
   return toPublicJourney({
@@ -179,7 +177,7 @@ export const getPublicJourney = cache(async function getPublicJourney(
     title,
     description,
     document,
-    theme,
+    theme: toTheme(row.theme),
     projectId: row.projectId,
     projectTitle: row.projectTitle,
   });
