@@ -40,6 +40,8 @@ New tickets land here until Paul places them.
 | [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | needs-triage | From 78's walk |
 | [91 Preview page title](issues/91-preview-title.md) | polish | needs-triage | From 78's walk |
 | [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | needs-triage | From 78's walk |
+| [93 Home, guide, and legal pages: stills, copy, and the footer](issues/93-public-pages-copy-and-stills.md) | polish | needs-triage | Paul's 2026-09-27 read of `/`, `/guide`, `/privacy`, `/terms`; after chunk 5 (same files) |
+| [94 Look at an older Published Version before restoring it](issues/94-view-a-published-version.md) | contract | needs-triage | Read-only map and Preview per Version |
 
 ## Parked
 
@@ -50,6 +52,7 @@ Not ordered. Each needs something outside the backlog before it can move.
 | [39 Loading states](issues/39-loading-states.md) | needs-info | vercel/next.js#86055 |
 | [44 Renaming the app](issues/44-rename.md) | needs-info | Paul choosing a name |
 | [45 Atlas setup refresh](issues/45-atlas-setup-refresh.md) | needs-info | A harness session with Paul |
+| [95 Video in Steps](issues/95-video-in-steps.md) | needs-info | Paul deciding scope and source (embed vs hosted) |
 
 ## Withdrawn (2026-09-26)
 
