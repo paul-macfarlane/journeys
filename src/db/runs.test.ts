@@ -48,7 +48,7 @@ describe("toPublicJourney", () => {
         ...row,
         document: { schemaVersion: 1, steps: "not a map" },
       }),
-    ).toEqual({ kind: "unavailable", theme });
+    ).toEqual({ kind: "unavailable" });
   });
 });
 

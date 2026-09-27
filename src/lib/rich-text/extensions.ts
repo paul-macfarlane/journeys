@@ -44,16 +44,12 @@ declare module "@tiptap/core" {
  * cursor, and the gap cursor enabled — editing conveniences that emit no
  * content of their own, so the closed content set stays the same either way.
  *
- * The one place the two sets diverge on content rather than editing
- * convenience (ticket 78): `editorExtensions` and `draftEditorExtensions`
- * cap Heading at the levels the editor's toolbar offers (1–3, `heading1`
- * through `heading3` in `rich-text-editor.tsx`), while `richTextExtensions`
- * allows a level higher — `RichText` shifts every stored heading down one
- * level before rendering (H1 → `h2`, H2 → `h3`, H3 → `h4`), since a Step's
- * own title is already the page's `h1`. Tiptap's Heading falls back to
- * `levels[0]` for a level its own `levels` option does not list, so
- * `richTextExtensions` must list the shifted level explicitly or a shifted
- * H3 would render back down as `h1`.
+ * The runner's one-level shift (ticket 78) — `RichText` renders every stored
+ * heading one level below what it was written at, H1 → `h2` through H3 →
+ * `h4`, since a Step's own title is already the page's `h1` — needs no
+ * extension change: Tiptap's Heading allows levels 1–6 by default, so none
+ * of the three sets below overrides `levels`, and the shifted level is
+ * always one Heading already recognizes.
  */
 
 /**
@@ -327,10 +323,6 @@ export const richTextExtensions = [
     dropcursor: false,
     gapcursor: false,
     undoRedo: false,
-    // One level higher than the editor allows (see the divergence note
-    // above): `RichText` shifts every heading down before rendering, so the
-    // shifted level must be one this set's Heading recognizes.
-    heading: { levels: [1, 2, 3, 4] },
   }),
   QuoteDocument,
   ParagraphQuote,
@@ -338,10 +330,7 @@ export const richTextExtensions = [
 ];
 
 export const editorExtensions = [
-  StarterKit.configure({
-    ...sharedStarterKitOptions,
-    heading: { levels: [1, 2, 3] },
-  }),
+  StarterKit.configure(sharedStarterKitOptions),
   QuoteDocument,
   ParagraphQuote,
   CaptionedImage,
@@ -363,7 +352,6 @@ export const draftEditorExtensions = [
   StarterKit.configure({
     ...sharedStarterKitOptions,
     undoRedo: false,
-    heading: { levels: [1, 2, 3] },
   }),
   QuoteDocument,
   ParagraphQuote,

@@ -7,11 +7,12 @@ import { evidencePath } from "./setup/evidence";
 /**
  * Ticket 60: the app's own not-found page for a route that exists nowhere
  * and for `/authors/<unknown>`. `/p/<unknown>` and `/j/<unknown>` widened
- * the same idea (ticket 42, decision 4) but read their own copy in the
- * runner's own frame, since a Project or a Journey not being there is a
- * more specific answer than "nothing is at this address" — the generic
- * page, the RunnerFrame `home` header, and phone width all still carry no
- * horizontal overflow. Anonymous: no session read anywhere here.
+ * the same idea (ticket 42, decision 4), but read their own copy in the
+ * runner's own frame instead of the generic page's: a Project or a Journey
+ * not being there is a more specific answer than "nothing is at this
+ * address." Both the generic page and the RunnerFrame `home` header carry
+ * no horizontal overflow at phone width. Anonymous: no session read
+ * anywhere here.
  */
 
 /** Well-formed ids no row ever carries (the seed's are `…5eed…`). */

@@ -38,7 +38,10 @@ const getLiveJourneys = cache(
  * live pointer is set and absent otherwise, whether it was never published
  * or was taken down; the page is rendered on every request, so unpublishing
  * shows the moment it happens and needs no deploy. Titles and descriptions
- * are the live Published Version's, as the runner shows them.
+ * are the live Published Version's, as the runner shows them. A Project
+ * with no live Journey at all is a 404 here too (ticket 42, decision 4): a
+ * link to a Project that has never published, or whose only Journey was
+ * taken down, reads exactly as an unknown id does.
  *
  * Under the title, a "By …" line (ticket 52) names the Project's Members
  * whose Author page is on, in Members-tab order, each a link to that page;

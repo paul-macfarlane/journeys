@@ -20,7 +20,7 @@ const envSchema = z.object({
   // optional. `resolveMetadataBase` reads them to keep a preview
   // deployment's metadata pointed at the production origin rather than at
   // an address that may sit behind deployment protection.
-  VERCEL_ENV: z.string().optional(),
+  VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
   VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
 
   // Both providers are always enabled, so both client pairs are required.

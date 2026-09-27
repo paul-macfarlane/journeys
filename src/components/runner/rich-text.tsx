@@ -63,11 +63,12 @@ function hardenListItem(item: ListItem): ListItem {
  * title is already the page's `h1` (`step-view.tsx`), so an H1 opening a
  * Step's content rendered a second one; shifting every heading down avoids
  * it without asking Authors to write one level higher than they mean.
- * Clamped to 4 — `richTextExtensions`' own ceiling (`@/lib/rich-text/
- * extensions`) — though the editor only ever writes 1–3.
+ * Clamped to 6 — Tiptap's Heading recognizes no level past it
+ * (`@/lib/rich-text/extensions`) — though the editor's toolbar only ever
+ * writes 1–3.
  */
 function shiftHeadingLevel(level: number): number {
-  return Math.min(level + 1, 4);
+  return Math.min(level + 1, 6);
 }
 
 /**
@@ -130,7 +131,7 @@ export function RichText({ content }: { content: Content }) {
       // rule in the Theme's muted colour and stays upright, so an Author's
       // own italics inside it still read as emphasis.
       // No `[&_h1]`: every stored heading is shifted down at least one
-      // level (`shiftHeadingLevel` above), so the lowest this renders is
+      // level (`shiftHeadingLevel` above), so the top level this renders is
       // `h2` — a Step's title is the page's own `h1`. The size ladder shifts
       // with it — what an Author wrote as an H1 now sits on an `h2` tag, so
       // it takes the size the `h2` tag read at before this change, and so on

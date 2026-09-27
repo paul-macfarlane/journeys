@@ -5,11 +5,12 @@ import { resolveMetadataBase } from "@/lib/metadata-base";
 
 /**
  * Served at `/robots.txt` (ticket 42). Everything is allowed except
- * `/sign-in`, the Author-only `/projects` tree, and `/api`, which is what
- * every `noindex` metadata elsewhere in the app backs up: a crawler is
- * told the same thing twice, once here and once per page, so one of the
- * two staying right is not the only thing keeping an Author's own pages out
- * of a search index.
+ * `/sign-in`, the Author-only `/projects` tree, and `/api`. This disallow
+ * guards an obedient crawler that walks the site from here; the per-page
+ * `noindex` metadata elsewhere in the app guards a URL a search engine was
+ * handed some other way, such as a link shared outside the app, and so
+ * never read this file at all. The two answer different fetches, so
+ * neither backs the other up for the same one.
  *
  * The link-only public pages — `/j/*`, `/p/*`, `/authors/*` — are not
  * disallowed here: they carry `noindex` themselves (discovery stays

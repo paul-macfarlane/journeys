@@ -12,8 +12,10 @@ const noSubscription = () => () => {};
  * A public address copied in one click: the one a Participant walks a
  * Journey at (`/j/<id>`, shown only while a Published Version is live,
  * because before then the address leads nowhere) or opens a Project at
- * (`/p/<id>`, ticket 07, which every Project has). The whole URL is in the
- * button's tooltip too, for anyone who would rather select it by hand.
+ * (`/p/<id>`, ticket 07, shown only once the Project has a live Journey of
+ * its own to show there — ticket 42, decision 4 — since before then that
+ * address leads nowhere too). The whole URL is in the button's tooltip too,
+ * for anyone who would rather select it by hand.
  */
 export function CopyLinkButton({
   path,

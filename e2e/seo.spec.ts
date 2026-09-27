@@ -8,6 +8,7 @@ import {
 } from "./setup/authoring";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
+import { readPng } from "./setup/link-preview";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
 /**
@@ -59,10 +60,10 @@ test("seo-public-404s", async ({ page, context, browser }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
 
-  // A Project with a live Journey (so its own Author page has something to
-  // carry `noindex` on beside an empty list), and a second Project whose
-  // one Journey was created but never published — which is what a Project
-  // with no live Journey at all looks like from the outside.
+  // A Project with a live Journey — the one the `/projects/<id>` `noindex`
+  // assertion at the bottom of this test reads — and a second Project
+  // whose one Journey was created but never published, which is what a
+  // Project with no live Journey at all looks like from the outside.
   const { projectId } = await publishOne(
     page,
     "Seo",
@@ -119,6 +120,18 @@ test("seo-public-404s", async ({ page, context, browser }) => {
     // An unknown Project reads the same way.
     const unknownProject = await participant.goto(`/p/${UNKNOWN_ID}`);
     expect(unknownProject?.status()).toBe(404);
+
+    // The card at that Project's own address is the site's own, exactly
+    // the card an unknown id gets — both a `BrandCard`, never a
+    // `LinkPreviewCard` for a Project with nothing live to preview.
+    const barrenCard = await readPng(
+      await participant.request.get(`/p/${barrenProjectId}/opengraph-image`),
+    );
+    const unknownCard = await readPng(
+      await participant.request.get(`/p/${UNKNOWN_ID}/opengraph-image`),
+    );
+    expect(barrenCard.status).toBe(200);
+    expect(barrenCard.bytes.equals(unknownCard.bytes)).toBe(true);
   } finally {
     await participantContext.close();
   }
@@ -130,4 +143,13 @@ test("seo-public-404s", async ({ page, context, browser }) => {
     "content",
     /noindex/,
   );
+
+  // Preview still works for the Draft-only Journey (ticket 42's scope
+  // change did not touch it): the Author, signed in, reaches it and sees
+  // the Start Step, even though the same Journey 404s to a Participant.
+  const previewResponse = await page.goto(
+    `/projects/${barrenProjectId}/journeys/${draftOnlyJourneyId}/preview`,
+  );
+  expect(previewResponse?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });

@@ -77,6 +77,13 @@ test("public-project-page", async ({ page, context, browser }) => {
   const projectId = await createProject(page, projectTitle);
   await page.goto(`/projects/${projectId}`);
 
+  // No live Journey yet (ticket 42, decision 4): the public page would be
+  // a 404, so the Author's own page offers no link to it, only the hint.
+  await expect(
+    page.getByText("Publish a journey to share this project."),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Public page" })).toHaveCount(0);
+
   // The description, written the way an Author writes a Step: a heading,
   // a bold run, and a list — the shared allowed set — and saved when the
   // editor is left.
@@ -182,6 +189,19 @@ test("public-project-page", async ({ page, context, browser }) => {
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   await expect(page.getByText("Published", { exact: true })).toBeVisible();
 
+  // Now that the Project has a live Journey, the Author's own page offers
+  // the link instead of the hint.
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByRole("link", { name: "Public page" })).toHaveAttribute(
+    "href",
+    `/p/${projectId}`,
+  );
+  await expect(
+    page.getByText("Publish a journey to share this project."),
+  ).toHaveCount(0);
+  // Back to the Journey page: the Unpublish flow below is driven there.
+  await page.goto(`/projects/${projectId}/journeys/${publishedId}`);
+
   // A Participant: no session, on a phone, holding only the link.
   const participantContext = await browser.newContext({
     baseURL: E2E_BASE_URL,
@@ -193,6 +213,16 @@ test("public-project-page", async ({ page, context, browser }) => {
 
     await expect(
       participant.getByRole("heading", { name: projectTitle, level: 1 }),
+    ).toBeVisible();
+    // The frame's header: the wordmark as the way home, and "Dark mode"
+    // beside it, on every screen with one.
+    await expect(
+      participant.getByRole("banner").getByRole("link", { name: "Journeys" }),
+    ).toHaveAttribute("href", "/");
+    await expect(
+      participant
+        .getByRole("banner")
+        .getByRole("button", { name: "Dark mode" }),
     ).toBeVisible();
     // The description's H2 is read one level down under the page's own
     // `h1`, as all stored rich text is outside the editor (ticket 78).

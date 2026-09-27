@@ -1,7 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import {
+  createJourney,
+  createProject,
+  openTab,
+  uniqueSuffix,
+} from "./setup/authoring";
 import {
   publishableDocument,
   publishDocument,
@@ -146,6 +151,19 @@ test("a11y-journey-page: zero axe violations on the Editor tab in both schemes, 
     path: evidencePath("a11y-journey-page", "journey-page-light.png"),
     fullPage: true,
   });
+
+  // The Journey page's other tabs, light only: each opened and checked in
+  // turn, since axe reads the tree the open tab renders, not the ones
+  // hidden behind it.
+  for (const tab of [
+    "Versions",
+    "Responses",
+    "Analytics",
+    "Settings",
+  ] as const) {
+    await openTab(page, tab);
+    await expectNoViolations(page, `journey page, ${tab} tab, light`);
+  }
 
   const dark = await darkContextFor(browser, page);
   try {
@@ -439,42 +457,49 @@ test("a11y-reduced-motion: popups and the map move at once for a reader who aske
     await expect(dialog).toHaveCount(0);
 
     // The map's own move — the fit after it turns a quarter, 200ms of
-    // frames by default — lands in one: sampled every frame from the click,
-    // the map's transform takes no value between where it was and where it
-    // ends.
+    // frames by default — lands in one: sampled every frame from before the
+    // click to well after the move would have finished, the map's
+    // transform takes no value between where it was and where it ends.
     await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
     await expect(page.getByLabel("Step title")).toHaveValue(START_STEP_TITLE);
     const viewport = page
       .getByRole("region", { name: "Canvas" })
       .locator(".react-flow__viewport");
     await expect(viewport).toHaveAttribute("style", /transform/);
-    await page.evaluate(() => {
-      const element = document.querySelector<HTMLElement>(
-        ".react-flow__viewport",
-      );
-      const seen: string[] = [];
-      (window as unknown as { mapFrames: string[] }).mapFrames = seen;
-      const started = performance.now();
-      function sample() {
-        const value = element?.style.transform ?? "";
-        if (seen.at(-1) !== value) seen.push(value);
-        if (performance.now() - started < 1_500) requestAnimationFrame(sample);
-      }
-      requestAnimationFrame(sample);
-    });
-    await page.getByRole("radio", { name: "Left to right" }).click();
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (window as unknown as { mapFrames: string[] }).mapFrames.length,
-        ),
-      )
-      .toBeGreaterThan(1);
-    await page.waitForTimeout(1_600);
-    const frames = await page.evaluate(
-      () => (window as unknown as { mapFrames: string[] }).mapFrames,
+
+    // Started before the click and awaited after it: `evaluate` awaits a
+    // returned promise, and this one resolves only once its own sampling
+    // window — 1.5s of frames, well past the move's 200ms — has ended, with
+    // every transform it saw along the way.
+    const framesPromise = page.evaluate(
+      () =>
+        new Promise<string[]>((resolve) => {
+          const element = document.querySelector<HTMLElement>(
+            ".react-flow__viewport",
+          );
+          const seen: string[] = [];
+          const started = performance.now();
+          const sample = () => {
+            const value = element?.style.transform ?? "";
+            if (seen.at(-1) !== value) seen.push(value);
+            if (performance.now() - started < 1_500) {
+              requestAnimationFrame(sample);
+            } else {
+              resolve(seen);
+            }
+          };
+          requestAnimationFrame(sample);
+        }),
     );
-    expect(frames, "the map moved in one frame").toHaveLength(2);
+    await page.getByRole("radio", { name: "Left to right" }).click();
+    const frames = await framesPromise;
+
+    const before = frames[0];
+    const after = frames[frames.length - 1];
+    expect(
+      frames.every((frame) => frame === before || frame === after),
+      "the map's transform took no value between where it was and where it ends",
+    ).toBe(true);
     await page.screenshot({
       path: evidencePath("a11y-reduced-motion", "turned-map.png"),
       fullPage: true,

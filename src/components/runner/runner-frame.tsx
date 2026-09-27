@@ -28,10 +28,11 @@ const wayOutClassName =
 
 /**
  * The shell every participant screen sits in — the Start Step, each later
- * Step, the unavailable screen, and since ticket 07 the public Project page
- * — and, since ticket 27, every Preview screen too, so the surfaces cannot
- * drift: what differs between walking a Draft and walking a live Journey is
- * a banner, never the frame.
+ * Step, and since ticket 07 the public Project page — and, since ticket 27,
+ * every Preview screen too, so the surfaces cannot drift: what differs
+ * between walking a Draft and walking a live Journey is a banner, never the
+ * frame. A Journey with nothing live to show never reaches this frame at
+ * all: it is a 404 instead (ticket 42, decision 4).
  *
  * The Journey's title is the frame's header, on every screen that has a
  * Journey to name; a Participant is never inside a Journey without seeing
@@ -58,6 +59,7 @@ const wayOutClassName =
  * takes that place instead, linking to `/`; "Dark mode" still sits at the
  * right. The two are exclusive: a page never passes both `title` and
  * `home`.
+ *
  * The header sticks to the top of the viewport so the way out stays in
  * reach on a long Step — beneath the Author navbar (`top-14`, its height)
  * on Preview, where that bar sticks first.
@@ -98,7 +100,7 @@ export function RunnerFrame({
   home,
   children,
 }: {
-  /** The Journey's title; absent only on the unavailable screen and on `home`. */
+  /** The Journey's title; absent only on `home`. */
   title?: string;
   /** Shown beneath the header — the Start Step passes it, nothing else does. */
   description?: string;
@@ -110,8 +112,7 @@ export function RunnerFrame({
   startOver?: StartOverControl;
   /** The effective Theme: the Journey's override, else the Project's. */
   theme: Theme;
-  /** The public Project and Author pages' header (ticket 42): the wordmark
-   * as the way home in place of a Journey's title. */
+  /** The public Project and Author pages' header (ticket 42): the wordmark as the way home in place of a Journey's title. */
   home?: boolean;
   children: ReactNode;
 }) {

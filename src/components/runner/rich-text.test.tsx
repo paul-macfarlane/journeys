@@ -116,6 +116,32 @@ describe("RichText", () => {
     expect(html).not.toContain("<h3");
   });
 
+  it("clamps a heading at h6, the level shifting stops at", () => {
+    // Tiptap's Heading recognizes levels 1-6; the shift never asks it for
+    // one past that, whatever level a document was written at.
+    const content: Content = {
+      type: "doc",
+      content: [
+        {
+          type: "heading",
+          attrs: { level: 5 },
+          content: [{ type: "text", text: "Deep" }],
+        },
+        {
+          type: "heading",
+          attrs: { level: 6 },
+          content: [{ type: "text", text: "Deepest" }],
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(<RichText content={content} />);
+    expect(html).toContain("<h6");
+    expect(html).toContain("Deep</h6>");
+    expect(html).toContain("Deepest</h6>");
+    expect(html).not.toContain("<h7");
+  });
+
   it("renders a bullet list with two items", () => {
     const content: Content = {
       type: "doc",

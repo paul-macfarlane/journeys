@@ -37,4 +37,24 @@ describe("resolveMetadataBase", () => {
       }),
     ).toEqual(new URL("https://journeys-git-a-branch.vercel.app"));
   });
+
+  it("falls back to BETTER_AUTH_URL on a preview deployment whose production URL is empty", () => {
+    expect(
+      resolveMetadataBase({
+        BETTER_AUTH_URL: "https://journeys-git-a-branch.vercel.app",
+        VERCEL_ENV: "preview",
+        VERCEL_PROJECT_PRODUCTION_URL: "",
+      }),
+    ).toEqual(new URL("https://journeys-git-a-branch.vercel.app"));
+  });
+
+  it("uses BETTER_AUTH_URL locally in development, even alongside a production URL", () => {
+    expect(
+      resolveMetadataBase({
+        BETTER_AUTH_URL: "http://localhost:3000",
+        VERCEL_ENV: "development",
+        VERCEL_PROJECT_PRODUCTION_URL: "journeys.example.com",
+      }),
+    ).toEqual(new URL("http://localhost:3000"));
+  });
 });

@@ -142,6 +142,16 @@ test("author-page", async ({ page, context, browser }) => {
     await expect(
       participant.getByRole("heading", { name, level: 1 }),
     ).toBeVisible();
+    // The frame's header: the wordmark as the way home, and "Dark mode"
+    // beside it, on every screen with one.
+    await expect(
+      participant.getByRole("banner").getByRole("link", { name: "Journeys" }),
+    ).toHaveAttribute("href", "/");
+    await expect(
+      participant
+        .getByRole("banner")
+        .getByRole("button", { name: "Dark mode" }),
+    ).toBeVisible();
     await expect(participant.locator("main img")).toBeVisible();
     await expect(
       participant.getByText("I write branching journeys about care."),
