@@ -23,7 +23,10 @@ export { stepName };
  * editor never has to guard a stale selection before calling one of these.
  */
 
-/** A new, empty Step: an empty title (read as "Untitled step"), one blank paragraph, no Choices, not an Ending's tag. */
+/**
+ * A new, empty Step: an empty title (read as "Untitled step"), one blank
+ * paragraph, no Choices, not an Ending's tag.
+ */
 export function addStep(
   document: GraphDocument,
   title = "",

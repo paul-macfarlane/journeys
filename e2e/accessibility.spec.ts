@@ -1,4 +1,3 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import {
@@ -7,6 +6,7 @@ import {
   openTab,
   uniqueSuffix,
 } from "./setup/authoring";
+import { expectNoViolations } from "./setup/axe";
 import {
   publishableDocument,
   publishDocument,
@@ -47,23 +47,6 @@ test.afterAll(async () => {
   await cleanup(mintedAuthorIds);
   await closePools();
 });
-
-/**
- * axe's full default rule set over the whole page, in whatever scheme the
- * page already carries. Fails on any violation — no rule here is ever
- * switched off to get to zero (ticket 78); a real one is fixed at its
- * cause, and one outside this ticket's own pages is reported instead.
- */
-async function expectNoViolations(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page }).analyze();
-  const violations = results.violations.flatMap((violation) =>
-    violation.nodes.map(
-      (node) =>
-        `${violation.id} (${violation.impact}): ${node.target.join(" ")}: ${node.failureSummary}`,
-    ),
-  );
-  expect(violations, `${label}: axe violations`).toEqual([]);
-}
 
 /**
  * A second context for the same signed-in Author, in the other color

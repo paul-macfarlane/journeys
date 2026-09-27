@@ -3,7 +3,7 @@ import { Editor, type JSONContent } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { editorExtensions } from "./extensions";
-import { Placeholder } from "./placeholder";
+import { Placeholder, placeholderKey } from "./placeholder";
 
 /**
  * The Step content editor's placeholder (ticket 57): a decoration on the
@@ -76,5 +76,70 @@ describe("Placeholder", () => {
     const instance = editorWith(undefined);
     const first = instance.view.dom.querySelector("p");
     expect(first!.classList.contains("is-empty")).toBe(false);
+  });
+});
+
+describe("Placeholder over a first block that is not a paragraph", () => {
+  it("decorates a blank heading that opens the document", () => {
+    const instance = editorWith(PLACEHOLDER_TEXT, {
+      type: "doc",
+      content: [{ type: "heading", attrs: { level: 2 } }],
+    });
+    const first = instance.view.dom.firstElementChild;
+    expect(first?.tagName).toBe("H2");
+    expect(first?.classList.contains("is-empty")).toBe(true);
+    expect(first?.getAttribute("data-placeholder")).toBe(PLACEHOLDER_TEXT);
+  });
+
+  it("decorates a blank list that opens the document", () => {
+    const instance = editorWith(PLACEHOLDER_TEXT, {
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [{ type: "listItem", content: [{ type: "paragraph" }] }],
+        },
+      ],
+    });
+    const first = instance.view.dom.firstElementChild;
+    expect(first?.tagName).toBe("UL");
+    expect(first?.classList.contains("is-empty")).toBe(true);
+  });
+});
+
+describe("Placeholder's aria-placeholder", () => {
+  it("names the hint only while the document is blank", () => {
+    const instance = editorWith(PLACEHOLDER_TEXT);
+    expect(instance.view.dom.getAttribute("aria-placeholder")).toBe(
+      PLACEHOLDER_TEXT,
+    );
+
+    instance.commands.insertContent("Something");
+    expect(instance.view.dom.hasAttribute("aria-placeholder")).toBe(false);
+
+    instance.commands.clearContent();
+    expect(instance.view.dom.getAttribute("aria-placeholder")).toBe(
+      PLACEHOLDER_TEXT,
+    );
+  });
+
+  it("is never set without the extension configured", () => {
+    const instance = editorWith(undefined);
+    expect(instance.view.dom.hasAttribute("aria-placeholder")).toBe(false);
+  });
+});
+
+describe("Placeholder's blankness", () => {
+  it("is worked out again only when a transaction changes the document", () => {
+    const instance = editorWith(PLACEHOLDER_TEXT);
+    const before = placeholderKey.getState(instance.state);
+    expect(before).toEqual({ blank: true });
+
+    // A selection move changes nothing the placeholder reads.
+    instance.commands.setTextSelection(1);
+    expect(placeholderKey.getState(instance.state)).toBe(before);
+
+    instance.commands.insertContent("Something");
+    expect(placeholderKey.getState(instance.state)).toEqual({ blank: false });
   });
 });

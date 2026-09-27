@@ -20,8 +20,10 @@ const noSubscription = () => () => {};
  * A browser that refuses `navigator.clipboard.writeText` — it rejects, or
  * there is no `navigator.clipboard` at all (ticket 79 item 5) — gets a
  * second way to the same address: a read-only field beside the button,
- * holding the whole address selected, so copying it by hand is one
- * keystroke away. It stays until the page changes; nothing clears it back.
+ * holding the whole address selected and taking focus on every refused
+ * click, so copying it by hand is one keystroke away; the button's live
+ * text says so to a screen reader. It stays until the page changes;
+ * nothing clears it back.
  */
 export function CopyLinkButton({
   path,
@@ -44,7 +46,10 @@ export function CopyLinkButton({
   );
   const href = origin === null ? null : `${origin}${path}`;
   const [copied, setCopied] = useState(false);
-  const [clipboardRefused, setClipboardRefused] = useState(false);
+  // How many clicks the clipboard has refused: each one, the first included,
+  // puts the Member in the field with the address selected again.
+  const [refusals, setRefusals] = useState(0);
+  const clipboardRefused = refusals > 0;
   const fallbackRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -54,8 +59,11 @@ export function CopyLinkButton({
   }, [copied]);
 
   useEffect(() => {
-    if (clipboardRefused) fallbackRef.current?.select();
-  }, [clipboardRefused]);
+    if (refusals === 0) return;
+    const field = fallbackRef.current;
+    field?.focus();
+    field?.select();
+  }, [refusals]);
 
   async function copy() {
     if (href === null) return;
@@ -65,8 +73,9 @@ export function CopyLinkButton({
     } catch {
       // Neither a rejected `writeText` nor a missing `clipboard` altogether
       // (both land here) leaves the Member with nothing: the field beside
-      // the button holds the address, selected, ready to copy by hand.
-      setClipboardRefused(true);
+      // the button holds the address, focused and selected, ready to copy
+      // by hand — on this click and every one after it.
+      setRefusals((current) => current + 1);
     }
   }
 
@@ -81,7 +90,12 @@ export function CopyLinkButton({
         onClick={() => void copy()}
       >
         {copied ? <CheckIcon aria-hidden /> : <LinkIcon aria-hidden />}
-        <span aria-live="polite">{copied ? "Copied" : "Copy link"}</span>
+        <span aria-live="polite">
+          {copied ? "Copied" : "Copy link"}
+          {clipboardRefused ? (
+            <span className="sr-only"> Copy it from the field</span>
+          ) : null}
+        </span>
       </Button>
       {clipboardRefused && href !== null ? (
         <input

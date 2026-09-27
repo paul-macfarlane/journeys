@@ -480,10 +480,13 @@
 /* The Step content editor's placeholder (ticket 57): a decoration puts
    `is-empty` and `data-placeholder` on the first block while the document is
    empty (`@/lib/rich-text/placeholder.ts`), never on the stored content
-   itself. `float: left; height: 0` keeps the empty paragraph's own height
+   itself. Whatever that block is — a paragraph, a heading (the hint in its
+   size), a list or a quote (the hint at the start of its first line, beside
+   the bullet or inside the rule) — so a direct child of the surface, not
+   only a `p`. `float: left; height: 0` keeps the empty block's own height
    (and the caret's position in it) exactly what it would be without the
    pseudo-element. */
-.ProseMirror p.is-empty::before {
+.ProseMirror > .is-empty::before {
   content: attr(data-placeholder);
   float: left;
   height: 0;

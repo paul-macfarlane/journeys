@@ -7,6 +7,7 @@ import {
   hasOutcome,
   hasStep,
   isEnding,
+  stepName,
   type GraphDocument,
   type Prompt,
   type Step,
@@ -325,7 +326,12 @@ export function StepView({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{step.title}</h1>
+      {/* The name an Author sees for it, so a Step left untitled (ticket 79
+          item 1 stores its title empty) still heads the page with words
+          rather than an empty `h1`. */}
+      <h1 className="text-2xl font-semibold tracking-tight">
+        {stepName(step)}
+      </h1>
       <RichText content={step.content} />
 
       {isEnding(step) ? (

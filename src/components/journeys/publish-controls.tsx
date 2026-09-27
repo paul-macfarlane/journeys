@@ -52,15 +52,29 @@ import type { PublishProblem } from "@/lib/graph/validate";
  * A restore that went through (ticket 79 item 4) is acknowledged the same
  * way, from `RestoreVersionDialog` through `useAcknowledgeRestore`: one line
  * naming the version restored into the Draft, shown even when that version
- * turns out to hold exactly what the Draft already did.
+ * turns out to hold exactly what the Draft already did. Either line stays
+ * until a later change to the Draft; see `PublishScope` for how "later" is
+ * told.
  */
 
 type Refusal = { error: string; problems: PublishProblem[] };
 
-/** What a successful publish or restore leaves behind to be acknowledged. */
+/**
+ * What a successful publish or restore leaves behind to be acknowledged,
+ * with the Draft version its own action left: a publish's is the version it
+ * was guarded by (after the editor's flush), a restore's the one its write
+ * made.
+ */
 type Acknowledgement =
-  | { kind: "published"; versionNumber: number }
-  | { kind: "restored"; versionNumber: number };
+  | { kind: "published"; versionNumber: number; draftVersion: number }
+  | { kind: "restored"; versionNumber: number; draftVersion: number };
+
+/**
+ * The acknowledgement held, and — for a publish — whether the page has
+ * rendered it yet with nothing left to publish: the moment the line first
+ * says something true.
+ */
+type Held = { acknowledgement: Acknowledgement; shown: boolean };
 
 type PublishScopeValue = {
   acknowledgement: Acknowledgement | null;
@@ -78,28 +92,31 @@ function usePublishScope(caller: string): PublishScopeValue {
 }
 
 /**
- * Holds the acknowledgement of the last publish for everything beneath it,
- * and the Draft version the Member holds (`DraftVersionScope`).
+ * Holds the acknowledgement of the last publish or restore for everything
+ * beneath it, and the Draft version the Member holds (`DraftVersionScope`).
  *
- * The line stays until the Draft changes again — the moment the page says
- * "Unpublished changes" — or the page is left, which unmounts this. The
- * reset watches `hasUnpublishedChanges` turn true rather than reading it
- * live: a publish acknowledges itself in the same breath as the page's
- * re-render turns the flag off, and the two can land in either order, so
- * only a later edit's flip clears it. Adjusted during render, the way React
- * suggests for state that follows a prop, rather than in an effect.
+ * The line stays until something after the acknowledged action changes the
+ * Draft, or the page is left, which unmounts this. "After" is read from
+ * values, never from the order renders arrive in: the action's response and
+ * the page's re-render can land either way round, and a publish's click can
+ * also blur an open editor whose save of a just-typed edit lands in the
+ * same breath. So each acknowledgement records the Draft version its own
+ * action left, and is cleared by:
  *
- * A restore does not share a publish's invariant: it always writes the
- * Draft (bumping `draftVersion`), and restoring an earlier version can
- * leave the Draft matching what is live or not, so it can turn
- * "Unpublished changes" on itself — and a publish can too, indirectly:
- * clicking it blurs an open editor, whose own save of a just-typed edit can
- * land in the very same re-render that settles the publish. Either way,
- * this is the acknowledged action's own settling, not the later edit that
- * is supposed to clear it, so `awaitingSettle` marks the one render that
- * settling lands in — whichever of the two signals moves first — and lets
- * it through once, unread. Only a render after that, moving either signal
- * again, is a later edit.
+ * - a page `draftVersion` past that version — an edit, of either kind of
+ *   acknowledgement, made after it; the action's own settling can only
+ *   bring the page up to the recorded version, never past it;
+ * - for a publish only, `hasUnpublishedChanges` true once the line has been
+ *   shown — rendered with nothing left to publish, which only the publish's
+ *   own re-render can do. A title or description edit, or an unpublish,
+ *   turns the flag on without moving the Draft version; a flag still on
+ *   from before the publish settled (the blurred editor's save) comes
+ *   before the line was shown, so it cannot clear it.
+ *
+ * A restore has no second rule: restoring an earlier version can leave the
+ * Draft matching what is live or not, either way acknowledged, so the flag
+ * says nothing about it. Adjusted during render, the way React suggests for
+ * state that follows a prop, rather than in an effect.
  */
 export function PublishScope({
   hasUnpublishedChanges,
@@ -112,43 +129,35 @@ export function PublishScope({
   draftVersion: number;
   children: ReactNode;
 }) {
-  const [acknowledgement, setAcknowledgementState] =
-    useState<Acknowledgement | null>(null);
-  const [sawUnpublishedChanges, setSawUnpublishedChanges] = useState(
-    hasUnpublishedChanges,
-  );
-  const [sawDraftVersion, setSawDraftVersion] = useState(draftVersion);
-  const [awaitingSettle, setAwaitingSettle] = useState(false);
+  const [held, setHeld] = useState<Held | null>(null);
 
-  const changed =
-    sawUnpublishedChanges !== hasUnpublishedChanges ||
-    sawDraftVersion !== draftVersion;
-  if (changed) {
-    setSawUnpublishedChanges(hasUnpublishedChanges);
-    setSawDraftVersion(draftVersion);
-    if (awaitingSettle) {
-      setAwaitingSettle(false);
-    } else {
-      setAcknowledgementState(null);
+  if (held !== null) {
+    const { acknowledgement, shown } = held;
+    const published = acknowledgement.kind === "published";
+    if (
+      draftVersion > acknowledgement.draftVersion ||
+      (published && shown && hasUnpublishedChanges)
+    ) {
+      setHeld(null);
+    } else if (published && !shown && !hasUnpublishedChanges) {
+      setHeld({ acknowledgement, shown: true });
     }
   }
 
   function acknowledge(next: Acknowledgement) {
-    setAcknowledgementState(next);
-    setAwaitingSettle(true);
+    setHeld({ acknowledgement: next, shown: false });
   }
+
+  const acknowledgement = held?.acknowledgement ?? null;
 
   return (
     <PublishScopeContext.Provider
       value={{
-        // A publish's line is hidden the moment there is something to
-        // publish again — between it landing and the re-render that
-        // follows, or after a later edit the reset above has not yet seen
-        // — because it says participants see this Draft, which is no
-        // longer true. A restore's line says nothing about that: restoring
-        // an earlier version can leave the Draft matching what is live or
-        // not, either way acknowledged, so only the reset above (never this
-        // gate) takes it away.
+        // A publish's line is hidden while there is something to publish —
+        // before its own re-render has landed, or after a later change the
+        // rules above have not yet seen — because it says participants see
+        // this Draft, which is not true then. A restore's line says nothing
+        // about that, so only the rules above take it away.
         acknowledgement:
           acknowledgement?.kind === "published" && hasUnpublishedChanges
             ? null
@@ -199,10 +208,13 @@ export function PublishAcknowledgement({ journeyId }: { journeyId: string }) {
  * the way `PublishButton` acknowledges a publish: through the same
  * `PublishScope` this must be rendered inside.
  */
-export function useAcknowledgeRestore(): (versionNumber: number) => void {
+export function useAcknowledgeRestore(): (
+  versionNumber: number,
+  draftVersion: number,
+) => void {
   const { acknowledge } = usePublishScope("useAcknowledgeRestore");
-  return (versionNumber: number) =>
-    acknowledge({ kind: "restored", versionNumber });
+  return (versionNumber: number, draftVersion: number) =>
+    acknowledge({ kind: "restored", versionNumber, draftVersion });
 }
 
 export function PublishButton({
@@ -244,7 +256,11 @@ export function PublishButton({
       // Published: the header's line says which version. Acknowledged here
       // rather than kept here because the Versions tab's button is gone by
       // the time its own publish has landed.
-      acknowledge({ kind: "published", versionNumber: result.versionNumber });
+      acknowledge({
+        kind: "published",
+        versionNumber: result.versionNumber,
+        draftVersion: result.draftVersion,
+      });
       // No router.refresh(): the action revalidates the Journey page, so its
       // response already carries the re-rendered tree. A second refresh
       // landed hundreds of milliseconds later under load and re-rendered

@@ -17,6 +17,7 @@ import {
   writeDraftDocument,
 } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
+import { expectSaved, renameStep } from "./setup/editor";
 import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
@@ -679,6 +680,17 @@ test("restore-acknowledged", async ({ page, context }) => {
     path: evidencePath("restore-acknowledged", "restore-acknowledged.png"),
     fullPage: true,
   });
+
+  // The line stays until the Author's next edit to the Draft, and that
+  // edit — made after the restore, whichever order its response and the
+  // page's re-render landed in — takes it away.
+  await openTab(page, "Editor");
+  await expect(acknowledgement).toContainText(
+    "Restored Version 1 into the Draft.",
+  );
+  await renameStep(page, "Border post at first light");
+  await expectSaved(page);
+  await expect(acknowledgement).toHaveCount(0);
 });
 
 /**
@@ -726,16 +738,29 @@ test("copy-link-fallback", async ({ page, context }) => {
   const fallback = page.getByRole("textbox", { name: "Link to copy" });
   await expect(fallback).toBeVisible();
   await expect(fallback).toHaveValue(participantUrl);
-  const selection = await fallback.evaluate((input: HTMLInputElement) => ({
-    start: input.selectionStart,
-    end: input.selectionEnd,
-    length: input.value.length,
-  }));
-  expect(selection).toEqual({
+  await expect(fallback).toBeFocused();
+  const selection = () =>
+    fallback.evaluate((input: HTMLInputElement) => ({
+      start: input.selectionStart,
+      end: input.selectionEnd,
+      length: input.value.length,
+    }));
+  const whole = {
     start: 0,
     end: participantUrl.length,
     length: participantUrl.length,
-  });
+  };
+  expect(await selection()).toEqual(whole);
+  await expect(copyLink).toContainText("Copy it from the field");
+
+  // A second refused click puts the Member back in the field, the whole
+  // address selected again, however they had left it.
+  await fallback.evaluate((input: HTMLInputElement) =>
+    input.setSelectionRange(0, 0),
+  );
+  await copyLink.click();
+  await expect(fallback).toBeFocused();
+  await expect.poll(selection).toEqual(whole);
 
   await page.screenshot({
     path: evidencePath("copy-link-fallback", "copy-link-fallback.png"),
@@ -750,7 +775,7 @@ test("copy-link-fallback", async ({ page, context }) => {
  * fails if the app ever drifts from `Intl.DateTimeFormat`'s own output.
  */
 test.describe("local time zone", () => {
-  test.use({ timezoneId: "America/New_York" });
+  test.use({ timezoneId: "America/New_York", locale: "en-US" });
 
   test("local-timestamps", async ({ page, context }) => {
     const author = await signInAs(context);

@@ -15,6 +15,7 @@ import { MAX_PATH_LENGTH } from "@/lib/graph/run";
 import caseTwoJson from "../scripts/seed/journey-stories/case-2.json";
 import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import { axeViolations } from "./setup/axe";
 import {
   loopDocument,
   promptDocument,
@@ -1455,6 +1456,54 @@ test("runner-way-out", async ({ page, context, browser }) => {
     await expect(
       participant.getByRole("heading", { name: projectTitle }),
     ).toBeVisible();
+  } finally {
+    await participantContext.close();
+  }
+});
+
+/**
+ * Ticket 79 item 1 stores a new Step's title empty; a Participant reaching
+ * one that was published unnamed reads the name an Author sees for it,
+ * "Untitled step", as the page's heading — never an empty `h1`.
+ */
+test("runner-untitled-step-heading", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Untitled ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, `Untitled ${suffix}`);
+  const document = runnerDocument();
+  document.steps[QUEUE_STEP_ID].title = "";
+  await writeDraftDocument(journeyId, document);
+  await publishDocument(journeyId, document);
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+    await participant.goto(`/j/${journeyId}`);
+    await expect(participant.locator("h1")).toHaveText(START_STEP_TITLE);
+
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(participant.locator("h1")).toHaveCount(1);
+    await expect(participant.locator("h1")).toHaveText("Untitled step");
+
+    const emptyHeadings = (await axeViolations(participant)).filter(
+      (violation) => violation.startsWith("empty-heading"),
+    );
+    expect(emptyHeadings).toEqual([]);
+
+    await participant.screenshot({
+      path: evidencePath(
+        "runner-untitled-step-heading",
+        "runner-untitled-step-heading.png",
+      ),
+      fullPage: true,
+    });
   } finally {
     await participantContext.close();
   }

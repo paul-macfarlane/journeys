@@ -10,6 +10,7 @@ import { useAutosave } from "@/components/autosave";
 import {
   counted,
   dialogIsOpen,
+  type AddedStep,
   type ApplyEdit,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
@@ -270,6 +271,27 @@ export function DraftEditor({
   );
 
   /**
+   * The box selected on the map while it is not the Step open in the panel,
+   * or `null` while the two are one — which is almost always: opening a Step
+   * selects its box. They are split for one move only (ticket 79): "Add
+   * choice" to a New step from the panel keeps the panel on the Step the
+   * Choice was written on, so a second "Add choice" lands there too, while
+   * the Step just made is the box the map selects and brings on. Every
+   * opening (`selectStep`) puts them back together, and so does adopting a
+   * Draft from outside.
+   */
+  const [mapOnlyStepId, setMapOnlyStepId] = useState<string | null>(null);
+
+  /**
+   * The Step that same move made, which the panel names under its Choices
+   * ("Added …", with a button to open it). Held beside `mapOnlyStepId` and
+   * let go of with it: every opening — an undo and a redo open a Step too —
+   * and every adopted Draft, so the line never names a Step the Author has
+   * moved on from, taken back, or lost to another Member's write.
+   */
+  const [added, setAdded] = useState<AddedStep | null>(null);
+
+  /**
    * A `draft` at a newer version than the editor holds is someone else's
    * write or a restore: with nothing unsaved, the editor adopts it. A `draft`
    * at the version and document the editor last stored is its own save
@@ -305,6 +327,10 @@ export function DraftEditor({
       : draft.startStepId;
     selectedStepIdRef.current = kept;
     setSelectedStepId(kept);
+    // The Step an "Add choice" just made, and the box selected for it, were
+    // of the Draft this editor held; the one adopted may not have them.
+    setMapOnlyStepId(null);
+    setAdded(null);
 
     // The history goes with the document it was a history of: every snapshot
     // on it is a state of a Draft this editor is no longer holding, and an
@@ -371,19 +397,8 @@ export function DraftEditor({
   );
 
   // The Step whose title field should take focus when it opens: one that was
-  // just created and has only "Untitled step" for a name.
+  // just created, its title still empty (the map calls it "Untitled step").
   const [titleFocusStepId, setTitleFocusStepId] = useState<string | null>(null);
-
-  /**
-   * The box selected on the map while it is not the Step open in the panel,
-   * or `null` while the two are one — which is almost always: opening a Step
-   * selects its box. They are split for one move only (ticket 79): "Add
-   * choice" to a New step from the panel keeps the panel on the Step the
-   * Choice was written on, so a second "Add choice" lands there too, while
-   * the Step just made is the box the map selects and brings on. Every
-   * opening (`selectStep`) puts them back together.
-   */
-  const [mapOnlyStepId, setMapOnlyStepId] = useState<string | null>(null);
 
   /**
    * The arrow the Author has last clicked on the map, as asked for. Held here
@@ -502,6 +517,7 @@ export function DraftEditor({
       selectedStepIdRef.current = stepId;
       setSelectedStepId(stepId);
       setMapOnlyStepId(null);
+      setAdded(null);
       setLocate((current) => ({
         request: current.request + 1,
         view: options?.keepView
@@ -525,11 +541,22 @@ export function DraftEditor({
   );
 
   /**
-   * A Step's box selected on the map, and brought onto it if it is off it,
-   * with the panel left on the Step it has open (see `mapOnlyStepId`).
+   * The panel's "Add choice" landed. To a New step: that Step's box selected
+   * on the map, and brought onto it if it is off it, with the panel left on
+   * the Step it has open (see `mapOnlyStepId`), and the Step named under the
+   * Choices (see `added`). To a Step already there (`null`): nothing new to
+   * name, so the line goes.
    */
-  const selectOnMap = useCallback((stepId: string) => {
+  const choiceAdded = useCallback((stepId: string | null) => {
+    if (stepId === null) {
+      setAdded(null);
+      return;
+    }
     setMapOnlyStepId(stepId);
+    setAdded((current) => ({
+      stepId,
+      announcement: (current?.announcement ?? 0) + 1,
+    }));
     setArrowSelection(null);
     setLocate((current) => ({ request: current.request + 1, view: "reveal" }));
   }, []);
@@ -823,9 +850,8 @@ export function DraftEditor({
   );
 
   const steps = Object.values(document.steps);
-  // A brand-new Journey: one Step, its Start, and no Choices yet — the
-  // Draft `startJourney` leaves an Author with. Gone as soon as either
-  // grows, so the hint never outlives the moment it is written for.
+  // The Draft is one Step with no Choices — what a brand-new Journey starts
+  // as. The hint above the map is shown whenever that holds, and only then.
   const isNewDraft = steps.length === 1 && steps[0].choices.length === 0;
   const summary = [
     counted(steps.length, "step"),
@@ -874,7 +900,15 @@ export function DraftEditor({
           {status === "stale" ? (
             <StaleNotice noun="draft" onReload={reload} />
           ) : (
-            <p role="status" className="text-muted-foreground text-sm">
+            // Named, because it is not the tabpanel's only status: the
+            // panel's "Added …" line under the Choices is another. The name
+            // is for finding it; what a screen reader announces is the
+            // text inside as it changes ("Saving…", "Saved").
+            <p
+              role="status"
+              aria-label="Draft save status"
+              className="text-muted-foreground text-sm"
+            >
               {STATUS_TEXT[status]}
             </p>
           )}
@@ -951,10 +985,10 @@ export function DraftEditor({
       ) : null}
 
       {/* The one hint a brand-new Draft gets (ticket 57): a plain paragraph,
-          not a live region — the Editor tabpanel already has one status
-          (the autosave line above), and a second broke 41 specs once. Set
-          directly above the map rather than over it, so it is never a click
-          this Author aims at the canvas could land on instead. */}
+          not a live region — it is there from the page's first paint, with
+          nothing arriving to announce. Set directly above the map rather than
+          over it, so it is never a click this Author aims at the canvas could
+          land on instead. */}
       {isNewDraft ? (
         <p className="text-muted-foreground text-sm">
           Write the Start Step in the panel, then add a Choice to make the next
@@ -1045,7 +1079,8 @@ export function DraftEditor({
               }
               onChange={applyEdit}
               onSelectStep={selectStep}
-              onSelectOnMap={selectOnMap}
+              added={added}
+              onChoiceAdded={choiceAdded}
               onContentChange={handleContentChange}
               onContentRefused={(message) =>
                 setContentNotice({ stepId: selectedStep.id, message })

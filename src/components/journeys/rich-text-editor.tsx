@@ -226,8 +226,9 @@ export function RichTextEditor({
   history?: boolean;
   /**
    * Shown over the first block while the document is empty (ticket 57), and
-   * exposed to assistive technology as `aria-placeholder`. Only the Step
-   * panel's editor sets this; the Project description leaves it unset.
+   * exposed to assistive technology as `aria-placeholder` for as long. Only
+   * the Step panel's editor sets this; the Project description leaves it
+   * unset.
    */
   placeholder?: string;
   onChange: (content: Content) => void;
@@ -273,15 +274,12 @@ export function RichTextEditor({
       // A textbox, not a bare `div`: the name alone is not allowed on an
       // element with no role (axe `aria-prohibited-attr`), and a screen
       // reader should hear an editable, multi-line field (ticket 78's walk).
-      // `aria-placeholder` names the hint the decoration draws, for anyone
-      // who cannot see it (ticket 57).
+      // The placeholder extension adds `aria-placeholder` beside these while
+      // the document is blank (ticket 57).
       attributes: {
         role: "textbox",
         "aria-multiline": "true",
         "aria-label": label,
-        ...(placeholder !== undefined
-          ? { "aria-placeholder": placeholder }
-          : {}),
         class: EDITOR_CLASS,
       },
       // ⌘K on Apple platforms and Ctrl+K elsewhere — the platform's `Mod`,

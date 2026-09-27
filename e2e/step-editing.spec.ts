@@ -8,7 +8,7 @@ import {
   openFindStep,
   tagWithOutcome,
 } from "./setup/authoring";
-import { canvasNode } from "./setup/canvas";
+import { canvas, canvasNode } from "./setup/canvas";
 import { readDraft } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
@@ -1098,6 +1098,10 @@ test("step-editing-add-choice-stays-on-step", async ({ page }) => {
   await expect(
     panel.getByRole("button", { name: "Edit Untitled step", exact: true }),
   ).toBeVisible();
+  // Two statuses in the Editor tabpanel now; the Draft's save line is still
+  // the one `expectSaved` finds, by its name.
+  await expectSaved(page);
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
   await expect(canvasNode(page, "Untitled step")).toHaveAttribute(
     "aria-current",
     "true",
@@ -1131,7 +1135,8 @@ test("step-editing-add-choice-stays-on-step", async ({ page }) => {
   await expect(title).toHaveValue("");
   await expect(title).toHaveAttribute("placeholder", "Untitled step");
   await expect(title).toBeFocused();
-  await expect(panel.getByRole("status")).toHaveCount(0);
+  // The line's live region stays, empty, so its next words are announced.
+  await expect(panel.getByRole("status")).toHaveText("");
   await expect(canvasNode(page, "Border post")).not.toHaveAttribute(
     "aria-current",
   );
@@ -1153,6 +1158,15 @@ test("step-editing-add-choice-stays-on-step", async ({ page }) => {
   expect(
     start.choices.map((choice) => draft.steps[choice.targetStepId].title),
   ).toEqual(["", "Turned back"]);
+
+  // An undo takes the add back, and the line naming what it made with it.
+  await addChoiceToNewStepInPanel(page, "Go back");
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+  await canvas(page).getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(
+    panel.getByRole("button", { name: "Edit Untitled step", exact: true }),
+  ).toHaveCount(0);
+  await expect(panel.getByRole("status")).toHaveText("");
 });
 
 /** A grey picture of a known size, served for the image test's address. */
@@ -1225,11 +1239,16 @@ test("editor-placeholders", async ({ page }) => {
 
   await addChoiceToNewStepInPanel(page, "Wait your turn");
   const labelField = stepPanel(page).getByLabel("Choice label");
+  // Cleared, so the placeholder is what the field shows.
+  await labelField.fill("");
+  await expect(labelField).toHaveValue("");
   await expect(labelField).toHaveAttribute(
     "placeholder",
     "What the participant clicks",
   );
 
+  // From the top, so the sticky rows do not cover the editor in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: evidencePath("editor-placeholders", "editor-placeholders.png"),
     fullPage: true,
@@ -1290,6 +1309,8 @@ test("step-editing-image-tools-clear-of-text", async ({ page }) => {
     })
     .toBe("clear");
 
+  // From the top, so the sticky rows do not cover the editor in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: evidencePath(
       "step-editing-image-tools-clear-of-text",

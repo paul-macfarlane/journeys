@@ -77,7 +77,7 @@ export function RestoreVersionDialog({
 
       // Acknowledged even when the version restored held exactly what the
       // Draft already did, so nothing changed: the restore still happened.
-      acknowledgeRestore(versionNumber);
+      acknowledgeRestore(versionNumber, result.draftVersion);
       setOpen(false);
       router.refresh();
     });
