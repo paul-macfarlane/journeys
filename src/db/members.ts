@@ -94,8 +94,9 @@ export type RemoveMemberResult =
 /**
  * Removes a Member. One transaction: the Project row is locked first
  * (`lockProject`), so removals of one Project run one at a time (a Project
- * deleted since its membership was resolved is `not-found`); then the
- * Project's member count is read before any delete is attempted (`<= 1`
+ * deleted since its membership was resolved is `not-found`, and so is an
+ * actor who has since stopped being one of its Members, re-checked under
+ * the lock); then the Project's member count is read before any delete is attempted (`<= 1`
  * refuses with `last-member`), and only then is the row deleted (zero rows
  * deleted means `not-a-member`). The actor is the Member `project` was
  * resolved for.
@@ -117,6 +118,20 @@ export async function removeMember(
   try {
     return await db.transaction(async (tx): Promise<RemoveMemberResult> => {
       if (!(await lockProject(tx, projectId))) return notFound();
+
+      // The actor must still be a Member now the Project is locked: one
+      // removed since `project` was resolved answers as the Project gone.
+      const [actor] = await tx
+        .select({ userId: member.userId })
+        .from(member)
+        .where(
+          and(
+            eq(member.projectId, projectId),
+            eq(member.userId, project.memberUserId),
+          ),
+        )
+        .limit(1);
+      if (!actor) return notFound();
 
       const [{ value: memberCount }] = await tx
         .select({ value: count() })

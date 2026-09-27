@@ -14,6 +14,7 @@ import {
   authorIdentitySchema,
   authorPageSchema,
   authorPageVisibilitySchema,
+  confirmsAccountEmail,
   deleteAccountSchema,
 } from "@/lib/validation/author";
 
@@ -90,9 +91,9 @@ export async function setAuthorPageVisibilityAction(
 }
 
 /**
- * Deletes the signed-in Author's account (ticket 77): refuses without the
- * typed email matching the session's own, case-insensitively, before
- * touching the database; otherwise deletes the account in one transaction
+ * Deletes the signed-in Author's account (ticket 77): refuses a missing
+ * email, and one that does not confirm the session's own
+ * (`confirmsAccountEmail`), before touching the database; otherwise deletes the account in one transaction
  * (`@/db/account`), signs out — the session row is already gone, but this
  * still clears the cookie — and lands on `/` with the notice. `redirect`
  * throws, so it is never called inside a try/catch here.
@@ -103,11 +104,10 @@ export async function deleteAccountAction(
   const session = await requireSession();
 
   const parsed = deleteAccountSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: firstIssue(parsed.error.issues) };
-  }
-
-  if (parsed.data.email.toLowerCase() !== session.user.email.toLowerCase()) {
+  if (
+    !parsed.success ||
+    !confirmsAccountEmail(parsed.data.email, session.user.email)
+  ) {
     return { ok: false, error: "Type your account's email to confirm" };
   }
 

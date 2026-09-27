@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AccountDeletionPreview } from "@/db/account";
+import { confirmsAccountEmail } from "@/lib/validation/author";
 
 /**
  * Deleting an account is a hard delete of every Project the Author is the
@@ -38,7 +39,7 @@ export function DeleteAccountDialog({
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const confirmed = confirmEmail.trim().toLowerCase() === email.toLowerCase();
+  const confirmed = confirmsAccountEmail(confirmEmail, email);
 
   function confirmDelete() {
     setServerError(null);
@@ -54,6 +55,9 @@ export function DeleteAccountDialog({
     <AlertDialog
       open={open}
       onOpenChange={(nextOpen) => {
+        // Never closed mid-delete: the refusal, if one comes, would have
+        // nowhere to show.
+        if (!nextOpen && pending) return;
         setOpen(nextOpen);
         if (!nextOpen) {
           setServerError(null);
@@ -116,7 +120,7 @@ export function DeleteAccountDialog({
         ) : null}
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             disabled={pending || !confirmed}

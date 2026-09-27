@@ -70,7 +70,6 @@ describe("draftPending", () => {
       }),
     ).toEqual({
       hasUnpublishedChanges: false,
-      titleOrDescriptionPending: false,
       // The Journey row moved later (a publish, say), but its title and
       // description are what is live, so the Draft's own save is shown.
       draftEditedAt: earlier,
@@ -86,7 +85,6 @@ describe("draftPending", () => {
       }),
     ).toEqual({
       hasUnpublishedChanges: true,
-      titleOrDescriptionPending: true,
       draftEditedAt: later,
     });
   });
@@ -100,7 +98,6 @@ describe("draftPending", () => {
       }),
     ).toEqual({
       hasUnpublishedChanges: true,
-      titleOrDescriptionPending: true,
       draftEditedAt: later,
     });
   });
@@ -112,7 +109,7 @@ describe("draftPending", () => {
         draft: { document, updatedAt: later },
         live,
       }),
-    ).toMatchObject({ titleOrDescriptionPending: true, draftEditedAt: later });
+    ).toMatchObject({ hasUnpublishedChanges: true, draftEditedAt: later });
   });
 
   it("counts an edited Draft document as pending, dated by the Draft's save alone", () => {
@@ -124,7 +121,6 @@ describe("draftPending", () => {
       }),
     ).toEqual({
       hasUnpublishedChanges: true,
-      titleOrDescriptionPending: false,
       draftEditedAt: earlier,
     });
   });
@@ -138,7 +134,6 @@ describe("draftPending", () => {
       }),
     ).toEqual({
       hasUnpublishedChanges: true,
-      titleOrDescriptionPending: false,
       draftEditedAt: earlier,
     });
   });
@@ -152,7 +147,6 @@ describe("draftPending", () => {
       }),
     ).toEqual({
       hasUnpublishedChanges: true,
-      titleOrDescriptionPending: true,
       draftEditedAt: later,
     });
   });

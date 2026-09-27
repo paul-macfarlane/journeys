@@ -8,7 +8,6 @@ import { documentsEqual, type GraphDocument } from "@/lib/graph/document";
  * Deliberately no `server-only` — the Journey page, the Project page's list,
  * and the badge they share all read it, and it touches no database.
  */
-
 export type PublishState = "never-published" | "published" | "unpublished";
 
 export function publishStateOf({
@@ -56,7 +55,6 @@ export function draftPending({
     | null;
 }): {
   hasUnpublishedChanges: boolean;
-  titleOrDescriptionPending: boolean;
   draftEditedAt: Date;
 } {
   const liveOk = live?.kind === "ok" ? live : null;
@@ -79,5 +77,5 @@ export function draftPending({
       ? journey.updatedAt
       : draft.updatedAt;
 
-  return { hasUnpublishedChanges, titleOrDescriptionPending, draftEditedAt };
+  return { hasUnpublishedChanges, draftEditedAt };
 }

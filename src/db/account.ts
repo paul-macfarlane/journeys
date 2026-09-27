@@ -3,7 +3,7 @@
 // from both sides.
 import "server-only";
 
-import { asc, count, eq, inArray } from "drizzle-orm";
+import { asc, count, eq, inArray, sql } from "drizzle-orm";
 
 import { db, type Db } from "@/db";
 import { member, project, user } from "@/db/schema";
@@ -16,6 +16,10 @@ import { member, project, user } from "@/db/schema";
  * schema's own cascades); a Project shared with other Members keeps
  * everything and only loses the Author as a Member. The user row itself,
  * its sessions, and its linked OAuth `account` rows go with it too.
+ *
+ * Both functions take the Author's own id and act only on the Author's own
+ * memberships — they are not the membership seam `@/db/access` holds, which
+ * resolves one Project or Journey for a Member.
  *
  * better-auth ships its own `/delete-user` endpoint, but it is off by
  * default (`user.deleteUser.enabled` is never set here) and, even enabled,
@@ -87,18 +91,27 @@ export type DeleteAccountResult =
  * then the user row itself. One transaction, so a crash midway can never
  * leave a Project without a Member.
  *
- * The Author's membership Projects are locked in id order — the order
- * `removeMember` in `@/db/members` locks a single Project in — before any
- * count is trusted, exactly as `removeMember` locks the one Project it
- * touches: without the lock, a `member` row inserted into one of these
- * Projects between the count and the delete would go unnoticed and be
- * dropped along with the Project it was just added to. A `member` insert
- * racing this deletion takes `FOR KEY SHARE` on the Project row (blocked by
- * this transaction's `FOR UPDATE`) and, once it reaches the account itself,
- * `FOR KEY SHARE` on the `user` row too (which blocks this transaction's
- * user delete until the racing insert commits) — either way the race lands
- * entirely before this transaction's read or entirely after its commit,
- * never straddling it.
+ * The locks, in order, and what each racing write lands as:
+ *
+ * 1. The user row, `FOR UPDATE` (none: `not-found`). Every `member` insert
+ *    naming this Author — `addMemberByEmail`, `createProject`'s first
+ *    Member — takes `FOR KEY SHARE` on it. An insert that committed first is
+ *    seen by the membership read below. One still open when this lock is
+ *    asked for makes it wait for that commit, and is then seen too. One that
+ *    starts after this lock waits for this transaction, then fails its
+ *    foreign key: the account is gone, so `createProject` is never left with
+ *    a Project whose only Member was cascaded away.
+ * 2. The Author's memberships, read.
+ * 3. Those Projects, `FOR UPDATE` in id order — the lock `removeMember` in
+ *    `@/db/members` takes on the one Project it touches. A removal that holds
+ *    it runs to its commit first.
+ * 4. After the lock, for each locked Project, the Member count and whether
+ *    the Author is still a Member, re-read in one query. A removal of the
+ *    Author that committed while this transaction waited in step 3 is seen
+ *    here, and that Project is left alone. Only a Project the Author is
+ *    still the one Member of is deleted; any other Member's removal waits
+ *    on the lock, so the count cannot fall after it is read.
+ * 5. The user row, deleted.
  *
  * `client` is typed structurally so the integration test can pass its own
  * pooled connection rather than the app's shared `db`.
@@ -112,7 +125,7 @@ export async function deleteAccount(
       .select({ id: user.id })
       .from(user)
       .where(eq(user.id, userId))
-      .limit(1);
+      .for("update");
     if (!existing) return { ok: false as const, reason: "not-found" as const };
 
     const memberships = await tx
@@ -121,7 +134,7 @@ export async function deleteAccount(
       .where(eq(member.userId, userId));
     const projectIds = memberships.map((row) => row.projectId);
 
-    const deletedProjectIds: string[] = [];
+    let deletedProjectIds: string[] = [];
     if (projectIds.length > 0) {
       const locked = await tx
         .select({ id: project.id })
@@ -130,12 +143,26 @@ export async function deleteAccount(
         .orderBy(asc(project.id))
         .for("update");
 
-      for (const row of locked) {
-        const [{ value: memberCount }] = await tx
-          .select({ value: count() })
+      if (locked.length > 0) {
+        const membership = await tx
+          .select({
+            projectId: member.projectId,
+            memberCount: count(),
+            authorIsMember: sql<boolean>`bool_or(${member.userId} = ${userId})`,
+          })
           .from(member)
-          .where(eq(member.projectId, row.id));
-        if (memberCount <= 1) deletedProjectIds.push(row.id);
+          .where(
+            inArray(
+              member.projectId,
+              locked.map((row) => row.id),
+            ),
+          )
+          .groupBy(member.projectId)
+          .orderBy(asc(member.projectId));
+
+        deletedProjectIds = membership
+          .filter((row) => row.authorIsMember && row.memberCount === 1)
+          .map((row) => row.projectId);
       }
 
       if (deletedProjectIds.length > 0) {
@@ -143,10 +170,11 @@ export async function deleteAccount(
       }
     }
 
-    // Cascades the remaining memberships (every surviving Project keeps at
-    // least one other Member, so the last-Member trigger has nothing to
-    // refuse), sessions, and OAuth `account` rows, and nulls
-    // `published_version.published_by` on any shared Project's versions.
+    // Cascades the remaining memberships (every surviving Project the
+    // Author is still in keeps at least one other Member, so the
+    // last-Member trigger has nothing to refuse), sessions, and OAuth
+    // `account` rows, and nulls `published_version.published_by` on any
+    // shared Project's versions.
     await tx.delete(user).where(eq(user.id, userId));
 
     return { ok: true as const, deletedProjectIds };

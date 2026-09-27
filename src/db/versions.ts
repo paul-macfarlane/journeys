@@ -148,10 +148,10 @@ export type PublishDraftResult =
  * sentence that says so: neither publishes anything.
  *
  * Validation next: a Draft with publish-time problems is refused `invalid`
- * with all of them and nothing is written, because a participant must never meet a
- * journey with a dangling choice or an ending that means nothing. A valid
- * Draft's document is snapshotted exactly as stored — publish never rewrites
- * it and never touches the Draft row.
+ * with all of them and nothing is written, because a participant must never
+ * meet a journey with a dangling choice or an ending that means nothing. A
+ * valid Draft's document is snapshotted exactly as stored — publish never
+ * rewrites it and never touches the Draft row.
  *
  * The insert and the pointer move are one transaction: a version nothing
  * points at would read as "unpublished" with no way back, and a pointer at a

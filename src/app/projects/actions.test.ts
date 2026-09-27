@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { failureResult } from "@/lib/action-result";
 import type { Content } from "@/lib/graph/content";
 import { invalid, notFound } from "@/lib/write-result";
 
@@ -53,7 +52,7 @@ const summary = {
 /** The Project as the membership seam resolves it for the signed-in Author. */
 const memberProject = { ...summary, memberUserId: "author-1" };
 
-const NO_PROJECT = failureResult(notFound(), { missing: "project" });
+const NO_PROJECT = { ok: false, error: "That project no longer exists" };
 
 beforeEach(() => {
   doubles.access.projectForMember.mockResolvedValue(memberProject);
@@ -62,7 +61,6 @@ beforeEach(() => {
 describe("setProjectThemeAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    doubles.access.projectForMember.mockResolvedValue(memberProject);
     doubles.projects.setProjectTheme.mockResolvedValue({
       ok: true,
       project: summary,

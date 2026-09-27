@@ -18,8 +18,11 @@ import {
 import { journey, member, project } from "@/db/schema";
 
 /**
- * The membership seam (ticket 82): the only two reads under `src/db` that
- * take a bare user id to decide what an Author may touch. Membership of a
+ * The membership seam (ticket 82): the only reads under `src/db` that
+ * resolve one Project or Journey for a Member. The list reads
+ * (`listProjectsForAuthor`, `listRecentProjectsForAuthor`) and
+ * `@/db/account` take a bare user id too, but only the Author's own, to act
+ * on their own memberships. Membership of a
  * Project is the whole authorization rule; everything a Member reads or
  * writes inside a Project or one of its Journeys takes the branded value
  * one of these hands back, so the type system — not a comment — holds the

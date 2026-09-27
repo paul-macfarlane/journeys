@@ -142,7 +142,7 @@ export async function createProject(
 }
 
 /** An open transaction: what `lockProject` holds the Project row in. */
-export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
  * Holds a Project's row until the transaction ends, serializing the writes
@@ -247,17 +247,17 @@ export type ProjectWriteResult =
 
 /**
  * The one write shape every Settings-tab edit has: the guarded update
- * (ticket 73), for a Project whose membership is already resolved. Only the fields whose value differs from
- * `baseline` — what the Member edited against — are written, and each is
- * written only while the row still holds its baseline value, so another
- * Member's change to the same field since is answered `stale` and
- * nothing is overwritten. The title, description, and Theme loops each
- * guard only their own fields and never make each other stale. The update is
- * stamped with `updatedAt` (which is what moves the Project up the navbar's
- * switcher), and the row read back; `not-found` when the Project went away
- * since its membership was resolved. A description edited from the
- * empty rich text an unreadable description reads as is written unguarded
- * (`guardsDescription`), and logged.
+ * (ticket 73), for a Project whose membership is already resolved. Only the
+ * fields whose value differs from `baseline` — what the Member edited
+ * against — are written, and each is written only while the row still holds
+ * its baseline value, so another Member's change to the same field since is
+ * answered `stale` and nothing is overwritten. The title, description, and
+ * Theme loops each guard only their own fields and never make each other
+ * stale. The update is stamped with `updatedAt` (which is what moves the
+ * Project up the navbar's switcher), and the row read back; `not-found` when
+ * the Project went away since its membership was resolved. A description
+ * edited from the empty rich text an unreadable description reads as is
+ * written unguarded (`guardsDescription`), and logged.
  */
 async function updateProject(
   existing: MemberProject,

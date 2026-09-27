@@ -96,6 +96,10 @@ for an approved exception with the attempted command and reason. Sanitize every
 retained artifact before storage or sharing.
 <!-- atlas-v3:testing:end -->
 
+## The database integration suite (team policy, ticket 77, 2026-09-26)
+
+`src/db/*.integration.test.ts` runs only when `DB_INTEGRATION_URL` names a migrated database. CI sets it to its service database. Locally, run `DB_INTEGRATION_URL=postgresql://postgres:postgres@localhost:5436/journeys_e2e pnpm test` after `pnpm test:e2e` has migrated that database. A plain `pnpm test` reports the file skipped, so a command chain that claims the integration suite must set the variable.
+
 ## Flaky tests: the load recipe (team policy, ticket 74, 2026-09-26)
 
 "Flaky tests" above says what a flake is and what to do with one. This is

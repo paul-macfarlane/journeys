@@ -17,10 +17,10 @@ import { notFound, stale, type WriteFailure } from "@/lib/write-result";
  */
 
 /** A write refused because another Member changed what it was made against. */
-export type StaleWrite = Extract<WriteFailure, { reason: "stale" }>;
+type StaleWrite = Extract<WriteFailure, { reason: "stale" }>;
 
 /** A write whose row is gone: deleted by another Member in the meantime. */
-export type MissingRow = Extract<WriteFailure, { reason: "not-found" }>;
+type MissingRow = Extract<WriteFailure, { reason: "not-found" }>;
 
 export type GuardedWriteResult<R> =
   { ok: true; row: R } | StaleWrite | MissingRow;

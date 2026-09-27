@@ -7,7 +7,7 @@ import "server-only";
  * code lives on the cause; the error itself is checked too in case a caller
  * ever sees the driver error unwrapped.
  */
-export function pgErrorCode(error: unknown): string | undefined {
+function pgErrorCode(error: unknown): string | undefined {
   const candidates = [error instanceof Error ? error.cause : undefined, error];
   for (const candidate of candidates) {
     if (

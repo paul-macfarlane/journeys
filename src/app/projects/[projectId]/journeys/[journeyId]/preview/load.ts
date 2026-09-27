@@ -1,4 +1,4 @@
-// Server-only: it resolves membership and reads the Draft.
+// Server-only data loading — `server-only` so a client import fails the build.
 import "server-only";
 
 import { notFound, redirect } from "next/navigation";

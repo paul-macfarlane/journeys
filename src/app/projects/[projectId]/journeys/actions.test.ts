@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { failureResult } from "@/lib/action-result";
 import { conflict, invalid, notFound } from "@/lib/write-result";
 
 /**
@@ -60,7 +59,7 @@ const memberJourney = {
   title: "Border Crossing",
 };
 
-const NO_JOURNEY = failureResult(notFound(), { missing: "journey" });
+const NO_JOURNEY = { ok: false, error: "That journey no longer exists" };
 
 beforeEach(() => {
   doubles.access.journeyForMember.mockResolvedValue(memberJourney);
@@ -77,7 +76,6 @@ describe("setJourneyThemeAction", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    doubles.access.journeyForMember.mockResolvedValue(memberJourney);
     doubles.journeys.setJourneyTheme.mockResolvedValue({
       ok: true,
       journey: summary,
@@ -323,7 +321,7 @@ describe("restoreVersionAction", () => {
   });
 
   it("answers a version that is not this Journey's, and a non-Member, as a version that is not there", async () => {
-    const noVersion = failureResult(notFound(), { missing: "version" });
+    const noVersion = { ok: false, error: "That version no longer exists" };
 
     doubles.versions.restoreVersion.mockResolvedValue(notFound());
     expect(

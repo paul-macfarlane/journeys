@@ -26,15 +26,6 @@ export type ActionFailure = {
   problems?: PublishProblem[];
 };
 
-/** A write refused as stale, naming what the other Member changed. */
-export function staleResult(noun: StaleNoun): {
-  ok: false;
-  error: string;
-  stale: true;
-} {
-  return { ok: false, error: staleText(noun), stale: true };
-}
-
 /**
  * The one place a data-layer refusal becomes the sentence a Member reads
  * (ticket 82). `missing` names what a `not-found` lost — also the answer to
@@ -56,9 +47,14 @@ export function failureResult(
           "Another member published this journey just now. Reload to see their version, then publish again.",
       };
     case "stale":
-      return staleResult(
-        nouns.stale ?? (nouns.missing === "version" ? "draft" : nouns.missing),
-      );
+      return {
+        ok: false,
+        error: staleText(
+          nouns.stale ??
+            (nouns.missing === "version" ? "draft" : nouns.missing),
+        ),
+        stale: true,
+      };
     case "invalid": {
       const result: ActionFailure = { ok: false, error: failure.error };
       if (failure.stepId !== undefined) result.stepId = failure.stepId;
