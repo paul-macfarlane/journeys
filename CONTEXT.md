@@ -20,6 +20,10 @@ _Avoid_: Admin, editor, creator, user
 An anonymous person walking through a published journey. Never has an account.
 _Avoid_: User, player, reader, visitor
 
+**User**:
+Authors and participants together, and only when a sentence means both ("two kinds of users"). Never a synonym for either role.
+_Avoid_: People, person (for authors or participants)
+
 ## Journey structure
 
 **Step**:
