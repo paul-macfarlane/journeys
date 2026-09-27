@@ -15,7 +15,18 @@ const noSubscription = () => () => {};
  * (`/p/<id>`, ticket 07, which every Project has). The whole URL is in the
  * button's tooltip too, for anyone who would rather select it by hand.
  */
-export function CopyLinkButton({ path }: { path: string }) {
+export function CopyLinkButton({
+  path,
+  label = "Copy link for participants",
+}: {
+  path: string;
+  /**
+   * The button's accessible name. It opens with the words the button shows,
+   * "Copy link", so someone who says what they see — voice control — reaches
+   * it (WCAG 2.5.3, ticket 78's walk), and goes on to say whose link it is.
+   */
+  label?: string;
+}) {
   // The origin is the browser's to know, so the address is built there:
   // null on the server and through hydration, the real one after.
   const origin = useSyncExternalStore(
@@ -47,7 +58,7 @@ export function CopyLinkButton({ path }: { path: string }) {
     <Button
       variant="ghost"
       size="sm"
-      aria-label="Copy participant link"
+      aria-label={label}
       title={href ?? undefined}
       disabled={href === null}
       onClick={() => void copy()}

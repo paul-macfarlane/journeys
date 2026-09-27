@@ -285,7 +285,10 @@ function AuthorPageSection({ settings }: { settings: AuthorSettingsValues }) {
               {authorPath}
             </a>
           </p>
-          <CopyLinkButton path={authorPath} />
+          <CopyLinkButton
+            path={authorPath}
+            label="Copy link to your Author page"
+          />
         </div>
       ) : null}
 

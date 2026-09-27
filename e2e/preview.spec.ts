@@ -32,13 +32,15 @@ test.afterAll(async () => {
 });
 
 test("preview", async ({ page, context }) => {
-  // Preview sits under the Author navbar (ticket 29), so the page has two
-  // banner landmarks; the frame's own header is the one without the App nav.
-  // The footer, though, is the frame's alone (ticket 34): the Author layout
-  // above it renders none, so there is exactly one contentinfo landmark.
-  const frameHeader = page
-    .getByRole("banner")
-    .filter({ hasNot: page.getByRole("navigation", { name: "App" }) });
+  // Preview sits under the Author navbar (ticket 29), whose header is the
+  // page's one banner landmark: the frame's own header is a region named
+  // "Journey" on Preview (ticket 78). The footer, though, is the frame's
+  // alone (ticket 34): the Author layout above it renders none, so there is
+  // exactly one contentinfo landmark.
+  const frameHeader = page.getByRole("region", {
+    name: "Journey",
+    exact: true,
+  });
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
 

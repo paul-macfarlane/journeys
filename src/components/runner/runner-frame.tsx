@@ -115,6 +115,8 @@ export function RunnerFrame({
   home?: boolean;
   children: ReactNode;
 }) {
+  const Header = preview ? "section" : "header";
+
   return (
     <div
       data-slot="runner-frame"
@@ -125,8 +127,16 @@ export function RunnerFrame({
       style={themeStyle(theme) as CSSProperties}
       className="bg-background text-foreground flex flex-1 flex-col border-t-4 border-t-primary"
     >
+      {/* On Preview the page already has a banner, the Author navbar's, so
+          the frame's header is a region named "Journey" there rather than a
+          second banner, and the Preview bar is a region of its own: one
+          banner, and nothing on the page outside a landmark (axe
+          `landmark-no-duplicate-banner`, `region`; ticket 78's walk). */}
       {preview ? (
-        <div className="bg-muted text-muted-foreground text-sm">
+        <section
+          aria-label="Preview"
+          className="bg-muted text-muted-foreground text-sm"
+        >
           <div className="mx-auto flex w-full max-w-prose flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 sm:px-6">
             <span>Preview — nothing is recorded.</span>
             <a
@@ -136,11 +146,12 @@ export function RunnerFrame({
               Back to editor
             </a>
           </div>
-        </div>
+        </section>
       ) : null}
 
       {title || home ? (
-        <header
+        <Header
+          aria-label={preview ? "Journey" : undefined}
           className={cn(
             "bg-background sticky z-30 border-b",
             preview ? "top-14" : "top-0",
@@ -191,7 +202,7 @@ export function RunnerFrame({
               <DarkModeToggle className={wayOutClassName} />
             </div>
           </div>
-        </header>
+        </Header>
       ) : null}
 
       <main className="mx-auto flex w-full max-w-prose flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">

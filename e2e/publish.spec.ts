@@ -445,7 +445,7 @@ test("journey-share-link", async ({ page, context }) => {
   // acknowledgement's — the one inside a `role="status"` — is left out.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
   const copyLink = page
-    .getByRole("button", { name: "Copy participant link" })
+    .getByRole("button", { name: "Copy link for participants" })
     .and(page.locator(':not([role="status"] *)'));
   await expect(copyLink).toHaveCount(0);
 
@@ -546,7 +546,7 @@ test("publish-acknowledged", async ({ page, context }) => {
 
   // The link is right there in the line, and it is the Participant's.
   const copyLink = acknowledgement.getByRole("button", {
-    name: "Copy participant link",
+    name: "Copy link for participants",
   });
   await copyLink.click();
   await expect(copyLink).toHaveText("Copied");

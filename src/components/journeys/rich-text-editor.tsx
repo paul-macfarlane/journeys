@@ -67,10 +67,12 @@ const URL_HINT = "Start the address with http:// or https://";
  * `.ProseMirror-selectednode` is the class ProseMirror puts on a selected
  * block node — here, the figure around an image — so the focus ring makes a
  * selected image tell apart from an unselected one. The figure hugs its
- * picture so the ring does.
+ * picture so the ring does. The surface itself takes the focus ring the
+ * app's fields do, so a keyboard user sees where they have landed rather
+ * than a caret alone (ticket 78's walk).
  */
 const EDITOR_CLASS =
-  "min-h-64 px-4 py-3 outline-none [&>*+*]:mt-4 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:not-italic [&_blockquote>*+*]:mt-4 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figure]:w-fit [&_figure]:rounded-lg [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_.ProseMirror-selectednode]:ring-2 [&_.ProseMirror-selectednode]:ring-ring [&_.ProseMirror-selectednode]:ring-offset-2 [&_.ProseMirror-selectednode]:ring-offset-background";
+  "min-h-64 rounded-b-xl px-4 py-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&>*+*]:mt-4 [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:not-italic [&_blockquote>*+*]:mt-4 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figure]:w-fit [&_figure]:rounded-lg [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_.ProseMirror-selectednode]:ring-2 [&_.ProseMirror-selectednode]:ring-ring [&_.ProseMirror-selectednode]:ring-offset-2 [&_.ProseMirror-selectednode]:ring-offset-background";
 
 /**
  * The floating image toolbar shows while the selection is an image node.
@@ -226,7 +228,15 @@ export function RichTextEditor({
     // would produce markup the client then disagrees with.
     immediatelyRender: false,
     editorProps: {
-      attributes: { "aria-label": label, class: EDITOR_CLASS },
+      // A textbox, not a bare `div`: the name alone is not allowed on an
+      // element with no role (axe `aria-prohibited-attr`), and a screen
+      // reader should hear an editable, multi-line field (ticket 78's walk).
+      attributes: {
+        role: "textbox",
+        "aria-multiline": "true",
+        "aria-label": label,
+        class: EDITOR_CLASS,
+      },
       // ⌘K on Apple platforms and Ctrl+K elsewhere — the platform's `Mod`,
       // exactly as Tiptap's own bindings and the tooltip read it; Ctrl+K on
       // a Mac is left to the system — opens the link dialog while the

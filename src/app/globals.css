@@ -476,3 +476,23 @@
 .react-flow .react-flow__attribution a {
   color: var(--foreground);
 }
+
+/* Reduced motion (ticket 78's walk). The dialogs, menus, tooltips, and
+   sheets animate in and out through `tw-animate-css`, and the buttons and
+   fields ease their colors, none of it with a `motion-reduce:` variant of
+   its own: a reader who has asked for less motion gets every one of them
+   finished at once instead. Near zero rather than none, so Base UI still
+   sees each exit animation end and unmounts the popup behind it. Unlayered
+   and important, so no utility's own duration outlasts it. The map's
+   pan-and-zoom moves are React Flow's, not CSS: `mapMoveDuration()` in
+   `@/lib/reduced-motion` answers for those. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
