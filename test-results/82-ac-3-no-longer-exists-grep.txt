@@ -1,0 +1,13 @@
+# Ticket 82, AC-3: "no longer exist" in src/app names one mapper, not 19 sites
+# Commit 2698b30. Source files only; the tests pin the sentences on purpose (src/lib/action-result.test.ts).
+
+$ grep -rn "no longer exist" src/app --exclude="*.test.ts"
+(exit 1 — no matches)
+
+$ grep -rn "no longer exists`" src --exclude="*.test.ts"
+src/lib/graph/validate.ts:73:          message: `Step "${stepName(step)}" has a choice pointing at a step that no longer exists`,
+src/lib/graph/validate.ts:122:        message: `Ending "${stepName(step)}" is tagged with an outcome that no longer exists`,
+src/lib/action-result.ts:42:      return { ok: false, error: `That ${nouns.missing} no longer exists` };
+
+# Reading: the one missing-row sentence is failureResult in src/lib/action-result.ts; the two validate.ts
+# lines are publish problems about a dangling Choice or Outcome inside a Draft. Verdict: PASS.

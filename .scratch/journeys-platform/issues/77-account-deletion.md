@@ -47,3 +47,15 @@ Resolved decisions for D2:
 - **Copy.** `/privacy`'s "Deleting things" paragraph loses "email us and we will do it" and gains the account sentence; the draft goes to Paul for approval before the PR.
 
 Evidence: `test-results/account-delete/account-delete.png` and `test-results/account-delete-refused/account-delete-refused.png`, `test-results/77-ac-4-data-layer.txt` (the integration test with `DB_INTEGRATION_URL` set), and the chunk's full run in `test-results/chunk-4-commands.txt`.
+
+`[AI CODE REVIEW]` Two fresh reviewers (Opus) read the whole chunk diff (`8da2dd0..9300bb7`); the orchestrator adjudicated from the cited hunks. One blocking finding, fixed with the rest in 2698b30 (one worker, Opus):
+- **Blocking, fixed:** `deleteAccount` read the Author's memberships before locking and never re-checked them. If another Member removed the Author from a shared Project while the deletion waited on its lock, the Project counted one Member and was deleted, with that other Member's Journeys and Runs. Now: the user row `FOR UPDATE` first, then the memberships, then the Projects `FOR UPDATE` in id order, then one grouped re-read of each Project's Member count and whether the Author is still in it; only a Project the Author is still the only Member of is deleted.
+- Correctness and spec, fixed:
+  - A Project the Author created mid-deletion tripped the last-Member trigger and threw; the user-row lock makes the deletion wait for it and delete it as a sole Project.
+  - The Response row-count assertion filtered by a version id and could never fail; it now asserts the Run's Response exists before and is gone after.
+  - The server-side email refusal was untested: `confirmsAccountEmail` in `src/lib/validation/author.ts` is shared by the dialog and the action, and `settings/actions.test.ts` proves a wrong or missing email refuses before any delete, and a match deletes, signs out, and redirects in that order.
+  - The dialog refuses to close, and Cancel is disabled, while the delete is pending.
+  - `docs/agents/testing.md` says how to run the database integration suite (`DB_INTEGRATION_URL`).
+- Coding standards, fixed: the race tests wait on `pg_stat_activity` (blocked by the racing client's pid), not a sleep; the e2e uses `fill`, not a value-setter; a real Response row stands in for run history; the second Member is minted, not given a browser; "Owner" naming gone; one `schema` import; the lock-order and `schema.ts` comments rewritten plainly.
+- Deviations: better-auth's disabled `/delete-user` answers 403 (the route exists, the feature is off), not 404; the e2e adds the second Member by SQL, since the Members tab is `members.spec.ts`'s.
+- Accepted risk: an Author deleting their account while publishing in their own sole Project can deadlock the two transactions; Postgres aborts one, nothing is half-written, and the Author can retry.

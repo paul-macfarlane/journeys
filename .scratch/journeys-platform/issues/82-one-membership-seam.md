@@ -62,3 +62,16 @@ Resolved decisions for D1 (ticket 72 findings M1–M4, applied as written, with 
 - The publish-state rules leave the page: a pure function beside `publishStateOf` in `src/lib/publish-state.ts` answers `hasUnpublishedChanges` and `draftEditedAt` from the Journey row, the Draft, and the live version, with a unit test. The two Preview pages share one `loadPreview`.
 
 Evidence: `test-results/82-ac-1-membership-signatures.txt` (the exported `src/db` signatures), `test-results/82-ac-2-membership-query-count.txt` (Postgres statement log for one Journey page request: the orchestrator's capture), `test-results/82-ac-3-no-longer-exists-grep.txt`, the publish-state unit test in the chain, and the chunk's full run in `test-results/chunk-4-commands.txt`.
+
+`[AI CODE REVIEW]` Two fresh reviewers (Opus) read the whole chunk diff (`8da2dd0..9300bb7`), one for correctness and spec, one for coding standards; the orchestrator adjudicated from the cited hunks. Fixed in 2698b30 (one worker, Opus):
+- Correctness and spec:
+  - `removeMember` re-checks, under the Project lock, that the acting Member still belongs (the in-lock check the base code had, dropped by the refactor).
+  - The not-found copy was asserted through `failureResult` itself; `src/lib/action-result.test.ts` now pins every sentence, and the action tests assert literals.
+  - The AC-1 evidence predated ticket 77's `src/db/account.ts`; recaptured at 2698b30.
+- Coding standards: unused exports removed (`Transaction`, `StaleWrite`, `MissingRow`, `pgErrorCode`, `staleResult`, `titleOrDescriptionPending`); `access.ts`'s comment narrowed to "the only reads that resolve one Project or Journey for a Member"; comment wrap and the detached `PublishState` JSDoc; duplicate `beforeEach` stubs.
+- Approved deviations, kept:
+  - The publish and unreadable sentences ("This journey can't be published yet", "This journey's draft can't be read…", "Version N can't be read…") travel from `src/db` as `invalid` errors, as the plan's `WriteFailure` shape gives them; copy is byte-identical to 8da2dd0.
+  - AC-2 is read as the Journey's membership join, which runs once. The `[projectId]` layout's navbar still resolves the Project in its own cached query, so one render joins `member` twice for the two (plus the switcher's own list).
+  - `moveJourney`, `deleteJourney`, `deleteProject`, and `unpublishJourney` answer `ok` once membership is resolved; a row already gone stays a quiet success, as before.
+  - `editProjectDescriptionAction` resolves membership before sanitising, so a non-Member posting malformed content reads "That project no longer exists".
+- Accepted risk: `addMemberByEmail` racing a Project or account deletion still surfaces an unmapped foreign-key error, as before this ticket.
