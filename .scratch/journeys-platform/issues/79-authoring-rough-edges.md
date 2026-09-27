@@ -1,8 +1,8 @@
 # 79: Authoring rough edges
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude (Fable 5.1), chunk 6 orchestrator, 2026-09-27
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish

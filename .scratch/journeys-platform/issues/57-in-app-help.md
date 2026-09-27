@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: 55
-Owner:
+Owner: Claude (Fable 5.1), chunk 6 orchestrator, 2026-09-27 (implementation starts after 79)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish

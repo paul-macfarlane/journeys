@@ -23,7 +23,7 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 10 | 4 | [77 Account deletion](issues/77-account-deletion.md) | contract | done | PR #108 |
 | 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | done | PR #111 |
 | 12 | 5 | [78 Accessibility pass](issues/78-accessibility-pass.md) | polish | done | PR #111 |
-| 13 | **6 Authoring polish** (polish) | [79 Authoring rough edges](issues/79-authoring-rough-edges.md) | polish | ready-for-agent | |
+| 13 | **6 Authoring polish** (polish) | [79 Authoring rough edges](issues/79-authoring-rough-edges.md) | polish | in-progress | |
 | 14 | 6 | [57 Empty states and placeholders](issues/57-in-app-help.md) | polish | ready-for-agent | Rescoped 2026-09-26 |
 | 15 | **7 Editor split and phone sheet** (polish) | [86 Split the canvas, the Draft editor, and the layout module](issues/86-split-editor-modules.md) | polish | ready-for-agent | Blocked by 81 (chunk 1) |
 | 16 | 7 | [53 The Step panel as a sheet on narrow screens](issues/53-mobile-step-sheet.md) | polish | ready-for-agent | Decisions to settle at the chunk's start |
