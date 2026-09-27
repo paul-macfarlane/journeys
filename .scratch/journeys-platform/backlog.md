@@ -17,8 +17,8 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 3 | 1 | [83 Error pages and unreadable Published Versions](issues/83-error-surfaces.md) | contract | done | PR #101 |
 | 4 | **2 Cleanup and stability** (contract) | [85 Leftovers sweep](issues/85-leftovers-sweep.md) | contract | done | PR #102 |
 | 5 | 2 | [74 Deploy and test stability](issues/74-deploy-and-test-stability.md) | polish | done | PR #102 |
-| 6 | **3 Runs, and the Judge cut** (contract) | [87 Cut the Judge](issues/87-cut-the-judge.md) | contract | in-progress | Paul, 2026-09-26: replaces 84 and 76 |
-| 7 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | in-progress | |
+| 6 | **3 Runs, and the Judge cut** (contract) | [87 Cut the Judge](issues/87-cut-the-judge.md) | contract | done | PR #106; replaces 84 and 76 (Paul, 2026-09-26) |
+| 7 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | done | PR #106 |
 | 9 | **4 Membership and accounts** (contract) | [82 One membership seam](issues/82-one-membership-seam.md) | contract | ready-for-agent | |
 | 10 | 4 | [77 Account deletion](issues/77-account-deletion.md) | contract | ready-for-agent | Paul re-approves the `/privacy` sentence |
 | 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | ready-for-agent | Rescoped 2026-09-26 |

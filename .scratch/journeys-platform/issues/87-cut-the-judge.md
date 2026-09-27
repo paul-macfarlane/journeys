@@ -1,6 +1,6 @@
 # 87: Cut the Judge
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Claude (chunk 3)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -41,3 +41,38 @@ Verification follows `docs/agents/testing.md` (`contract`). Never include partic
 ### 2026-09-26 — Claude (Opus 5.5), chunk 3
 
 `[EXECUTION PLAN]` One worker in its own worktree, in parallel with ticket 75. The two share no source files; the orchestrator keeps the tracker, spec, `CONTEXT.md`, and `human-prerequisites.md` for itself, so the workers' diffs do not collide. The worker removes the Judge end to end (runner, Preview, authoring, schema, dependency, env, the probe script, specs and fixtures), rewrites the public copy, makes the seed Prompt non-deciding, and re-records `public/demo/`. Evidence per criterion: AC-1 is a captured `rg` (`test-results/87-ac-1-no-judge.txt`); AC-2 is a unit test (`test-results/87-ac-2-decides-stripped.txt`); AC-3 is the existing runner Prompt specs in the full e2e run; AC-4 is the `guide` spec's screenshot plus the re-recorded `public/demo/`; AC-5 is the file itself. The chunk's full chain and full `pnpm test:e2e` run once, at the end.
+
+`[AI CODE REVIEW]` Two fresh reviewers (Opus) read the whole chunk diff (`49fc989..f3ff381`); the orchestrator adjudicated. No blocking findings. Resolved in f3ff381:
+- Technical and spec conformity:
+  - /about still described the AI-decided step (87 decision 3).
+  - `playwright.config.ts` still blanked `AI_GATEWAY_API_KEY`.
+  - Deploy window, a Completion lost: a Run the previous code left resting on an Ending (`ended_at` set, `completed_at` null) lost its Completion on the next Back. The reducer now reads it as completed there.
+  - Deploy window, a stale Ending: a stale `ending_step_id` beat the Ending the Run rests on. The resting Ending now wins.
+  - The dead `document` field on `PublishDraftResult`.
+  - Stale Judge comments and a stale test name.
+  - Stale analytics doc comments.
+  - Missing reducer cases: rule 2, rule 6 onto a non-Ending, and the same Ending twice.
+  - The evidence captures.
+  - The Firewall rule scoped to Run creation (`^/j/[^/]+$`), so Prompt posts from one classroom IP are not throttled.
+- Coding standards:
+  - The migration comment trimmed.
+  - The ADR-0002 amendment re-wrapped, including its split code span.
+  - "Prompts, read by the members" (was "authors") in the feature grid.
+  - The analytics-tab copy now says "latest ending".
+  - `ending_step_id` asserted in the runner backtrack e2e.
+- Accepted risk, not fixed: while the deploy is rolling out, the previous code may null `outcome_id` when it backtracks a Run the new code completed. Analytics never reads `outcome_id` (it groups through `ending_step_id` and the document), so no number changes.
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/106 (chunk 3, with ticket 75).
+- **Worker:** delivered by one worker (Sonnet, worktree `journeys-d1`: commits 9c59234 and fb5b298, the lockfile deletion-only). Integrated, then fixed after review in f3ff381. Verified at f3ff381 on local `next start`.
+- **Verdicts:**
+  - AC-1 PASS: `test-results/87-ac-1-no-judge.txt`. Every remaining hit is incidental English or story prose, and `src/lib/ai` is gone.
+  - AC-2 PASS: `test-results/87-ac-2-decides-stripped.txt`.
+  - AC-3 PASS: the runner Prompt specs in the full run (`test-results/chunk-3-commands.txt`, 121 passed, 0 flaky).
+  - AC-4 PASS: `test-results/guide/` and the re-recorded `public/demo/` (the `prompt` still now shows a runner Prompt above its Choices). /about was fixed in review.
+  - AC-5 PASS: `human-prerequisites.md` §15 (Firewall rule) and §6 (retired).
+- **Chain:** `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e:prebuilt`, all exit 0.
+- **Deviations:**
+  - The publish result's `warning` field is removed.
+  - The `prompt` demo still moved from the authoring panel to the runner.
+  - Ticket 76's planned e2e is dropped, since 76 is `wontfix`.
+- **Waiting on Paul:** approve the /privacy removal and the /about sentence on the PR; add the Firewall rule; optionally delete the Vercel env var; smoke staging after merge.
