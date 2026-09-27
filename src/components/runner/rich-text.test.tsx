@@ -87,10 +87,18 @@ describe("RichText", () => {
     expect(html).toContain("<blockquote><p>Keep the light.</p></blockquote>");
   });
 
-  it("renders a heading at its level", () => {
+  it("renders a heading one level below what it was written at (ticket 78)", () => {
+    // A Step's own title is already the page's h1, so an H1 opening a
+    // Step's content would render a second one — the runner shifts every
+    // stored heading down instead: H1 -> h2, H3 -> h4.
     const content: Content = {
       type: "doc",
       content: [
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: "Opening" }],
+        },
         {
           type: "heading",
           attrs: { level: 3 },
@@ -100,8 +108,12 @@ describe("RichText", () => {
     };
 
     const html = renderToStaticMarkup(<RichText content={content} />);
-    expect(html).toContain("<h3");
-    expect(html).toContain("Section</h3>");
+    expect(html).toContain("<h2");
+    expect(html).toContain("Opening</h2>");
+    expect(html).toContain("<h4");
+    expect(html).toContain("Section</h4>");
+    expect(html).not.toContain("<h1");
+    expect(html).not.toContain("<h3");
   });
 
   it("renders a bullet list with two items", () => {

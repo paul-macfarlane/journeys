@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -15,6 +16,26 @@ import { listJourneysForProject } from "@/db/journeys";
 import { listMembers } from "@/db/members";
 import { contentPreview } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
+
+/**
+ * The tab title (ticket 78): the Project's title, with the root layout's
+ * template appending "· Journeys". `requireSession` and `projectForMember`
+ * are `cache()`d, so the page below pays no second query. An id that is not
+ * this Author's — or never existed — is the same 404 as the page itself
+ * (ticket 60): metadata streams in after the page, so a title returned for
+ * a missing Project would replace the not-found page's own.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}): Promise<Metadata> {
+  const session = await requireSession();
+  const { projectId } = await params;
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) notFound();
+  return { title: project.title };
+}
 
 export default async function ProjectPage({
   params,

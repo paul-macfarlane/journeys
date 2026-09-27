@@ -457,4 +457,22 @@
   --xy-node-color: var(--foreground);
   --xy-node-background-color: var(--card);
   --xy-node-border: 1px solid var(--border);
+  /* React Flow's own attribution box takes the map's own background
+     (ticket 78) rather than its default translucent white, which read as a
+     stale light box over the map in the dark theme. */
+  --xy-attribution-background-color: var(--background);
+}
+
+/* The attribution link itself has no variable to win with — React Flow's
+   own stylesheet hardcodes `color: #999`, 4.24:1 against the box above at
+   10px, short of WCAG's 4.5:1 in either scheme. `.react-flow .react-flow__
+   attribution a` is more specific than React Flow's own
+   `.react-flow__attribution a`, so it wins regardless of which stylesheet
+   Next.js orders after the other (ticket 35's trap, here for a hardcoded
+   property rather than a variable). The link stays — React Flow's licence
+   asks for the attribution — just legible: the map's own foreground, which
+   already reads at contrast against its own background everywhere else on
+   the page. */
+.react-flow .react-flow__attribution a {
+  color: var(--foreground);
 }

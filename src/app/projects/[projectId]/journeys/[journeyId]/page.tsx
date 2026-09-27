@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -34,6 +35,26 @@ import { draftPending } from "@/lib/publish-state";
 import { groupResponsesByStep } from "@/lib/response-list";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
+
+/**
+ * The tab title (ticket 78): the Journey's title, with the root layout's
+ * template appending "· Journeys". `requireSession` and `journeyForMember`
+ * are `cache()`d, so the page below pays no second query. A non-Member, an
+ * unknown Project, and an unknown Journey all take the same 404 as the page
+ * itself (ticket 60): metadata streams in after the page, so a title
+ * returned for a missing Journey would replace the not-found page's own.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string; journeyId: string }>;
+}): Promise<Metadata> {
+  const session = await requireSession();
+  const { projectId, journeyId } = await params;
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) notFound();
+  return { title: journey.title };
+}
 
 export default async function JourneyPage({
   params,
@@ -153,6 +174,13 @@ export default async function JourneyPage({
           </div>
 
           <header className="flex flex-wrap items-start justify-between gap-4">
+            {/* The visible title is `JourneyTitleFields`' input
+                (`aria-label="Title"`), not a heading, so the page carries no
+                `h1` of its own without this: an `sr-only` one names the
+                Journey for a screen reader and for axe's
+                `page-has-heading-one` (ticket 78), with every heading below
+                it on each tab descending one level at a time from it. */}
+            <h1 className="sr-only">{journey.title}</h1>
             <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
               <JourneyTitleFields
                 projectId={projectId}
