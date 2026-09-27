@@ -3,11 +3,17 @@ import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 import { resolveMetadataBase } from "@/lib/metadata-base";
 
+// Rendered per request, like every page whose metadata these URLs must
+// agree with. Left static, Next would bake them at build time from the
+// build's own environment, and a build served elsewhere (CI builds for one
+// origin and serves on another; a Vercel build is promoted between
+// deployments) would name an origin the pages themselves do not.
+export const dynamic = "force-dynamic";
+
 /**
- * `lastModified`, read once when this module is first imported, so every
- * entry — and every rebuild of the sitemap within the same running build —
- * carries the moment the build happened rather than the moment each
- * request was served.
+ * `lastModified`, read once when the server first loads this module, so
+ * every entry carries the moment this deployment started serving rather
+ * than the moment each request was answered.
  */
 const BUILT_AT = new Date();
 

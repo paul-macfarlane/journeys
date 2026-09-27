@@ -111,3 +111,9 @@ Verification map (route `contract`): AC-1 (robots, sitemap, noindex) → `seo-ro
 - **Run surface:** local. The deployed check is Paul's staging smoke after merge. There is no migration and no new required variable (`VERCEL_ENV` and `VERCEL_PROJECT_PRODUCTION_URL` are Vercel's own).
 - **Decisions taken on Paul's behalf**, in the execution plan, open to change: `/about` and `/guide` indexable; `/authors` treated as `/p`; the preview-origin rule; the Project-404 copy.
 - **Parallel-run check:** no file conflict was predicted and none happened. D1 and D2 merged with no conflict and share no file. `e2e/public-project.spec.ts` was later touched by D3 and R1, which ran after, in sequence.
+
+`[SCOPE CHANGE]` 2026-09-27, CI on PR #111. `seo-robots-and-sitemap` failed on CI: the `Sitemap:` line named `http://localhost:3000` while the suite served on 3100.
+- **Cause:** `robots.ts` and `sitemap.ts` were static, so Next baked their absolute URLs at build time from the build's `BETTER_AUTH_URL`. CI builds for one origin and serves on another. The local chain built and served on the same port, which hid it. A Vercel build promoted between deployments would carry the same stale origin.
+- **Fix:** both routes are `force-dynamic`, so they resolve per request like the pages whose canonical URLs they must match. `lastModified` now means when this deployment started serving.
+- **Verified:** reproduced as CI runs it (build with origin 3000, serve on 3105): `seo`, `landing`, and `sign-in` passed 7 of 7. The full suite is the PR's CI run.
+- **Also:** staging's PR #110 (tickets 93–95) was merged in; the backlog's Awaiting table keeps both sides' rows.

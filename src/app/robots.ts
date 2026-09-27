@@ -3,6 +3,13 @@ import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 import { resolveMetadataBase } from "@/lib/metadata-base";
 
+// Rendered per request, like every page whose metadata these URLs must
+// agree with. Left static, Next would bake them at build time from the
+// build's own environment, and a build served elsewhere (CI builds for one
+// origin and serves on another; a Vercel build is promoted between
+// deployments) would name an origin the pages themselves do not.
+export const dynamic = "force-dynamic";
+
 /**
  * Served at `/robots.txt` (ticket 42). Everything is allowed except
  * `/sign-in`, the Author-only `/projects` tree, and `/api`. This disallow
