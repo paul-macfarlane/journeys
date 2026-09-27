@@ -1,14 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
+import { db } from "@/db";
+import { deleteAccount } from "@/db/account";
 import { updateAuthorSettings } from "@/db/users";
 import { firstIssue, type ActionResult } from "@/lib/action-result";
+import { auth } from "@/lib/auth";
 import { requireSession } from "@/lib/session";
 import {
   authorIdentitySchema,
   authorPageSchema,
   authorPageVisibilitySchema,
+  deleteAccountSchema,
 } from "@/lib/validation/author";
 
 /**
@@ -81,4 +87,36 @@ export async function setAuthorPageVisibilityAction(
   }
 
   return saveAuthorSettings(session.user.id, parsed.data);
+}
+
+/**
+ * Deletes the signed-in Author's account (ticket 77): refuses without the
+ * typed email matching the session's own, case-insensitively, before
+ * touching the database; otherwise deletes the account in one transaction
+ * (`@/db/account`), signs out — the session row is already gone, but this
+ * still clears the cookie — and lands on `/` with the notice. `redirect`
+ * throws, so it is never called inside a try/catch here.
+ */
+export async function deleteAccountAction(
+  input: unknown,
+): Promise<ActionResult> {
+  const session = await requireSession();
+
+  const parsed = deleteAccountSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstIssue(parsed.error.issues) };
+  }
+
+  if (parsed.data.email.toLowerCase() !== session.user.email.toLowerCase()) {
+    return { ok: false, error: "Type your account's email to confirm" };
+  }
+
+  const result = await deleteAccount(db, session.user.id);
+  if (!result.ok) {
+    return { ok: false, error: "Your account could not be found" };
+  }
+
+  await auth.api.signOut({ headers: await headers() });
+  revalidatePath("/projects", "layout");
+  redirect("/?notice=account-deleted");
 }

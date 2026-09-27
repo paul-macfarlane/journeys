@@ -36,4 +36,13 @@ export const authorPageVisibilitySchema = z.object({
   public: authorPublicSchema,
 });
 
+/**
+ * The "Delete account" confirmation (ticket 77): the typed email, compared
+ * to the session's own case-insensitively by the action, before anything is
+ * deleted.
+ */
+export const deleteAccountSchema = z.object({
+  email: z.string().trim(),
+});
+
 export type AuthorIdentityInput = z.infer<typeof authorIdentitySchema>;
