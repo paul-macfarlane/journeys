@@ -33,7 +33,13 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 
 New tickets land here until Paul places them.
 
-_None._
+| Ticket | Route | Status | Note |
+|---|---|---|---|
+| [88 Canvas arrows: keyboard focus and order](issues/88-canvas-arrow-focus.md) | polish | needs-triage | From 78's walk (chunk 5) |
+| [89 Choice target combobox: Enter retargets on open](issues/89-choice-target-enter.md) | contract | needs-triage | From 78's walk; keyboard-only Draft change |
+| [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | needs-triage | From 78's walk |
+| [91 Preview page title](issues/91-preview-title.md) | polish | needs-triage | From 78's walk |
+| [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | needs-triage | From 78's walk |
 
 ## Parked
 
