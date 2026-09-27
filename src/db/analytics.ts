@@ -6,7 +6,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { getJourneyForMember } from "@/db/journeys";
+import type { MemberJourney } from "@/db/access";
 import { publishedVersion, run } from "@/db/schema";
 import { logUnreadable } from "@/db/unreadable";
 import type { RunPath } from "@/lib/analytics";
@@ -18,8 +18,8 @@ import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
  * Not in `@/db/runs`, whose contract is the anonymous runner's — nothing
  * there checks membership, because a Participant has none to check. This
  * read rides on Project membership like every other read under `src/db`:
- * the Journey is resolved through `getJourneyForMember` first, and the
- * version is selected under that Journey's id, so a version id lifted from
+ * it takes the `MemberJourney` `@/db/access` resolved, and the version is
+ * selected under that Journey's id, so a version id lifted from
  * another Journey answers null exactly as an unknown one does. Runs come
  * back as a path plus the reducer's Completion state (`completedAt`,
  * `endingStepId`, ticket 75) — no participant id, no other timestamp — which
@@ -77,20 +77,13 @@ export function toAnalyticsSource(
 }
 
 /**
- * One Published Version of a Journey and every Run pinned to it, for one of
- * the Journey's Project's Members. Null for a non-Member, an unknown Project,
- * an unknown Journey, and a version that is not this Journey's alike — the
- * same 404 as every other Journey page.
+ * One Published Version of a Journey and every Run pinned to it. Null for a
+ * version that is not this Journey's, exactly as for an unknown one.
  */
-export async function getAnalyticsForMember(
-  projectId: string,
-  journeyId: string,
+export async function getAnalytics(
+  existing: MemberJourney,
   versionId: string,
-  userId: string,
 ): Promise<AnalyticsSource | null> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
   const [version] = await db
     .select({
       id: publishedVersion.id,

@@ -6,11 +6,17 @@ import "server-only";
 import { and, asc, count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { getProjectForMember } from "@/db/projects";
-import { member, project, user } from "@/db/schema";
+import type { MemberProject } from "@/db/access";
+import { isUniqueViolation } from "@/db/errors";
+import { lockProject } from "@/db/projects";
+import { member, user } from "@/db/schema";
+import { notFound, type WriteFailure } from "@/lib/write-result";
 
 /**
- * Data access for a Project's Members, mirroring `@/db/projects`.
+ * Data access for a Project's Members, mirroring `@/db/projects`: every
+ * function here takes the `MemberProject` `@/db/access` resolved for the
+ * signed-in Author, so none can be called without that check and none
+ * repeats it.
  *
  * All Members are equal — `member.role` is written on insert (defaulting to
  * "member") and never read here. A Project can never lose its last Member:
@@ -27,33 +33,31 @@ export type MemberSummary = {
 };
 
 /** Every Member of the Project, the first one added first. */
-export async function listMembers(projectId: string): Promise<MemberSummary[]> {
+export async function listMembers(
+  project: MemberProject,
+): Promise<MemberSummary[]> {
   return db
     .select({ userId: member.userId, name: user.name, email: user.email })
     .from(member)
     .innerJoin(user, eq(user.id, member.userId))
-    .where(eq(member.projectId, projectId))
+    .where(eq(member.projectId, project.id))
     .orderBy(asc(member.createdAt));
 }
 
 export type AddMemberResult =
   | { ok: true; userId: string }
-  | { ok: false; reason: "no-project" | "unknown-email" | "already-member" };
+  | { ok: false; reason: "unknown-email" | "already-member" };
 
 /**
  * Adds an existing account as a Member by email, matched case-insensitively
- * so a differently cased email still finds the account. The actor must
- * already be a Member of the Project — the same check every Project action
- * makes — so an Author who is not a Member gets `no-project`, indistinguishable
- * from a Project that never existed.
+ * so a differently cased email still finds the account. The actor is the
+ * Member `project` was resolved for.
  */
 export async function addMemberByEmail(
-  projectId: string,
+  project: MemberProject,
   email: string,
-  actorUserId: string,
 ): Promise<AddMemberResult> {
-  const project = await getProjectForMember(projectId, actorUserId);
-  if (!project) return { ok: false, reason: "no-project" };
+  const projectId = project.id;
 
   const [account] = await db
     .select({ id: user.id })
@@ -84,15 +88,17 @@ export async function addMemberByEmail(
 
 export type RemoveMemberResult =
   | { ok: true }
-  | { ok: false; reason: "no-project" | "not-a-member" | "last-member" };
+  | Extract<WriteFailure, { reason: "not-found" }>
+  | { ok: false; reason: "not-a-member" | "last-member" };
 
 /**
- * Removes a Member. One transaction: the Project row is locked first, so
- * removals of one Project run one at a time (else `no-project`); then the
- * actor's own membership is checked (else `no-project`), then the Project's
- * member count before any delete is attempted (`<= 1` refuses with
- * `last-member`), and only then is the row deleted (zero rows deleted means
- * `not-a-member`).
+ * Removes a Member. One transaction: the Project row is locked first
+ * (`lockProject`), so removals of one Project run one at a time (a Project
+ * deleted since its membership was resolved is `not-found`); then the
+ * Project's member count is read before any delete is attempted (`<= 1`
+ * refuses with `last-member`), and only then is the row deleted (zero rows
+ * deleted means `not-a-member`). The actor is the Member `project` was
+ * resolved for.
  *
  * The lock is what makes the count trustworthy: without it two removals of
  * different Members could each count two, delete different rows, and both
@@ -104,27 +110,13 @@ export type RemoveMemberResult =
  * `last-member` rather than rethrown.
  */
 export async function removeMember(
-  projectId: string,
+  project: MemberProject,
   userId: string,
-  actorUserId: string,
 ): Promise<RemoveMemberResult> {
+  const projectId = project.id;
   try {
-    return await db.transaction(async (tx) => {
-      const [locked] = await tx
-        .select({ id: project.id })
-        .from(project)
-        .where(eq(project.id, projectId))
-        .for("update");
-      if (!locked) return { ok: false, reason: "no-project" as const };
-
-      const [actorMembership] = await tx
-        .select({ userId: member.userId })
-        .from(member)
-        .where(
-          and(eq(member.projectId, projectId), eq(member.userId, actorUserId)),
-        )
-        .limit(1);
-      if (!actorMembership) return { ok: false, reason: "no-project" as const };
+    return await db.transaction(async (tx): Promise<RemoveMemberResult> => {
+      if (!(await lockProject(tx, projectId))) return notFound();
 
       const [{ value: memberCount }] = await tx
         .select({ value: count() })
@@ -149,32 +141,6 @@ export async function removeMember(
     }
     throw error;
   }
-}
-
-/**
- * The SQLSTATE of a failed statement. drizzle-orm wraps the driver's error
- * as a `DrizzleQueryError` whose `cause` is the `pg` `DatabaseError`, so the
- * code lives on the cause; the error itself is checked too in case a caller
- * ever sees the driver error unwrapped.
- */
-function pgErrorCode(error: unknown): string | undefined {
-  const candidates = [error instanceof Error ? error.cause : undefined, error];
-  for (const candidate of candidates) {
-    if (
-      typeof candidate === "object" &&
-      candidate !== null &&
-      "code" in candidate &&
-      typeof candidate.code === "string"
-    ) {
-      return candidate.code;
-    }
-  }
-  return undefined;
-}
-
-/** 23505: unique_violation. */
-function isUniqueViolation(error: unknown): boolean {
-  return pgErrorCode(error) === "23505";
 }
 
 function isLastMemberTriggerError(error: unknown): boolean {

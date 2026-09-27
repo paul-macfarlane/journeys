@@ -9,12 +9,10 @@ import {
   useTransition,
 } from "react";
 
-import {
-  setJourneyThemeAction,
-  type JourneyActionResult,
-} from "@/app/projects/[projectId]/journeys/actions";
+import { setJourneyThemeAction } from "@/app/projects/[projectId]/journeys/actions";
 import { StaleNotice } from "@/components/stale-notice";
 import { ThemeFields } from "@/components/theme-fields";
+import type { ActionResult } from "@/lib/action-result";
 import { THEME_PRESETS, type Theme, type ThemeOverride } from "@/lib/theme";
 
 /**
@@ -72,7 +70,7 @@ export function JourneyThemeSettings({
         journeyId,
         next,
         acknowledged.current,
-      ).catch((): JourneyActionResult => ({
+      ).catch((): ActionResult => ({
         ok: false,
         error: "the server could not be reached",
       }));
