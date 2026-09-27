@@ -1,6 +1,6 @@
 # 82: One membership seam and one data-layer result shape
 
-Status: ai-review
+Status: done
 Blocked by: None
 Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -75,3 +75,14 @@ Evidence: `test-results/82-ac-1-membership-signatures.txt` (the exported `src/db
   - `moveJourney`, `deleteJourney`, `deleteProject`, and `unpublishJourney` answer `ok` once membership is resolved; a row already gone stays a quiet success, as before.
   - `editProjectDescriptionAction` resolves membership before sanitising, so a non-Member posting malformed content reads "That project no longer exists".
 - Accepted risk: `addMemberByEmail` racing a Project or account deletion still surfaces an unmapped foreign-key error, as before this ticket.
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/108 (chunk 4, with ticket 77).
+- **Worker:** one worker (Opus, worktree `journeys-d1`, commit 8b36944), in parallel with 77. Review fixes by a second worker (Opus, 2698b30). Verified at 2698b30 on local `next start` over docker Postgres 18.
+- **Verdicts:**
+  - AC-1 PASS: `test-results/82-ac-1-membership-signatures.txt`.
+  - AC-2 PASS: `test-results/82-ac-2-membership-query-count.txt`. A Journey page request is 10 statements, and the Journey membership join is one of them (before, `getJourneyForMember` ran six times). The layout navbar's Project read is its own cached query (the review's F7).
+  - AC-3 PASS: `test-results/82-ac-3-no-longer-exists-grep.txt` (no hits in `src/app`; the mapper is `failureResult`).
+  - AC-4 PASS: `draftPending` unit tests. The full run is in `test-results/chunk-4-commands.txt`: 123 passed, 0 flaky.
+- **Command chain:** `eslint`, `format:check`, `typecheck`, `db:migrate`, then `DB_INTEGRATION_URL=… pnpm test` (666) and `pnpm test` (660 + 6 skipped), then `build`, then `E2E_EVIDENCE=account-delete,account-delete-refused pnpm test:e2e:prebuilt`. Lint skipped the untracked `.claude/` scratch, which carries one pre-existing error outside the repository.
+- **Route:** the backlog's `contract` won over this ticket's own "(`polish`)" verification line, as recorded in the execution plan.
+- **Parallel-run check:** no file conflict was predicted, and none happened: D2 merged onto D1 with no conflict, and no file is in both commits.

@@ -1,6 +1,6 @@
 # 77: Account deletion
 
-Status: ai-review
+Status: done
 Blocked by: None
 Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`
@@ -59,3 +59,15 @@ Evidence: `test-results/account-delete/account-delete.png` and `test-results/acc
 - Coding standards, fixed: the race tests wait on `pg_stat_activity` (blocked by the racing client's pid), not a sleep; the e2e uses `fill`, not a value-setter; a real Response row stands in for run history; the second Member is minted, not given a browser; "Owner" naming gone; one `schema` import; the lock-order and `schema.ts` comments rewritten plainly.
 - Deviations: better-auth's disabled `/delete-user` answers 403 (the route exists, the feature is off), not 404; the e2e adds the second Member by SQL, since the Members tab is `members.spec.ts`'s.
 - Accepted risk: an Author deleting their account while publishing in their own sole Project can deadlock the two transactions; Postgres aborts one, nothing is half-written, and the Author can retry.
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/108 (chunk 4, with ticket 82).
+- **Worker:** one worker (Sonnet, worktree `journeys-d2`, commit 9a74193), in parallel with 82. Review fixes, including the blocking race, by a second worker (Opus, 2698b30). Verified at 2698b30 on local `next start` over docker Postgres 18.
+- **Design:** better-auth's own deletion is not used. `/delete-user` stays off (403), and it would run outside the transaction. `deleteAccount` deletes the user row directly inside one transaction, then the action calls `auth.api.signOut` and redirects to `/?notice=account-deleted`.
+- **Verdicts:**
+  - AC-1 PASS: `test-results/account-delete/account-delete.png` and the `account-delete` assertions (row counts, the shared Project keeps its other Member, the public link 404s).
+  - AC-2 PASS: `test-results/account-delete-refused/account-delete-refused.png`, plus `settings/actions.test.ts` for the server-side refusal.
+  - AC-3 PASS: the stale cookie is redirected off `/projects`, and a session minted for the same email is a new, empty account (`account-delete`).
+  - AC-4 PASS: `test-results/77-ac-4-data-layer.txt` (six tests on real Postgres: the cascade, `published_by` nulled, the last-Member trigger, and three races).
+  - The full run is in `test-results/chunk-4-commands.txt`: 123 passed, 0 flaky.
+- **Human gate:** Paul approved the `/privacy` sentence as written, in this thread on 2026-09-26. The built page renders it (`test-results/chunk-4-commands.txt`).
+- **After merge:** nothing for Paul beyond the merge. There is no migration and no new environment variable in any deployment (`DB_INTEGRATION_URL` is CI-only).
