@@ -1,8 +1,8 @@
 # 42: SEO
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude (Fable 5.1), chunk 5
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`. Run after 44 only if the rename happens first; it does not wait for it.
 Route: contract (public routes change status; see the 2026-09-26 comment)
