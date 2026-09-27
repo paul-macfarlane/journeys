@@ -1,6 +1,6 @@
 # 82: One membership seam and one data-layer result shape
 
-Status: in-progress
+Status: ai-review
 Blocked by: None
 Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`

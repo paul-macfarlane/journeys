@@ -1,6 +1,6 @@
 # 77: Account deletion
 
-Status: in-progress
+Status: ai-review
 Blocked by: None
 Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`
