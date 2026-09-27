@@ -86,3 +86,5 @@ Evidence: `test-results/82-ac-1-membership-signatures.txt` (the exported `src/db
 - **Command chain:** `eslint`, `format:check`, `typecheck`, `db:migrate`, then `DB_INTEGRATION_URL=… pnpm test` (666) and `pnpm test` (660 + 6 skipped), then `build`, then `E2E_EVIDENCE=account-delete,account-delete-refused pnpm test:e2e:prebuilt`. Lint skipped the untracked `.claude/` scratch, which carries one pre-existing error outside the repository.
 - **Route:** the backlog's `contract` won over this ticket's own "(`polish`)" verification line, as recorded in the execution plan.
 - **Parallel-run check:** no file conflict was predicted, and none happened: D2 merged onto D1 with no conflict, and no file is in both commits.
+
+2026-09-27: re-verified at 348d6a4 after the autosave fix recorded under 77's `[SCOPE CHANGE]`. The full chain passed, with 123 of 123 in `test-results/chunk-4-commands.txt`. This ticket's own captures do not depend on `src/components/autosaved-form.ts`, so they stand.

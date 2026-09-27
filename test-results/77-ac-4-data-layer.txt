@@ -1,12 +1,12 @@
 # Ticket 77, AC-4: the data layer — cascade, last-Member trigger, and the three races
-# Commit 2698b30. Real Postgres 18 (docker, journeys_e2e, migrated through 0013).
+# Commit 348d6a4. Real Postgres 18 (docker, journeys_e2e, migrated through 0013).
 $ DB_INTEGRATION_URL=<journeys_e2e> pnpm exec vitest run src/db/account.integration.test.ts --reporter=verbose
- ✓ src/db/account.integration.test.ts > deleteAccount (integration) > deletes the sole Project and everything in it, keeps the shared Project, nulls its published_by, and deletes the account 68ms
+ ✓ src/db/account.integration.test.ts > deleteAccount (integration) > deletes the sole Project and everything in it, keeps the shared Project, nulls its published_by, and deletes the account 48ms
  ✓ src/db/account.integration.test.ts > deleteAccount (integration) > returns not-found for a user row that does not exist 1ms
- ✓ src/db/account.integration.test.ts > deleteAccount (integration) > refuses a raw delete of a Project's last remaining Member 4ms
- ✓ src/db/account.integration.test.ts > deleteAccount (integration) > waits out a member insert into a shared Project, then keeps that Project for its other Member 37ms
- ✓ src/db/account.integration.test.ts > deleteAccount (integration) > sees a removal of the Author that commits while it waits on the Project lock, and keeps the Project (F1) 42ms
- ✓ src/db/account.integration.test.ts > deleteAccount (integration) > waits out a Project created with the Author as its first Member, then deletes it as a sole Project (F2) 39ms
+ ✓ src/db/account.integration.test.ts > deleteAccount (integration) > refuses a raw delete of a Project's last remaining Member 3ms
+ ✓ src/db/account.integration.test.ts > deleteAccount (integration) > waits out a member insert into a shared Project, then keeps that Project for its other Member 28ms
+ ✓ src/db/account.integration.test.ts > deleteAccount (integration) > sees a removal of the Author that commits while it waits on the Project lock, and keeps the Project (F1) 38ms
+ ✓ src/db/account.integration.test.ts > deleteAccount (integration) > waits out a Project created with the Author as its first Member, then deletes it as a sole Project (F2) 37ms
  Test Files  1 passed (1)
       Tests  6 passed (6)
 (exit 0)

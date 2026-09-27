@@ -71,3 +71,11 @@ Evidence: `test-results/account-delete/account-delete.png` and `test-results/acc
   - The full run is in `test-results/chunk-4-commands.txt`: 123 passed, 0 flaky.
 - **Human gate:** Paul approved the `/privacy` sentence as written, in this thread on 2026-09-26. The built page renders it (`test-results/chunk-4-commands.txt`).
 - **After merge:** nothing for Paul beyond the merge. There is no migration and no new environment variable in any deployment (`DB_INTEGRATION_URL` is CI-only).
+
+`[SCOPE CHANGE]` 2026-09-27, CI on PR #108. `author-settings` failed once: a GitHub link typed just as the LinkedIn save's refresh landed was wiped, so its refusal never showed.
+- **Cause:** `useAutosavedForm`'s adopt effect called react-hook-form's `reset` without `keepFieldsRef`. That forgets every registered field until the re-render registers them again, so a keystroke in between was dropped and then overwritten with the stored value.
+- **Pre-existing:** the bug predates this chunk. This ticket's heavier Settings refresh (a second query and one more section) made the window easier to hit.
+- **Diagnosis:** reproduced with the CI trace, then under 6× CPU throttling (1 in 20 runs), then with value-setter instrumentation.
+- **Fix:** 348d6a4, `keepFieldsRef: true`, as react-hook-form's own `values` option passes it. A unit test types in the same commit as the adopt, red before the fix and green after. The throttled repro then passed 60 of 60.
+- **Re-verification:** the whole chain reran at 348d6a4, with 123 of 123 passing in `test-results/chunk-4-commands.txt`.
+- **Scope:** the change is in shared code outside both tickets, and it is recorded here because this ticket's page exposed it.
