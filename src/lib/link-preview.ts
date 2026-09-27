@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 
 import { APP_NAME, APP_TAGLINE, BRAND_COLORS } from "@/lib/brand";
 import { contentPreview, textPreview, type Content } from "@/lib/graph/content";
-import { accentForeground, type Theme, type ThemePreset } from "@/lib/theme";
+import {
+  accentForeground,
+  PRESET_ACCENTS,
+  type Theme,
+  type ThemePreset,
+} from "@/lib/theme";
 
 /**
  * Link previews (ticket 37): what a chat or a social card shows for a
@@ -53,42 +58,42 @@ const PRESET_PALETTES: Record<ThemePreset, LinkPreviewPalette> = {
     background: BRAND_COLORS.chalk,
     foreground: BRAND_COLORS.ink,
     muted: BRAND_COLORS.moss,
-    primary: BRAND_COLORS.spruce,
+    primary: PRESET_ACCENTS.trail,
     onPrimary: BRAND_COLORS.paper,
   },
   parchment: {
     background: "#faf3e5",
     foreground: "#372414",
     muted: "#6c5644",
-    primary: "#9e4421",
+    primary: PRESET_ACCENTS.parchment,
     onPrimary: "#fdfaf3",
   },
   tide: {
     background: "#eef9fa",
     foreground: "#0f222b",
     muted: "#3c5b65",
-    primary: "#005b60",
+    primary: PRESET_ACCENTS.tide,
     onPrimary: "#f3fcfd",
   },
   dusk: {
     background: "#f6f3fc",
     foreground: "#271d2e",
     muted: "#60516b",
-    primary: "#763584",
+    primary: PRESET_ACCENTS.dusk,
     onPrimary: "#fbf9ff",
   },
   ember: {
     background: "#faf4ef",
     foreground: "#2a1e1a",
     muted: "#67534a",
-    primary: "#a53e00",
+    primary: PRESET_ACCENTS.ember,
     onPrimary: "#fff9f4",
   },
   slate: {
     background: "#f5f7f9",
     foreground: "#171b22",
     muted: "#4f5661",
-    primary: "#1e4eac",
+    primary: PRESET_ACCENTS.slate,
     onPrimary: "#f8fafd",
   },
 };
