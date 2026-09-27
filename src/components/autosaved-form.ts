@@ -185,12 +185,16 @@ export function useAutosavedForm<T extends FieldValues>({
     // a moment before the refresh landed vanished while the refused text
     // stayed on screen, unsaved and unexplained (the author-settings spec
     // under the load recipe, 2026-09-26).
+    // `keepFieldsRef`, as react-hook-form's own `values` option passes it:
+    // without it `reset` forgets every registered field until the re-render
+    // registers them again, and a keystroke in between is dropped, then
+    // overwritten by the stored value (author-settings on CI, 2026-09-27).
     const before = form.formState.defaultValues as Partial<T> | undefined;
     const current = form.getValues();
     const edited = (Object.keys(values) as Path<T>[])
       .filter((key) => before && current[key] !== before[key])
       .map((key) => ({ key, error: form.getFieldState(key).error }));
-    form.reset(values);
+    form.reset(values, { keepFieldsRef: true });
     for (const { key, error } of edited) {
       form.setValue(key, current[key], { shouldDirty: true });
       if (error) {
