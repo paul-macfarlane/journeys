@@ -313,6 +313,7 @@ export function StepPanel({
   markedChoiceId,
   onChange,
   onSelectStep,
+  onSelectOnMap,
   onContentChange,
   onContentRefused,
   onDeleteStep,
@@ -335,6 +336,8 @@ export function StepPanel({
   markedChoiceId: string | null;
   onChange: ApplyEdit;
   onSelectStep: SelectStep;
+  /** A Step's box selected on the map, with this panel left where it is. */
+  onSelectOnMap: (stepId: string) => void;
   onContentChange: (stepId: string, content: Content) => void;
   onContentRefused: (error: string) => void;
   onDeleteStep: (stepId: string) => void;
@@ -367,6 +370,9 @@ export function StepPanel({
           autoComplete="off"
           autoFocus={focusTitle}
           maxLength={200}
+          // A new Step's title is empty; this is what it is called until
+          // the Author names it, on the map and everywhere else (`stepName`).
+          placeholder="Untitled step"
           value={step.title}
           // Named as the field it is, so a title typed in one go comes back
           // in one undo rather than a letter at a time.
@@ -427,6 +433,7 @@ export function StepPanel({
         markedChoiceId={markedChoiceId}
         onChange={onChange}
         onSelectStep={onSelectStep}
+        onSelectOnMap={onSelectOnMap}
       />
 
       {/* Only an Ending carries an Outcome; a Step a participant can walk on

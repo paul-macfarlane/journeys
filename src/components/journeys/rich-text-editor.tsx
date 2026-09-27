@@ -2,7 +2,13 @@ import { getMarkAttributes } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -83,7 +89,29 @@ const EDITOR_CLASS =
 const showImageTools: NonNullable<
   React.ComponentProps<typeof BubbleMenu>["shouldShow"]
 > = ({ editor: instance }) => instance.isActive("image");
-const IMAGE_TOOLS_PLACEMENT = { placement: "top", offset: 8 } as const;
+/**
+ * Where the image toolbar sits: over the picture itself, along its bottom
+ * edge (ticket 79). Above the image, where the menu used to go, it covered
+ * the paragraph the Author was reading; below it, it would cover the caption
+ * or the next paragraph. Inside the picture it covers nothing but the
+ * picture it is about. The anchor is the `<img>` (`imageToolsAnchor`), not
+ * the figure, so the caption is outside it too. A picture too short to hold
+ * the menu gets it just below instead. `flip` is off: flipped to the top it
+ * would land on the text above again.
+ */
+const IMAGE_TOOLS_INSET = 8;
+const IMAGE_TOOLS_PLACEMENT = {
+  placement: "bottom",
+  flip: false,
+  offset: ({
+    rects,
+  }: {
+    rects: { reference: { height: number }; floating: { height: number } };
+  }) =>
+    rects.reference.height >= rects.floating.height + 2 * IMAGE_TOOLS_INSET
+      ? -(rects.floating.height + IMAGE_TOOLS_INSET)
+      : IMAGE_TOOLS_INSET,
+} as const;
 
 /** The help line under the alt text field, the one field the dialog insists on. */
 const ALT_HELP = "Describe the image for people who cannot see it";
@@ -267,6 +295,23 @@ export function RichTextEditor({
       handlers.current.onBlur?.();
     },
   });
+
+  /**
+   * The selected image's picture, for the image toolbar to sit over
+   * (`IMAGE_TOOLS_PLACEMENT`). `null` hands the choice back to the menu,
+   * which then anchors on the selection as it would anyway.
+   */
+  const imageToolsAnchor = useCallback(() => {
+    if (!editor) return null;
+    const node = editor.view.nodeDOM(editor.state.selection.from);
+    if (!(node instanceof HTMLElement)) return null;
+    const picture = node.matches("img") ? node : node.querySelector("img");
+    if (picture === null) return null;
+    return {
+      getBoundingClientRect: () => picture.getBoundingClientRect(),
+      getClientRects: () => [picture.getBoundingClientRect()],
+    };
+  }, [editor]);
 
   // Only a change of `resetKey` replaces what is in the editor, and it does
   // so without reporting an update: this is the Draft speaking, not the
@@ -499,6 +544,7 @@ export function RichTextEditor({
         <BubbleMenu
           editor={editor}
           shouldShow={showImageTools}
+          getReferencedVirtualElement={imageToolsAnchor}
           options={IMAGE_TOOLS_PLACEMENT}
         >
           {/* The toolbar is a child rather than the menu element itself:

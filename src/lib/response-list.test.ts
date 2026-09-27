@@ -65,7 +65,7 @@ describe("groupResponsesByStep", () => {
       },
       {
         stepId: "end",
-        title: "end",
+        title: "Untitled step",
         promptLabel: "What would you change?",
         responses: [],
       },

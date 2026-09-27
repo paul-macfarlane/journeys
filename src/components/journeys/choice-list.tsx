@@ -25,8 +25,12 @@ import { cn } from "@/lib/utils";
 /**
  * The Choices on the Step in the panel: their labels, where each leads, the
  * order a participant reads them in, and the one motion that creates the Step
- * a Choice needs — choosing "New step" makes it and opens it, so an Author
- * writing forwards never has to go back and wire anything up.
+ * a Choice needs — choosing "New step" makes it, so an Author writing
+ * forwards never has to go back and wire anything up. A Choice added with
+ * "New step" leaves the panel on this Step, so the next "Add choice" lands
+ * here too; the new Step is the box selected on the map, and a line under
+ * the Choices offers to open it (ticket 79). Retargeting a row at "New step…"
+ * still opens the Step it makes.
  *
  * Where a Choice leads is found the way a Step is found above the map: the
  * field names the Step the Choice points at, and typing part of another
@@ -57,6 +61,7 @@ export function ChoiceList({
   markedChoiceId,
   onChange,
   onSelectStep,
+  onSelectOnMap,
 }: {
   document: GraphDocument;
   step: Step;
@@ -75,8 +80,13 @@ export function ChoiceList({
   markedChoiceId: string | null;
   onChange: ApplyEdit;
   onSelectStep: SelectStep;
+  /** A Step's box selected on the map, with the panel left on this Step. */
+  onSelectOnMap: (stepId: string) => void;
 }) {
   const [adding, setAdding] = useState(false);
+  // The Step the last "Add choice" made, offered for editing until the next
+  // add. The list is keyed by Step, so opening another Step lets go of it.
+  const [addedStepId, setAddedStepId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [target, setTarget] = useState<string>(NEW_STEP);
 
@@ -111,11 +121,13 @@ export function ChoiceList({
     if (target === NEW_STEP) {
       const created = addChoiceToNewStep(document, step.id, { label });
       onChange(created.document);
-      onSelectStep(created.stepId, { focusTitle: true });
+      onSelectOnMap(created.stepId);
+      setAddedStepId(created.stepId);
     } else {
       onChange(
         addChoice(document, step.id, { label, targetStepId: target }).document,
       );
+      setAddedStepId(null);
     }
 
     setLabel("");
@@ -235,6 +247,24 @@ export function ChoiceList({
           );
         })}
       </ul>
+
+      {/* The Step just made, named the way the map names it, one click from
+          the panel. Only mounted while there is something to say: the
+          Editor's autosave line is the other status on this tab. */}
+      {addedStepId !== null && hasStep(document, addedStepId) ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p role="status" className="text-sm text-muted-foreground">
+            {`Added "${stepName(document.steps[addedStepId])}"`}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onSelectStep(addedStepId, { focusTitle: true })}
+          >
+            {`Edit ${stepName(document.steps[addedStepId])}`}
+          </Button>
+        </div>
+      ) : null}
 
       {adding ? (
         <div className="flex flex-wrap items-end gap-2 rounded-xl px-3 py-2 ring-1 ring-foreground/10">
