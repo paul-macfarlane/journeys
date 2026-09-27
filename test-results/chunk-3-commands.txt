@@ -1,0 +1,93 @@
+# Chunk 3 (tickets 87, 75): full command chain, commit f3ff381, local, E2E_EVIDENCE=analytics-backtrack-after-ending,guide
+$ pnpm format:check
+
+> journeys@0.1.0 format:check .
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+exit 0
+$ pnpm lint
+
+> journeys@0.1.0 lint .
+> eslint
+
+exit 0
+$ pnpm typecheck
+
+> journeys@0.1.0 typecheck .
+> tsc --noEmit
+
+exit 0
+$ pnpm test
+
+> journeys@0.1.0 test .
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 .
+
+
+ Test Files  50 passed (50)
+      Tests  629 passed (629)
+   Start at  19:59:01
+   Duration  2.15s (transform 2.07s, setup 0ms, import 9.20s, tests 1.14s, environment 1.69s)
+
+exit 0
+$ pnpm build
+├ ○ /guide
+├ ○ /icon.svg
+├ ƒ /j/[journeyId]
+├ ƒ /j/[journeyId]/[stepId]
+├ ƒ /j/-/opengraph-image
+├ ○ /manifest.webmanifest
+├ ○ /opengraph-image
+├ ƒ /p/[projectId]
+├ ƒ /p/-/opengraph-image
+├ ○ /privacy
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+├ ƒ /projects/settings
+├ ƒ /sign-in
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+exit 0
+$ pnpm test:e2e:prebuilt
+  ✓   97 [chromium] › e2e/canvas.spec.ts:1815:7 › the seeded map › canvas-view-stays-put (12.5s)
+  ✓  101 [chromium] › e2e/canvas.spec.ts:949:5 › canvas-keyboard-navigation (8.2s)
+  ✓  103 [chromium] › e2e/canvas.spec.ts:2666:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (6.3s)
+  ✓  105 [chromium] › e2e/canvas.spec.ts:1942:7 › the seeded map › canvas-endings-uncolored (2.6s)
+  ✓  102 [chromium] › e2e/canvas.spec.ts:3441:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (8.3s)
+  ✓  107 [chromium] › e2e/canvas.spec.ts:2743:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (4.4s)
+  ✓  108 [chromium] › e2e/canvas.spec.ts:1991:5 › canvas-validation-marks (5.3s)
+  ✓  109 [chromium] › e2e/canvas.spec.ts:3539:7 › undo and redo › canvas-undo-title-typing (4.7s)
+  ✓  106 [chromium] › e2e/canvas.spec.ts:1028:5 › canvas-hide-and-show-panel (7.8s)
+  ✓  104 [chromium] › e2e/canvas.spec.ts:3126:7 › authoring from the map › canvas-build-by-dropping-and-walk (10.5s)
+  ✓  112 [chromium] › e2e/canvas.spec.ts:3592:7 › undo and redo › canvas-undo-rich-text (4.9s)
+  ✓  111 [chromium] › e2e/canvas.spec.ts:2105:5 › canvas-problems-readable (6.0s)
+  ✓  110 [chromium] › e2e/canvas.spec.ts:2783:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (9.7s)
+  ✓  113 [chromium] › e2e/canvas.spec.ts:1129:5 › canvas-step-actions (8.6s)
+case-3 crossing pairs: f24a106 baseline=15 now=14
+  ✓  116 [chromium] › e2e/canvas.spec.ts:1268:7 › the seeded map › canvas-case-3-map (1.8s)
+  ✓  114 [chromium] › e2e/canvas.spec.ts:3164:7 › authoring from the map › canvas-build-left-to-right-and-walk (10.7s)
+  ✓  117 [chromium] › e2e/canvas.spec.ts:3241:7 › authoring from the map › canvas-build-branch-and-publish (4.8s)
+  ✓  115 [chromium] › e2e/canvas.spec.ts:3642:7 › undo and redo › canvas-undo-delete-direction-retarget (14.8s)
+  ✓  119 [chromium] › e2e/canvas.spec.ts:3895:5 › canvas-dark-controls (2.5s)
+  ✓  118 [chromium] › e2e/canvas.spec.ts:3300:7 › authoring from the map › canvas-undo-drawn-choice (4.9s)
+  ✓  120 [chromium] › e2e/canvas.spec.ts:3954:5 › canvas-lr-labels-apart (2.9s)
+  ✓  121 [chromium] › e2e/canvas.spec.ts:4005:5 › canvas-stacked-panel-scroll (1.7s)
+
+  121 passed (2.2m)
+exit 0

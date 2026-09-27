@@ -1,0 +1,17 @@
+# 75-AC-2: reach Ending X, back, reach Ending Y — one Completion under Y only (commit f3ff381)
+$ pnpm exec vitest run src/lib/graph/run.test.ts src/lib/analytics.test.ts -t "Completion" --reporter verbose
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > Completion survives a backtrack (ticket 75) > counts a Run as a Completion, under its Ending's Outcome, even after it backed off the Ending 2ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > Completion survives a backtrack (ticket 75) > counts one Completion under the latest Ending only, when a Run reached Ending X, backed off, then reached Ending Y 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > Completion survives a backtrack (ticket 75) > groups a Run under its own untagged latest Ending, even off the path's last entry 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > Completion survives a backtrack (ticket 75) > groups under the Ending the Run rests on over a stale endingStepId the previous code left behind 0ms
+ ✓ src/lib/analytics.test.ts > analyticsForVersion > Completion survives a backtrack (ticket 75) > still counts a legacy Run (no completedAt) that is resting on an Ending 0ms
+ ✓ src/lib/graph/run.test.ts > navigateTo > clears endedAt but keeps the Completion when backing off an Ending 1ms
+ ✓ src/lib/graph/run.test.ts > Completion (completedAt, endingStepId) > sets completedAt once, on first reaching an Ending, and it survives a backtrack 0ms
+ ✓ src/lib/graph/run.test.ts > Completion (completedAt, endingStepId) > reaching a different Ending after a backtrack replaces endingStepId and outcomeId but keeps the first completedAt 0ms
+ ✓ src/lib/graph/run.test.ts > Completion (completedAt, endingStepId) > keeps the Completion through a Back that names its path index (rule 2) 0ms
+ ✓ src/lib/graph/run.test.ts > Completion (completedAt, endingStepId) > carries the Completion forward onto a Step that is not an Ending, reached from a cached page (rule 6) 0ms
+ ✓ src/lib/graph/run.test.ts > Completion (completedAt, endingStepId) > does not move completedAt when the Run reaches the same Ending again 0ms
+ ✓ src/lib/graph/run.test.ts > Completion (completedAt, endingStepId) > reads a Run the previous code left resting on an Ending as completed there, so a Back keeps it (deploy window) 0ms
+ Test Files  2 passed (2)
+      Tests  12 passed | 42 skipped (54)
+exit 0

@@ -1,0 +1,28 @@
+# 87-AC-1: no Judge left in src, e2e, scripts, package.json, .env.example, README.md, playwright.config.ts (commit f3ff381)
+$ rg -n -i "judge|isDeciding|decides|decide=|DecideSubmit|AI_GATEWAY|lib/ai|decideChoice|experimental_evaluate|\"ai\":" src e2e scripts package.json .env.example README.md playwright.config.ts
+scripts/record-landing-demo.ts:345: * an Author drags one: slowly enough to be seen. React Flow decides what a
+e2e/projects-and-journeys.spec.ts:261:    "A family decides whether to cross at night or wait for daylight.";
+src/db/guarded-write.ts:115: * is `NOT IN`'s unknown, so the null-safe first half alone decides it.
+src/lib/validation/journey.test.ts:26:        description: "  A family decides.  ",
+src/lib/validation/journey.test.ts:28:    ).toEqual({ title: "Border Crossing", description: "A family decides." });
+scripts/seed/journey-stories/case-3.json:1608:                "text": "You take your medications as best you can, but it's difficult to keep up with it, especially given the rigid schedule of detentio
+scripts/seed/journey-stories/case-2.json:3307:                "text": "You continue to work, but after another week of feeling terrible and failing to deliver to your sponsor's liking, he decides to k
+e2e/canvas.spec.ts:565:  // One more at the destination: React Flow decides what a drop lands on
+e2e/canvas.spec.ts:891:    "Participants queue at the border post from before first light, holding papers they cannot read, waiting on a stamp that decides where the day ends.";
+src/lib/rich-text/shortcuts.ts:4: * Pure — the caller decides the platform once on the client, so the server
+src/app/about/page.tsx:21:// to the judges' paragraph, not to the people who use the app.
+src/lib/response-list.ts:11: * reads the rows and the Draft, and this decides what a Member sees.
+src/lib/graph/document.ts:36: * retired `decides` key (ticket 87) still parses — zod drops the unknown key
+src/lib/graph/document.test.ts:159:  it("strips a stored Prompt's retired decides key, keeping required (ticket 87)", () => {
+src/lib/graph/document.test.ts:172:            decides: true,
+src/lib/graph/document.test.ts:181:      expect(prompt).not.toHaveProperty("decides");
+src/lib/graph/document.test.ts:534:describe("stored documents without a decides key still parse (ticket 87)", () => {
+src/app/projects/[projectId]/layout.tsx:8: * and only decides what the bar is labelled.
+src/components/autosaved-form.ts:226:  /** Enter in a one-line field: leaving it is the save, Enter only decides when. */
+src/components/journeys/combobox.tsx:55: * `matches` is the filtered options alone, which is what decides whether
+src/components/journeys/draft-editor.tsx:246:   * decides whether it joins the keystroke before it.
+exit 0
+
+Every hit above is incidental: ordinary English 'decides' in unrelated comments and story prose (legacy case JSON, fixture titles), 'the judges'' paragraph' on /about (the hackathon judges), and src/lib/graph/document.ts + document.test.ts naming the retired 'decides' key that AC-2 proves is stripped.
+$ test -d src/lib/ai; echo $?
+1

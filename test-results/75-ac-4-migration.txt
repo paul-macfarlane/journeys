@@ -1,0 +1,32 @@
+# 75-AC-4: migration 0013 is additive and works with the previous code
+## scratch database journeys_mig_c3; migrations 0000-0012 applied as the previous code shipped them
+NOTICE:  database "journeys_mig_c3" does not exist, skipping
+applied cleanly: 13 files
+## rows written the old way (one resting on an Ending, one mid-walk)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+## apply 0013
+ALTER TABLE
+ALTER TABLE
+UPDATE 1
+    id     | ended | completed_backfilled | completed_null | ending_step_id |  outcome_id  
+-----------+-------+----------------------+----------------+----------------+--------------
+ r-ended   | t     | t                    | f              | waved-through  | reached-care
+ r-walking | f     |                      | t              |                | 
+(2 rows)
+
+## previous code's createRun and saveRunState shapes (no new columns) still succeed
+INSERT 0 1
+UPDATE 1
+      id      | completed | ending_step_id 
+--------------+-----------+----------------
+ r-ended      | t         | waved-through
+ r-old-insert | f         | 
+ r-walking    | f         | 
+(3 rows)
+
+scratch database dropped
