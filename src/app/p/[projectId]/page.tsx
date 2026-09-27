@@ -1,16 +1,30 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Fragment } from "react";
+import { cache, Fragment } from "react";
 
 import { RichText } from "@/components/runner/rich-text";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import { choiceLinkClassName } from "@/components/runner/step-view";
-import { listPublicJourneysForProject } from "@/db/journeys";
+import {
+  listPublicJourneysForProject,
+  type PublicJourneySummary,
+} from "@/db/journeys";
 import { getPublicProject } from "@/db/projects";
 import { listPublicAuthorsForProject } from "@/db/users";
 import { isBlankContent } from "@/lib/graph/content";
 import { projectLinkMetadata } from "@/lib/link-preview";
 import { cn } from "@/lib/utils";
+
+/**
+ * The Project's live Journeys, request-scoped `cache()`d (ticket 42) for
+ * the same reason `getPublicProject` is: `generateMetadata` and the page
+ * both ask whether the Project has one, to decide the same 404, and this
+ * way the render pays for one query rather than two.
+ */
+const getLiveJourneys = cache(
+  (projectId: string): Promise<PublicJourneySummary[]> =>
+    listPublicJourneysForProject(projectId),
+);
 
 /**
  * The public Project page (ticket 07): a Project's title, its rich-text
@@ -39,9 +53,10 @@ export const dynamic = "force-dynamic";
 /**
  * What a link to this page previews as (ticket 37): the Project's title
  * and the opening of its description, with the card `opengraph-image.tsx`
- * beside this file renders in the Project's Theme. An unknown id is a 404
- * here too (ticket 60): metadata streams in after the page, so a title
- * returned for a missing Project would replace the not-found page's own.
+ * beside this file renders in the Project's Theme. An unknown id, and a
+ * Project with no live Journey, are both a 404 here (ticket 60, widened by
+ * ticket 42): metadata streams in after the page, so a title returned for
+ * either would replace the not-found page's own.
  */
 export async function generateMetadata({
   params,
@@ -51,6 +66,7 @@ export async function generateMetadata({
   const { projectId } = await params;
   const project = await getPublicProject(projectId);
   if (!project) notFound();
+  if ((await getLiveJourneys(projectId)).length === 0) notFound();
   return projectLinkMetadata(project, projectId);
 }
 
@@ -66,14 +82,20 @@ export default async function PublicProjectPage({
   if (!project) notFound();
 
   const [journeys, authors] = await Promise.all([
-    listPublicJourneysForProject(project.id),
+    getLiveJourneys(project.id),
     listPublicAuthorsForProject(project.id),
   ]);
+  // No live Journey at all is a 404 too (ticket 42, decision 4): a Project
+  // that never published and one whose only Journey was taken down both
+  // read the same way an unknown id does, so a link says nothing about
+  // whether the row exists.
+  if (journeys.length === 0) notFound();
 
   return (
     // The Project's own Theme: a Journey's override is the Journey's, and
-    // shows once a Participant follows its link.
-    <RunnerFrame theme={project.theme}>
+    // shows once a Participant follows its link. `home`: the wordmark
+    // stands in for a Journey's title, since this page names no Journey.
+    <RunnerFrame theme={project.theme} home>
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold tracking-tight">
           {project.title}
@@ -112,40 +134,31 @@ export default async function PublicProjectPage({
           >
             Journeys
           </h2>
-          {journeys.length === 0 ? (
-            <p className="text-muted-foreground">
-              No journeys are available right now.
-            </p>
-          ) : (
-            // role="list" is explicit, as in the runner: the flex layout
-            // strips the list marker, and some browsers drop the implicit
-            // role with it. Plain anchors, like every runner navigation —
-            // the page ships no client bundle.
-            <ul
-              role="list"
-              aria-label="Journeys"
-              className="flex flex-col gap-2"
-            >
-              {journeys.map((journey) => (
-                <li key={journey.id}>
-                  <a
-                    href={`/j/${journey.id}`}
-                    className={cn(
-                      choiceLinkClassName,
-                      "flex-col items-start gap-0.5",
-                    )}
-                  >
-                    <span className="font-medium">{journey.title}</span>
-                    {journey.description ? (
-                      <span className="text-muted-foreground text-sm font-normal">
-                        {journey.description}
-                      </span>
-                    ) : null}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
+          {/* role="list" is explicit, as in the runner: the flex layout
+              strips the list marker, and some browsers drop the implicit
+              role with it. Plain anchors, like every runner navigation —
+              the page ships no client bundle. At least one Journey is
+              guaranteed here: a Project with none has already 404'd. */}
+          <ul role="list" aria-label="Journeys" className="flex flex-col gap-2">
+            {journeys.map((journey) => (
+              <li key={journey.id}>
+                <a
+                  href={`/j/${journey.id}`}
+                  className={cn(
+                    choiceLinkClassName,
+                    "flex-col items-start gap-0.5",
+                  )}
+                >
+                  <span className="font-medium">{journey.title}</span>
+                  {journey.description ? (
+                    <span className="text-muted-foreground text-sm font-normal">
+                      {journey.description}
+                    </span>
+                  ) : null}
+                </a>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </RunnerFrame>

@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Terms of service",
   description:
     "The terms for Authors who write and publish journeys on Journeys.",
+  alternates: { canonical: "/terms" },
 };
 
 // The terms bind Authors, who have accounts and publish things. A

@@ -1,0 +1,35 @@
+# Ticket 42, decision 6: seed writes a Project description and explicit Journey position.
+
+$ pnpm seed:journey-stories <author-email> (against journeys_e2e_d1)
+
+> journeys@0.1.0 seed:journey-stories <worktree>
+> tsx scripts/seed/journey-stories.ts <author-email>
+
+Database: localhost:5436
+Case 1: 46 steps, 70 choices, 6 endings, 4 outcomes
+Case 2: 64 steps, 105 choices, 9 endings, 5 outcomes
+Case 3: 36 steps, 50 choices, 6 endings, 3 outcomes
+A key on the doormat: 10 steps, 15 choices, 3 endings, 2 outcomes
+Project: Journey Stories (00000000-5eed-4000-8000-000000000001)
+Project: The Allotment (00000000-5eed-4000-8000-000000000002)
+Member: <author-email>
+
+$ SELECT id, title, description_content FROM project ORDER BY id;
+                  id                  |          title          |                                                                                                              description_content                                                                                                              
+--------------------------------------+-------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 00000000-5eed-4000-8000-000000000001 | Journey Stories         | {"type": "doc", "content": [{"type": "paragraph", "content": [{"text": "Three interactive cases for trauma-informed healthcare education.", "type": "text"}]}]}
+ 00000000-5eed-4000-8000-000000000002 | The Allotment           | {"type": "doc", "content": [{"type": "paragraph", "content": [{"text": "A short Journey about keeping your aunt's allotment plot through the summer.", "type": "text"}]}]}
+ 9932ffdc-9fb2-4255-bf26-e73b90c77ee1 | Refugee Health 28dc0c3b | {"type": "doc", "content": [{"type": "heading", "attrs": {"level": 2}, "content": [{"text": "About these journeys", "type": "text"}]}, {"type": "paragraph", "content": [{"text": "Three cases from the northern route.", "type": "text"}]}]}
+(3 rows)
+
+
+$ SELECT project_id, id, title, position FROM journey ORDER BY project_id, position;
+              project_id              |                  id                  |          title           | position 
+--------------------------------------+--------------------------------------+--------------------------+----------
+ 00000000-5eed-4000-8000-000000000001 | 00000000-5eed-4000-8000-000000000011 | Case 1                   |        0
+ 00000000-5eed-4000-8000-000000000001 | 00000000-5eed-4000-8000-000000000012 | Case 2                   |        1
+ 00000000-5eed-4000-8000-000000000001 | 00000000-5eed-4000-8000-000000000013 | Case 3                   |        2
+ 00000000-5eed-4000-8000-000000000002 | 00000000-5eed-4000-8000-000000000021 | A key on the doormat     |        0
+ 9932ffdc-9fb2-4255-bf26-e73b90c77ee1 | 2bd70446-1c4a-4e67-ae5d-2421530502da | Border Crossing 28dc0c3b |        0
+(5 rows)
+

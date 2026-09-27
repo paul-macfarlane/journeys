@@ -13,6 +13,7 @@ import {
 } from "./setup/authoring";
 import {
   publishableDocument,
+  publishDocument,
   START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
@@ -236,16 +237,17 @@ test("public-project-page", async ({ page, context, browser }) => {
     await page.getByRole("button", { name: "Unpublish journey" }).click();
     await expect(page.getByText("Unpublished", { exact: true })).toBeVisible();
 
-    await participant.goto(`/p/${projectId}`);
+    // With its one Journey unpublished, the Project has no live Journey at
+    // all — the same 404 an unknown id gets (ticket 42, decision 4), so the
+    // Project's own title is not what a stale link now shows.
+    const afterUnpublish = await participant.goto(`/p/${projectId}`);
+    expect(afterUnpublish?.status()).toBe(404);
     await expect(
-      participant.getByRole("heading", { name: projectTitle, level: 1 }),
+      participant.getByRole("heading", {
+        name: "This project isn't available",
+      }),
     ).toBeVisible();
-    await expect(
-      participant.getByRole("list", { name: "Journeys" }),
-    ).toHaveCount(0);
-    await expect(
-      participant.getByText("No journeys are available right now."),
-    ).toBeVisible();
+    await expect(participant.getByText(projectTitle)).toHaveCount(0);
     await expect(participant.getByText(publishedTitle)).toHaveCount(0);
 
     await participant.screenshot({
@@ -292,6 +294,15 @@ test("project-link-preview", async ({ page, context, browser }) => {
 
   await page.goto("/projects");
   const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  // A live Journey (ticket 42, decision 4): a Project with none is a 404,
+  // so the preview this test proves needs one to preview at all.
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Crossing ${suffix}`,
+  );
+  await publishDocument(journeyId, publishableDocument());
 
   // The description, Theme, and accent as the Settings tab stores them.
   const description: Content = {
