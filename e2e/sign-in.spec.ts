@@ -22,12 +22,21 @@ test("sign-in page offers Google and Discord with their logos", async ({
     page.getByRole("heading", { name: "Sign in", level: 1 }),
   ).toBeVisible();
 
-  const google = page.getByRole("button", { name: "Sign in with Google" });
-  const discord = page.getByRole("button", { name: "Sign in with Discord" });
+  // Each button is named by its words alone; the logo beside them is
+  // shown but decorative, so the name is not "Google Sign in with Google"
+  // (ticket 78).
+  const google = page.getByRole("button", {
+    name: "Sign in with Google",
+    exact: true,
+  });
+  const discord = page.getByRole("button", {
+    name: "Sign in with Discord",
+    exact: true,
+  });
   await expect(google).toBeVisible();
   await expect(discord).toBeVisible();
-  await expect(google.getByRole("img", { name: "Google" })).toBeVisible();
-  await expect(discord.getByRole("img", { name: "Discord" })).toBeVisible();
+  await expect(google.locator('svg[aria-hidden="true"]')).toBeVisible();
+  await expect(discord.locator('svg[aria-hidden="true"]')).toBeVisible();
 
   await page.screenshot({
     path: evidencePath("sign-in", "sign-in.png"),

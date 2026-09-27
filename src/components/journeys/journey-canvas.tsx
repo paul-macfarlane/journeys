@@ -67,6 +67,7 @@ import {
   type GraphLayout,
 } from "@/lib/graph/layout";
 import type { PublishProblem } from "@/lib/graph/validate";
+import { mapMoveDuration } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
 
 import "@xyflow/react/dist/style.css";
@@ -518,7 +519,7 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
                 void fitView({
                   nodes: [{ id: data.opens }],
                   maxZoom: 1.5,
-                  duration: 200,
+                  duration: mapMoveDuration(),
                 })
               }
             >
@@ -1101,7 +1102,11 @@ function CanvasFlow({
     (nodeId: string) => {
       if (paneWidth === 0 || paneHeight === 0) return;
       if (isOnMap(nodeId)) return;
-      void fitView({ nodes: [{ id: nodeId }], maxZoom: 1, duration: 200 });
+      void fitView({
+        nodes: [{ id: nodeId }],
+        maxZoom: 1,
+        duration: mapMoveDuration(),
+      });
     },
     [fitView, isOnMap, paneHeight, paneWidth],
   );
@@ -1146,7 +1151,11 @@ function CanvasFlow({
           return;
         }
 
-        void fitView({ nodes: [{ id: nodeId }], maxZoom, duration: 200 });
+        void fitView({
+          nodes: [{ id: nodeId }],
+          maxZoom,
+          duration: mapMoveDuration(),
+        });
       }
 
       attempt();
@@ -1391,7 +1400,7 @@ function CanvasFlow({
   useEffect(() => {
     if (lastDirection.current === layout.direction) return;
     lastDirection.current = layout.direction;
-    void fitView({ duration: 200 });
+    void fitView({ duration: mapMoveDuration() });
   }, [fitView, layout.direction]);
 
   // A map that has just been given the whole width by the Author, or had it
@@ -1426,7 +1435,7 @@ function CanvasFlow({
     }
 
     if (request.box === null) {
-      void fitView({ duration: 200 });
+      void fitView({ duration: mapMoveDuration() });
       return;
     }
     zoomToStep(request.box, request.maxZoom);

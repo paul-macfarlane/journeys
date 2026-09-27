@@ -194,10 +194,12 @@ test("public-project-page", async ({ page, context, browser }) => {
     await expect(
       participant.getByRole("heading", { name: projectTitle, level: 1 }),
     ).toBeVisible();
+    // The description's H2 is read one level down under the page's own
+    // `h1`, as all stored rich text is outside the editor (ticket 78).
     await expect(
       participant.getByRole("heading", {
         name: "About these journeys",
-        level: 2,
+        level: 3,
       }),
     ).toBeVisible();
     await expect(

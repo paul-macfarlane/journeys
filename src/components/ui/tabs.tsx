@@ -76,7 +76,12 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
   return (
     <TabsPrimitive.Panel
       data-slot="tabs-content"
-      className={cn("flex-1 text-sm outline-none", className)}
+      // A panel is a tab stop of its own (Base UI gives it `tabIndex={0}`),
+      // so it needs a visible focus as the triggers have (ticket 78's walk).
+      className={cn(
+        "flex-1 rounded-md text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        className,
+      )}
       {...props}
     />
   );
