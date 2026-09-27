@@ -46,3 +46,32 @@ test("a signed-in Author visiting /sign-in is sent to their projects", async ({
 
   await expect(page).toHaveURL(`${E2E_BASE_URL}/projects`);
 });
+
+/**
+ * Ticket 42: `/sign-in` carries `noindex` (nobody should land on it from a
+ * search result), and the paragraph under the buttons links both legal
+ * pages rather than naming one only "below" — a phrase that means nothing
+ * once a reader has scrolled.
+ */
+test("sign-in-links", async ({ page }) => {
+  await page.goto("/sign-in");
+
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
+
+  const legal = page.getByText(/By signing in you agree/);
+  await expect(
+    legal.getByRole("link", { name: "terms of service" }),
+  ).toHaveAttribute("href", "/terms");
+  await expect(
+    legal.getByRole("link", { name: "privacy policy" }),
+  ).toHaveAttribute("href", "/privacy");
+  await expect(page.getByText("below")).toHaveCount(0);
+
+  await page.screenshot({
+    path: evidencePath("sign-in-links", "sign-in-links.png"),
+    fullPage: true,
+  });
+});

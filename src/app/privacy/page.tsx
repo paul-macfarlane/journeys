@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Privacy policy",
   description:
     "What Journeys stores about Authors and Participants, which cookies it sets, and how to reach us.",
+  alternates: { canonical: "/privacy" },
 };
 
 // Plain language, and only what the app actually does. Every claim here

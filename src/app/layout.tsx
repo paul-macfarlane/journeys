@@ -8,6 +8,7 @@ import { env } from "@/lib/env";
 import { ChunkLoadRecovery } from "@/components/chunk-load-recovery";
 import { ThemeProvider } from "@/components/theme-provider";
 import { APP_NAME, APP_TAGLINE, BRAND_COLORS } from "@/lib/brand";
+import { resolveMetadataBase } from "@/lib/metadata-base";
 
 // The type pair from docs/branding.md: a reading serif for the name and
 // headings, a legibility-first sans for everything else. globals.css names
@@ -29,9 +30,11 @@ const textFont = Atkinson_Hyperlegible_Next({
 });
 
 export const metadata: Metadata = {
-  // BETTER_AUTH_URL is the app's own origin, so it doubles as the canonical
-  // base for absolute social URLs.
-  metadataBase: new URL(env.BETTER_AUTH_URL),
+  // The app's own origin, so it doubles as the base for absolute social
+  // URLs — except on a Vercel preview, where it falls back to the
+  // production origin so a link preview never points at a protected
+  // address (ticket 42, `@/lib/metadata-base`).
+  metadataBase: resolveMetadataBase(env),
   title: {
     default: APP_NAME,
     template: `%s · ${APP_NAME}`,

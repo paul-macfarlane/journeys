@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "Why Journeys exists: three hand-built cases for trauma-informed healthcare education, and the platform that grew out of them.",
+  alternates: { canonical: "/about" },
 };
 
 const LEGACY_SITE_URL = "https://journey-stories.netlify.app/journeys/";

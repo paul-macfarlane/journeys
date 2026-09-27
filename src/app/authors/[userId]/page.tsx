@@ -65,7 +65,9 @@ export default async function PublicAuthorPage({
   const projects = await listPublicProjectsForAuthor(author.id);
 
   return (
-    <RunnerFrame theme={{ preset: "trail", accent: null }}>
+    // `home` (ticket 42): the wordmark stands in for a Journey's title,
+    // since this page names no Journey either.
+    <RunnerFrame theme={{ preset: "trail", accent: null }} home>
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-4">
           <Avatar className="size-16" aria-hidden>

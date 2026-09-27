@@ -5,26 +5,22 @@ import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 import { evidencePath } from "./setup/evidence";
 
 /**
- * Ticket 60: the app's own not-found page. A route that exists nowhere and
- * the three public pages answering an unknown id all render the same page
- * with status 404 inside the prose shell — the header with the wordmark,
- * a `main` landmark, the footer — with the title, the heading, a link
- * home, and the Play link; in both themes and at phone width with no
+ * Ticket 60: the app's own not-found page for a route that exists nowhere
+ * and for `/authors/<unknown>`. `/p/<unknown>` and `/j/<unknown>` widened
+ * the same idea (ticket 42, decision 4) but read their own copy in the
+ * runner's own frame, since a Project or a Journey not being there is a
+ * more specific answer than "nothing is at this address" — the generic
+ * page, the RunnerFrame `home` header, and phone width all still carry no
  * horizontal overflow. Anonymous: no session read anywhere here.
  */
 
 /** Well-formed ids no row ever carries (the seed's are `…5eed…`). */
 const UNKNOWN_ID = "00000000-0000-4000-8000-00000000dead";
 
-const MISSING_ROUTES = [
-  "/nope",
-  `/p/${UNKNOWN_ID}`,
-  `/j/${UNKNOWN_ID}`,
-  `/authors/${UNKNOWN_ID}`,
-] as const;
+const GENERIC_MISSING_ROUTES = ["/nope", `/authors/${UNKNOWN_ID}`] as const;
 
-/** The page every missing route renders, by what a visitor can see of it. */
-async function expectNotFoundPage(page: Page) {
+/** The generic page a route that exists nowhere, and an off or unknown Author, render. */
+async function expectGenericNotFoundPage(page: Page) {
   await expect(page).toHaveTitle("Page not found · Journeys");
 
   const main = page.getByRole("main");
@@ -59,15 +55,39 @@ async function expectNotFoundPage(page: Page) {
 test("not-found", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
 
-  // Every missing route: a 404 carrying the app's own page.
-  for (const route of MISSING_ROUTES) {
+  // Every generic missing route: a 404 carrying the app's own page.
+  for (const route of GENERIC_MISSING_ROUTES) {
     const response = await page.goto(route);
     expect(response?.status(), `${route} answers 404`).toBe(404);
-    await expectNotFoundPage(page);
+    await expectGenericNotFoundPage(page);
   }
 
+  // `/p/<unknown>` and `/j/<unknown>` (ticket 42, decision 4): their own
+  // 404, in the runner's own frame with the wordmark standing in for a
+  // title, since a link to nothing here says nothing about whether the
+  // row exists.
+  const projectResponse = await page.goto(`/p/${UNKNOWN_ID}`);
+  expect(projectResponse?.status()).toBe(404);
+  await expect(page).toHaveTitle("Project not available · Journeys");
+  await expect(
+    page.getByRole("heading", { name: "This project isn't available" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Journeys" }),
+  ).toHaveAttribute("href", "/");
+
+  const journeyResponse = await page.goto(`/j/${UNKNOWN_ID}`);
+  expect(journeyResponse?.status()).toBe(404);
+  await expect(page).toHaveTitle("Journey not available · Journeys");
+  await expect(
+    page.getByRole("heading", { name: "This journey isn't available" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Journeys" }),
+  ).toHaveAttribute("href", "/");
+
   await page.goto("/nope");
-  await expectNotFoundPage(page);
+  await expectGenericNotFoundPage(page);
   await page.screenshot({
     path: evidencePath("not-found", "not-found-light.png"),
     fullPage: true,
@@ -80,11 +100,12 @@ test("not-found", async ({ page }) => {
     fullPage: true,
   });
 
-  // Phone width: nothing wider than the viewport.
+  // Phone width: nothing wider than the viewport, on the generic page and
+  // on the runner-framed ones.
   await page.emulateMedia({ colorScheme: "light" });
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/nope");
-  await expectNotFoundPage(page);
+  await expectGenericNotFoundPage(page);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
@@ -93,4 +114,13 @@ test("not-found", async ({ page }) => {
     path: evidencePath("not-found", "not-found-375.png"),
     fullPage: true,
   });
+
+  await page.goto(`/p/${UNKNOWN_ID}`);
+  const projectOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(
+    projectOverflow,
+    "no horizontal scroll at 375px on /p/<unknown>",
+  ).toBeLessThanOrEqual(0);
 });

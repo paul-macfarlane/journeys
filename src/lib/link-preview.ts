@@ -128,6 +128,11 @@ function linkMetadata({
     description: cut,
     openGraph: { type, url, siteName: APP_NAME, title, description: cut },
     twitter: { card: "summary_large_image", title, description: cut },
+    // Link-only (ticket 42): a Journey, a Project, and an Author page are
+    // each reached only by the link its Author hands out, never by a
+    // crawler walking the site. `follow` stays the default so a card
+    // preview still resolves.
+    robots: { index: false },
   };
 }
 
@@ -152,6 +157,7 @@ function genericLinkMetadata(): Metadata {
       title: APP_NAME,
       description: APP_TAGLINE,
     },
+    robots: { index: false },
   };
 }
 
@@ -183,19 +189,22 @@ export function journeyLinkMetadata(
 /**
  * What a Project link previews as: its title and the opening of its
  * rich-text description, cut as the public Project page always cut it;
- * the app's own metadata for an unknown id.
+ * the app's own tagline when the Project has written none, so no link
+ * preview ever shows a blank line (68 finding 1); the app's own metadata
+ * for an unknown id.
  */
 export function projectLinkMetadata(
   project: { title: string; description: Content } | null,
   projectId: string,
 ): Metadata {
   if (!project) return genericLinkMetadata();
+  const preview = contentPreview(
+    project.description,
+    LINK_PREVIEW_DESCRIPTION_LIMIT,
+  );
   return linkMetadata({
     title: project.title,
-    description: contentPreview(
-      project.description,
-      LINK_PREVIEW_DESCRIPTION_LIMIT,
-    ),
+    description: preview.length > 0 ? preview : APP_TAGLINE,
     type: "website",
     url: `/p/${projectId}`,
   });

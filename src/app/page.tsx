@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { JourneysMark } from "@/components/brand";
@@ -7,6 +8,16 @@ import { SiteFooter } from "@/components/site-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 import { getSession } from "@/lib/session";
+
+// The tagline in the root layout's own `description` is what a browser tab
+// or an unrelated page's link preview falls back to; the landing page's own
+// description (ticket 42) is written for a search result instead, and so
+// says what an Author does here rather than only what the app is.
+export const metadata: Metadata = {
+  description:
+    "Write branching, text-based journeys as a graph of steps and choices, publish an immutable version, and share it by link — participants walk it with no account.",
+  alternates: { canonical: "/" },
+};
 
 // The splash page (ticket 54): the recording of the canvas as the hero, six
 // feature cards, a way to play a seeded Journey without an account, and one
