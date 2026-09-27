@@ -33,6 +33,7 @@ import {
   editorExtensions,
   type ImageAttrs,
 } from "@/lib/rich-text/extensions";
+import { Placeholder } from "@/lib/rich-text/placeholder";
 import { formatShortcut, isApplePlatform } from "@/lib/rich-text/shortcuts";
 
 /**
@@ -199,6 +200,7 @@ export function RichTextEditor({
   label = "Step content",
   content,
   history = true,
+  placeholder,
   onChange,
   onRefused,
   onBlur,
@@ -222,6 +224,12 @@ export function RichTextEditor({
    * its own — the Project description — leaves it as it is.
    */
   history?: boolean;
+  /**
+   * Shown over the first block while the document is empty (ticket 57), and
+   * exposed to assistive technology as `aria-placeholder`. Only the Step
+   * panel's editor sets this; the Project description leaves it unset.
+   */
+  placeholder?: string;
   onChange: (content: Content) => void;
   onRefused: (error: string) => void;
   /**
@@ -249,8 +257,14 @@ export function RichTextEditor({
 
   const editor = useEditor({
     // Read once, as the editor is: whether the surface has its own undo is
-    // the caller's shape, not something that changes under the Author.
-    extensions: history ? editorExtensions : draftEditorExtensions,
+    // the caller's shape, not something that changes under the Author, and
+    // so is whether it carries a placeholder.
+    extensions: [
+      ...(history ? editorExtensions : draftEditorExtensions),
+      ...(placeholder !== undefined
+        ? [Placeholder.configure({ placeholder })]
+        : []),
+    ],
     content: withTextBlock(content),
     // The panel is server-rendered by Next; rendering the editor immediately
     // would produce markup the client then disagrees with.
@@ -259,10 +273,15 @@ export function RichTextEditor({
       // A textbox, not a bare `div`: the name alone is not allowed on an
       // element with no role (axe `aria-prohibited-attr`), and a screen
       // reader should hear an editable, multi-line field (ticket 78's walk).
+      // `aria-placeholder` names the hint the decoration draws, for anyone
+      // who cannot see it (ticket 57).
       attributes: {
         role: "textbox",
         "aria-multiline": "true",
         "aria-label": label,
+        ...(placeholder !== undefined
+          ? { "aria-placeholder": placeholder }
+          : {}),
         class: EDITOR_CLASS,
       },
       // ⌘K on Apple platforms and Ctrl+K elsewhere — the platform's `Mod`,

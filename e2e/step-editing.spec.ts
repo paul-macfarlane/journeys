@@ -1182,6 +1182,60 @@ function within(inner: Rect, outer: Rect): boolean {
   );
 }
 
+/**
+ * Ticket 57: the hint a brand-new Draft carries above the map, gone as soon
+ * as the Journey grows past its one Step and no Choices.
+ */
+test("empty-draft-map", async ({ page }) => {
+  await startJourney(page, mintedAuthorIds);
+
+  const hint = page.getByText(
+    "Write the Start Step in the panel, then add a Choice to make the next Step.",
+  );
+  await expect(hint).toBeVisible();
+  const link = page.getByRole("link", { name: "How the canvas works" });
+  await expect(link).toHaveAttribute("href", "/guide#the-canvas");
+
+  await page.screenshot({
+    path: evidencePath("empty-draft-map", "empty-draft-map.png"),
+    fullPage: true,
+  });
+
+  // A Choice — the Draft's second Step — is what makes it go.
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  await expect(hint).toHaveCount(0);
+});
+
+/**
+ * Ticket 57: the Step content editor's placeholder and the Choice label
+ * input's, both shown only while their field is empty.
+ */
+test("editor-placeholders", async ({ page }) => {
+  await startJourney(page, mintedAuthorIds);
+
+  const surface = page.getByLabel("Step content");
+  await expect(surface).toHaveAttribute(
+    "aria-placeholder",
+    "Write what the participant reads…",
+  );
+  await expect(surface.locator("p.is-empty")).toHaveAttribute(
+    "data-placeholder",
+    "Write what the participant reads…",
+  );
+
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  const labelField = stepPanel(page).getByLabel("Choice label");
+  await expect(labelField).toHaveAttribute(
+    "placeholder",
+    "What the participant clicks",
+  );
+
+  await page.screenshot({
+    path: evidencePath("editor-placeholders", "editor-placeholders.png"),
+    fullPage: true,
+  });
+});
+
 test("step-editing-image-tools-clear-of-text", async ({ page }) => {
   // Stored images need an absolute http(s) address; this one is answered
   // here, so the picture has a real size without the internet.

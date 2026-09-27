@@ -414,6 +414,7 @@ export function StepPanel({
         resetKey={`${step.id}:${revision}`}
         content={step.content}
         history={false}
+        placeholder="Write what the participant reads…"
         onChange={(content) => onContentChange(step.id, content)}
         onRefused={onContentRefused}
       />

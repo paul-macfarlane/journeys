@@ -51,8 +51,14 @@ export default async function ProjectsPage() {
           <CardHeader>
             <CardTitle>No projects yet</CardTitle>
             <CardDescription>
-              Projects you create or are added to as a member will appear here,
-              each holding its own journeys.
+              Start with New project: a Project holds a set of related Journeys
+              and everyone who writes them.{" "}
+              <Link
+                href="/guide#create-a-project"
+                className="underline underline-offset-4"
+              >
+                How Projects work
+              </Link>
             </CardDescription>
           </CardHeader>
           <CardContent />

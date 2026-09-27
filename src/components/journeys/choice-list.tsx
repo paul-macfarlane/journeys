@@ -164,6 +164,7 @@ export function ChoiceList({
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   aria-label="Choice label"
+                  placeholder="What the participant clicks"
                   autoComplete="off"
                   className="w-56"
                   value={choice.label}

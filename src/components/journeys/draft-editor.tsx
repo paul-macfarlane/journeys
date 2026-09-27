@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FocusEvent } from "react";
@@ -822,6 +823,10 @@ export function DraftEditor({
   );
 
   const steps = Object.values(document.steps);
+  // A brand-new Journey: one Step, its Start, and no Choices yet — the
+  // Draft `startJourney` leaves an Author with. Gone as soon as either
+  // grows, so the hint never outlives the moment it is written for.
+  const isNewDraft = steps.length === 1 && steps[0].choices.length === 0;
   const summary = [
     counted(steps.length, "step"),
     counted(Object.keys(document.outcomes).length, "outcome"),
@@ -942,6 +947,24 @@ export function DraftEditor({
           className="rounded-xl px-4 py-3 text-sm text-destructive ring-1 ring-destructive/40"
         >
           {contentNotice.message}
+        </p>
+      ) : null}
+
+      {/* The one hint a brand-new Draft gets (ticket 57): a plain paragraph,
+          not a live region — the Editor tabpanel already has one status
+          (the autosave line above), and a second broke 41 specs once. Set
+          directly above the map rather than over it, so it is never a click
+          this Author aims at the canvas could land on instead. */}
+      {isNewDraft ? (
+        <p className="text-muted-foreground text-sm">
+          Write the Start Step in the panel, then add a Choice to make the next
+          Step.{" "}
+          <Link
+            href="/guide#the-canvas"
+            className="underline underline-offset-4"
+          >
+            How the canvas works
+          </Link>
         </p>
       ) : null}
 
