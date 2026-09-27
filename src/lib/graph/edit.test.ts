@@ -101,13 +101,17 @@ describe("stepName", () => {
     expect(stepName(step("s1", [], { title: "  Hello  " }))).toBe("  Hello  ");
   });
 
-  it("falls back to the id when the title is blank", () => {
-    expect(stepName(step("s1", [], { title: "   " }))).toBe("s1");
+  it('reads "Untitled step" when the title is blank', () => {
+    expect(stepName(step("s1", [], { title: "   " }))).toBe("Untitled step");
+  });
+
+  it('reads "Untitled step" when the title is empty', () => {
+    expect(stepName(step("s1", [], { title: "" }))).toBe("Untitled step");
   });
 });
 
 describe("addStep", () => {
-  it("adds a Step with the default title, empty content, and no Choices", () => {
+  it("adds a Step with an empty title, empty content, and no Choices", () => {
     const document = buildDocument();
     const before = snapshot(document);
 
@@ -116,7 +120,7 @@ describe("addStep", () => {
     expect(document).toEqual(before);
     expect(next.steps[stepId]).toEqual({
       id: stepId,
-      title: "Untitled step",
+      title: "",
       content: emptyContent,
       choices: [],
       prompt: null,
@@ -439,13 +443,13 @@ describe("duplicateStep", () => {
     expect(next.steps[stepId].prompt).not.toBe(prompted.prompt);
   });
 
-  it("names the copy of a Step with a blank title from its id", () => {
+  it("leaves the copy of a Step with a blank title blank", () => {
     const document = buildDocument();
     const untitled = updateStep(document, "ending-a", { title: "   " });
 
     const { document: next, stepId } = duplicateStep(untitled, "ending-a");
 
-    expect(next.steps[stepId].title).toBe("ending-a copy");
+    expect(next.steps[stepId].title).toBe("");
   });
 
   it("trims the title so the whole stays within the schema's 200 characters", () => {

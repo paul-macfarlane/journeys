@@ -374,6 +374,17 @@ export function DraftEditor({
   const [titleFocusStepId, setTitleFocusStepId] = useState<string | null>(null);
 
   /**
+   * The box selected on the map while it is not the Step open in the panel,
+   * or `null` while the two are one — which is almost always: opening a Step
+   * selects its box. They are split for one move only (ticket 79): "Add
+   * choice" to a New step from the panel keeps the panel on the Step the
+   * Choice was written on, so a second "Add choice" lands there too, while
+   * the Step just made is the box the map selects and brings on. Every
+   * opening (`selectStep`) puts them back together.
+   */
+  const [mapOnlyStepId, setMapOnlyStepId] = useState<string | null>(null);
+
+  /**
    * The arrow the Author has last clicked on the map, as asked for. Held here
    * rather than in React Flow so that the arrows the canvas draws are derived
    * from the document and this, and there is never a second account of what
@@ -489,6 +500,7 @@ export function DraftEditor({
       revealPanel();
       selectedStepIdRef.current = stepId;
       setSelectedStepId(stepId);
+      setMapOnlyStepId(null);
       setLocate((current) => ({
         request: current.request + 1,
         view: options?.keepView
@@ -510,6 +522,16 @@ export function DraftEditor({
     },
     [revealPanel],
   );
+
+  /**
+   * A Step's box selected on the map, and brought onto it if it is off it,
+   * with the panel left on the Step it has open (see `mapOnlyStepId`).
+   */
+  const selectOnMap = useCallback((stepId: string) => {
+    setMapOnlyStepId(stepId);
+    setArrowSelection(null);
+    setLocate((current) => ({ request: current.request + 1, view: "reveal" }));
+  }, []);
 
   // The one place the ref above is kept current, so `save` opens a Step
   // through exactly the function this render would.
@@ -941,7 +963,11 @@ export function DraftEditor({
         <JourneyCanvas
           document={document}
           layout={layout}
-          selectedStepId={selectedStep?.id ?? ""}
+          selectedStepId={
+            mapOnlyStepId !== null && hasStep(document, mapOnlyStepId)
+              ? mapOnlyStepId
+              : (selectedStep?.id ?? "")
+          }
           locate={locate}
           problems={liveProblems}
           // In the row of controls above the map, because what it finds is
@@ -996,6 +1022,7 @@ export function DraftEditor({
               }
               onChange={applyEdit}
               onSelectStep={selectStep}
+              onSelectOnMap={selectOnMap}
               onContentChange={handleContentChange}
               onContentRefused={(message) =>
                 setContentNotice({ stepId: selectedStep.id, message })

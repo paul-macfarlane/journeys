@@ -23,10 +23,10 @@ export { stepName };
  * editor never has to guard a stale selection before calling one of these.
  */
 
-/** A new, empty Step: one blank paragraph, no Choices, not an Ending's tag. */
+/** A new, empty Step: an empty title (read as "Untitled step"), one blank paragraph, no Choices, not an Ending's tag. */
 export function addStep(
   document: GraphDocument,
-  title = "Untitled step",
+  title = "",
 ): { document: GraphDocument; stepId: string } {
   const stepId = crypto.randomUUID();
   const step: Step = {
@@ -63,10 +63,10 @@ function suffixedTitle(title: string): string {
 }
 
 /**
- * Copies a Step: its content, Prompt, and Outcome tag carry over and the name
- * the Author knows it by gains `COPY_SUFFIX` — `stepName`, so a Step with a
- * blank title yields `"<id> copy"` rather than a copy called `" copy"`, which
- * is what the panel and the map would then show. It starts with no Choices —
+ * Copies a Step: its content, Prompt, and Outcome tag carry over and the title
+ * gains `COPY_SUFFIX`; a Step with a blank title gives a copy with a blank
+ * title too, which the panel and the map read as "Untitled step" like any
+ * other untitled Step. It starts with no Choices —
  * an Author builds
  * outward from the copy the way they would from any new Step, rather than
  * inheriting where the original led. `position` is left `null`, like every
@@ -86,7 +86,8 @@ export function duplicateStep(
   const newStepId = crypto.randomUUID();
   const step: Step = {
     id: newStepId,
-    title: suffixedTitle(stepName(original)),
+    title:
+      original.title.trim().length > 0 ? suffixedTitle(original.title) : "",
     content: structuredClone(original.content),
     choices: [],
     // Cloned like the content: a Prompt is an object, and two Steps sharing

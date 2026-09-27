@@ -165,9 +165,12 @@ export function isEnding(step: Step): boolean {
   return step.choices.length === 0;
 }
 
-/** What an Author calls the Step, falling back to its id when untitled. */
+/**
+ * What an Author calls the Step: its title, or "Untitled step" while the
+ * title is blank (a new Step starts with an empty title and that placeholder).
+ */
 export function stepName(step: Step): string {
-  return step.title.trim().length > 0 ? step.title : step.id;
+  return step.title.trim().length > 0 ? step.title : "Untitled step";
 }
 
 /**

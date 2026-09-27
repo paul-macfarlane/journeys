@@ -240,3 +240,16 @@ export function labelPoint(
 ): Point {
   return isLoop || labelAt === undefined ? midwayAlong(points) : labelAt;
 }
+
+/**
+ * The closest a whole-map fit comes in (ticket 79): a one-Step map fitted
+ * without a ceiling is drawn with its box filling the frame and its title at
+ * poster size. Every "show me all of it" move on both maps — the first
+ * render, a turn of the direction, the panel put away or brought back, the
+ * Controls' fit button — stops here. The moves that go to one box
+ * ("Zoom to step", bringing a box onto the map) keep their own ceilings.
+ */
+export const WHOLE_MAP_MAX_ZOOM = 1.25;
+
+/** `fitViewOptions` for a whole-map fit, one object for every render. */
+export const WHOLE_MAP_FIT = { maxZoom: WHOLE_MAP_MAX_ZOOM } as const;

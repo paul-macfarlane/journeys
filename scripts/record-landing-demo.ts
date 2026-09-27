@@ -360,7 +360,7 @@ async function dropChoiceOnEmptyMap(page: Page, from: string): Promise<void> {
   await page.mouse.up();
 
   const title = page.getByLabel("Step title");
-  await expect(title).toHaveValue("Untitled step");
+  await expect(title).toHaveValue("");
   await expect(title).toBeFocused();
 }
 
