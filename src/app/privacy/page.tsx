@@ -125,8 +125,11 @@ export default function PrivacyPage() {
       <h2>Deleting things</h2>
       <p>
         Deleting a journey removes its draft, every published version, and every
-        run. Deleting a project removes everything in it. To delete your account
-        and everything you own, email us at the address below and we will do it.
+        run. Deleting a project removes everything in it. You can delete your
+        account from your Settings page: projects where you are the only member
+        are deleted with everything in them, projects you share with other
+        members stay with them, and your account details, sessions, and sign-in
+        links go with it. It cannot be undone.
       </p>
 
       <h2>Changes</h2>

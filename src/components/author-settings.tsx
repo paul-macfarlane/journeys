@@ -10,11 +10,13 @@ import {
   setAuthorPageVisibilityAction,
 } from "@/app/projects/(list)/settings/actions";
 import { useAutosavedForm } from "@/components/autosaved-form";
+import { DeleteAccountDialog } from "@/components/delete-account-dialog";
 import { CopyLinkButton } from "@/components/journeys/copy-link-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { AccountDeletionPreview } from "@/db/account";
 import type { AuthorSettings as AuthorSettingsValues } from "@/db/users";
 import {
   AUTHOR_LINK_KINDS,
@@ -80,13 +82,19 @@ const LINK_PLACEHOLDERS: Record<AuthorLinkKind, string> = {
  */
 export function AuthorSettings({
   settings,
+  accountDeletionPreview,
 }: {
   settings: AuthorSettingsValues;
+  accountDeletionPreview: AccountDeletionPreview;
 }) {
   return (
     <div className="flex max-w-xl flex-col gap-8">
       <DisplayNameSection settings={settings} />
       <AuthorPageSection settings={settings} />
+      <DeleteAccountSection
+        settings={settings}
+        preview={accountDeletionPreview}
+      />
     </div>
   );
 }
@@ -334,6 +342,39 @@ function AuthorPageSection({ settings }: { settings: AuthorSettingsValues }) {
       <p role="status" className="text-muted-foreground text-xs">
         {STATUS_TEXT[status]}
       </p>
+    </section>
+  );
+}
+
+/**
+ * "Delete account" (ticket 77): the Settings page's last, destructive
+ * section, ringed the way a Project's own danger zone is on the Project
+ * page.
+ */
+function DeleteAccountSection({
+  settings,
+  preview,
+}: {
+  settings: AuthorSettingsValues;
+  preview: AccountDeletionPreview;
+}) {
+  return (
+    <section
+      aria-labelledby="delete-account"
+      className="flex flex-col gap-4 rounded-lg border border-destructive/40 p-4"
+    >
+      <div className="flex flex-col gap-1">
+        <h2 id="delete-account" className="font-medium">
+          Delete account
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          Projects where you are the only member are deleted with everything in
+          them; projects you share with other members stay with them.
+        </p>
+      </div>
+      <div>
+        <DeleteAccountDialog preview={preview} email={settings.email} />
+      </div>
     </section>
   );
 }
