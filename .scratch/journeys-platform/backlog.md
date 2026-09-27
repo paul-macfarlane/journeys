@@ -21,8 +21,8 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 7 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | done | PR #106 |
 | 9 | **4 Membership and accounts** (contract) | [82 One membership seam](issues/82-one-membership-seam.md) | contract | done | PR #108 |
 | 10 | 4 | [77 Account deletion](issues/77-account-deletion.md) | contract | done | PR #108 |
-| 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | in-progress | Rescoped 2026-09-26 |
-| 12 | 5 | [78 Accessibility pass](issues/78-accessibility-pass.md) | polish | in-progress | |
+| 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | done | PR #111 |
+| 12 | 5 | [78 Accessibility pass](issues/78-accessibility-pass.md) | polish | done | PR #111 |
 | 13 | **6 Authoring polish** (polish) | [79 Authoring rough edges](issues/79-authoring-rough-edges.md) | polish | ready-for-agent | |
 | 14 | 6 | [57 Empty states and placeholders](issues/57-in-app-help.md) | polish | ready-for-agent | Rescoped 2026-09-26 |
 | 15 | **7 Editor split and phone sheet** (polish) | [86 Split the canvas, the Draft editor, and the layout module](issues/86-split-editor-modules.md) | polish | ready-for-agent | Blocked by 81 (chunk 1) |
