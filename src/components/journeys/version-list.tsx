@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CannotBeRead } from "@/components/cannot-be-read";
 import { PublishButton } from "@/components/journeys/publish-controls";
 import { RestoreVersionDialog } from "@/components/journeys/restore-version-dialog";
+import { LocalTime } from "@/components/local-time";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import type { VersionSummary } from "@/db/versions";
@@ -17,18 +18,6 @@ import { cn } from "@/lib/utils";
  * it — go and edit it, or publish it. When the live version is the Draft
  * exactly there is nothing pending, so the list is the versions alone.
  */
-
-/**
- * Fixed locale and time zone, formatted on the server: the moment a version
- * was published is the same moment for every Member, and a browser-local
- * format would differ from what the server rendered and mismatch on
- * hydration. The `dateTime` attribute carries the exact instant.
- */
-const publishedAtFormat = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "UTC",
-});
 
 const rowClassName =
   "flex flex-wrap items-center gap-2 rounded-xl px-4 py-3 ring-1 ring-foreground/10";
@@ -83,10 +72,7 @@ export function VersionList({
               <Badge>Unpublished changes</Badge>
 
               <span className="text-muted-foreground text-sm">
-                Last edited{" "}
-                <time dateTime={draftUpdatedAt.toISOString()}>
-                  {publishedAtFormat.format(draftUpdatedAt)} UTC
-                </time>
+                Last edited <LocalTime instant={draftUpdatedAt} />
               </span>
 
               <div className="ml-auto flex items-center gap-2">
@@ -117,12 +103,10 @@ export function VersionList({
               </span>
               {version.isLive ? <Badge>Live</Badge> : null}
 
-              <time
-                dateTime={version.publishedAt.toISOString()}
+              <LocalTime
+                instant={version.publishedAt}
                 className="text-muted-foreground text-sm"
-              >
-                {publishedAtFormat.format(version.publishedAt)} UTC
-              </time>
+              />
 
               <span className="text-muted-foreground text-sm">
                 {/* The Member who published it, while their account exists. */}

@@ -8,9 +8,9 @@ import { useAutosavedForm } from "@/components/autosaved-form";
 import { StaleNotice } from "@/components/stale-notice";
 import type { ActionResult } from "@/lib/action-result";
 import { STATUS_TEXT, type StaleNoun } from "@/lib/autosave";
-import { BRAND_COLORS } from "@/lib/brand";
 import {
   accentColorSchema,
+  PRESET_ACCENTS,
   THEME_PRESETS,
   themePresetSchema,
   type Theme,
@@ -36,9 +36,6 @@ function toTheme(value: ThemeFormInput): Theme {
     accent: value.accent === "" ? null : value.accent,
   };
 }
-
-/** What a fresh accent starts as when the checkbox is ticked: the app's spruce. */
-const FIRST_ACCENT = BRAND_COLORS.spruce;
 
 /**
  * A Theme picker (ticket 11): the six presets as a radio group, each with a
@@ -96,7 +93,13 @@ export function ThemeFields({
   const accent = form.watch("accent");
 
   function toggleAccent(on: boolean) {
-    form.setValue("accent", on ? FIRST_ACCENT : "", { shouldDirty: true });
+    // Starts from the preset the form has selected right now, not
+    // necessarily `theme.preset`: an author who has just switched presets
+    // and then ticks the checkbox gets the one they are looking at.
+    const preset = form.getValues("preset");
+    form.setValue("accent", on ? PRESET_ACCENTS[preset] : "", {
+      shouldDirty: true,
+    });
     void flush("accent");
   }
 
