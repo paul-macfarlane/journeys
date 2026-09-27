@@ -6,21 +6,28 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
+import type { MemberJourney } from "@/db/access";
 import { writeDraftGuarded } from "@/db/drafts";
-import { guardedWrite, rowExists, type StaleWrite } from "@/db/guarded-write";
-import { getJourneyForMember } from "@/db/journeys";
+import { isUniqueViolation } from "@/db/errors";
+import { guardedWrite, rowExists } from "@/db/guarded-write";
 import { draft, journey, publishedVersion, user } from "@/db/schema";
 import { logUnreadable } from "@/db/unreadable";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
-import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
+import { validateForPublish } from "@/lib/graph/validate";
+import {
+  conflict,
+  invalid,
+  notFound,
+  type WriteFailure,
+} from "@/lib/write-result";
 
 /**
  * Data access for Published Versions, mirroring `@/db/drafts`.
  *
  * A Published Version belongs to a Journey, which belongs to a Project, so
- * its authorization rides on the same Project membership: every read and
- * write here re-checks it against the signed-in Author, and an Author who is
- * not a Member cannot tell an existing Journey from one that never existed.
+ * its authorization rides on the same Project membership, resolved once in
+ * `@/db/access` (ticket 82): every read and write here takes the
+ * `MemberJourney` that check hands back and never checks again.
  *
  * Nothing in here ever updates a `published_version` row. Publishing writes
  * one, restoring reads one, unpublishing moves the Journey's pointer, and
@@ -37,18 +44,12 @@ export type VersionSummary = {
 };
 
 /**
- * Every Published Version of a Journey, newest first. Null for a non-Member,
- * an unknown Project, and an unknown Journey alike — an empty list is a
- * Journey that has never been published, which is a different answer.
+ * Every Published Version of a Journey, newest first; an empty list is a
+ * Journey that has never been published.
  */
-export async function listVersionsForMember(
-  projectId: string,
-  journeyId: string,
-  userId: string,
-): Promise<VersionSummary[] | null> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
+export async function listVersions(
+  existing: MemberJourney,
+): Promise<VersionSummary[]> {
   const rows = await db
     .select({
       id: publishedVersion.id,
@@ -112,17 +113,11 @@ export function toLiveVersion(row: {
 
 /**
  * The version participants are walking right now, or null when the Journey
- * has no live version — and null for a non-Member too, which callers have
- * already answered with a 404 by the time they ask this.
+ * has no live version.
  */
 export async function getLiveVersion(
-  projectId: string,
-  journeyId: string,
-  userId: string,
+  existing: MemberJourney,
 ): Promise<LiveVersion | null> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
   const [row] = await db
     .select({
       versionId: publishedVersion.id,
@@ -140,27 +135,7 @@ export async function getLiveVersion(
 }
 
 export type PublishDraftResult =
-  | { ok: true; versionNumber: number }
-  | { ok: false; problems: PublishProblem[] }
-  | { ok: false; conflict: true }
-  /** The Draft row fails the document contract: nothing to publish. */
-  | { ok: false; reason: "unreadable" }
-  | StaleWrite
-  | null;
-
-/**
- * Postgres `unique_violation`, whether the driver's error arrives bare or
- * wrapped by Drizzle with the original as its `cause`.
- */
-function isUniqueViolation(error: unknown): boolean {
-  const candidates = [error, (error as { cause?: unknown })?.cause];
-  return candidates.some(
-    (candidate) =>
-      typeof candidate === "object" &&
-      candidate !== null &&
-      (candidate as { code?: unknown }).code === "23505",
-  );
-}
+  { ok: true; versionNumber: number } | WriteFailure;
 
 /**
  * Publishes a Journey's Draft as the next Published Version and points the
@@ -169,34 +144,31 @@ function isUniqueViolation(error: unknown): boolean {
  * The Draft is read inside the transaction, locked `FOR SHARE` so no save
  * lands between the read and the snapshot, and only at `expectedVersion` —
  * the version the Member holds (ticket 73). Another Member's save since is
- * answered `stale`, and a row that fails the contract `unreadable`: neither
- * publishes anything.
+ * answered `stale`, and a row that fails the contract `invalid` with the
+ * sentence that says so: neither publishes anything.
  *
- * Validation next: a Draft with publish-time problems is refused with all of
- * them and nothing is written, because a participant must never meet a
- * journey with a dangling choice or an ending that means nothing. A valid
- * Draft's document is snapshotted exactly as stored — publish never rewrites
- * it and never touches the Draft row.
+ * Validation next: a Draft with publish-time problems is refused `invalid`
+ * with all of them and nothing is written, because a participant must never
+ * meet a journey with a dangling choice or an ending that means nothing. A
+ * valid Draft's document is snapshotted exactly as stored — publish never
+ * rewrites it and never touches the Draft row.
  *
  * The insert and the pointer move are one transaction: a version nothing
  * points at would read as "unpublished" with no way back, and a pointer at a
  * version that isn't there is worse. The version number is the Journey's
  * highest plus one, and `(journey_id, version_number)` is unique, so two
  * Authors publishing at the same moment produce two versions or one error,
- * never two rows calling themselves version 2.
+ * never two rows calling themselves version 2; the loser is answered
+ * `conflict`.
  *
- * Null when the Author is not a Member, or there is no such Journey under
- * that Project — the same answer the page's 404 gives.
+ * `not-found` when the Journey (or its Draft) went away since its
+ * membership was resolved. The version is published by the Member the
+ * Journey was resolved for.
  */
 export async function publishDraft(
-  projectId: string,
-  journeyId: string,
+  existing: MemberJourney,
   expectedVersion: number,
-  userId: string,
 ): Promise<PublishDraftResult> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
   try {
     return await db.transaction(async (tx): Promise<PublishDraftResult> => {
       const locked = await guardedWrite(
@@ -213,14 +185,20 @@ export async function publishDraft(
             .for("share"),
         () => rowExists(draft, draft.journeyId, existing.id, tx),
       );
-      if (!locked.ok) return locked.reason === "stale" ? locked : null;
+      if (!locked.ok) return locked;
 
       const parsed = graphDocumentSchema.safeParse(locked.row.document);
-      if (!parsed.success) return { ok: false, reason: "unreadable" };
+      if (!parsed.success) {
+        return invalid(
+          "This journey's draft can't be read. Restore it from a published version before publishing.",
+        );
+      }
       const document = parsed.data;
 
       const problems = validateForPublish(document);
-      if (problems.length > 0) return { ok: false, problems };
+      if (problems.length > 0) {
+        return invalid("This journey can't be published yet", { problems });
+      }
 
       // The title and description as they read now, inside the
       // transaction, rather than as the membership check read them.
@@ -229,7 +207,7 @@ export async function publishDraft(
         .from(journey)
         .where(eq(journey.id, existing.id))
         .limit(1);
-      if (!current) return null;
+      if (!current) return notFound();
 
       const [highest] = await tx
         .select({ versionNumber: publishedVersion.versionNumber })
@@ -250,7 +228,7 @@ export async function publishDraft(
           title: current.title,
           description: current.description,
           document,
-          publishedBy: userId,
+          publishedBy: existing.memberUserId,
         })
         .returning({ id: publishedVersion.id });
 
@@ -265,7 +243,7 @@ export async function publishDraft(
     // The race the unique constraint exists for: another Member published
     // between our read of the highest number and our insert. Their version
     // is live and complete, and this Author can look at it and try again.
-    if (isUniqueViolation(error)) return { ok: false, conflict: true };
+    if (isUniqueViolation(error)) return conflict();
     throw error;
   }
 }
@@ -273,31 +251,21 @@ export async function publishDraft(
 /**
  * Takes a Journey away from participants by clearing its live pointer. Every
  * Published Version stays, so publishing again continues the numbering and
- * restoring an older version still works. False when the Author is not a
- * Member, which callers answer with the same 404 as an unknown id.
+ * restoring an older version still works.
  */
 export async function unpublishJourney(
-  projectId: string,
-  journeyId: string,
-  userId: string,
-): Promise<boolean> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return false;
-
+  existing: MemberJourney,
+): Promise<{ ok: true }> {
   await db
     .update(journey)
     .set({ liveVersionId: null, updatedAt: new Date() })
     .where(eq(journey.id, existing.id));
 
-  return true;
+  return { ok: true };
 }
 
 export type RestoreVersionResult =
-  | { versionNumber: number }
-  /** The version being restored fails the document contract (ticket 83). */
-  | { ok: false; reason: "unreadable"; versionNumber: number }
-  | StaleWrite
-  | null;
+  { ok: true; versionNumber: number } | WriteFailure;
 
 /**
  * A stored Published Version document, parsed rather than trusted (ticket
@@ -318,27 +286,23 @@ export function parseVersionDocument(document: unknown): GraphDocument | null {
  * The stored document is parsed, not re-sanitized: it went through
  * `prepareDocumentForWrite` on its way into the Draft it was snapshotted
  * from, so it is already in stored shape. A row that no longer satisfies
- * the contract is refused by name (`reason: "unreadable"`, with its version
- * number) and logged, never thrown (ticket 83).
+ * the contract is refused `invalid`, naming its version number, and logged,
+ * never thrown (ticket 83).
  *
  * Guarded like a save (ticket 73): `expectedVersion` is the Draft version
  * the Member's page last read, and a Draft another Member has written since
  * is answered `stale` and left alone. It is also how a Draft whose row
  * cannot be read is recovered: the restore replaces the row whole.
  *
- * Null for a non-Member, an unknown Journey, and a version belonging to some
- * other Journey alike.
+ * `not-found` for an unknown version and one belonging to some other
+ * Journey alike, and for a Journey that went away since its membership was
+ * resolved.
  */
 export async function restoreVersion(
-  projectId: string,
-  journeyId: string,
+  existing: MemberJourney,
   versionId: string,
   expectedVersion: number,
-  userId: string,
 ): Promise<RestoreVersionResult> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
   const [row] = await db
     .select({
       versionNumber: publishedVersion.versionNumber,
@@ -353,16 +317,14 @@ export async function restoreVersion(
     )
     .limit(1);
 
-  if (!row) return null;
+  if (!row) return notFound();
 
   const document = parseVersionDocument(row.document);
   if (document === null) {
     logUnreadable("published version", { versionId, journeyId: existing.id });
-    return {
-      ok: false,
-      reason: "unreadable",
-      versionNumber: row.versionNumber,
-    };
+    return invalid(
+      `Version ${row.versionNumber} can't be read, so it can't be restored.`,
+    );
   }
 
   // Upsert for the same reason `saveDraft` is one: a Journey whose Draft row
@@ -372,7 +334,7 @@ export async function restoreVersion(
     document,
     expectedVersion,
   );
-  if (!written.ok) return written.reason === "stale" ? written : null;
+  if (!written.ok) return written;
 
-  return { versionNumber: row.versionNumber };
+  return { ok: true, versionNumber: row.versionNumber };
 }

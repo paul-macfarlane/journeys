@@ -15,12 +15,21 @@ import { getSession } from "@/lib/session";
 // fade is tw-animate-css's `animate-in`, which knows nothing of
 // `prefers-reduced-motion`; `motion-reduce:animate-none` is what turns it
 // off for visitors who asked for no motion (decision 8).
-export default async function LandingPage() {
-  const session = await getSession();
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string | string[] }>;
+}) {
+  const [session, { notice }] = await Promise.all([getSession(), searchParams]);
 
   return (
     <div className="flex flex-1 flex-col">
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-16 px-6 py-16 sm:gap-20 sm:py-20">
+        {notice === "account-deleted" ? (
+          <p role="status" className="text-muted-foreground text-sm">
+            Your account was deleted.
+          </p>
+        ) : null}
         <section className="animate-in fade-in flex flex-col gap-6 duration-700 motion-reduce:animate-none">
           {/* The mark is decorative here: the heading already says the name. */}
           <JourneysMark className="size-14 sm:size-16" />

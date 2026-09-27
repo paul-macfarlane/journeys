@@ -1,0 +1,26 @@
+# Ticket 82, AC-1: no src/db function takes a bare userId for a membership check except the two in access.ts
+# Commit 2698b30 (chunk 4 with review fixes). Every exported src/db function whose parameters name a user id:
+
+src/db/access.ts: projectForMember(projectId: string, userId: string)
+src/db/access.ts: journeyForMember(projectId: string, journeyId: string, userId: string,)
+src/db/account.ts: previewAccountDeletion(userId: string,)
+src/db/account.ts: deleteAccount(client: Pick<Db, "transaction">, userId: string,)
+src/db/members.ts: removeMember(project: MemberProject, userId: string,)
+src/db/projects.ts: listProjectsForAuthor(userId: string,)
+src/db/projects.ts: listRecentProjectsForAuthor(userId: string, limit: number,)
+src/db/projects.ts: createProject(input: { title: string }, userId: string,)
+src/db/users.ts: getAuthorSettings(userId: string,)
+src/db/users.ts: updateAuthorSettings(userId: string, patch: Partial<{ name: string; image: string; bio: string; links: AuthorLink[]; public: boolean; }>,)
+src/db/users.ts: getPublicAuthor(userId: string)
+src/db/users.ts: listPublicProjectsForAuthor(userId: string,)
+
+# Reading:
+# - access.ts: projectForMember and journeyForMember, the membership seam — the only reads that resolve one
+#   Project or Journey for a Member.
+# - account.ts (ticket 77): the Author's own account — the Projects they belong to, and deleting their
+#   own account; it grants nothing on anyone else's Project.
+# - members.ts removeMember: userId is the Member being removed; the actor is the MemberProject it is handed.
+# - projects.ts listProjectsForAuthor, listRecentProjectsForAuthor, createProject: the Author's own list, and
+#   the Project they create with themselves as its first Member.
+# - users.ts: the Author's own settings row, and the public Author page.
+# Verdict: PASS.

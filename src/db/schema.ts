@@ -151,6 +151,11 @@ export const project = pgTable("project", {
 // rows cascade), while deleting a `user` who is some Project's only Member
 // is refused — delete or hand over those Projects first. Drizzle snapshots
 // don't track triggers, so the statement lives only in the migration file.
+//
+// `deleteAccount` in `@/db/account` (ticket 77) deletes an Author's
+// sole-Member Projects in the same transaction, before the user row, so the
+// trigger never fires for it. A raw delete of such an Author's `user` row is
+// still refused.
 export const member = pgTable(
   "member",
   {

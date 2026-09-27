@@ -1,10 +1,45 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/db", () => ({ db: {} }));
+import type { MemberProject } from "@/db/access";
+
+/**
+ * The database, at its boundary: an UPDATE records what it was asked to
+ * set and answers one row, as Postgres does when the guard holds.
+ */
+const database = vi.hoisted(() => ({
+  set: vi.fn(),
+}));
+
+vi.mock("@/db", () => ({
+  db: {
+    update: () => ({
+      set: (values: Record<string, unknown>) => {
+        database.set(values);
+        return {
+          where: () => ({
+            returning: async () => [
+              {
+                id: "project-1",
+                title: "Refugee Health",
+                descriptionContent: values.descriptionContent,
+                themePreset: "trail",
+                themeAccent: null,
+              },
+            ],
+          }),
+        };
+      },
+    }),
+  },
+}));
 
 import { emptyContent } from "@/lib/graph/content";
 
-import { guardsDescription, toProjectSummary } from "./projects";
+import {
+  editProjectDescription,
+  guardsDescription,
+  toProjectSummary,
+} from "./projects";
 
 /**
  * Ticket 83: a Project row whose description fails `contentSchema` reads
@@ -64,5 +99,99 @@ describe("guardsDescription", () => {
 
   it("does not guard an edit made from empty rich text over a description that cannot be read", () => {
     expect(guardsDescription(emptyContent, "not a document")).toBe(false);
+  });
+});
+
+/**
+ * Ticket 82: `editProjectDescription` is the one path a Project description
+ * reaches storage by, so it — not the action in front of it — puts every
+ * write through the shared allowed set, as `saveDraft` does a Draft's.
+ */
+describe("editProjectDescription", () => {
+  const project = {
+    id: "project-1",
+    title: "Refugee Health",
+    description: emptyContent,
+    theme: { preset: "trail", accent: null },
+    memberUserId: "author-1",
+  } as unknown as MemberProject;
+  // A baseline the Member could read, so the write is guarded as usual.
+  const baseline = {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+  };
+
+  it("cleans the content with the shared allowed set before storing it", async () => {
+    database.set.mockClear();
+
+    const result = await editProjectDescription(
+      project,
+      {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Click",
+                marks: [
+                  { type: "link", attrs: { href: "javascript:alert(1)" } },
+                ],
+              },
+              { type: "text", text: " here", marks: [{ type: "code" }] },
+            ],
+          },
+          { type: "codeBlock", content: [{ type: "text", text: "rm -rf /" }] },
+          {
+            type: "image",
+            attrs: { src: "data:image/png;base64,AAAA", alt: "x" },
+          },
+        ],
+      },
+      baseline,
+    );
+
+    const cleaned = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Click" },
+            { type: "text", text: " here" },
+          ],
+        },
+      ],
+    };
+    expect(database.set).toHaveBeenCalledWith(
+      expect.objectContaining({ descriptionContent: cleaned }),
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      project: { id: "project-1", description: cleaned },
+    });
+  });
+
+  it("refuses input that is not a document without touching the database", async () => {
+    database.set.mockClear();
+
+    const result = await editProjectDescription(project, "<b>hi</b>", baseline);
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "invalid",
+      error: "Content must be a document with a list of blocks",
+    });
+    expect(database.set).not.toHaveBeenCalled();
+  });
+
+  it("refuses a baseline that is not a document without touching the database", async () => {
+    database.set.mockClear();
+
+    const result = await editProjectDescription(project, baseline, 42);
+
+    expect(result).toMatchObject({ ok: false, reason: "invalid" });
+    expect(database.set).not.toHaveBeenCalled();
   });
 });

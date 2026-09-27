@@ -1,8 +1,8 @@
 # 82: One membership seam and one data-layer result shape
 
-Status: ready-for-agent
+Status: done
 Blocked by: None
-Owner:
+Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (the membership rule is the app's authorization; behaviour-preserving, no schema change)
@@ -47,3 +47,44 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`polish`). Use `CONTEXT.md` vocabulary. Origin: ticket 72.
 
 ## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), chunk 4
+
+`[EXECUTION PLAN]` Chunk 4 is 82 → 77 (backlog rows 9 and 10), one branch `feat/chunk-4-membership-and-accounts`, one PR to `staging`. The two tickets share no source files, so they run in parallel: this ticket is deliverable D1, one worker (Opus) in worktree `journeys-d1`; 77 is D2 in `journeys-d2`. The backlog's `Route: contract` wins over this ticket's "(`polish`)" verification line; the chunk runs the contract chain, one full `pnpm test:e2e`, and two reviewers at the end.
+
+Resolved decisions for D1 (ticket 72 findings M1–M4, applied as written, with 73's `stale` already landed):
+
+- `src/db/access.ts` holds the only two membership reads, `projectForMember(projectId, userId)` and `journeyForMember(projectId, journeyId, userId)`, both `cache()`d, returning branded `MemberProject` / `MemberJourney` or null. `journeyForMember` is one query (journey ⋈ project ⋈ member) plus the version count, and it selects the Project's columns too, so `MemberJourney.project` is a `MemberProject` and the Journey page never asks for the Project again. Both carry `memberUserId`, so `publishDraft` reads `publishedBy` from the value it was handed.
+- Every other `src/db` function that needed a membership takes the branded value: `createJourney`, `listJourneysForProject`, `listMembers`, `addMemberByEmail`, `removeMember`, `renameProject`, `editProjectDescription`, `setProjectTheme`, `deleteProject` take a `MemberProject`; `getDraft`, `saveDraft`, `listVersions`, `getLiveVersion`, `publishDraft`, `restoreVersion`, `unpublishJourney`, `updateJourney`, `setJourneyTheme`, `moveJourney`, `deleteJourney`, `listResponses`, `getAnalytics` take a `MemberJourney`. None re-checks membership; the guarded writes' `rowExists` fallback still tells a vanished row from a stale one.
+- One failure shape, `WriteFailure`, in `src/lib/write-result.ts` (pure, so the action layer and `src/db` both import it): `not-found | conflict | stale | invalid { error, stepId?, problems? }`. `guarded-write.ts`'s `StaleWrite` is its `stale` member. Members' `unknown-email`, `already-member`, `not-a-member`, `last-member` stay as those functions' own extra reasons. One mapper, `failureResult`, in `src/lib/action-result.ts` turns a `WriteFailure` into the `ActionResult` sentence; the user-facing copy stays byte-identical to today's, and `grep -rn "no longer exist" src` names the mapper alone. The bare aliases `ProjectActionResult` and `JourneyActionResult` go.
+- `src/db/errors.ts` holds `pgErrorCode` and `isUniqueViolation`; `lockProject` is exported from `src/db/projects.ts` and shared by `journeys.ts` and `members.ts`; `revalidateProjectPaths()` joins `revalidateJourneyPaths()`.
+- `editProjectDescription` takes unknown input and baseline and sanitises them itself; the action stops calling `sanitizeContent`.
+- The publish-state rules leave the page: a pure function beside `publishStateOf` in `src/lib/publish-state.ts` answers `hasUnpublishedChanges` and `draftEditedAt` from the Journey row, the Draft, and the live version, with a unit test. The two Preview pages share one `loadPreview`.
+
+Evidence: `test-results/82-ac-1-membership-signatures.txt` (the exported `src/db` signatures), `test-results/82-ac-2-membership-query-count.txt` (Postgres statement log for one Journey page request: the orchestrator's capture), `test-results/82-ac-3-no-longer-exists-grep.txt`, the publish-state unit test in the chain, and the chunk's full run in `test-results/chunk-4-commands.txt`.
+
+`[AI CODE REVIEW]` Two fresh reviewers (Opus) read the whole chunk diff (`8da2dd0..9300bb7`), one for correctness and spec, one for coding standards; the orchestrator adjudicated from the cited hunks. Fixed in 2698b30 (one worker, Opus):
+- Correctness and spec:
+  - `removeMember` re-checks, under the Project lock, that the acting Member still belongs (the in-lock check the base code had, dropped by the refactor).
+  - The not-found copy was asserted through `failureResult` itself; `src/lib/action-result.test.ts` now pins every sentence, and the action tests assert literals.
+  - The AC-1 evidence predated ticket 77's `src/db/account.ts`; recaptured at 2698b30.
+- Coding standards: unused exports removed (`Transaction`, `StaleWrite`, `MissingRow`, `pgErrorCode`, `staleResult`, `titleOrDescriptionPending`); `access.ts`'s comment narrowed to "the only reads that resolve one Project or Journey for a Member"; comment wrap and the detached `PublishState` JSDoc; duplicate `beforeEach` stubs.
+- Approved deviations, kept:
+  - The publish and unreadable sentences ("This journey can't be published yet", "This journey's draft can't be read…", "Version N can't be read…") travel from `src/db` as `invalid` errors, as the plan's `WriteFailure` shape gives them; copy is byte-identical to 8da2dd0.
+  - AC-2 is read as the Journey's membership join, which runs once. The `[projectId]` layout's navbar still resolves the Project in its own cached query, so one render joins `member` twice for the two (plus the switcher's own list).
+  - `moveJourney`, `deleteJourney`, `deleteProject`, and `unpublishJourney` answer `ok` once membership is resolved; a row already gone stays a quiet success, as before.
+  - `editProjectDescriptionAction` resolves membership before sanitising, so a non-Member posting malformed content reads "That project no longer exists".
+- Accepted risk: `addMemberByEmail` racing a Project or account deletion still surfaces an unmapped foreign-key error, as before this ticket.
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/108 (chunk 4, with ticket 77).
+- **Worker:** one worker (Opus, worktree `journeys-d1`, commit 8b36944), in parallel with 77. Review fixes by a second worker (Opus, 2698b30). Verified at 2698b30 on local `next start` over docker Postgres 18.
+- **Verdicts:**
+  - AC-1 PASS: `test-results/82-ac-1-membership-signatures.txt`.
+  - AC-2 PASS: `test-results/82-ac-2-membership-query-count.txt`. A Journey page request is 10 statements, and the Journey membership join is one of them (before, `getJourneyForMember` ran six times). The layout navbar's Project read is its own cached query (the review's F7).
+  - AC-3 PASS: `test-results/82-ac-3-no-longer-exists-grep.txt` (no hits in `src/app`; the mapper is `failureResult`).
+  - AC-4 PASS: `draftPending` unit tests. The full run is in `test-results/chunk-4-commands.txt`: 123 passed, 0 flaky.
+- **Command chain:** `eslint`, `format:check`, `typecheck`, `db:migrate`, then `DB_INTEGRATION_URL=… pnpm test` (666) and `pnpm test` (660 + 6 skipped), then `build`, then `E2E_EVIDENCE=account-delete,account-delete-refused pnpm test:e2e:prebuilt`. Lint skipped the untracked `.claude/` scratch, which carries one pre-existing error outside the repository.
+- **Route:** the backlog's `contract` won over this ticket's own "(`polish`)" verification line, as recorded in the execution plan.
+- **Parallel-run check:** no file conflict was predicted, and none happened: D2 merged onto D1 with no conflict, and no file is in both commits.
+
+2026-09-27: re-verified at 348d6a4 after the autosave fix recorded under 77's `[SCOPE CHANGE]`. The full chain passed, with 123 of 123 in `test-results/chunk-4-commands.txt`. This ticket's own captures do not depend on `src/components/autosaved-form.ts`, so they stand.

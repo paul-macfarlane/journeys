@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 
-import { getDraftForMember } from "@/db/drafts";
+import { journeyForMember } from "@/db/access";
+import { getDraft } from "@/db/drafts";
 import { hasStep } from "@/lib/graph/document";
 import { readResponse, refusalNotice } from "@/lib/graph/prompt";
 import { requireSession } from "@/lib/session";
@@ -26,7 +27,9 @@ export async function previewChooseAction(
   const session = await requireSession();
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
-  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) redirect(journeyHref);
+  const stored = await getDraft(journey);
   if (!stored || stored.kind === "unreadable") redirect(journeyHref);
   const draft = stored.document;
 

@@ -1,19 +1,13 @@
-import { notFound, redirect } from "next/navigation";
-
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   ResponseNotice,
   responseRefusal,
   StepView,
 } from "@/components/runner/step-view";
-import { getDraftForMember } from "@/db/drafts";
-import { getJourneyForMember } from "@/db/journeys";
-import { getProjectForMember } from "@/db/projects";
 import { hasStep } from "@/lib/graph/document";
-import { requireSession } from "@/lib/session";
-import { effectiveTheme } from "@/lib/theme";
 
 import { previewChooseAction } from "./actions";
+import { loadPreview } from "./load";
 
 /**
  * Preview's first screen: the Draft's Start Step, exactly as a Participant
@@ -34,36 +28,14 @@ export default async function PreviewStartPage({
     notice?: string | string[];
   }>;
 }) {
-  const session = await requireSession();
   const [{ projectId, journeyId }, { notice }] = await Promise.all([
     params,
     searchParams,
   ]);
-
-  const journey = await getJourneyForMember(
+  const { journey, draft, theme, journeyHref } = await loadPreview({
     projectId,
     journeyId,
-    session.user.id,
-  );
-  if (!journey) notFound();
-
-  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!stored) notFound();
-  // A Draft that cannot be read has nothing to preview: the Journey page
-  // says so and offers a Restore (ticket 73).
-  if (stored.kind === "unreadable") {
-    redirect(`/projects/${projectId}/journeys/${journeyId}`);
-  }
-  const draft = stored.document;
-
-  // Preview paints the Theme a Participant will see (the Journey's
-  // override, else the Project's), so an Author sees the look along with
-  // the words. The Project read is the request-cached one the layout made.
-  const project = await getProjectForMember(projectId, session.user.id);
-  if (!project) notFound();
-  const theme = effectiveTheme(project.theme, journey.theme);
-
-  const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
+  });
 
   const hasStart = hasStep(draft, draft.startStepId);
 
@@ -75,7 +47,7 @@ export default async function PreviewStartPage({
       // The way out (ticket 69), pointed at Preview's own routes: the
       // Author's Project page. No header "Start over" here: this is the
       // start, as on the live runner's first screen.
-      project={{ title: project.title, href: `/projects/${projectId}` }}
+      project={{ title: journey.project.title, href: `/projects/${projectId}` }}
       theme={theme}
     >
       {hasStart ? (

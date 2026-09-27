@@ -3,30 +3,30 @@
 // under src/lib/graph and stays importable from both sides.
 import "server-only";
 
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import type { MemberJourney } from "@/db/access";
 import {
   guardedWrite,
   rowExists,
   type GuardedWriteResult,
-  type StaleWrite,
 } from "@/db/guarded-write";
-import { getJourneyForMember } from "@/db/journeys";
-import { draft, journey, member, project } from "@/db/schema";
+import { draft } from "@/db/schema";
 import {
   graphDocumentSchema,
   prepareDocumentForWrite,
   type GraphDocument,
 } from "@/lib/graph/document";
+import { invalid, type WriteFailure } from "@/lib/write-result";
 
 /**
  * Data access for Drafts, mirroring `@/db/journeys`.
  *
  * A Draft belongs to a Journey, which belongs to a Project, so its
- * authorization rides on the same Project membership: every read and write
- * here re-checks it against the signed-in Author, and an Author who is not a
- * Member cannot tell an existing Draft from one that never existed.
+ * authorization rides on the same Project membership, resolved once in
+ * `@/db/access` (ticket 82): every read and write here takes the
+ * `MemberJourney` that check hands back and never checks again.
  *
  * Postgres stores the document as jsonb and knows nothing about its shape —
  * the contract is `@/lib/graph/document`'s, so a document is validated on the
@@ -75,19 +75,16 @@ export function toStoredDraft(row: {
 }
 
 /**
- * The Draft behind a Project id and Journey id pair, but only for one of the
- * Project's Members. Returns null for a non-Member, an unknown Project, and
- * an unknown Journey alike, so callers can answer all three with the same
- * 404.
+ * A Journey's Draft. Null only when the Journey has no Draft row — which
+ * every Journey is created with — or went away since its membership was
+ * resolved.
  *
  * Parsed rather than trusted: a row that doesn't satisfy the contract is a
  * bug somewhere upstream. It comes back as `unreadable` rather than thrown,
  * so the page can say so and offer a Restore instead of failing with a 500.
  */
-export async function getDraftForMember(
-  projectId: string,
-  journeyId: string,
-  userId: string,
+export async function getDraft(
+  journey: MemberJourney,
 ): Promise<StoredDraft | UnreadableDraft | null> {
   const [row] = await db
     .select({
@@ -96,16 +93,7 @@ export async function getDraftForMember(
       updatedAt: draft.updatedAt,
     })
     .from(draft)
-    .innerJoin(journey, eq(journey.id, draft.journeyId))
-    .innerJoin(project, eq(project.id, journey.projectId))
-    .innerJoin(member, eq(member.projectId, project.id))
-    .where(
-      and(
-        eq(project.id, projectId),
-        eq(journey.id, journeyId),
-        eq(member.userId, userId),
-      ),
-    )
+    .where(eq(draft.journeyId, journey.id))
     .limit(1);
 
   return row ? toStoredDraft(row) : null;
@@ -140,10 +128,7 @@ export function writeDraftGuarded(
 }
 
 export type SaveDraftResult =
-  | { ok: true; document: GraphDocument; version: number }
-  | { ok: false; error: string; stepId?: string }
-  | StaleWrite
-  | null;
+  { ok: true; document: GraphDocument; version: number } | WriteFailure;
 
 /**
  * Stores a Draft's document. The only path that accepts a document from
@@ -161,30 +146,30 @@ export type SaveDraftResult =
  * no Draft row yet, and its first save must create one rather than update
  * nothing and report success.
  *
- * Null when the Author is not a Member of the Journey's Project, or there is
- * no such Journey under it — the same answer, so neither leaks the other.
- * `{ ok: false, error }` is a document the contract refused, which is an
- * Author's problem to fix rather than a missing Journey.
+ * `not-found` when the Journey went away since its membership was
+ * resolved. `invalid` is a document the contract refused, with the Step it
+ * refused when there is one — an Author's problem to fix rather than a
+ * missing Journey.
  */
 export async function saveDraft(
-  projectId: string,
-  journeyId: string,
+  existing: MemberJourney,
   input: unknown,
   expectedVersion: number,
-  userId: string,
 ): Promise<SaveDraftResult> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
   const prepared = prepareDocumentForWrite(input);
-  if (!prepared.ok) return prepared;
+  if (!prepared.ok) {
+    return invalid(
+      prepared.error,
+      prepared.stepId === undefined ? {} : { stepId: prepared.stepId },
+    );
+  }
 
   const written = await writeDraftGuarded(
     existing.id,
     prepared.document,
     expectedVersion,
   );
-  if (!written.ok) return written.reason === "stale" ? written : null;
+  if (!written.ok) return written;
 
   return {
     ok: true,

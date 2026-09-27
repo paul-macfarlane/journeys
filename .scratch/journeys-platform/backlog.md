@@ -19,8 +19,8 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 5 | 2 | [74 Deploy and test stability](issues/74-deploy-and-test-stability.md) | polish | done | PR #102 |
 | 6 | **3 Runs, and the Judge cut** (contract) | [87 Cut the Judge](issues/87-cut-the-judge.md) | contract | done | PR #106; replaces 84 and 76 (Paul, 2026-09-26) |
 | 7 | 3 | [75 Completion survives a backtrack](issues/75-completion-sticks.md) | contract | done | PR #106 |
-| 9 | **4 Membership and accounts** (contract) | [82 One membership seam](issues/82-one-membership-seam.md) | contract | ready-for-agent | |
-| 10 | 4 | [77 Account deletion](issues/77-account-deletion.md) | contract | ready-for-agent | Paul re-approves the `/privacy` sentence |
+| 9 | **4 Membership and accounts** (contract) | [82 One membership seam](issues/82-one-membership-seam.md) | contract | done | PR #108 |
+| 10 | 4 | [77 Account deletion](issues/77-account-deletion.md) | contract | done | PR #108 |
 | 11 | **5 Public pages and accessibility** (contract) | [42 Public pages correctness (SEO)](issues/42-seo.md) | contract | ready-for-agent | Rescoped 2026-09-26 |
 | 12 | 5 | [78 Accessibility pass](issues/78-accessibility-pass.md) | polish | ready-for-agent | |
 | 13 | **6 Authoring polish** (polish) | [79 Authoring rough edges](issues/79-authoring-rough-edges.md) | polish | ready-for-agent | |

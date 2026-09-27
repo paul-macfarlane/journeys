@@ -1,0 +1,128 @@
+# Chunk 4 (tickets 82 and 77): the contract chain, run once at the end of the chunk
+# Commit 348d6a4 on feat/chunk-4-membership-and-accounts (origin/staging merged: nothing new).
+# Local docker Postgres 18 on 5436; e2e on next start :3104 over journeys_e2e. Lint skips the untracked
+# .claude/ scratch (one pre-existing error in .claude/atlas-state/56/tour.ts, not in the repository).
+
+$ pnpm exec eslint --ignore-pattern '.claude/**'
+(exit 0)
+
+$ pnpm format:check
+
+> journeys@0.1.0 format:check /Users/paulmacfarlane/Code/journeys
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+(exit 0)
+
+$ pnpm typecheck
+
+> journeys@0.1.0 typecheck /Users/paulmacfarlane/Code/journeys
+> tsc --noEmit
+
+(exit 0)
+
+$ pnpm db:migrate (journeys_e2e)
+
+> journeys@0.1.0 db:migrate /Users/paulmacfarlane/Code/journeys
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file './drizzle.config.ts'
+◇ injected env (1) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+Using 'pg' driver for database querying
+[⣷] applying migrations...[✓] migrations applied successfully!(exit 0)
+
+$ DB_INTEGRATION_URL=<journeys_e2e> pnpm test
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+
+ Test Files  54 passed (54)
+      Tests  667 passed (667)
+   Start at  21:39:38
+   Duration  2.98s (transform 3.17s, setup 0ms, import 13.22s, tests 2.28s, environment 2.02s)
+
+(exit 0)
+
+$ pnpm test (no DB_INTEGRATION_URL: the integration file reports skipped)
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/paulmacfarlane/Code/journeys
+
+
+ Test Files  53 passed | 1 skipped (54)
+      Tests  661 passed | 6 skipped (667)
+   Start at  21:39:42
+   Duration  2.86s (transform 3.05s, setup 0ms, import 12.67s, tests 1.61s, environment 2.07s)
+
+(exit 0)
+
+$ pnpm build
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview
+├ ƒ /projects/[projectId]/journeys/[journeyId]/preview/[stepId]
+├ ƒ /projects/settings
+├ ƒ /sign-in
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+(exit 0)
+
+$ grep the built /privacy for the approved sentence
+You can delete your account from your Settings page: projects where you are the only member are deleted with everything in them, projects you share with other members stay with them, and your account details, sessions, and sign-in links go with it. It cannot be undone.
+(exit 0)
+
+$ E2E_EVIDENCE=account-delete,account-delete-refused pnpm test:e2e:prebuilt (full suite)
+contrast slate dark start: 14 elements pass, 0 fail
+contrast slate dark step: 15 elements pass, 0 fail
+  ✓   92 [chromium] › e2e/canvas.spec.ts:811:5 › canvas-duplicate-step (9.3s)
+contrast slate dark project: 11 elements pass, 0 fail
+  ✓   96 [chromium] › e2e/canvas.spec.ts:1777:7 › the seeded map › canvas-find-step-lists-map-order (2.6s)
+  ✓   82 [chromium] › e2e/themes.spec.ts:362:5 › themes-contrast: every preset passes WCAG AA on the start screen, a Step, and the Project page in light and dark (30.3s)
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✓   94 [chromium] › e2e/canvas.spec.ts:2950:7 › authoring from the map › canvas-retarget-selected-arrow (10.2s)
+  ✓   95 [chromium] › e2e/canvas.spec.ts:2467:5 › canvas-delete-key-step (9.0s)
+  ✓   97 [chromium] › e2e/canvas.spec.ts:883:5 › canvas-content-peek (6.5s)
+  ✓  100 [chromium] › e2e/canvas.spec.ts:3046:7 › authoring from the map › canvas-drop-choice-on-empty-map (5.9s)
+  ✓  101 [chromium] › e2e/canvas.spec.ts:2591:5 › canvas-arrow-select-second-arrow (6.8s)
+  ✓   98 [chromium] › e2e/canvas.spec.ts:1815:7 › the seeded map › canvas-view-stays-put (12.6s)
+  ✓  102 [chromium] › e2e/canvas.spec.ts:949:5 › canvas-keyboard-navigation (7.7s)
+  ✓   99 [chromium] › e2e/canvas.spec.ts:3343:7 › authoring from the map › canvas-undo-build-branch-and-walk (11.9s)
+  ✓  105 [chromium] › e2e/canvas.spec.ts:1942:7 › the seeded map › canvas-endings-uncolored (3.3s)
+  ✓  103 [chromium] › e2e/canvas.spec.ts:3087:7 › authoring from the map › canvas-build-by-dragging-and-walk (7.8s)
+  ✓  104 [chromium] › e2e/canvas.spec.ts:2666:7 › a map read down the page › canvas-arrow-click-stays-on-canvas (5.8s)
+  ✓  106 [chromium] › e2e/canvas.spec.ts:1028:5 › canvas-hide-and-show-panel (9.8s)
+  ✓  110 [chromium] › e2e/canvas.spec.ts:2743:7 › authoring from the map › canvas-node-opens-panel-and-edge-appears (6.3s)
+  ✓  108 [chromium] › e2e/canvas.spec.ts:1991:5 › canvas-validation-marks (8.4s)
+  ✓  107 [chromium] › e2e/canvas.spec.ts:3441:9 › authoring from the map › the seeded map, recorded › canvas-find-duplicate-and-edit (11.7s)
+  ✓  109 [chromium] › e2e/canvas.spec.ts:3126:7 › authoring from the map › canvas-build-by-dropping-and-walk (13.0s)
+  ✓  113 [chromium] › e2e/canvas.spec.ts:2105:5 › canvas-problems-readable (6.3s)
+  ✓  114 [chromium] › e2e/canvas.spec.ts:3539:7 › undo and redo › canvas-undo-title-typing (5.3s)
+  ✓  111 [chromium] › e2e/canvas.spec.ts:1129:5 › canvas-step-actions (9.8s)
+  ✓  112 [chromium] › e2e/canvas.spec.ts:2783:9 › authoring from the map › canvas-connect-and-retarget-by-dragging (11.1s)
+case-3 crossing pairs: f24a106 baseline=15 now=14
+  ✓  117 [chromium] › e2e/canvas.spec.ts:1268:7 › the seeded map › canvas-case-3-map (2.0s)
+  ✓  116 [chromium] › e2e/canvas.spec.ts:3592:7 › undo and redo › canvas-undo-rich-text (3.7s)
+  ✓  115 [chromium] › e2e/canvas.spec.ts:3164:7 › authoring from the map › canvas-build-left-to-right-and-walk (11.0s)
+  ✓  119 [chromium] › e2e/canvas.spec.ts:3241:7 › authoring from the map › canvas-build-branch-and-publish (5.0s)
+  ✓  118 [chromium] › e2e/canvas.spec.ts:3642:7 › undo and redo › canvas-undo-delete-direction-retarget (14.9s)
+  ✓  120 [chromium] › e2e/canvas.spec.ts:3300:7 › authoring from the map › canvas-undo-drawn-choice (5.0s)
+  ✓  121 [chromium] › e2e/canvas.spec.ts:3895:5 › canvas-dark-controls (2.6s)
+  ✓  122 [chromium] › e2e/canvas.spec.ts:3954:5 › canvas-lr-labels-apart (2.8s)
+  ✓  123 [chromium] › e2e/canvas.spec.ts:4005:5 › canvas-stacked-panel-scroll (1.8s)
+
+  123 passed (3.0m)
+(exit 0)
+
+# Chain result: exit 0

@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { conflict, invalid, notFound } from "@/lib/write-result";
+
 /**
  * Seam A for ticket 28's "Move up" / "Move down" action. The order rule is
  * tested on its own in `src/lib/journey-order.test.ts`; what is proved here
- * is the shell around it — who may move a Journey, what the data layer is
- * asked, and what the row's buttons hear back — with the session, the cache,
- * and the database replaced by doubles.
+ * is the shell around it — who may move a Journey (the membership seam,
+ * ticket 82), what the data layer is asked, and what the row's buttons hear
+ * back — with the session, the cache, and the database replaced by doubles.
  */
 
 const doubles = vi.hoisted(() => ({
   session: { user: { id: "author-1" } },
+  access: { journeyForMember: vi.fn(), projectForMember: vi.fn() },
   journeys: {
     createJourney: vi.fn(),
     deleteJourney: vi.fn(),
@@ -31,9 +34,9 @@ vi.mock("next/cache", () => ({ revalidatePath: doubles.revalidatePath }));
 vi.mock("@/lib/session", () => ({
   requireSession: vi.fn(async () => doubles.session),
 }));
+vi.mock("@/db/access", () => doubles.access);
 vi.mock("@/db/journeys", () => doubles.journeys);
 vi.mock("@/db/drafts", () => doubles.drafts);
-vi.mock("@/db/projects", () => ({ getProjectForMember: vi.fn() }));
 vi.mock("@/db/versions", () => doubles.versions);
 
 import {
@@ -48,6 +51,20 @@ import {
 const STALE_DRAFT =
   "Someone else changed this draft since you opened it. Reload to see their changes.";
 
+/** The Journey as the membership seam resolves it for the signed-in Author. */
+const memberJourney = {
+  id: "journey-1",
+  projectId: "project-1",
+  memberUserId: "author-1",
+  title: "Border Crossing",
+};
+
+const NO_JOURNEY = { ok: false, error: "That journey no longer exists" };
+
+beforeEach(() => {
+  doubles.access.journeyForMember.mockResolvedValue(memberJourney);
+});
+
 describe("setJourneyThemeAction", () => {
   const summary = {
     id: "journey-1",
@@ -59,7 +76,10 @@ describe("setJourneyThemeAction", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    doubles.journeys.setJourneyTheme.mockResolvedValue(summary);
+    doubles.journeys.setJourneyTheme.mockResolvedValue({
+      ok: true,
+      journey: summary,
+    });
   });
 
   it("stores the override for the signed-in Author and refreshes the Journey page", async () => {
@@ -71,12 +91,15 @@ describe("setJourneyThemeAction", () => {
     );
 
     expect(result).toEqual({ ok: true, id: "journey-1" });
-    expect(doubles.journeys.setJourneyTheme).toHaveBeenCalledWith(
+    expect(doubles.access.journeyForMember).toHaveBeenCalledWith(
       "project-1",
       "journey-1",
+      "author-1",
+    );
+    expect(doubles.journeys.setJourneyTheme).toHaveBeenCalledWith(
+      memberJourney,
       { preset: "dusk", accent: "#ffd400" },
       { preset: null, accent: null },
-      "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith(
       "/projects/[projectId]/journeys/[journeyId]",
@@ -93,11 +116,9 @@ describe("setJourneyThemeAction", () => {
     );
 
     expect(doubles.journeys.setJourneyTheme).toHaveBeenCalledWith(
-      "project-1",
-      "journey-1",
+      memberJourney,
       { preset: null, accent: null },
       { preset: "dusk", accent: "#ffd400" },
-      "author-1",
     );
   });
 
@@ -113,8 +134,8 @@ describe("setJourneyThemeAction", () => {
     expect(doubles.journeys.setJourneyTheme).not.toHaveBeenCalled();
   });
 
-  it("answers a non-Member like a Journey that is not there", async () => {
-    doubles.journeys.setJourneyTheme.mockResolvedValue(null);
+  it("answers a non-Member like a Journey that is not there, and writes nothing", async () => {
+    doubles.access.journeyForMember.mockResolvedValue(null);
 
     const result = await setJourneyThemeAction(
       "project-1",
@@ -123,10 +144,22 @@ describe("setJourneyThemeAction", () => {
       { preset: null, accent: null },
     );
 
-    expect(result).toEqual({
-      ok: false,
-      error: "That journey no longer exists",
-    });
+    expect(result).toEqual(NO_JOURNEY);
+    expect(doubles.journeys.setJourneyTheme).not.toHaveBeenCalled();
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("answers a Journey deleted since it was resolved like one that is not there", async () => {
+    doubles.journeys.setJourneyTheme.mockResolvedValue(notFound());
+
+    const result = await setJourneyThemeAction(
+      "project-1",
+      "journey-1",
+      { preset: "dusk", accent: null },
+      { preset: null, accent: null },
+    );
+
+    expect(result).toEqual(NO_JOURNEY);
     expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 
@@ -159,7 +192,10 @@ describe("updateJourneyAction", () => {
   });
 
   it("sends the title and description with the baseline they were edited from, both trimmed", async () => {
-    doubles.journeys.updateJourney.mockResolvedValue({ id: "journey-1" });
+    doubles.journeys.updateJourney.mockResolvedValue({
+      ok: true,
+      journey: { id: "journey-1" },
+    });
 
     const result = await updateJourneyAction(
       "project-1",
@@ -170,11 +206,9 @@ describe("updateJourneyAction", () => {
 
     expect(result).toEqual({ ok: true, id: "journey-1" });
     expect(doubles.journeys.updateJourney).toHaveBeenCalledWith(
-      "project-1",
-      "journey-1",
+      memberJourney,
       { title: "Night crossing", description: "" },
       { title: "Border", description: "" },
-      "author-1",
     );
   });
 
@@ -213,12 +247,34 @@ describe("saveDraftAction", () => {
 
     expect(result).toEqual({ ok: true, id: "journey-1", version: 5 });
     expect(doubles.drafts.saveDraft).toHaveBeenCalledWith(
-      "project-1",
-      "journey-1",
+      memberJourney,
       document,
       4,
-      "author-1",
     );
+  });
+
+  it("hands back the Step whose rich text the data layer refused", async () => {
+    doubles.drafts.saveDraft.mockResolvedValue(
+      invalid("Links must start with http:// or https://", { stepId: "s1" }),
+    );
+
+    const result = await saveDraftAction("project-1", "journey-1", {}, 4);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Links must start with http:// or https://",
+      stepId: "s1",
+    });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("answers a non-Member like a Journey that is not there", async () => {
+    doubles.access.journeyForMember.mockResolvedValue(null);
+
+    const result = await saveDraftAction("project-1", "journey-1", {}, 4);
+
+    expect(result).toEqual(NO_JOURNEY);
+    expect(doubles.drafts.saveDraft).not.toHaveBeenCalled();
   });
 
   it("answers another Member's save since as stale, and refreshes nothing", async () => {
@@ -244,7 +300,10 @@ describe("restoreVersionAction", () => {
   });
 
   it("restores against the Draft version the page read", async () => {
-    doubles.versions.restoreVersion.mockResolvedValue({ versionNumber: 1 });
+    doubles.versions.restoreVersion.mockResolvedValue({
+      ok: true,
+      versionNumber: 1,
+    });
 
     const result = await restoreVersionAction(
       "project-1",
@@ -255,12 +314,25 @@ describe("restoreVersionAction", () => {
 
     expect(result).toEqual({ ok: true, id: "journey-1" });
     expect(doubles.versions.restoreVersion).toHaveBeenCalledWith(
-      "project-1",
-      "journey-1",
+      memberJourney,
       "version-1",
       3,
-      "author-1",
     );
+  });
+
+  it("answers a version that is not this Journey's, and a non-Member, as a version that is not there", async () => {
+    const noVersion = { ok: false, error: "That version no longer exists" };
+
+    doubles.versions.restoreVersion.mockResolvedValue(notFound());
+    expect(
+      await restoreVersionAction("project-1", "journey-1", "version-9", 3),
+    ).toEqual(noVersion);
+
+    doubles.access.journeyForMember.mockResolvedValue(null);
+    expect(
+      await restoreVersionAction("project-1", "journey-1", "version-1", 3),
+    ).toEqual(noVersion);
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("answers a Draft another Member saved since as stale", async () => {
@@ -280,11 +352,9 @@ describe("restoreVersionAction", () => {
   });
 
   it("refuses to restore a version that fails the document contract (ticket 83)", async () => {
-    doubles.versions.restoreVersion.mockResolvedValue({
-      ok: false,
-      reason: "unreadable",
-      versionNumber: 1,
-    });
+    doubles.versions.restoreVersion.mockResolvedValue(
+      invalid("Version 1 can't be read, so it can't be restored."),
+    );
 
     const result = await restoreVersionAction(
       "project-1",
@@ -306,16 +376,14 @@ describe("moveJourneyAction", () => {
   });
 
   it("moves the Journey for the signed-in Author and refreshes the Project page", async () => {
-    doubles.journeys.moveJourney.mockResolvedValue(true);
+    doubles.journeys.moveJourney.mockResolvedValue({ ok: true });
 
     const result = await moveJourneyAction("project-1", "journey-1", "up");
 
     expect(result).toEqual({ ok: true, id: "journey-1" });
     expect(doubles.journeys.moveJourney).toHaveBeenCalledWith(
-      "project-1",
-      "journey-1",
+      memberJourney,
       "up",
-      "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith(
       "/projects/[projectId]",
@@ -324,14 +392,12 @@ describe("moveJourneyAction", () => {
   });
 
   it("answers a non-Member like a Journey that is not there", async () => {
-    doubles.journeys.moveJourney.mockResolvedValue(false);
+    doubles.access.journeyForMember.mockResolvedValue(null);
 
     const result = await moveJourneyAction("project-1", "journey-1", "down");
 
-    expect(result).toEqual({
-      ok: false,
-      error: "That journey no longer exists",
-    });
+    expect(result).toEqual(NO_JOURNEY);
+    expect(doubles.journeys.moveJourney).not.toHaveBeenCalled();
     expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 
@@ -368,20 +434,19 @@ describe("publishJourneyAction", () => {
     const result = await publishJourneyAction("project-1", "journey-1", 2);
 
     expect(doubles.versions.publishDraft).toHaveBeenCalledWith(
-      "project-1",
-      "journey-1",
+      memberJourney,
       2,
-      "author-1",
     );
     expect(result).toEqual({ ok: false, stale: true, error: STALE_DRAFT });
     expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("refuses a Draft whose row cannot be read", async () => {
-    doubles.versions.publishDraft.mockResolvedValue({
-      ok: false,
-      reason: "unreadable",
-    });
+    doubles.versions.publishDraft.mockResolvedValue(
+      invalid(
+        "This journey's draft can't be read. Restore it from a published version before publishing.",
+      ),
+    );
 
     const result = await publishJourneyAction("project-1", "journey-1", 2);
 
@@ -390,5 +455,35 @@ describe("publishJourneyAction", () => {
       error:
         "This journey's draft can't be read. Restore it from a published version before publishing.",
     });
+  });
+
+  it("refuses a Draft with publish-time problems, handing back every one", async () => {
+    const problems = [
+      { code: "missing-start" as const, message: "The draft has no start" },
+    ];
+    doubles.versions.publishDraft.mockResolvedValue(
+      invalid("This journey can't be published yet", { problems }),
+    );
+
+    const result = await publishJourneyAction("project-1", "journey-1", 2);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "This journey can't be published yet",
+      problems,
+    });
+  });
+
+  it("tells the loser of a publish race to reload", async () => {
+    doubles.versions.publishDraft.mockResolvedValue(conflict());
+
+    const result = await publishJourneyAction("project-1", "journey-1", 2);
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Another member published this journey just now. Reload to see their version, then publish again.",
+    });
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 });

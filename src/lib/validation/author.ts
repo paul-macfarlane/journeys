@@ -36,4 +36,22 @@ export const authorPageVisibilitySchema = z.object({
   public: authorPublicSchema,
 });
 
+/**
+ * The "Delete account" confirmation (ticket 77): the typed email, which
+ * must confirm the session's own (`confirmsAccountEmail`) before anything is
+ * deleted.
+ */
+export const deleteAccountSchema = z.object({
+  email: z.string().trim(),
+});
+
+/**
+ * Whether what the Author typed is their account's email: ignoring
+ * surrounding space and case, as the dialog's button and the action that
+ * backs it both decide it.
+ */
+export function confirmsAccountEmail(typed: string, email: string): boolean {
+  return typed.trim().toLowerCase() === email.toLowerCase();
+}
+
 export type AuthorIdentityInput = z.infer<typeof authorIdentitySchema>;

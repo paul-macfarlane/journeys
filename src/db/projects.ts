@@ -7,18 +7,24 @@ import { and, desc, eq } from "drizzle-orm";
 import { cache } from "react";
 
 import { db } from "@/db";
+import type { MemberProject } from "@/db/access";
 import {
   changedFields,
   guardedWrite,
   rowExists,
   stillHolds,
   stillHoldsOrRetired,
-  type StaleWrite,
 } from "@/db/guarded-write";
 import { member, project } from "@/db/schema";
 import { logUnreadable } from "@/db/unreadable";
-import { contentSchema, emptyContent, type Content } from "@/lib/graph/content";
+import {
+  contentSchema,
+  emptyContent,
+  sanitizeContent,
+  type Content,
+} from "@/lib/graph/content";
 import { themePresetSchema, toThemePreset, type Theme } from "@/lib/theme";
+import { invalid, type WriteFailure } from "@/lib/write-result";
 
 /**
  * Data access for Projects. Their Members live in `@/db/members`; only the
@@ -26,9 +32,11 @@ import { themePresetSchema, toThemePreset, type Theme } from "@/lib/theme";
  *
  * A Project is addressed by its id, so nothing here resolves a name to a
  * row and renaming one can never move it. Membership is the only
- * authorization rule there is: every read and write re-checks it against the
- * signed-in Author rather than trusting a caller, and an Author who is not a
- * Member cannot tell an existing Project from one that never existed.
+ * authorization rule there is, and it is resolved once, in `@/db/access`
+ * (ticket 82): every read and write a Member makes here takes the
+ * `MemberProject` that check hands back, so none of them can be called
+ * without it and none of them checks again. An Author who is not a Member
+ * cannot tell an existing Project from one that never existed.
  */
 
 export type ProjectSummary = {
@@ -40,7 +48,8 @@ export type ProjectSummary = {
   theme: Theme;
 };
 
-const projectColumns = {
+/** The columns a `ProjectSummary` is read from; `@/db/access` selects them too. */
+export const projectColumns = {
   id: project.id,
   title: project.title,
   descriptionContent: project.descriptionContent,
@@ -132,28 +141,28 @@ export async function createProject(
   });
 }
 
-/**
- * The Project behind an id, but only for one of its Members. Returns null
- * for a non-Member and for an unknown id alike, so callers can answer both
- * with the same 404.
- *
- * Request-scoped `cache()`, like `getSession`: the layout under
- * `[projectId]` asks for the Project to label the navbar and the page asks
- * again for the same render, and the two render in parallel, so this is
- * what makes that one query rather than two.
- */
-export const getProjectForMember = cache(
-  async (projectId: string, userId: string): Promise<ProjectSummary | null> => {
-    const [row] = await db
-      .select(projectColumns)
-      .from(project)
-      .innerJoin(member, eq(member.projectId, project.id))
-      .where(and(eq(project.id, projectId), eq(member.userId, userId)))
-      .limit(1);
+/** An open transaction: what `lockProject` holds the Project row in. */
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-    return row ? toProjectSummary(row) : null;
-  },
-);
+/**
+ * Holds a Project's row until the transaction ends, serializing the writes
+ * that must see each other: numbering a Project's Journeys (two creates, or
+ * a create and a move, under READ COMMITTED would otherwise read the same
+ * positions and write the same number twice) and removing its Members (two
+ * removals would otherwise each count two Members and both commit). False
+ * when the Project is gone.
+ */
+export async function lockProject(
+  tx: Transaction,
+  projectId: string,
+): Promise<boolean> {
+  const rows = await tx
+    .select({ id: project.id })
+    .from(project)
+    .where(eq(project.id, projectId))
+    .for("update");
+  return rows.length > 0;
+}
 
 /**
  * What an anonymous Participant may see of a Project by id: its title and
@@ -232,31 +241,31 @@ function fieldGuard(field: keyof ProjectFields, previous: unknown) {
     : stillHolds(projectFieldColumns[field], previous);
 }
 
+/** A Settings-tab write's answer: the Project as stored, or why not. */
+export type ProjectWriteResult =
+  { ok: true; project: ProjectSummary } | WriteFailure;
+
 /**
- * The one write shape every Settings-tab edit has: the Member check, then
- * the guarded update (ticket 73). Only the fields whose value differs from
- * `baseline` — what the Member edited against — are written, and each is
- * written only while the row still holds its baseline value, so another
- * Member's change to the same field since is answered `stale` and
- * nothing is overwritten. The title, description, and Theme loops each
- * guard only their own fields and never make each other stale. The update is
- * stamped with `updatedAt` (which is what moves the Project up the navbar's
- * switcher), and the row read back. Null when the Author is not a Member of
- * `projectId`, or the Project went away. A description edited from the
- * empty rich text an unreadable description reads as is written unguarded
- * (`guardsDescription`), and logged.
+ * The one write shape every Settings-tab edit has: the guarded update
+ * (ticket 73), for a Project whose membership is already resolved. Only the
+ * fields whose value differs from `baseline` — what the Member edited
+ * against — are written, and each is written only while the row still holds
+ * its baseline value, so another Member's change to the same field since is
+ * answered `stale` and nothing is overwritten. The title, description, and
+ * Theme loops each guard only their own fields and never make each other
+ * stale. The update is stamped with `updatedAt` (which is what moves the
+ * Project up the navbar's switcher), and the row read back; `not-found` when
+ * the Project went away since its membership was resolved. A description
+ * edited from the empty rich text an unreadable description reads as is
+ * written unguarded (`guardsDescription`), and logged.
  */
-async function updateProjectForMember(
-  projectId: string,
-  userId: string,
+async function updateProject(
+  existing: MemberProject,
   next: Partial<ProjectFields>,
   baseline: Partial<ProjectFields>,
-): Promise<ProjectSummary | StaleWrite | null> {
-  const existing = await getProjectForMember(projectId, userId);
-  if (!existing) return null;
-
+): Promise<ProjectWriteResult> {
   const fields = changedFields(next, baseline);
-  if (fields.length === 0) return existing;
+  if (fields.length === 0) return { ok: true, project: existing };
 
   let guarded = fields;
   if (
@@ -288,8 +297,8 @@ async function updateProjectForMember(
         .returning(projectColumns),
     () => rowExists(project, project.id, existing.id),
   );
-  if (!written.ok) return written.reason === "stale" ? written : null;
-  return toProjectSummary(written.row);
+  if (!written.ok) return written;
+  return { ok: true, project: toProjectSummary(written.row) };
 }
 
 /**
@@ -297,35 +306,40 @@ async function updateProjectForMember(
  * the title the Member edited from.
  */
 export function renameProject(
-  projectId: string,
+  project: MemberProject,
   input: { title: string },
   baseline: { title: string },
-  userId: string,
-): Promise<ProjectSummary | StaleWrite | null> {
-  return updateProjectForMember(
-    projectId,
-    userId,
+): Promise<ProjectWriteResult> {
+  return updateProject(
+    project,
     { title: input.title },
     { title: baseline.title },
   );
 }
 
 /**
- * Replaces a Project's rich-text description. The caller has already put
- * `description` and `baseline` through `sanitizeContent`; this stores what
- * it was given, while the row still holds `baseline`.
+ * Replaces a Project's rich-text description. The only path that accepts a
+ * description from outside, as `saveDraft` is a Draft's (ticket 82): both
+ * `input` and `baseline`, the description the Member edited from, go through
+ * `sanitizeContent` here — the same closed set a Step's text is held to —
+ * and a value it refuses is answered `invalid` with its reason. What is
+ * stored is the cleaned `input`, while the row still holds the cleaned
+ * `baseline`.
  */
-export function editProjectDescription(
-  projectId: string,
-  description: Content,
-  baseline: Content,
-  userId: string,
-): Promise<ProjectSummary | StaleWrite | null> {
-  return updateProjectForMember(
-    projectId,
-    userId,
-    { descriptionContent: description },
-    { descriptionContent: baseline },
+export async function editProjectDescription(
+  project: MemberProject,
+  input: unknown,
+  baseline: unknown,
+): Promise<ProjectWriteResult> {
+  const description = sanitizeContent(input);
+  if (!description.ok) return invalid(description.error);
+  const previous = sanitizeContent(baseline);
+  if (!previous.ok) return invalid(previous.error);
+
+  return updateProject(
+    project,
+    { descriptionContent: description.content },
+    { descriptionContent: previous.content },
   );
 }
 
@@ -337,31 +351,25 @@ export function editProjectDescription(
  * every request, so the change shows the moment it is stored.
  */
 export function setProjectTheme(
-  projectId: string,
+  project: MemberProject,
   theme: Theme,
   baseline: Theme,
-  userId: string,
-): Promise<ProjectSummary | StaleWrite | null> {
-  return updateProjectForMember(
-    projectId,
-    userId,
+): Promise<ProjectWriteResult> {
+  return updateProject(
+    project,
     { themePreset: theme.preset, themeAccent: theme.accent },
     { themePreset: baseline.preset, themeAccent: baseline.accent },
   );
 }
 
 /**
- * Hard-deletes a Project. Its Members and its Journeys cascade with it.
- * Returns false when the Author is not a Member, which callers answer with
- * the same 404 as an unknown id.
+ * Hard-deletes a Project. Its Members and its Journeys cascade with it. A
+ * Project another Member deleted a moment earlier is gone either way, so
+ * that is not a failure.
  */
 export async function deleteProject(
-  projectId: string,
-  userId: string,
-): Promise<boolean> {
-  const existing = await getProjectForMember(projectId, userId);
-  if (!existing) return false;
-
+  existing: MemberProject,
+): Promise<{ ok: true }> {
   await db.delete(project).where(eq(project.id, existing.id));
-  return true;
+  return { ok: true };
 }

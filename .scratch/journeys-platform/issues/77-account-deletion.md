@@ -1,8 +1,8 @@
 # 77: Account deletion
 
-Status: ready-for-agent
+Status: done
 Blocked by: None
-Owner:
+Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (auth, schema cascades, a destructive action)
@@ -33,3 +33,49 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`contract`). Never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Origin: Paul's post-hackathon grilling, 2026-09-26.
 
 ## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), chunk 4
+
+`[EXECUTION PLAN]` Chunk 4 is 82 → 77, one branch `feat/chunk-4-membership-and-accounts`, one PR to `staging`. This ticket is deliverable D2, one worker (Sonnet) in worktree `journeys-d2`, in parallel with 82 (D1): the two share no source files. Paul's decisions above are taken as written; the one human gate is his re-approval of the `/privacy` sentence, raised once the draft exists.
+
+Resolved decisions for D2:
+
+- **The data layer.** `src/db/account.ts`: `previewAccountDeletion(userId)` lists the Author's Projects split into the ones that go (sole Member) and the ones that stay (shared), by title, for the confirmation; `deleteAccount(client, userId)` is one transaction on the client it is handed (the app passes `db`; the integration test passes its own): read the Author's memberships, lock those Project rows in id order with `SELECT … FOR UPDATE`, delete the Projects whose Member count is 1 (their Journeys, Drafts, Published Versions, Runs, and Responses cascade; the last-Member trigger allows a cascade from a deleted Project), then delete the `user` row, which cascades the remaining memberships, sessions, and linked OAuth accounts and nulls `published_version.published_by`. A `member` insert racing the deletion waits on the Project's `FOR UPDATE` (a foreign-key insert takes `FOR KEY SHARE`) or on the `user` row, so it lands either before the read or after the commit; the integration test holds such an insert open across a deletion to prove it.
+- **better-auth's own deletion is not used.** Its `/delete-user` endpoint is off (`user.deleteUser.enabled` defaults to false, so it is a 404 like `/update-user`), and its flow runs outside our transaction. The `user` row is deleted directly inside it; afterwards the action calls `auth.api.signOut` (which deletes the cookie whether or not a session row is found) and redirects to `/?notice=account-deleted`, where the landing page says "Your account was deleted."
+- **The action and the confirmation.** `deleteAccountAction(input)` in the Settings actions parses `{ email }`, compares it to the session's email case-insensitively after trimming, and refuses a mismatch with "Type your account's email to confirm" before touching the database. The dialog (an `AlertDialog` like the Project's) lists the Projects that will be deleted by title, says shared Projects stay with their other Members, holds an email field, and enables "Delete account" only when the field matches. It sits in a "Delete account" section at the bottom of Settings.
+- **Tests.** `src/db/account.integration.test.ts` runs against a real database when `DB_INTEGRATION_URL` is set and is skipped otherwise; CI sets it to its migrated service database, and the local chain sets it to the e2e database. It covers: the sole Project and everything in it gone by row count, the shared Project intact with one fewer Member, `session`/`account` rows gone, `published_by` nulled on a shared Project's version the Author published, a bare `DELETE FROM member` of a sole Member still refused by the trigger, and the race above. `e2e/account-delete.spec.ts` covers AC 1 to 3 through the browser; the same-provider sign-in is proved by minting a session for the same email afterwards (a new id with no Projects), since OAuth itself is never driven.
+- **Copy.** `/privacy`'s "Deleting things" paragraph loses "email us and we will do it" and gains the account sentence; the draft goes to Paul for approval before the PR.
+
+Evidence: `test-results/account-delete/account-delete.png` and `test-results/account-delete-refused/account-delete-refused.png`, `test-results/77-ac-4-data-layer.txt` (the integration test with `DB_INTEGRATION_URL` set), and the chunk's full run in `test-results/chunk-4-commands.txt`.
+
+`[AI CODE REVIEW]` Two fresh reviewers (Opus) read the whole chunk diff (`8da2dd0..9300bb7`); the orchestrator adjudicated from the cited hunks. One blocking finding, fixed with the rest in 2698b30 (one worker, Opus):
+- **Blocking, fixed:** `deleteAccount` read the Author's memberships before locking and never re-checked them. If another Member removed the Author from a shared Project while the deletion waited on its lock, the Project counted one Member and was deleted, with that other Member's Journeys and Runs. Now: the user row `FOR UPDATE` first, then the memberships, then the Projects `FOR UPDATE` in id order, then one grouped re-read of each Project's Member count and whether the Author is still in it; only a Project the Author is still the only Member of is deleted.
+- Correctness and spec, fixed:
+  - A Project the Author created mid-deletion tripped the last-Member trigger and threw; the user-row lock makes the deletion wait for it and delete it as a sole Project.
+  - The Response row-count assertion filtered by a version id and could never fail; it now asserts the Run's Response exists before and is gone after.
+  - The server-side email refusal was untested: `confirmsAccountEmail` in `src/lib/validation/author.ts` is shared by the dialog and the action, and `settings/actions.test.ts` proves a wrong or missing email refuses before any delete, and a match deletes, signs out, and redirects in that order.
+  - The dialog refuses to close, and Cancel is disabled, while the delete is pending.
+  - `docs/agents/testing.md` says how to run the database integration suite (`DB_INTEGRATION_URL`).
+- Coding standards, fixed: the race tests wait on `pg_stat_activity` (blocked by the racing client's pid), not a sleep; the e2e uses `fill`, not a value-setter; a real Response row stands in for run history; the second Member is minted, not given a browser; "Owner" naming gone; one `schema` import; the lock-order and `schema.ts` comments rewritten plainly.
+- Deviations: better-auth's disabled `/delete-user` answers 403 (the route exists, the feature is off), not 404; the e2e adds the second Member by SQL, since the Members tab is `members.spec.ts`'s.
+- Accepted risk: an Author deleting their account while publishing in their own sole Project can deadlock the two transactions; Postgres aborts one, nothing is half-written, and the Author can retry.
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/108 (chunk 4, with ticket 82).
+- **Worker:** one worker (Sonnet, worktree `journeys-d2`, commit 9a74193), in parallel with 82. Review fixes, including the blocking race, by a second worker (Opus, 2698b30). Verified at 2698b30 on local `next start` over docker Postgres 18.
+- **Design:** better-auth's own deletion is not used. `/delete-user` stays off (403), and it would run outside the transaction. `deleteAccount` deletes the user row directly inside one transaction, then the action calls `auth.api.signOut` and redirects to `/?notice=account-deleted`.
+- **Verdicts:**
+  - AC-1 PASS: `test-results/account-delete/account-delete.png` and the `account-delete` assertions (row counts, the shared Project keeps its other Member, the public link 404s).
+  - AC-2 PASS: `test-results/account-delete-refused/account-delete-refused.png`, plus `settings/actions.test.ts` for the server-side refusal.
+  - AC-3 PASS: the stale cookie is redirected off `/projects`, and a session minted for the same email is a new, empty account (`account-delete`).
+  - AC-4 PASS: `test-results/77-ac-4-data-layer.txt` (six tests on real Postgres: the cascade, `published_by` nulled, the last-Member trigger, and three races).
+  - The full run is in `test-results/chunk-4-commands.txt`: 123 passed, 0 flaky.
+- **Human gate:** Paul approved the `/privacy` sentence as written, in this thread on 2026-09-26. The built page renders it (`test-results/chunk-4-commands.txt`).
+- **After merge:** nothing for Paul beyond the merge. There is no migration and no new environment variable in any deployment (`DB_INTEGRATION_URL` is CI-only).
+
+`[SCOPE CHANGE]` 2026-09-27, CI on PR #108. `author-settings` failed once: a GitHub link typed just as the LinkedIn save's refresh landed was wiped, so its refusal never showed.
+- **Cause:** `useAutosavedForm`'s adopt effect called react-hook-form's `reset` without `keepFieldsRef`. That forgets every registered field until the re-render registers them again, so a keystroke in between was dropped and then overwritten with the stored value.
+- **Pre-existing:** the bug predates this chunk. This ticket's heavier Settings refresh (a second query and one more section) made the window easier to hit.
+- **Diagnosis:** reproduced with the CI trace, then under 6× CPU throttling (1 in 20 runs), then with value-setter instrumentation.
+- **Fix:** 348d6a4, `keepFieldsRef: true`, as react-hook-form's own `values` option passes it. A unit test types in the same commit as the adopt, red before the fix and green after. The throttled repro then passed 60 of 60.
+- **Re-verification:** the whole chain reran at 348d6a4, with 123 of 123 passing in `test-results/chunk-4-commands.txt`.
+- **Scope:** the change is in shared code outside both tickets, and it is recorded here because this ticket's page exposed it.
