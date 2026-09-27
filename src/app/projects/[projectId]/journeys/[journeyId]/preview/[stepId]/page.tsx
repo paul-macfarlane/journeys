@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
@@ -7,14 +7,10 @@ import {
   responseRefusal,
   StepView,
 } from "@/components/runner/step-view";
-import { getDraftForMember } from "@/db/drafts";
-import { getJourneyForMember } from "@/db/journeys";
-import { getProjectForMember } from "@/db/projects";
 import { hasStep, isEnding } from "@/lib/graph/document";
-import { requireSession } from "@/lib/session";
-import { effectiveTheme } from "@/lib/theme";
 
 import { previewChooseAction } from "../actions";
+import { loadPreview } from "../load";
 
 /**
  * Preview's per-Step screen: one Step of the Draft, walked exactly the way a
@@ -34,37 +30,17 @@ export default async function PreviewStepPage({
     notice?: string | string[];
   }>;
 }) {
-  const session = await requireSession();
   const [{ projectId, journeyId, stepId }, { notice }] = await Promise.all([
     params,
     searchParams,
   ]);
-
-  const journey = await getJourneyForMember(
+  const { journey, draft, theme, journeyHref } = await loadPreview({
     projectId,
     journeyId,
-    session.user.id,
-  );
-  if (!journey) notFound();
-
-  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!stored) notFound();
-  // A Draft that cannot be read has nothing to preview: the Journey page
-  // says so and offers a Restore (ticket 73).
-  if (stored.kind === "unreadable") {
-    redirect(`/projects/${projectId}/journeys/${journeyId}`);
-  }
-  const draft = stored.document;
+  });
 
   if (!hasStep(draft, stepId)) notFound();
   const step = draft.steps[stepId];
-
-  // The Theme a Participant will see, as on Preview's first screen.
-  const project = await getProjectForMember(projectId, session.user.id);
-  if (!project) notFound();
-  const theme = effectiveTheme(project.theme, journey.theme);
-
-  const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
   return (
     <RunnerFrame
@@ -79,7 +55,7 @@ export default async function PreviewStepPage({
       // The way out (ticket 69), pointed at Preview's own routes: the
       // Author's Project page, and the first screen wherever the Step does
       // not offer "Start over" itself — an Ending does, below its Outcome.
-      project={{ title: project.title, href: `/projects/${projectId}` }}
+      project={{ title: journey.project.title, href: `/projects/${projectId}` }}
       startOver={
         isEnding(step) ? undefined : { href: `${journeyHref}/preview` }
       }

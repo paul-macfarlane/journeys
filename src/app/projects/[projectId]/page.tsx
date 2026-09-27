@@ -10,9 +10,9 @@ import { ProjectSettingsFields } from "@/components/projects/project-settings-fi
 import { ProjectThemeSettings } from "@/components/projects/project-theme-settings";
 import { SiteFooter } from "@/components/site-footer";
 import { UrlTabs } from "@/components/url-tabs";
+import { projectForMember } from "@/db/access";
 import { listJourneysForProject } from "@/db/journeys";
 import { listMembers } from "@/db/members";
-import { getProjectForMember } from "@/db/projects";
 import { contentPreview } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
 
@@ -27,12 +27,12 @@ export default async function ProjectPage({
 
   // Null for a non-Member and for an id that never existed alike, so both
   // get the same 404 and neither leaks the other's existence.
-  const project = await getProjectForMember(projectId, session.user.id);
+  const project = await projectForMember(projectId, session.user.id);
   if (!project) notFound();
 
   const [journeys, members] = await Promise.all([
-    listJourneysForProject(project.id),
-    listMembers(project.id),
+    listJourneysForProject(project),
+    listMembers(project),
   ]);
   const descriptionPreview = contentPreview(project.description);
 

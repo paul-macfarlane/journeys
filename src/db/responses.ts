@@ -6,7 +6,7 @@ import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { getJourneyForMember } from "@/db/journeys";
+import type { MemberJourney } from "@/db/access";
 import { publishedVersion, response, run } from "@/db/schema";
 import type { ResponseRow } from "@/lib/response-list";
 
@@ -17,7 +17,8 @@ import type { ResponseRow } from "@/lib/response-list";
  * a Participant is anonymous, and the Run cookie — the unguessable id the
  * action has already resolved through `getRunForJourney` — is the only
  * credential there is. The Members' half rides on Project membership like
- * every other read under `src/db`, and hands back the text alone: no Run id,
+ * every other read under `src/db` — it takes the `MemberJourney`
+ * `@/db/access` resolved — and hands back the text alone: no Run id,
  * no participant id, nothing a Member could use to tell one Participant's
  * answers from another's.
  */
@@ -75,19 +76,12 @@ export async function getResponse(
 
 /**
  * Every Response recorded against any Published Version of a Journey,
- * oldest first, for one of its Project's Members. Null for a non-Member, an
- * unknown Project, and an unknown Journey alike — the same 404 as every other
- * Journey page. Steps keep their ids across versions, so a Step's answers
+ * oldest first. Steps keep their ids across versions, so a Step's answers
  * from every version it was published in arrive together under its id.
  */
-export async function listResponsesForMember(
-  projectId: string,
-  journeyId: string,
-  userId: string,
-): Promise<ResponseRow[] | null> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
+export async function listResponses(
+  existing: MemberJourney,
+): Promise<ResponseRow[]> {
   return db
     .select({
       stepId: response.stepId,

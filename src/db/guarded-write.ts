@@ -5,6 +5,7 @@ import { eq, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 
 import { db } from "@/db";
+import { notFound, stale, type WriteFailure } from "@/lib/write-result";
 
 /**
  * The one conditional write every concurrently edited row goes through
@@ -16,16 +17,19 @@ import { db } from "@/db";
  */
 
 /** A write refused because another Member changed what it was made against. */
-export type StaleWrite = { ok: false; reason: "stale" };
+export type StaleWrite = Extract<WriteFailure, { reason: "stale" }>;
+
+/** A write whose row is gone: deleted by another Member in the meantime. */
+export type MissingRow = Extract<WriteFailure, { reason: "not-found" }>;
 
 export type GuardedWriteResult<R> =
-  { ok: true; row: R } | StaleWrite | { ok: false; reason: "not-found" };
+  { ok: true; row: R } | StaleWrite | MissingRow;
 
 /**
  * Runs `write` — an UPDATE, or an upsert whose conflict branch is guarded,
  * with RETURNING — and reads what it answered. A row is the write. No row is
  * ambiguous: the guard failed, or the row went away between the caller's
- * membership check and the write (a Journey deleted in that moment). `exists`
+ * resolving it and the write (a Journey deleted in that moment). `exists`
  * re-reads the row to tell the two apart, so a deleted row is never reported
  * to the Member as someone else's change.
  */
@@ -35,9 +39,7 @@ export async function guardedWrite<R>(
 ): Promise<GuardedWriteResult<R>> {
   const [row] = await write();
   if (row !== undefined) return { ok: true, row };
-  return (await exists())
-    ? { ok: false, reason: "stale" }
-    : { ok: false, reason: "not-found" };
+  return (await exists()) ? stale() : notFound();
 }
 
 /** What reads a row: the database, or a transaction already open on it. */
@@ -60,15 +62,6 @@ export async function rowExists(
     .where(eq(idColumn, id))
     .limit(1);
   return rows.length > 0;
-}
-
-/** Whether a data-layer answer is a stale refusal. */
-export function isStale(result: unknown): result is StaleWrite {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    (result as { reason?: unknown }).reason === "stale"
-  );
 }
 
 /** Two stored values are the same: rich text by what it holds. */

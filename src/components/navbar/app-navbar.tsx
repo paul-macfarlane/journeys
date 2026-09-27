@@ -3,10 +3,8 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand";
 import { ProjectSwitcher } from "@/components/navbar/project-switcher";
 import { UserMenu } from "@/components/navbar/user-menu";
-import {
-  getProjectForMember,
-  listRecentProjectsForAuthor,
-} from "@/db/projects";
+import { projectForMember } from "@/db/access";
+import { listRecentProjectsForAuthor } from "@/db/projects";
 import { SWITCHER_LIMIT, switcherProjects } from "@/lib/navbar";
 import { requireSession } from "@/lib/session";
 
@@ -38,7 +36,7 @@ export async function AppNavbar({ projectId }: { projectId?: string }) {
   // renders, labelled as it is anywhere outside a Project.
   const [recent, current] = await Promise.all([
     listRecentProjectsForAuthor(session.user.id, SWITCHER_LIMIT),
-    projectId ? getProjectForMember(projectId, session.user.id) : null,
+    projectId ? projectForMember(projectId, session.user.id) : null,
   ]);
   const currentProject = current
     ? { id: current.id, title: current.title }

@@ -1,4 +1,6 @@
 import { staleText, type StaleNoun } from "@/lib/autosave";
+import type { PublishProblem } from "@/lib/graph/validate";
+import type { WriteFailure } from "@/lib/write-result";
 
 /**
  * The shape every dialog-backed server action returns, shared by the Project
@@ -7,14 +9,22 @@ import { staleText, type StaleNoun } from "@/lib/autosave";
  * their id, so a success carries that id: creating and deleting move the
  * browser, and renaming never does.
  */
-export type ActionResult =
-  | { ok: true; id: string }
-  /**
-   * `stale`: nothing was stored because another Member changed what the
-   * write was made against (ticket 73). `error` is then the sentence that
-   * says so, for any caller that shows it as it would any refusal.
-   */
-  | { ok: false; error: string; stale?: true };
+export type ActionResult = { ok: true; id: string } | ActionFailure;
+
+/**
+ * A refused action: the sentence the dialog shows. `stale`: nothing was
+ * stored because another Member changed what the write was made against
+ * (ticket 73), and `error` is the sentence that says so, for any caller that
+ * shows it as it would any refusal. `stepId` names the Step whose rich text
+ * was refused, and `problems` every reason a Draft can't be published yet.
+ */
+export type ActionFailure = {
+  ok: false;
+  error: string;
+  stale?: true;
+  stepId?: string;
+  problems?: PublishProblem[];
+};
 
 /** A write refused as stale, naming what the other Member changed. */
 export function staleResult(noun: StaleNoun): {
@@ -23,6 +33,39 @@ export function staleResult(noun: StaleNoun): {
   stale: true;
 } {
   return { ok: false, error: staleText(noun), stale: true };
+}
+
+/**
+ * The one place a data-layer refusal becomes the sentence a Member reads
+ * (ticket 82). `missing` names what a `not-found` lost — also the answer to
+ * a non-Member, who cannot tell a Project or Journey they may not see from
+ * one that never existed — and `stale` what another Member changed, when
+ * that is not the same thing (a Journey's Draft, say).
+ */
+export function failureResult(
+  failure: WriteFailure,
+  nouns: { missing: "project" | "journey" | "version"; stale?: StaleNoun },
+): ActionFailure {
+  switch (failure.reason) {
+    case "not-found":
+      return { ok: false, error: `That ${nouns.missing} no longer exists` };
+    case "conflict":
+      return {
+        ok: false,
+        error:
+          "Another member published this journey just now. Reload to see their version, then publish again.",
+      };
+    case "stale":
+      return staleResult(
+        nouns.stale ?? (nouns.missing === "version" ? "draft" : nouns.missing),
+      );
+    case "invalid": {
+      const result: ActionFailure = { ok: false, error: failure.error };
+      if (failure.stepId !== undefined) result.stepId = failure.stepId;
+      if (failure.problems !== undefined) result.problems = failure.problems;
+      return result;
+    }
+  }
 }
 
 /** Surfaces the first schema complaint in the dialog's error slot. */

@@ -16,7 +16,8 @@ class RedirectSignal extends Error {
 
 const doubles = vi.hoisted(() => ({
   session: { user: { id: "author-1" } },
-  drafts: { getDraftForMember: vi.fn() },
+  access: { journeyForMember: vi.fn() },
+  drafts: { getDraft: vi.fn() },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -25,6 +26,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+vi.mock("@/db/access", () => doubles.access);
 vi.mock("@/db/drafts", () => doubles.drafts);
 vi.mock("@/lib/session", () => ({
   requireSession: vi.fn(async () => doubles.session),
@@ -116,8 +118,33 @@ const BASE = `/projects/${PROJECT_ID}/journeys/${JOURNEY_ID}/preview`;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  doubles.drafts.getDraftForMember.mockResolvedValue({
+  doubles.access.journeyForMember.mockResolvedValue({ id: JOURNEY_ID });
+  doubles.drafts.getDraft.mockResolvedValue({
+    kind: "ok",
     document: promptedDraft(),
+  });
+});
+
+describe("previewChooseAction for an Author who is not a Member", () => {
+  it("sends them to the Journey page, which 404s, reading no Draft", async () => {
+    doubles.access.journeyForMember.mockResolvedValue(null);
+
+    const to = await redirectOf(
+      previewChooseAction(
+        PROJECT_ID,
+        JOURNEY_ID,
+        "queue",
+        formResponding(RESPONSE),
+      ),
+    );
+
+    expect(to).toBe(`/projects/${PROJECT_ID}/journeys/${JOURNEY_ID}`);
+    expect(doubles.access.journeyForMember).toHaveBeenCalledWith(
+      PROJECT_ID,
+      JOURNEY_ID,
+      "author-1",
+    );
+    expect(doubles.drafts.getDraft).not.toHaveBeenCalled();
   });
 });
 
