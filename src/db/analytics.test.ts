@@ -14,7 +14,14 @@ import { toAnalyticsSource } from "./analytics";
  */
 describe("toAnalyticsSource", () => {
   const document = createDraftDocument();
-  const runs = [{ versionId: "version-1", path: ["start"] }];
+  const runs = [
+    {
+      versionId: "version-1",
+      path: ["start"],
+      completedAt: null,
+      endingStepId: null,
+    },
+  ];
 
   it("reads a version whose document satisfies the contract", () => {
     expect(

@@ -72,9 +72,18 @@ function runnerDocument(): GraphDocument {
   );
 }
 
-function run(path: string[], versionId = VERSION): RunPath {
-  return { versionId, path };
+function run(
+  path: string[],
+  versionId = VERSION,
+  completion: { completedAt: Date | null; endingStepId: string | null } = {
+    completedAt: null,
+    endingStepId: null,
+  },
+): RunPath {
+  return { versionId, path, ...completion };
 }
+
+const COMPLETED_AT = new Date("2026-09-26T00:00:00.000Z");
 
 describe("analyticsForVersion", () => {
   it("counts starts, completions, and abandonment from the paths alone", () => {
@@ -424,6 +433,109 @@ describe("analyticsForVersion", () => {
     expect(result.choices["choice-wait"]).toMatchObject({
       traversals: 0,
       share: 0,
+    });
+  });
+
+  // Ticket 75: a Run's Completion survives a backtrack off the Ending it
+  // reached, and its Outcome bar follows the latest Ending it reached.
+  describe("Completion survives a backtrack (ticket 75)", () => {
+    it("counts a Run as a Completion, under its Ending's Outcome, even after it backed off the Ending", () => {
+      // The Participant reached waved-through, then backed to queue: the
+      // path no longer ends on an Ending, but completedAt/endingStepId do.
+      const result = analyticsForVersion(VERSION, runnerDocument(), [
+        run(["start", "queue", "waved-through", "queue"], VERSION, {
+          completedAt: COMPLETED_AT,
+          endingStepId: "waved-through",
+        }),
+      ]);
+
+      expect(result).toMatchObject({ starts: 1, completions: 1, abandoned: 0 });
+      expect(result.steps["waved-through"]).toMatchObject({ ended: 1 });
+      expect(
+        result.outcomes.find((group) => group.key === "outcome:reached-care"),
+      ).toMatchObject({ runs: 1 });
+      expect(
+        result.outcomes.find((group) => group.key === "abandoned"),
+      ).toMatchObject({ runs: 0 });
+    });
+
+    it("counts one Completion under the latest Ending only, when a Run reached Ending X, backed off, then reached Ending Y", () => {
+      // X is waved-through, Y is turned-back — the reducer replaces
+      // endingStepId/outcomeId with the latest, so only Y's bar gets it.
+      const result = analyticsForVersion(VERSION, runnerDocument(), [
+        run(
+          ["start", "queue", "waved-through", "queue", "turned-back"],
+          VERSION,
+          {
+            completedAt: COMPLETED_AT,
+            endingStepId: "turned-back",
+          },
+        ),
+      ]);
+
+      expect(result).toMatchObject({ starts: 1, completions: 1 });
+      expect(
+        result.outcomes.find((group) => group.key === "outcome:turned-away"),
+      ).toMatchObject({ runs: 1 });
+      expect(
+        result.outcomes.find((group) => group.key === "outcome:reached-care"),
+      ).toMatchObject({ runs: 0 });
+      expect(result.steps["waved-through"]).toMatchObject({ ended: 0 });
+      expect(result.steps["turned-back"]).toMatchObject({ ended: 1 });
+    });
+
+    it("groups a Run under its own untagged latest Ending, even off the path's last entry", () => {
+      const untagged = runnerDocument();
+      untagged.steps["turned-back"].outcomeId = null;
+      delete untagged.outcomes["turned-away"];
+
+      const result = analyticsForVersion(VERSION, untagged, [
+        run(["start", "turned-back", "start"], VERSION, {
+          completedAt: COMPLETED_AT,
+          endingStepId: "turned-back",
+        }),
+      ]);
+
+      expect(result).toMatchObject({ starts: 1, completions: 1, abandoned: 0 });
+      expect(
+        result.outcomes.find((group) => group.key === "ending:turned-back"),
+      ).toMatchObject({ runs: 1 });
+    });
+
+    it("groups under the Ending the Run rests on over a stale endingStepId the previous code left behind", () => {
+      // The new code took the Run to waved-through; the previous code, still
+      // serving during the deploy, backed it off and walked it to
+      // turned-back without touching ending_step_id.
+      const result = analyticsForVersion(VERSION, runnerDocument(), [
+        run(["start", "turned-back"], VERSION, {
+          completedAt: COMPLETED_AT,
+          endingStepId: "waved-through",
+        }),
+      ]);
+
+      expect(result).toMatchObject({ starts: 1, completions: 1 });
+      expect(
+        result.outcomes.find((group) => group.key === "outcome:turned-away"),
+      ).toMatchObject({ runs: 1 });
+      expect(result.steps["waved-through"]).toMatchObject({ ended: 0 });
+    });
+
+    it("still counts a legacy Run (no completedAt) that is resting on an Ending", () => {
+      // A row written before ticket 75, or by the previous code during the
+      // deploy window: completedAt/endingStepId are null, but the path still
+      // ends on the Ending, so the old reading holds.
+      const result = analyticsForVersion(VERSION, runnerDocument(), [
+        run(["start", "queue", "waved-through"], VERSION, {
+          completedAt: null,
+          endingStepId: null,
+        }),
+      ]);
+
+      expect(result).toMatchObject({ starts: 1, completions: 1, abandoned: 0 });
+      expect(result.steps["waved-through"]).toMatchObject({ ended: 1 });
+      expect(
+        result.outcomes.find((group) => group.key === "outcome:reached-care"),
+      ).toMatchObject({ runs: 1 });
     });
   });
 });

@@ -55,8 +55,6 @@ type Refusal = { error: string; problems: PublishProblem[] };
 /** What a successful publish leaves behind to be acknowledged. */
 type Acknowledgement = {
   versionNumber: number;
-  /** The ticket-43 warning, when the Journey has a deciding Prompt and no gateway key. */
-  warning: string | null;
 };
 
 type PublishScopeValue = {
@@ -128,11 +126,10 @@ export function PublishScope({
 /**
  * The line that says a publish went through, in the header beside the
  * controls: "Published Version N — participants see it now." with the
- * participant link to copy, and, when it applies, what Participants will
- * meet instead of a deciding Prompt. One `role="status"` so a screen reader
- * hears it without being moved; nothing until there is something to say.
- * The copy control's own "Copied" is a live region inside this one, so a
- * copy may be read back as the whole line: brief, and the line is short.
+ * participant link to copy. One `role="status"` so a screen reader hears it
+ * without being moved; nothing until there is something to say. The copy
+ * control's own "Copied" is a live region inside this one, so a copy may be
+ * read back as the whole line: brief, and the line is short.
  */
 export function PublishAcknowledgement({ journeyId }: { journeyId: string }) {
   const { acknowledgement } = usePublishScope("PublishAcknowledgement");
@@ -147,9 +144,6 @@ export function PublishAcknowledgement({ journeyId }: { journeyId: string }) {
         Published Version {acknowledgement.versionNumber} — participants see it
         now.
       </span>
-      {acknowledgement.warning !== null ? (
-        <span className="text-muted-foreground">{acknowledgement.warning}</span>
-      ) : null}
       <CopyLinkButton path={`/j/${journeyId}`} />
     </p>
   );
@@ -191,14 +185,10 @@ export function PublishButton({
         setRefusal({ error: result.error, problems: result.problems ?? [] });
         return;
       }
-      // Published: the header's line says which version, and — ticket 43 —
-      // what Participants will meet when a deciding Prompt has no gateway
-      // key. Acknowledged here rather than kept here because the Versions
-      // tab's button is gone by the time its own publish has landed.
-      acknowledge({
-        versionNumber: result.versionNumber,
-        warning: result.warning ?? null,
-      });
+      // Published: the header's line says which version. Acknowledged here
+      // rather than kept here because the Versions tab's button is gone by
+      // the time its own publish has landed.
+      acknowledge({ versionNumber: result.versionNumber });
       // No router.refresh(): the action revalidates the Journey page, so its
       // response already carries the re-rendered tree. A second refresh
       // landed hundreds of milliseconds later under load and re-rendered

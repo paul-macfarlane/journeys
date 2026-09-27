@@ -140,8 +140,7 @@ export async function getLiveVersion(
 }
 
 export type PublishDraftResult =
-  /** `document` is what was published, so the caller can warn about it. */
-  | { ok: true; versionNumber: number; document: GraphDocument }
+  | { ok: true; versionNumber: number }
   | { ok: false; problems: PublishProblem[] }
   | { ok: false; conflict: true }
   /** The Draft row fails the document contract: nothing to publish. */
@@ -260,7 +259,7 @@ export async function publishDraft(
         .set({ liveVersionId: created.id, updatedAt: new Date() })
         .where(eq(journey.id, existing.id));
 
-      return { ok: true, versionNumber, document };
+      return { ok: true, versionNumber };
     });
   } catch (error) {
     // The race the unique constraint exists for: another Member published

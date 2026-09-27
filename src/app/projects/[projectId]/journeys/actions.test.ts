@@ -24,8 +24,6 @@ const doubles = vi.hoisted(() => ({
     restoreVersion: vi.fn(),
     unpublishJourney: vi.fn(),
   },
-  // Mutable, so a test can take the key away; never a real credential.
-  env: { AI_GATEWAY_API_KEY: "test-key" as string | undefined },
 }));
 
 vi.mock("server-only", () => ({}));
@@ -37,9 +35,6 @@ vi.mock("@/db/journeys", () => doubles.journeys);
 vi.mock("@/db/drafts", () => doubles.drafts);
 vi.mock("@/db/projects", () => ({ getProjectForMember: vi.fn() }));
 vi.mock("@/db/versions", () => doubles.versions);
-vi.mock("@/lib/env", () => ({ env: doubles.env }));
-
-import type { GraphDocument } from "@/lib/graph/document";
 
 import {
   moveJourneyAction,
@@ -349,99 +344,19 @@ describe("moveJourneyAction", () => {
 });
 
 describe("publishJourneyAction", () => {
-  const content = {
-    type: "doc" as const,
-    content: [{ type: "paragraph" as const }],
-  };
-
-  /** One Step with two Choices to Endings, its Prompt deciding or not. */
-  function documentWhosePromptDecides(decides: boolean): GraphDocument {
-    const ending = (id: string) => ({
-      id,
-      title: id,
-      content,
-      choices: [],
-      prompt: null,
-      outcomeId: null,
-      position: null,
-    });
-    return {
-      schemaVersion: 1,
-      startStepId: "start",
-      allowBack: true,
-      steps: {
-        start: {
-          id: "start",
-          title: "Border post",
-          content,
-          choices: ["a", "b"].map((id) => ({
-            id,
-            label: id,
-            targetStepId: id,
-            condition: null,
-            effect: null,
-          })),
-          prompt: {
-            type: "free_text",
-            label: "What do you do?",
-            required: true,
-            decides,
-          },
-          outcomeId: null,
-          position: null,
-        },
-        a: ending("a"),
-        b: ending("b"),
-      },
-      outcomes: {},
-      layoutDirection: "TB",
-    };
-  }
-
-  const WARNING =
-    "This journey has a prompt that decides the next step, but no AI Gateway key is set. Participants will choose for themselves.";
-
   beforeEach(() => {
     vi.clearAllMocks();
-    doubles.env.AI_GATEWAY_API_KEY = "test-key";
   });
 
-  it("publishes a deciding Prompt with no key, and warns that Participants will choose for themselves", async () => {
-    doubles.env.AI_GATEWAY_API_KEY = undefined;
+  it("publishes the Draft and reports the new version", async () => {
     doubles.versions.publishDraft.mockResolvedValue({
       ok: true,
       versionNumber: 3,
-      document: documentWhosePromptDecides(true),
-    });
-
-    const result = await publishJourneyAction("project-1", "journey-1", 0);
-
-    expect(result).toEqual({ ok: true, versionNumber: 3, warning: WARNING });
-  });
-
-  it("does not warn when the key is set", async () => {
-    doubles.versions.publishDraft.mockResolvedValue({
-      ok: true,
-      versionNumber: 3,
-      document: documentWhosePromptDecides(true),
     });
 
     const result = await publishJourneyAction("project-1", "journey-1", 0);
 
     expect(result).toEqual({ ok: true, versionNumber: 3 });
-  });
-
-  it("does not warn when no Prompt decides", async () => {
-    doubles.env.AI_GATEWAY_API_KEY = undefined;
-    doubles.versions.publishDraft.mockResolvedValue({
-      ok: true,
-      versionNumber: 1,
-      document: documentWhosePromptDecides(false),
-    });
-
-    const result = await publishJourneyAction("project-1", "journey-1", 0);
-
-    expect(result).toEqual({ ok: true, versionNumber: 1 });
   });
 
   it("publishes the Draft at the version the Member holds, and answers a newer one as stale", async () => {

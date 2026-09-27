@@ -88,6 +88,8 @@ describe("beginRun", () => {
         path: ["start", "a"],
         backtrackCount: 0,
         endedAt: null,
+        completedAt: null,
+        endingStepId: null,
         outcomeId: null,
       },
     });
@@ -102,6 +104,8 @@ describe("beginRun", () => {
         path: ["start", "b"],
         backtrackCount: 0,
         endedAt: NOW,
+        completedAt: NOW,
+        endingStepId: "b",
         outcomeId: "outcome-b",
       },
     });

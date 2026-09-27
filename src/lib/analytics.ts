@@ -8,46 +8,61 @@ import {
 
 /**
  * Analytics for one Published Version, computed from its Runs' paths and
- * nothing else — there is no event table (spec, "Run"). Pure and
+ * their Completion record (`completedAt`, `endingStepId`) — there is no
+ * event table (spec, "Run"). Pure and
  * database-free: the page reads the version's document and its Run rows,
  * and this turns them into every number the Analytics tab shows, so the
  * whole of the arithmetic can be checked by hand in `analytics.test.ts`.
  *
  * A Run's path is the route its Participant is on now, one entry per visit,
- * repeats included (ADR-0002), and "current" is its last entry. Everything
- * below follows from reading paths that way:
+ * repeats included (ADR-0002), and "current" is its last entry. `completedAt`
+ * and `endingStepId` (ticket 75) are the reducer's separate record of what
+ * the Run has achieved, which a backtrack off an Ending does not undo.
+ * Everything below follows from reading the two together:
  *
- * - A Run is a start. It is completed when its last entry is an Ending of
- *   the document and abandoned otherwise — the spec's rule ("a Run whose
- *   last step is not an Ending … is an abandonment"), read off the path
- *   alone, so a row's `ended_at` is never consulted and the map and the
- *   totals can never disagree.
- * - Abandonment is counted on the last entry only: a Step a Participant
- *   walked through and left is not one that lost them.
- * - A Choice's take-rate counts every traversal — each consecutive pair of
- *   entries that is one of the source Step's Choices — over every visit to
- *   the source Step. A Choice walked twice in one Run counts twice. Every
- *   visit to a Step ends in exactly one of its Choices or as the Run's last
- *   entry, so a Step's Choices and the Runs that stop on it account for its
- *   visits exactly once.
+ * - A Run is a start. It is a **Completion** when `completedAt` is set, or —
+ *   for a Run written before ticket 75, or caught mid-deploy by the previous
+ *   code — when its last path entry is an Ending of the document; it is
+ *   abandoned otherwise. The `or` is what keeps an old Run's reading
+ *   unchanged: a row with no `completed_at` that is still resting on an
+ *   Ending reads exactly as it always did.
+ * - A Completion's group (the Outcome bar, or its own bar for an untagged
+ *   Ending, ticket 24) and the Step whose `ended` count it adds to come from
+ *   `endingStepId` when it names an Ending of the document, else from the
+ *   last path entry when that is an Ending (the same fallback, for the same
+ *   reason). A Completion that names neither still counts in the totals, on
+ *   no Step's or group's own figure — there is no box to put it on.
+ * - Abandonment is counted only on a Run that is not a Completion, on its
+ *   last path entry: a Step a Participant walked through and left is not one
+ *   that lost them, and `abandoned = starts - completions` throughout.
+ * - Visits and a Choice's take-rate are read from the path alone, unchanged:
+ *   every consecutive pair of entries that is one of the source Step's
+ *   Choices, over every visit to the source Step. A Choice walked twice in
+ *   one Run counts twice.
  * - Two Choices of one Step that lead to the same Step cannot be told apart
  *   in a path, which records Steps and not Choices; they share the pair's
  *   number rather than one of them being guessed at.
  */
 
-/** What analytics needs of a Run: which version it is pinned to, and its path. */
+/**
+ * What analytics needs of a Run: which version it is pinned to, its path, and
+ * the reducer's Completion state (ticket 75) — `completedAt` set the first
+ * time any Ending was reached, and `endingStepId` naming the latest one.
+ */
 export type RunPath = {
   versionId: string;
   path: string[];
+  completedAt: Date | null;
+  endingStepId: string | null;
 };
 
 export type StepStat = {
   stepId: string;
   /** Path entries naming this Step, across every Run — repeats included. */
   visits: number;
-  /** Runs whose last entry is this Step while it is not an Ending. */
+  /** Runs that never completed and whose last entry is this Step. */
   abandoned: number;
-  /** Runs whose last entry is this Step while it is an Ending. */
+  /** Completions whose latest Ending is this Step. */
   ended: number;
 };
 
@@ -140,16 +155,36 @@ export function analyticsForVersion(
     }
 
     const last = run.path[run.path.length - 1];
-    if (!hasStep(document, last)) continue;
-    const step = document.steps[last];
-    if (isEnding(step)) {
-      completions += 1;
-      steps[last].ended += 1;
-      const group = groupKeyOf(document, last);
-      endedByGroup.set(group, (endedByGroup.get(group) ?? 0) + 1);
-    } else {
-      steps[last].abandoned += 1;
+    const lastIsEnding =
+      hasStep(document, last) && isEnding(document.steps[last]);
+    const isCompletion = run.completedAt !== null || lastIsEnding;
+
+    if (!isCompletion) {
+      if (hasStep(document, last)) steps[last].abandoned += 1;
+      continue;
     }
+
+    completions += 1;
+
+    // The Completion's Ending: the one the Run rests on, when it rests on
+    // one — an Ending has no Choices, so it can only be the last entry, and
+    // is then by construction the latest reached, even for a row the
+    // previous code moved during a deploy without touching
+    // `ending_step_id`. Otherwise the latest Ending the reducer recorded,
+    // when it still names an Ending of this document.
+    const endingStepId = lastIsEnding
+      ? last
+      : run.endingStepId !== null &&
+          hasStep(document, run.endingStepId) &&
+          isEnding(document.steps[run.endingStepId])
+        ? run.endingStepId
+        : null;
+
+    if (endingStepId === null) continue;
+
+    steps[endingStepId].ended += 1;
+    const group = groupKeyOf(document, endingStepId);
+    endedByGroup.set(group, (endedByGroup.get(group) ?? 0) + 1);
   }
 
   const choices: Record<string, ChoiceStat> = {};

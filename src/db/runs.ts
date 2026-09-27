@@ -214,6 +214,8 @@ export async function createRun({
         path: state.path,
         backtrackCount: state.backtrackCount,
         endedAt: state.endedAt,
+        completedAt: state.completedAt,
+        endingStepId: state.endingStepId,
         outcomeId: state.outcomeId,
       })
       .returning({ id: run.id });
@@ -235,6 +237,8 @@ export type RunForJourney = {
     backtrackCount: number;
     startedAt: Date;
     endedAt: Date | null;
+    completedAt: Date | null;
+    endingStepId: string | null;
     outcomeId: string | null;
   };
   version: { title: string; description: string; document: GraphDocument };
@@ -260,6 +264,8 @@ export function toRunForJourney(row: {
     backtrackCount: number;
     startedAt: Date;
     endedAt: Date | null;
+    completedAt: Date | null;
+    endingStepId: string | null;
     outcomeId: string | null;
   };
   version: { title: string; description: string; document: unknown };
@@ -305,6 +311,8 @@ export async function getRunForJourney(
         backtrackCount: run.backtrackCount,
         startedAt: run.startedAt,
         endedAt: run.endedAt,
+        completedAt: run.completedAt,
+        endingStepId: run.endingStepId,
         outcomeId: run.outcomeId,
       },
       version: {
@@ -329,8 +337,8 @@ export async function getRunForJourney(
 
 /**
  * Persists the reducer's next state after a move — `path`, `backtrackCount`,
- * `endedAt`, and `outcomeId` are the whole of what the reducer changes, so
- * they are the whole of what is written back.
+ * `endedAt`, `completedAt`, `endingStepId`, and `outcomeId` are the whole of
+ * what the reducer changes, so they are the whole of what is written back.
  */
 export async function saveRunState(
   runId: string,
@@ -342,6 +350,8 @@ export async function saveRunState(
       path: state.path,
       backtrackCount: state.backtrackCount,
       endedAt: state.endedAt,
+      completedAt: state.completedAt,
+      endingStepId: state.endingStepId,
       outcomeId: state.outcomeId,
     })
     .where(eq(run.id, runId));

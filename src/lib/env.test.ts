@@ -27,18 +27,6 @@ describe("parseEnv", () => {
     expect(parsed.DISCORD_CLIENT_SECRET).toBe("discord-client-secret");
   });
 
-  it("keeps AI_GATEWAY_API_KEY optional", () => {
-    expect(parseEnv(validEnv).AI_GATEWAY_API_KEY).toBeUndefined();
-  });
-
-  // .env.example tells an Author to leave the key empty to hide the AI
-  // features, so a blank value has to mean "absent", not "invalid".
-  it("treats an empty AI_GATEWAY_API_KEY as absent", () => {
-    expect(
-      parseEnv({ ...validEnv, AI_GATEWAY_API_KEY: "" }).AI_GATEWAY_API_KEY,
-    ).toBeUndefined();
-  });
-
   it("rejects a missing BETTER_AUTH_SECRET and names the field", () => {
     const withoutSecret = { ...validEnv, BETTER_AUTH_SECRET: undefined };
 

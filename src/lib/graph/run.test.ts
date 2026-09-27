@@ -243,6 +243,8 @@ describe("startRun", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     });
   });
 
@@ -253,6 +255,8 @@ describe("startRun", () => {
       backtrackCount: 0,
       endedAt: now,
       outcomeId: "outcome-only",
+      completedAt: now,
+      endingStepId: "only",
     });
   });
 });
@@ -269,6 +273,8 @@ describe("navigateTo", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     });
   });
@@ -280,6 +286,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     const result = navigateTo(document, state, "a2", later);
     expect(result).toEqual({
@@ -289,6 +297,8 @@ describe("navigateTo", () => {
         backtrackCount: 0,
         endedAt: later,
         outcomeId: "outcome-a2",
+        completedAt: later,
+        endingStepId: "a2",
       },
     });
   });
@@ -300,17 +310,21 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     expect(navigateTo(document, state, "a", later)).toEqual({ kind: "stay" });
   });
 
-  it("truncates, increments, and clears the Ending when backing to an earlier Step", () => {
+  it("clears endedAt but keeps the Completion when backing off an Ending", () => {
     const document = branchingDocument();
     const ended = {
       path: ["start", "a", "a2"],
       backtrackCount: 0,
       endedAt: later,
       outcomeId: "outcome-a2",
+      completedAt: later,
+      endingStepId: "a2",
     };
     const result = navigateTo(document, ended, "start", later);
     expect(result).toEqual({
@@ -319,7 +333,12 @@ describe("navigateTo", () => {
         path: ["start"],
         backtrackCount: 1,
         endedAt: null,
-        outcomeId: null,
+        // A backtrack leaves "resting on an Ending" (endedAt), but the Run's
+        // Completion and the Outcome of the latest Ending it reached are not
+        // undone by leaving that Ending.
+        completedAt: later,
+        endingStepId: "a2",
+        outcomeId: "outcome-a2",
       },
     });
   });
@@ -333,6 +352,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: later,
       outcomeId: "outcome-a2",
+      completedAt: later,
+      endingStepId: "a2",
     };
     const result = navigateTo(document, state, "b", later);
     expect(result).toEqual({
@@ -342,6 +363,8 @@ describe("navigateTo", () => {
         backtrackCount: 1,
         endedAt: later,
         outcomeId: "outcome-b",
+        completedAt: later,
+        endingStepId: "b",
       },
     });
   });
@@ -357,6 +380,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
 
     const result = navigateTo(document, state, "shared", now);
@@ -368,6 +393,8 @@ describe("navigateTo", () => {
         backtrackCount: 0,
         endedAt: now,
         outcomeId: "outcome-b",
+        completedAt: now,
+        endingStepId: "shared",
       },
     });
   });
@@ -379,6 +406,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     expect(navigateTo(document, state, "nowhere", later)).toEqual({
       kind: "refused",
@@ -395,6 +424,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     expect(navigateTo(document, state, "start", later)).toEqual({
       kind: "refused",
@@ -410,6 +441,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     const result = navigateTo(document, state, "nowhere", later);
     expect(result.kind).toBe("refused");
@@ -419,6 +452,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     });
   });
 
@@ -430,6 +465,8 @@ describe("navigateTo", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     const stateBefore = structuredClone(state);
 
@@ -456,6 +493,8 @@ describe("navigateTo around a loop", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     });
 
@@ -479,6 +518,8 @@ describe("navigateTo around a loop", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     });
   });
@@ -490,6 +531,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
 
     // The queue Step is both the entry behind this one and a Choice of the
@@ -501,6 +544,8 @@ describe("navigateTo around a loop", () => {
         backtrackCount: 1,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     });
   });
@@ -512,6 +557,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
 
     expect(navigateTo(document, state, "queue", later)).toEqual({
@@ -521,6 +568,8 @@ describe("navigateTo around a loop", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     });
   });
@@ -532,6 +581,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
 
     // Index 0 holds the Start, not the queue Step: the index is discarded and
@@ -543,6 +594,8 @@ describe("navigateTo around a loop", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     });
   });
@@ -564,6 +617,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     const asTheChoice = {
       kind: "moved",
@@ -572,6 +627,8 @@ describe("navigateTo around a loop", () => {
         backtrackCount: 0,
         endedAt: null,
         outcomeId: null,
+        completedAt: null,
+        endingStepId: null,
       },
     };
 
@@ -591,6 +648,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
 
     expect(navigateTo(document, state, "loop-start", later, 2)).toEqual({
@@ -605,6 +664,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: later,
       outcomeId: "outcome-waved",
+      completedAt: later,
+      endingStepId: "waved-through",
     };
 
     expect(navigateTo(document, state, "loop-start", later)).toEqual({
@@ -613,7 +674,9 @@ describe("navigateTo around a loop", () => {
         path: ["loop-start", "queue", "loop-start"],
         backtrackCount: 1,
         endedAt: null,
-        outcomeId: null,
+        completedAt: later,
+        endingStepId: "waved-through",
+        outcomeId: "outcome-waved",
       },
     });
   });
@@ -625,6 +688,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
 
     const result = navigateTo(document, state, "queue", later);
@@ -642,6 +707,8 @@ describe("navigateTo around a loop", () => {
       backtrackCount: 0,
       endedAt: null,
       outcomeId: null,
+      completedAt: null,
+      endingStepId: null,
     };
     const before = structuredClone(state);
 
@@ -651,6 +718,150 @@ describe("navigateTo around a loop", () => {
       reason: "path-full",
     });
     expect(state).toEqual(before);
+  });
+});
+
+/**
+ * Ticket 75: Completion is "has reached an Ending at least once", separate
+ * from `endedAt` ("resting on an Ending right now"). These drive the reducer
+ * through real sequences rather than hand-rolled states, since the rule is
+ * about how the fields evolve across moves.
+ */
+describe("Completion (completedAt, endingStepId)", () => {
+  const t1 = new Date("2026-09-26T00:00:00.000Z");
+  const t2 = new Date("2026-09-26T00:01:00.000Z");
+  const t3 = new Date("2026-09-26T00:02:00.000Z");
+  const t4 = new Date("2026-09-26T00:03:00.000Z");
+
+  it("sets completedAt once, on first reaching an Ending, and it survives a backtrack", () => {
+    const document = branchingDocument();
+    const start = startRun(document, t1);
+    const atA = (navigateTo(document, start, "a", t1) as { state: RunState })
+      .state;
+    const atA2 = (navigateTo(document, atA, "a2", t2) as { state: RunState })
+      .state;
+
+    expect(atA2.completedAt).toEqual(t2);
+    expect(atA2.endedAt).toEqual(t2);
+    expect(atA2.endingStepId).toBe("a2");
+
+    const backAtStart = (
+      navigateTo(document, atA2, "start", t3) as { state: RunState }
+    ).state;
+
+    // Leaving the Ending clears endedAt, but the Completion and the Outcome
+    // of the Ending reached stick.
+    expect(backAtStart.endedAt).toBeNull();
+    expect(backAtStart.completedAt).toEqual(t2);
+    expect(backAtStart.endingStepId).toBe("a2");
+    expect(backAtStart.outcomeId).toBe("outcome-a2");
+  });
+
+  it("reaching a different Ending after a backtrack replaces endingStepId and outcomeId but keeps the first completedAt", () => {
+    const document = branchingDocument();
+    const start = startRun(document, t1);
+    const atA = (navigateTo(document, start, "a", t1) as { state: RunState })
+      .state;
+    const atA2 = (navigateTo(document, atA, "a2", t2) as { state: RunState })
+      .state;
+    const backAtStart = (
+      navigateTo(document, atA2, "start", t3) as { state: RunState }
+    ).state;
+    const atB = (
+      navigateTo(document, backAtStart, "b", t4) as { state: RunState }
+    ).state;
+
+    expect(atB.endedAt).toEqual(t4);
+    // The first Ending reached still sets completedAt; reaching a second one
+    // does not move it later.
+    expect(atB.completedAt).toEqual(t2);
+    expect(atB.endingStepId).toBe("b");
+    expect(atB.outcomeId).toBe("outcome-b");
+  });
+
+  function atA2(document: GraphDocument): RunState {
+    const atA = (
+      navigateTo(document, startRun(document, t1), "a", t1) as {
+        state: RunState;
+      }
+    ).state;
+    return (navigateTo(document, atA, "a2", t2) as { state: RunState }).state;
+  }
+
+  it("keeps the Completion through a Back that names its path index (rule 2)", () => {
+    const document = branchingDocument();
+    const moved = navigateTo(document, atA2(document), "a", t3, 1);
+
+    expect(moved).toMatchObject({
+      kind: "moved",
+      state: {
+        path: ["start", "a"],
+        endedAt: null,
+        completedAt: t2,
+        endingStepId: "a2",
+        outcomeId: "outcome-a2",
+      },
+    });
+  });
+
+  it("carries the Completion forward onto a Step that is not an Ending, reached from a cached page (rule 6)", () => {
+    const document = branchingDocument();
+    const atB = (
+      navigateTo(document, startRun(document, t1), "b", t2) as {
+        state: RunState;
+      }
+    ).state;
+    const moved = navigateTo(document, atB, "a", t3);
+
+    expect(moved).toMatchObject({
+      kind: "moved",
+      state: {
+        path: ["start", "a"],
+        endedAt: null,
+        completedAt: t2,
+        endingStepId: "b",
+        outcomeId: "outcome-b",
+      },
+    });
+  });
+
+  it("does not move completedAt when the Run reaches the same Ending again", () => {
+    const document = branchingDocument();
+    const backAtA = (
+      navigateTo(document, atA2(document), "a", t3) as { state: RunState }
+    ).state;
+    const again = (
+      navigateTo(document, backAtA, "a2", t4) as {
+        state: RunState;
+      }
+    ).state;
+
+    expect(again.endedAt).toEqual(t4);
+    expect(again.completedAt).toEqual(t2);
+    expect(again.endingStepId).toBe("a2");
+  });
+
+  it("reads a Run the previous code left resting on an Ending as completed there, so a Back keeps it (deploy window)", () => {
+    const document = branchingDocument();
+    const legacy: RunState = {
+      path: ["start", "a", "a2"],
+      backtrackCount: 0,
+      endedAt: t2,
+      completedAt: null,
+      endingStepId: null,
+      outcomeId: "outcome-a2",
+    };
+    const moved = navigateTo(document, legacy, "a", t3);
+
+    expect(moved).toMatchObject({
+      kind: "moved",
+      state: {
+        endedAt: null,
+        completedAt: t2,
+        endingStepId: "a2",
+        outcomeId: "outcome-a2",
+      },
+    });
   });
 });
 

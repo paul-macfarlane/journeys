@@ -50,15 +50,8 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
     page.getByRole("heading", { name: "Privacy policy", level: 1 }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cookies" })).toBeVisible();
-  // Since ticket 43 a deciding Prompt's Response goes to an AI judge; the
-  // page says so, and says what travels with it (ticket 49).
   await expect(
     page.getByRole("heading", { name: "Where it lives" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "sent, with that step’s text, its question, and the labels of its choices, to the Vercel AI Gateway",
-    ),
   ).toBeVisible();
   // The legal pages carry the same footer as everywhere else, on one row
   // across the page like the sign-in page's (ticket 62), in both schemes.

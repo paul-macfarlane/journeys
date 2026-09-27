@@ -8,7 +8,6 @@ import {
   hasStep,
   isEnding,
   prepareDocumentForWrite,
-  type Prompt,
 } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
 import case1 from "../../../scripts/seed/journey-stories/case-1.json";
@@ -157,7 +156,7 @@ describe("graphDocumentSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("defaults a Prompt's decides to false when the stored shape does not carry it (ticket 43)", () => {
+  it("strips a stored Prompt's retired decides key, keeping required (ticket 87)", () => {
     const document = createDraftDocument();
     const start = document.steps[document.startStepId];
 
@@ -168,8 +167,9 @@ describe("graphDocumentSchema", () => {
           ...start,
           prompt: {
             type: "free_text",
-            label: "What would you do?",
-            required: false,
+            label: "Which way?",
+            required: true,
+            decides: true,
           },
         },
       },
@@ -177,32 +177,10 @@ describe("graphDocumentSchema", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.steps[start.id].prompt?.decides).toBe(false);
+      const prompt = result.data.steps[start.id].prompt;
+      expect(prompt).not.toHaveProperty("decides");
+      expect(prompt?.required).toBe(true);
     }
-  });
-
-  it("round-trips a Prompt with decides: true", () => {
-    const document = createDraftDocument();
-    const start = document.steps[document.startStepId];
-    const withDecidingPrompt = {
-      ...document,
-      steps: {
-        [start.id]: {
-          ...start,
-          prompt: {
-            type: "free_text" as const,
-            label: "Which way?",
-            required: true,
-            decides: true,
-          },
-        },
-      },
-    };
-
-    expect(graphDocumentSchema.safeParse(withDecidingPrompt)).toMatchObject({
-      success: true,
-      data: withDecidingPrompt,
-    });
   });
 
   it("rejects a schema version it was not written for", () => {
@@ -553,16 +531,7 @@ describe("documentsEqual", () => {
   });
 });
 
-describe("decides defaults to false on every stored Prompt (ticket 43)", () => {
-  /** Every Prompt a document holds, walking every Step. */
-  function promptsIn(document: {
-    steps: Record<string, { prompt: unknown }>;
-  }): Prompt[] {
-    return Object.values(document.steps)
-      .map((step) => step.prompt)
-      .filter((prompt): prompt is Prompt => prompt !== null);
-  }
-
+describe("stored documents without a decides key still parse (ticket 87)", () => {
   it.each([
     // The e2e builders are not imported here: `e2e/setup/documents.ts`
     // reaches the session helper, which loads the e2e environment at import.
@@ -571,20 +540,11 @@ describe("decides defaults to false on every stored Prompt (ticket 43)", () => {
     ["legacy case-1.json", case1],
     ["legacy case-2.json", case2],
     ["legacy case-3.json", case3],
-  ])(
-    "%s still parses, with decides: false on every Prompt",
-    (_name, document) => {
-      const result = graphDocumentSchema.safeParse(document);
+  ])("%s still parses", (_name, document) => {
+    const result = graphDocumentSchema.safeParse(document);
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        const prompts = promptsIn(result.data);
-        for (const prompt of prompts) {
-          expect(prompt.decides).toBe(false);
-        }
-      }
-    },
-  );
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("hasStep", () => {

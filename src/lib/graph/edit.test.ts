@@ -377,7 +377,6 @@ describe("duplicateStep", () => {
         type: "free_text",
         label: "Name?",
         required: true,
-        decides: false,
       },
       outcomeId: "outcome-good",
       position: null,
@@ -426,7 +425,6 @@ describe("duplicateStep", () => {
         type: "free_text",
         label: "Name?",
         required: true,
-        decides: false,
       },
     };
     const document: GraphDocument = {
@@ -951,14 +949,12 @@ describe("setStepPrompt", () => {
     const next = setStepPrompt(base, "start", {
       label: "How do you feel?",
       required: true,
-      decides: false,
     });
 
     expect(next.steps.start.prompt).toEqual({
       type: "free_text",
       label: "How do you feel?",
       required: true,
-      decides: false,
     });
     expect(base).toEqual(before);
   });
@@ -967,7 +963,6 @@ describe("setStepPrompt", () => {
     const next = setStepPrompt(base, "start", {
       label: " How do you feel? ",
       required: false,
-      decides: false,
     });
     expect(next.steps.start.prompt?.label).toBe(" How do you feel? ");
   });
@@ -976,20 +971,17 @@ describe("setStepPrompt", () => {
     const prompted = setStepPrompt(base, "start", {
       label: "How do you feel?",
       required: true,
-      decides: false,
     });
     expect(
       setStepPrompt(prompted, "start", {
         label: "",
         required: true,
-        decides: false,
       }).steps.start.prompt,
     ).toBeNull();
     expect(
       setStepPrompt(prompted, "start", {
         label: "  \n",
         required: true,
-        decides: false,
       }).steps.start.prompt,
     ).toBeNull();
   });
@@ -999,34 +991,7 @@ describe("setStepPrompt", () => {
       setStepPrompt(base, "missing", {
         label: "x",
         required: false,
-        decides: false,
       }),
     ).toBe(base);
-  });
-
-  it("forces required when decides is true, whatever required was passed", () => {
-    const next = setStepPrompt(base, "start", {
-      label: "Which way?",
-      required: false,
-      decides: true,
-    });
-
-    expect(next.steps.start.prompt).toEqual({
-      type: "free_text",
-      label: "Which way?",
-      required: true,
-      decides: true,
-    });
-  });
-
-  it("forces nothing from a stale decides on a Step with one Choice", () => {
-    const oneChoice = removeChoice(base, "start", "choice-b");
-    const next = setStepPrompt(oneChoice, "start", {
-      label: "Which way?",
-      required: false,
-      decides: true,
-    });
-
-    expect(next.steps.start.prompt?.required).toBe(false);
   });
 });
