@@ -1,8 +1,8 @@
 # 77: Account deletion
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (auth, schema cascades, a destructive action)

@@ -1,8 +1,8 @@
 # 82: One membership seam and one data-layer result shape
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude (chunk 4)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: contract (the membership rule is the app's authorization; behaviour-preserving, no schema change)
