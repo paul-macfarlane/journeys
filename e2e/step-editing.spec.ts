@@ -416,8 +416,10 @@ test("step-editing-image-caption-alt-and-preview", async ({
   await expect(page.locator("figcaption")).toHaveText(
     "Photo: Ada Lovelace, CC BY 4.0",
   );
+  // The editor's own Heading 2 renders one level down in Preview and the
+  // runner alike (ticket 78): the Step's title is already the page's h1.
   await expect(
-    page.getByRole("heading", { name: "The queue", level: 2 }),
+    page.getByRole("heading", { name: "The queue", level: 3 }),
   ).toBeVisible();
   await expect(page.locator("strong")).toHaveText("Papers ready");
   await expect(page.locator("li", { hasText: "Water" })).toHaveCount(1);

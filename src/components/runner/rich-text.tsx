@@ -58,6 +58,19 @@ function hardenListItem(item: ListItem): ListItem {
 }
 
 /**
+ * The runner renders a Step's content one heading level below what it was
+ * written at (ticket 78): H1 → `h2`, H2 → `h3`, H3 → `h4`. A Step's own
+ * title is already the page's `h1` (`step-view.tsx`), so an H1 opening a
+ * Step's content rendered a second one; shifting every heading down avoids
+ * it without asking Authors to write one level higher than they mean.
+ * Clamped to 4 — `richTextExtensions`' own ceiling (`@/lib/rich-text/
+ * extensions`) — though the editor only ever writes 1–3.
+ */
+function shiftHeadingLevel(level: number): number {
+  return Math.min(level + 1, 4);
+}
+
+/**
  * An image the rule refuses is dropped whole, caption included. One that
  * passes is read with the schema's own compatibility rule, in case a
  * Published Version written before ticket 30 (caption named `credit`, alt
@@ -66,8 +79,13 @@ function hardenListItem(item: ListItem): ListItem {
 function hardenBlock(block: Block): Block | null {
   switch (block.type) {
     case "paragraph":
-    case "heading":
       return { ...block, content: hardenInline(block.content) };
+    case "heading":
+      return {
+        ...block,
+        attrs: { level: shiftHeadingLevel(block.attrs.level) },
+        content: hardenInline(block.content),
+      };
     case "blockquote":
       return {
         ...block,
@@ -111,7 +129,13 @@ export function RichText({ content }: { content: Content }) {
       // phone scrolls sideways to reach the text. A quote is set off by a
       // rule in the Theme's muted colour and stays upright, so an Author's
       // own italics inside it still read as emphasis.
-      className="flex flex-col gap-4 break-words [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:not-italic [&_blockquote>*+*]:mt-4 [&_figcaption]:mt-2 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
+      // No `[&_h1]`: every stored heading is shifted down at least one
+      // level (`shiftHeadingLevel` above), so the lowest this renders is
+      // `h2` — a Step's title is the page's own `h1`. The size ladder shifts
+      // with it — what an Author wrote as an H1 now sits on an `h2` tag, so
+      // it takes the size the `h2` tag read at before this change, and so on
+      // down to the new `[&_h4]` for what was an H3.
+      className="flex flex-col gap-4 break-words [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:not-italic [&_blockquote>*+*]:mt-4 [&_figcaption]:mt-2 [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_h4]:text-base [&_h4]:font-semibold [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
