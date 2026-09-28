@@ -14,6 +14,7 @@ import {
 import {
   publishableDocument,
   publishDocument,
+  setProjectDescription,
   START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
@@ -355,9 +356,10 @@ test("project-link-preview", async ({ page, context, browser }) => {
     ],
   };
   const accent = "#ffcc00";
+  await setProjectDescription(projectId, description);
   await queryE2eDatabase(
-    'UPDATE "project" SET description_content = $1::jsonb, theme_preset = $2, theme_accent = $3 WHERE id = $4',
-    [JSON.stringify(description), "ember", accent, projectId],
+    'UPDATE "project" SET theme_preset = $1, theme_accent = $2 WHERE id = $3',
+    ["ember", accent, projectId],
   );
   const palette = linkPreviewPalette({ preset: "ember", accent });
 

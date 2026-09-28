@@ -64,6 +64,7 @@ export function ChoiceList({
   choiceProblems,
   markedChoiceId,
   focusChoice = null,
+  onChoiceFocused,
   added,
   onChange,
   onSelectStep,
@@ -91,6 +92,12 @@ export function ChoiceList({
    */
   focusChoice?: ChoiceFocus | null;
   /**
+   * The ask above answered: its label field has the keyboard. The ask is let
+   * go of then, so a remount of the panel (Hide and Show panel, the sheet and
+   * the column trading places) does not take the keyboard there again.
+   */
+  onChoiceFocused?: () => void;
+  /**
    * The Step the last "Add choice" here made with "New step", offered for
    * editing under the Choices. Held by the Draft editor, which lets go of it
    * on every opening, undo, redo, and adopted Draft.
@@ -115,8 +122,10 @@ export function ChoiceList({
     const field = listRef.current?.querySelector<HTMLInputElement>(
       `input[data-choice-label="${CSS.escape(focusChoice.choiceId)}"]`,
     );
-    field?.focus();
-  }, [focusChoice]);
+    if (field == null) return;
+    field.focus();
+    onChoiceFocused?.();
+  }, [focusChoice, onChoiceFocused]);
 
   // Every Step is a valid Choice target, the current one included — a loop
   // is an ordinary path since ticket 18.
@@ -234,7 +243,10 @@ export function ChoiceList({
                         ? "Missing step"
                         : stepName(document.steps[choice.targetStepId])
                     }
-                    chosenId={dangling ? undefined : choice.targetStepId}
+                    // The stored id even when it dangles: no option matches
+                    // it, so the list opens on the first, and the field's
+                    // untouched Enter chooses nothing all the same.
+                    chosenId={choice.targetStepId}
                     action={newStepOption}
                     onChoose={(targetStepId) =>
                       retarget(choice.id, targetStepId)

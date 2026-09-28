@@ -1,10 +1,4 @@
-import {
-  expect,
-  test,
-  type Browser,
-  type Locator,
-  type Page,
-} from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import type { Content } from "@/lib/graph/content";
 
@@ -18,6 +12,7 @@ import { expectNoViolations } from "./setup/axe";
 import {
   publishableDocument,
   publishDocument,
+  setProjectDescription,
   START_STEP_ID,
   START_STEP_TITLE,
   writeDraftDocument,
@@ -27,6 +22,7 @@ import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
+  darkContextFor,
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
@@ -55,26 +51,6 @@ test.afterAll(async () => {
   await cleanup(mintedAuthorIds);
   await closePools();
 });
-
-/**
- * A second context for the same signed-in Author, in the other color
- * scheme: the app follows the system scheme by default, so a fresh context
- * with `colorScheme` set is a fresh Participant's — or here, the same
- * Author's — read of it. The cookie jar is copied rather than minted again,
- * so both contexts are the one Author's session.
- */
-async function darkContextFor(
-  browser: Browser,
-  page: Page,
-): Promise<{ page: Page; close: () => Promise<void> }> {
-  const context = await browser.newContext({
-    baseURL: E2E_BASE_URL,
-    colorScheme: "dark",
-  });
-  await context.addCookies(await page.context().cookies());
-  const darkPage = await context.newPage();
-  return { page: darkPage, close: () => context.close() };
-}
 
 test("a11y-project-page: zero axe violations in both schemes, and the Project's own title", async ({
   page,
@@ -546,10 +522,7 @@ test("a11y-heading-order: a public Project's description never skips a heading l
       },
     ],
   };
-  await queryE2eDatabase(
-    'UPDATE "project" SET description_content = $1::jsonb WHERE id = $2',
-    [JSON.stringify(description), projectId],
-  );
+  await setProjectDescription(projectId, description);
 
   const guestContext = await browser.newContext({ baseURL: E2E_BASE_URL });
   try {

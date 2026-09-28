@@ -114,6 +114,16 @@ test("preview", async ({ page, context }) => {
     fullPage: true,
   });
 
+  // A Step the Draft does not have is the not-found page, titled as one:
+  // the Step screen's own title never lands over it (ticket 91).
+  const unknownStep = await page.goto(`${journeyPath}/preview/no-such-step`);
+  expect(unknownStep?.status()).toBe(404);
+  await expect(page).toHaveTitle("Page not found · Journeys");
+  await page.goBack();
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}${journeyPath}/preview/waved-through`,
+  );
+
   await page.getByRole("link", { name: "Start over" }).click();
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
 

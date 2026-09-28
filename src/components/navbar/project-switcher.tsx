@@ -3,6 +3,7 @@
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import Link from "next/link";
 
+import { useNavbarPortalContainer } from "@/components/navbar/navbar-header";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNavbarPortalContainer } from "@/components/navbar/navbar-header";
 import type { SwitcherProject } from "@/lib/navbar";
 
 /**

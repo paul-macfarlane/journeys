@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import { useId, useState } from "react";
 
 import { APPEARANCES, isAppearance } from "@/components/appearance-control";
+import { useNavbarPortalContainer } from "@/components/navbar/navbar-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -17,7 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNavbarPortalContainer } from "@/components/navbar/navbar-header";
 import {
   SEGMENT_CHECKED_CLASS,
   SEGMENT_GROUP_CLASS,
@@ -131,6 +131,9 @@ function ThemeRow() {
         }}
         className={SEGMENT_GROUP_CLASS}
       >
+        {/* Base UI's own radio item rather than `DropdownMenuRadioItem`:
+            that one draws a check indicator and a full-width row layout that
+            fight the pill's icon segments. */}
         {APPEARANCES.map((option) => (
           <MenuPrimitive.RadioItem
             key={option.value}

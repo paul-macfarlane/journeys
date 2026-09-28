@@ -53,7 +53,7 @@ import {
   startJourney,
 } from "./setup/editor";
 import { evidencePath } from "./setup/evidence";
-import { cleanup, closePools } from "./setup/session";
+import { cleanup, closePools, darkContextFor } from "./setup/session";
 
 /**
  * Seam B for ticket 09: the Draft as a map on the Journey page — every Step a
@@ -2503,18 +2503,16 @@ function arrowStroke(arrow: Locator) {
 
 test("canvas-arrow-focus", async ({ page, browser }) => {
   const { projectId, journeyId } = await startJourney(page, mintedAuthorIds);
-  await seedDraft(page, journeyId, publishableDocument());
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  const seeded = publishableDocument();
+  await seedDraft(page, journeyId, seeded);
   await expect(canvasNodes(page)).toHaveCount(3);
   await expect(canvasEdges(page)).toHaveCount(2);
   await settledTransform(page);
 
-  // Tabbing from the row above the map through the map reaches the Step
-  // boxes, in the order the map draws them — top to bottom, then left to
-  // right — and never a Choice's arrow: the arrows are reached from the Step
-  // panel's Choices instead.
-  const mapOrder = (await boxPositions(page))
-    .sort((a, b) => a.top - b.top || a.left - b.left)
-    .map((box) => box.title);
+  // Tabbing from the row above the map through the map reaches every Step
+  // box, each once, and never a Choice's arrow: the arrows are reached from
+  // the Step panel's Choices instead (ticket 88).
   await canvas(page)
     .getByRole("button", { name: "Add step", exact: true })
     .focus();
@@ -2527,8 +2525,13 @@ test("canvas-arrow-focus", async ({ page, browser }) => {
   expect(
     stops
       .filter((stop) => stop.roleDescription === "step")
-      .map((stop) => stop.label),
-  ).toEqual(mapOrder);
+      .map((stop) => stop.label)
+      .sort(),
+  ).toEqual(
+    Object.values(seeded.steps)
+      .map((step) => step.title)
+      .sort(),
+  );
 
   // Another Step opened from the keyboard, so the Enter below has somewhere
   // to move the panel from.
@@ -2566,26 +2569,31 @@ test("canvas-arrow-focus", async ({ page, browser }) => {
   expect((await focusStop(page)).onBody).toBe(false);
   await expect(arrow).toHaveAttribute("data-emphasis", "selected");
 
+  // Space does the same as Enter.
+  const leave = canvasEdge(page, "choice-leave");
+  await leave.focus();
+  await expect(leave).toBeFocused();
+  await page.keyboard.press("Space");
+  const leaveLabel = markedChoiceRow(page).getByLabel("Choice label");
+  await expect(leaveLabel).toHaveValue("Walk away");
+  await expect(leaveLabel).toBeFocused();
+  await expect(leave).toHaveAttribute("data-emphasis", "selected");
+
   // The same indicator in the dark scheme, in its own ring colour.
-  const darkContext = await browser.newContext({
-    baseURL: E2E_BASE_URL,
-    colorScheme: "dark",
-  });
+  const dark = await darkContextFor(browser, page);
   try {
-    await darkContext.addCookies(await page.context().cookies());
-    const dark = await darkContext.newPage();
-    await dark.goto(`/projects/${projectId}/journeys/${journeyId}`);
-    await expect(dark.locator("html")).toHaveClass(/\bdark\b/);
-    await expect(canvasEdges(dark)).toHaveCount(2);
-    await settledTransform(dark);
+    await dark.page.goto(journeyPath);
+    await expect(dark.page.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(canvasEdges(dark.page)).toHaveCount(2);
+    await settledTransform(dark.page);
 
     // A key pressed first, as an Author reaching the map by keyboard would.
-    await canvas(dark)
+    await canvas(dark.page)
       .getByRole("button", { name: "Add step", exact: true })
       .focus();
-    await dark.keyboard.press("Tab");
+    await dark.page.keyboard.press("Tab");
 
-    const darkArrow = canvasEdge(dark, "choice-wait");
+    const darkArrow = canvasEdge(dark.page, "choice-wait");
     await darkArrow.focus();
     await expect(darkArrow).toBeFocused();
     await expect(darkArrow.locator(".react-flow__edge-path")).toHaveCSS(
@@ -2596,7 +2604,38 @@ test("canvas-arrow-focus", async ({ page, browser }) => {
     expect(darkStroke.stroke).toBe(darkStroke.ring);
     expect(darkStroke.ring).not.toBe(light.ring);
   } finally {
-    await darkContext.close();
+    await dark.close();
+  }
+
+  // At phone width the Step panel is a bottom sheet over the map (ticket
+  // 53): Enter on a focused arrow opens it on the Choice's Step, with the
+  // keyboard on that Choice's label inside the sheet.
+  const phoneContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+    viewport: { width: 375, height: 812 },
+  });
+  try {
+    await phoneContext.addCookies(await page.context().cookies());
+    const phone = await phoneContext.newPage();
+    await phone.goto(journeyPath);
+    await expect(canvasEdges(phone)).toHaveCount(2);
+    await settledTransform(phone);
+
+    const phoneArrow = canvasEdge(phone, "choice-wait");
+    await phoneArrow.focus();
+    await expect(phoneArrow).toBeFocused();
+    await phone.keyboard.press("Enter");
+
+    const sheet = phone.locator('[role="dialog"][data-step-sheet]');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByLabel("Step title")).toHaveValue("Border post");
+    const sheetLabel = sheet
+      .locator('li[aria-current="true"]')
+      .getByLabel("Choice label");
+    await expect(sheetLabel).toHaveValue("Wait your turn");
+    await expect(sheetLabel).toBeFocused();
+  } finally {
+    await phoneContext.close();
   }
 });
 
@@ -4038,8 +4077,8 @@ test("canvas-dark-controls", async ({ page }) => {
   await page.getByRole("button", { name: "Account: Test Author" }).click();
   await page
     .getByRole("menu")
-    .getByRole("radiogroup", { name: "Theme" })
-    .getByRole("radio", { name: "Dark" })
+    .getByRole("group", { name: "Theme" })
+    .getByRole("menuitemradio", { name: "Dark" })
     .click();
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
   await page.keyboard.press("Escape");

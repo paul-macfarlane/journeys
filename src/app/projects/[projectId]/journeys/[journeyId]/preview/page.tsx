@@ -9,7 +9,7 @@ import {
 import { hasStep } from "@/lib/graph/document";
 
 import { previewChooseAction } from "./actions";
-import { journeyForPreviewMetadata, loadPreview } from "./load";
+import { loadPreview, previewMetadata } from "./load";
 
 /**
  * The tab title (ticket 91): "Preview: <Journey title>", with the root
@@ -21,8 +21,7 @@ export async function generateMetadata({
   params: Promise<{ projectId: string; journeyId: string }>;
 }): Promise<Metadata> {
   const { projectId, journeyId } = await params;
-  const journey = await journeyForPreviewMetadata({ projectId, journeyId });
-  return { title: `Preview: ${journey.title}` };
+  return previewMetadata({ projectId, journeyId });
 }
 
 /**

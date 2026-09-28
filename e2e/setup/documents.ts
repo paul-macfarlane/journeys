@@ -289,6 +289,17 @@ export function dimmingDocument(): GraphDocument {
   };
 }
 
+/** Writes a Project's description, replacing what is there. */
+export async function setProjectDescription(
+  projectId: string,
+  description: Content,
+): Promise<void> {
+  await queryE2eDatabase(
+    'UPDATE "project" SET description_content = $1::jsonb WHERE id = $2',
+    [JSON.stringify(description), projectId],
+  );
+}
+
 /** Writes a document into a Journey's Draft, replacing what is there. */
 export async function writeDraftDocument(
   journeyId: string,

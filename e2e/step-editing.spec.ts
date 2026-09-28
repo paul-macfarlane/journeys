@@ -17,6 +17,7 @@ import {
   addChoiceToStep,
   expectSaved,
   renameStep,
+  seedDraft,
   startJourney,
 } from "./setup/editor";
 import { capturePath, evidencePath } from "./setup/evidence";
@@ -452,10 +453,12 @@ test("step-editing-image-caption-alt-and-preview", async ({
   await expect(page.locator("figcaption")).toHaveText(
     "Photo: Ada Lovelace, CC BY 4.0",
   );
-  // The editor's own Heading 2 renders one level down in Preview and the
-  // runner alike (ticket 78): the Step's title is already the page's h1.
+  // The Step's content opens with the editor's own Heading 2, and a
+  // document's first heading renders as h2 in Preview and the runner alike,
+  // whatever level it was written at (ticket 92): the Step's title is
+  // already the page's h1.
   await expect(
-    page.getByRole("heading", { name: "The queue", level: 3 }),
+    page.getByRole("heading", { name: "The queue", level: 2 }),
   ).toBeVisible();
   await expect(page.locator("strong")).toHaveText("Papers ready");
   await expect(page.locator("li", { hasText: "Water" })).toHaveCount(1);
@@ -983,6 +986,27 @@ test("panel-choice-target-enter", async ({ page }) => {
   const findTheClinicId = stored.steps[borderPostId].choices.find(
     (choice) => choice.label === "Find the clinic",
   )!.id;
+  const targetOf = (draft: GraphDocument, choiceId: string) =>
+    draft.steps[borderPostId].choices.find((choice) => choice.id === choiceId)
+      ?.targetStepId;
+
+  // Every Draft write is a server action: a POST carrying `next-action`.
+  // Counted from here on, so a press that wrote anything shows up here.
+  const writes: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && "next-action" in request.headers()) {
+      writes.push(request.url());
+    }
+  });
+  // The Draft's save status, read once and not retried: an edit turns it
+  // from "Saved" in the same render as the keypress that made it, so a
+  // reading straight after the press says whether that press edited.
+  const saveStatus = page
+    .getByRole("tabpanel", { name: "Editor" })
+    .getByRole("status", { name: "Draft save status" });
+  async function expectNoEdit(): Promise<void> {
+    expect(await saveStatus.textContent()).toBe("Saved");
+  }
 
   const before = await readDraftRow(journeyId);
 
@@ -1013,23 +1037,37 @@ test("panel-choice-target-enter", async ({ page }) => {
   });
 
   // Enter with nothing navigated and nothing typed: the list closes, the
-  // field still names the current target, and the Draft is not written.
+  // field still names the current target, and nothing is edited.
   await page.keyboard.press("Enter");
+  await expectNoEdit();
   await expect(listbox).toHaveCount(0);
   await expect(targetField).toHaveValue("Clinic tent");
 
-  await page.waitForTimeout(1_000);
-  await expect
-    .poll(async () => (await readDraftRow(journeyId)).version)
-    .toBe(before.version);
-  const afterNoop = await readDraft(journeyId);
-  const noopTarget = afterNoop.steps[borderPostId].choices.find(
-    (choice) => choice.id === findTheClinicId,
-  )?.targetStepId;
+  // A character typed and taken back again leaves the field untouched:
+  // Enter still chooses nothing.
+  await targetField.selectText();
+  await page.keyboard.type("x");
+  await expect(listbox).toBeVisible();
+  await expect(targetField).toHaveValue("x");
+  await page.keyboard.press("Backspace");
+  await expect(targetField).toHaveValue("Clinic tent");
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Clinic tent");
+
+  // Nothing posted, and the Draft row as it was.
+  expect(writes).toEqual([]);
+  const afterNoop = await readDraftRow(journeyId);
+  expect(afterNoop.version).toBe(before.version);
+  const noopTarget = targetOf(await readDraft(journeyId), findTheClinicId);
   expect(noopTarget).toBe(clinicTentId);
 
   // ArrowDown then Enter still retargets: moving off the chosen option and
-  // choosing a different one behaves as before.
+  // choosing a different one behaves as before. It is also the check that
+  // the presses above left nothing pending behind the save's debounce: one
+  // write lands, the Draft moves on by exactly one, and "Find the clinic"
+  // still points where it did.
   await firstRow.getByLabel("Choice target").click();
   const firstListbox = firstRow.getByRole("listbox", { name: "Steps" });
   await expect(firstListbox).toBeVisible();
@@ -1039,13 +1077,53 @@ test("panel-choice-target-enter", async ({ page }) => {
   await expect(firstRow.getByLabel("Choice target")).toHaveValue("Clinic tent");
   await expectSaved(page);
 
-  const after = await readDraft(journeyId);
-  const retargeted = after.steps[borderPostId].choices.find(
-    (choice) => choice.id === waitYourTurnId,
-  )?.targetStepId;
-  expect(retargeted).toBe(clinicTentId);
-
   const afterRow = await readDraftRow(journeyId);
+  expect(afterRow.version).toBe(before.version + 1);
+  const after = await readDraft(journeyId);
+  const retargeted = targetOf(after, waitYourTurnId);
+  expect(retargeted).toBe(clinicTentId);
+  expect(targetOf(after, findTheClinicId)).toBe(clinicTentId);
+
+  // A Choice whose target Step is gone: the list opens on its first option,
+  // since none is the one stored, and an untouched Enter still chooses
+  // nothing — the Choice keeps pointing at the missing Step.
+  const missingStepId = "missing-step";
+  after.steps[borderPostId].choices = after.steps[borderPostId].choices.map(
+    (choice) =>
+      choice.id === findTheClinicId
+        ? { ...choice, targetStepId: missingStepId }
+        : choice,
+  );
+  await seedDraft(page, journeyId, after);
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await expectSaved(page);
+  await expect(targetField).toHaveValue("Missing step");
+  const danglingBefore = await readDraftRow(journeyId);
+  writes.length = 0;
+
+  await secondRow.getByLabel("Choice label").focus();
+  await page.keyboard.press("Tab");
+  await expect(targetField).toBeFocused();
+  await expect(listbox).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Missing step");
+  expect(writes).toEqual([]);
+  const danglingAfter = await readDraftRow(journeyId);
+  expect(danglingAfter.version).toBe(danglingBefore.version);
+
+  // The same debounce check: one later edit, one write, and the dangling
+  // Choice still pointing at the missing Step.
+  await renameStep(page, "Border crossing");
+  await expectSaved(page);
+  expect((await readDraftRow(journeyId)).version).toBe(
+    danglingBefore.version + 1,
+  );
+  expect(targetOf(await readDraft(journeyId), findTheClinicId)).toBe(
+    missingStepId,
+  );
+
   writeFileSync(
     capturePath(
       "panel-choice-target-enter",
@@ -1057,12 +1135,17 @@ test("panel-choice-target-enter", async ({ page }) => {
       `Step (source): ${borderPostId}`,
       `Choice "Find the clinic" (${findTheClinicId}) target before Enter: ${clinicTentId}`,
       `Draft row version before Enter: ${before.version}`,
-      `Choice "Find the clinic" (${findTheClinicId}) target after Enter, no navigation: ${noopTarget}`,
-      `Draft row version after Enter, no navigation: ${before.version} (unchanged)`,
+      `Choice "Find the clinic" (${findTheClinicId}) target after Enter, and after typing then clearing then Enter: ${noopTarget}`,
+      `Draft row version re-read after those presses: ${afterNoop.version}`,
+      `Draft writes (next-action POSTs) during those presses: 0`,
       ``,
       `ArrowDown then Enter still retargets:`,
       `Choice "Wait your turn" (${waitYourTurnId}) target after ArrowDown+Enter: ${retargeted}`,
       `Draft row version after retargeting: ${afterRow.version}`,
+      ``,
+      `Dangling target (Step ${missingStepId} not in the Draft), untouched Enter:`,
+      `Draft row version before Enter: ${danglingBefore.version}`,
+      `Draft row version re-read after Enter: ${danglingAfter.version}`,
     ].join("\n"),
   );
 });

@@ -202,6 +202,12 @@ export type JourneyCanvasProps = {
   onSelect: (command: SelectCommand) => void;
 };
 
+/** The arrows' description, in the map's own words (see `ariaLabelConfig`). */
+const ARIA_LABEL_CONFIG = {
+  "edge.a11yDescription.default":
+    "Press Enter or Space to open this Choice in the Step panel.",
+};
+
 function CanvasFlow({
   document,
   layout,
@@ -371,6 +377,10 @@ function CanvasFlow({
         // The node's own button takes focus; the wrapper would otherwise be a
         // second tab stop that opens nothing.
         nodesFocusable={false}
+        // What a screen reader is told about a focused arrow: React Flow's
+        // own sentence says Enter selects it and Delete removes it, but Enter
+        // here opens its Choice in the Step panel (ticket 88).
+        ariaLabelConfig={ARIA_LABEL_CONFIG}
         // Arrows only: which Step is open stays the panel's, and every node
         // above is `selectable: false`.
         elementsSelectable

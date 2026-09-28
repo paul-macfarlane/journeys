@@ -36,6 +36,8 @@ export function useStepSelection({
   choiceAdded: (stepId: string | null) => void;
   titleFocusStepId: string | null;
   choiceFocus: ChoiceFocus | null;
+  /** The label field `choiceFocus` asked for has the keyboard. */
+  choiceFocused: () => void;
   arrowSelection: CanvasArrow | null;
   selectArrow: (arrow: CanvasArrow | null) => void;
   locate: { request: number; view: "keep" | "reveal" | "zoom" };
@@ -172,6 +174,21 @@ export function useStepSelection({
   }, []);
 
   /**
+   * The ask for a Choice's label field answered, and let go of: held on to,
+   * it would take the keyboard there again on every remount of the panel.
+   */
+  const choiceFocused = useCallback(() => setChoiceFocus(null), []);
+
+  /**
+   * The arrow in hand set from the map. Clearing it (a click on bare map)
+   * lets go of any ask for its Choice's label field with it.
+   */
+  const selectArrow = useCallback((arrow: CanvasArrow | null) => {
+    setArrowSelection(arrow);
+    if (arrow === null) setChoiceFocus(null);
+  }, []);
+
+  /**
    * A Draft adopted from outside the editor: the Step open stays open if the
    * adopted Draft still has it, and the Start stands in if not. The Step an
    * "Add choice" just made, and the box selected for it, were of the Draft
@@ -196,8 +213,9 @@ export function useStepSelection({
     choiceAdded,
     titleFocusStepId,
     choiceFocus,
+    choiceFocused,
     arrowSelection,
-    selectArrow: setArrowSelection,
+    selectArrow,
     locate,
     adoptDraft,
   };

@@ -3,9 +3,11 @@ import { generateHTML } from "@tiptap/html";
 import {
   readStoredImageAttrs,
   type Block,
+  type BulletList,
   type Content,
   type InlineElement,
   type ListItem,
+  type OrderedList,
   type Paragraph,
 } from "@/lib/graph/content";
 import { richTextExtensions } from "@/lib/rich-text/extensions";
@@ -48,13 +50,21 @@ function hardenInline(
   );
 }
 
-function hardenListItem(item: ListItem, state: HeadingState): ListItem {
+function hardenParagraph(paragraph: Paragraph): Paragraph {
+  return { ...paragraph, content: hardenInline(paragraph.content) };
+}
+
+/** A list, and every list nested in its items: paragraphs and lists only. */
+function hardenList<List extends BulletList | OrderedList>(list: List): List {
   return {
-    ...item,
-    content: item.content
-      ?.map((child) => hardenBlock(child, state))
-      .filter((child): child is NonNullable<typeof child> => child !== null),
-  } as ListItem;
+    ...list,
+    content: list.content.map((item): ListItem => ({
+      ...item,
+      content: item.content?.map((child) =>
+        child.type === "paragraph" ? hardenParagraph(child) : hardenList(child),
+      ),
+    })),
+  };
 }
 
 /**
@@ -71,13 +81,12 @@ function hardenListItem(item: ListItem, state: HeadingState): ListItem {
  *   first, but never more than one level deeper than the previous rendered
  *   heading, and never above `h2`.
  *
- * Headings are only ever top-level blocks in the stored shape — a list item
- * and a quote hold paragraphs only — so this only needs to see the top
- * level's headings in order; `state` carries that order through the
- * recursive hardening pass below, though only the heading case ever reads
- * or updates it. Clamped to 6 — Tiptap's Heading recognizes no level past
- * it (`@/lib/rich-text/extensions`) — though the editor's toolbar only ever
- * writes 1–3.
+ * Headings are only ever top-level blocks in the stored shape — a quote
+ * holds paragraphs only, and a list item paragraphs and nested lists, never
+ * a heading — so this only needs to see the top level's headings in order;
+ * `state` carries that order across the top-level blocks. Clamped to 6 —
+ * Tiptap's Heading recognizes no level past it (`@/lib/rich-text/extensions`)
+ * — though the editor's toolbar only ever writes 1–3.
  */
 type HeadingState = { firstWritten: number | null; previousRendered: number };
 
@@ -104,7 +113,7 @@ function normalizeHeadingLevel(level: number, state: HeadingState): number {
 function hardenBlock(block: Block, state: HeadingState): Block | null {
   switch (block.type) {
     case "paragraph":
-      return { ...block, content: hardenInline(block.content) };
+      return hardenParagraph(block);
     case "heading":
       return {
         ...block,
@@ -114,16 +123,11 @@ function hardenBlock(block: Block, state: HeadingState): Block | null {
     case "blockquote":
       return {
         ...block,
-        content: block.content.map(
-          (paragraph) => hardenBlock(paragraph, state) as Paragraph,
-        ),
+        content: block.content.map(hardenParagraph),
       };
     case "bulletList":
     case "orderedList":
-      return {
-        ...block,
-        content: block.content.map((item) => hardenListItem(item, state)),
-      };
+      return hardenList(block);
     case "image": {
       if (!isHttpUrl(block.attrs.src)) {
         return null;

@@ -313,6 +313,7 @@ export function StepPanel({
   focusTitle,
   markedChoiceId,
   focusChoice = null,
+  onChoiceFocused,
   onChange,
   onSelectStep,
   added,
@@ -338,6 +339,8 @@ export function StepPanel({
   markedChoiceId: string | null;
   /** The Choice whose label field the keyboard is asked onto, if any. */
   focusChoice?: ChoiceFocus | null;
+  /** That Choice's label field has the keyboard: the ask is answered. */
+  onChoiceFocused?: () => void;
   onChange: ApplyEdit;
   onSelectStep: SelectStep;
   /** The Step the last "Add choice" here made, while it is still news. */
@@ -458,6 +461,7 @@ export function StepPanel({
         choiceProblems={choiceProblems}
         markedChoiceId={markedChoiceId}
         focusChoice={focusChoice}
+        onChoiceFocused={onChoiceFocused}
         onChange={onChange}
         onSelectStep={onSelectStep}
         added={added}
