@@ -5,6 +5,7 @@ import { useCallback, useRef, useState, type RefObject } from "react";
 import type {
   AddedStep,
   CanvasArrow,
+  ChoiceFocus,
   SelectStep,
 } from "@/components/journeys/editor-shared";
 import { hasStep, type GraphDocument } from "@/lib/graph/document";
@@ -34,6 +35,7 @@ export function useStepSelection({
   added: AddedStep | null;
   choiceAdded: (stepId: string | null) => void;
   titleFocusStepId: string | null;
+  choiceFocus: ChoiceFocus | null;
   arrowSelection: CanvasArrow | null;
   selectArrow: (arrow: CanvasArrow | null) => void;
   locate: { request: number; view: "keep" | "reveal" | "zoom" };
@@ -72,6 +74,10 @@ export function useStepSelection({
   // The Step whose title field should take focus when it opens: one that was
   // just created, its title still empty (the map calls it "Untitled step").
   const [titleFocusStepId, setTitleFocusStepId] = useState<string | null>(null);
+
+  // The Choice whose label field should take the keyboard once its row is
+  // drawn: an arrow taken in hand from the keyboard (`focusChoice`).
+  const [choiceFocus, setChoiceFocus] = useState<ChoiceFocus | null>(null);
 
   /**
    * The arrow the Author has last clicked on the map, as asked for. Held here
@@ -135,6 +141,11 @@ export function useStepSelection({
       setArrowSelection(
         markChoiceId === undefined ? null : { stepId, choiceId: markChoiceId },
       );
+      setChoiceFocus(
+        options?.focusChoice && markChoiceId !== undefined
+          ? { choiceId: markChoiceId }
+          : null,
+      );
     },
     [requestPanelScroll, revealPanel],
   );
@@ -184,6 +195,7 @@ export function useStepSelection({
     added,
     choiceAdded,
     titleFocusStepId,
+    choiceFocus,
     arrowSelection,
     selectArrow: setArrowSelection,
     locate,

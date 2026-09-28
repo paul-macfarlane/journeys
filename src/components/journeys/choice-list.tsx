@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Combobox, type ComboboxOption } from "@/components/journeys/combobox";
 import {
   SELECT_CLASS,
   type AddedStep,
   type ApplyEdit,
+  type ChoiceFocus,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,9 @@ import { cn } from "@/lib/utils";
  * One row can be marked as the Choice in hand — the arrow the Author clicked
  * on the map, or the Choice they have just drawn there. Marked is all it is:
  * the row is ringed and reads as the current one, and nothing here takes the
- * keyboard off the map the Author is working on.
+ * keyboard off the map the Author is working on — unless the Author took the
+ * arrow in hand from the keyboard (`focusChoice`), when the row's label field
+ * is where the keyboard goes next (ticket 88).
  */
 
 /** The sentinel a target field uses for "make me one". */
@@ -60,6 +63,7 @@ export function ChoiceList({
   order,
   choiceProblems,
   markedChoiceId,
+  focusChoice = null,
   added,
   onChange,
   onSelectStep,
@@ -81,6 +85,12 @@ export function ChoiceList({
    */
   markedChoiceId: string | null;
   /**
+   * An ask for the keyboard to go to one Choice's label field here: each new
+   * ask is answered once its row is drawn, and a Choice not on this Step is
+   * no ask of this list's.
+   */
+  focusChoice?: ChoiceFocus | null;
+  /**
    * The Step the last "Add choice" here made with "New step", offered for
    * editing under the Choices. Held by the Draft editor, which lets go of it
    * on every opening, undo, redo, and adopted Draft.
@@ -98,6 +108,15 @@ export function ChoiceList({
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
   const [target, setTarget] = useState<string>(NEW_STEP);
+
+  const listRef = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    if (focusChoice === null) return;
+    const field = listRef.current?.querySelector<HTMLInputElement>(
+      `input[data-choice-label="${CSS.escape(focusChoice.choiceId)}"]`,
+    );
+    field?.focus();
+  }, [focusChoice]);
 
   // Every Step is a valid Choice target, the current one included — a loop
   // is an ordinary path since ticket 18.
@@ -158,7 +177,12 @@ export function ChoiceList({
       <div className="flex flex-col">
         {/* role="list" is explicit: the flex layout strips the list marker,
             and some browsers drop the implicit role with it. */}
-        <ul role="list" aria-label="Choices" className="flex flex-col gap-2">
+        <ul
+          ref={listRef}
+          role="list"
+          aria-label="Choices"
+          className="flex flex-col gap-2"
+        >
           {step.choices.map((choice, index) => {
             const dangling = !hasStep(document, choice.targetStepId);
             const marked = choice.id === markedChoiceId;
@@ -178,6 +202,7 @@ export function ChoiceList({
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     aria-label="Choice label"
+                    data-choice-label={choice.id}
                     placeholder="What the participant clicks"
                     autoComplete="off"
                     className="w-56"

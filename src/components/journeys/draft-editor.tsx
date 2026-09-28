@@ -76,6 +76,7 @@ export function DraftEditor({
     added,
     choiceAdded,
     titleFocusStepId,
+    choiceFocus,
     arrowSelection,
     selectArrow,
     locate,
@@ -562,6 +563,7 @@ export function DraftEditor({
                   ? selectedArrow.choiceId
                   : null
               }
+              focusChoice={choiceFocus}
               onChange={applyEdit}
               onSelectStep={selectStep}
               added={added}

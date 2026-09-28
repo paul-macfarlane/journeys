@@ -2464,6 +2464,142 @@ test("canvas-arrow-select-and-delete", async ({ page }) => {
   await expectSaved(page);
 });
 
+/**
+ * Where the keyboard is, said in the words the map uses: the name of the
+ * element holding it, what the map calls that element, and whether it is
+ * a box, a Choice's arrow, or nothing at all (`body`).
+ */
+function focusStop(page: Page) {
+  return page.evaluate(() => {
+    const active = window.document.activeElement;
+    return {
+      label: active?.getAttribute("aria-label") ?? "",
+      roleDescription: active?.getAttribute("aria-roledescription") ?? null,
+      onArrow: active?.closest('[aria-roledescription="choice"]') != null,
+      onBody: active === window.document.body,
+    };
+  });
+}
+
+/** What a focused arrow's line is drawn with, and the ring token beside it. */
+function arrowStroke(arrow: Locator) {
+  return arrow.evaluate((group) => {
+    const line = group.querySelector(".react-flow__edge-path");
+    const drawn = line === null ? null : getComputedStyle(line);
+    // The token resolved as a colour, the way the browser serializes the
+    // line's own: a probe beside the map, painted with it.
+    const probe = window.document.createElement("span");
+    probe.style.color = "var(--ring)";
+    (group.closest(".react-flow") ?? window.document.body).append(probe);
+    const ring = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      stroke: drawn?.stroke ?? "",
+      width: drawn?.strokeWidth ?? "",
+      ring,
+    };
+  });
+}
+
+test("canvas-arrow-focus", async ({ page, browser }) => {
+  const { projectId, journeyId } = await startJourney(page, mintedAuthorIds);
+  await seedDraft(page, journeyId, publishableDocument());
+  await expect(canvasNodes(page)).toHaveCount(3);
+  await expect(canvasEdges(page)).toHaveCount(2);
+  await settledTransform(page);
+
+  // Tabbing from the row above the map through the map reaches the Step
+  // boxes, in the order the map draws them — top to bottom, then left to
+  // right — and never a Choice's arrow: the arrows are reached from the Step
+  // panel's Choices instead.
+  const mapOrder = (await boxPositions(page))
+    .sort((a, b) => a.top - b.top || a.left - b.left)
+    .map((box) => box.title);
+  await canvas(page)
+    .getByRole("button", { name: "Add step", exact: true })
+    .focus();
+  const stops = [];
+  for (let press = 0; press < 12; press += 1) {
+    await page.keyboard.press("Tab");
+    stops.push(await focusStop(page));
+  }
+  expect(stops.filter((stop) => stop.onArrow)).toEqual([]);
+  expect(
+    stops
+      .filter((stop) => stop.roleDescription === "step")
+      .map((stop) => stop.label),
+  ).toEqual(mapOrder);
+
+  // Another Step opened from the keyboard, so the Enter below has somewhere
+  // to move the panel from.
+  await canvasNode(page, "Waved through").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Step title")).toHaveValue("Waved through");
+
+  // An arrow focused by script — a click, or assistive technology — shows
+  // where the keyboard is: its line is drawn heavier, in the ring colour.
+  const arrow = canvasEdge(page, "choice-wait");
+  const resting = await arrowStroke(arrow);
+  await arrow.focus();
+  await expect(arrow).toBeFocused();
+  await expect(arrow.locator(".react-flow__edge-path")).toHaveCSS(
+    "stroke-width",
+    "4px",
+  );
+  const light = await arrowStroke(arrow);
+  expect(light.stroke).toBe(light.ring);
+  expect(light.stroke).not.toBe(resting.stroke);
+
+  await canvas(page).screenshot({
+    path: evidencePath("canvas-arrow-focus", "arrow-focused.png"),
+  });
+  await expect(arrow).toBeFocused();
+
+  // Enter on the arrow takes its Choice in hand, the way a click does, and
+  // hands the keyboard to that Choice's label in the panel — never to the
+  // page behind the map.
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  const label = markedChoiceRow(page).getByLabel("Choice label");
+  await expect(label).toHaveValue("Wait your turn");
+  await expect(label).toBeFocused();
+  expect((await focusStop(page)).onBody).toBe(false);
+  await expect(arrow).toHaveAttribute("data-emphasis", "selected");
+
+  // The same indicator in the dark scheme, in its own ring colour.
+  const darkContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+    colorScheme: "dark",
+  });
+  try {
+    await darkContext.addCookies(await page.context().cookies());
+    const dark = await darkContext.newPage();
+    await dark.goto(`/projects/${projectId}/journeys/${journeyId}`);
+    await expect(dark.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(canvasEdges(dark)).toHaveCount(2);
+    await settledTransform(dark);
+
+    // A key pressed first, as an Author reaching the map by keyboard would.
+    await canvas(dark)
+      .getByRole("button", { name: "Add step", exact: true })
+      .focus();
+    await dark.keyboard.press("Tab");
+
+    const darkArrow = canvasEdge(dark, "choice-wait");
+    await darkArrow.focus();
+    await expect(darkArrow).toBeFocused();
+    await expect(darkArrow.locator(".react-flow__edge-path")).toHaveCSS(
+      "stroke-width",
+      "4px",
+    );
+    const darkStroke = await arrowStroke(darkArrow);
+    expect(darkStroke.stroke).toBe(darkStroke.ring);
+    expect(darkStroke.ring).not.toBe(light.ring);
+  } finally {
+    await darkContext.close();
+  }
+});
+
 test("canvas-delete-key-step", async ({ page }, testInfo) => {
   await startJourney(page, mintedAuthorIds);
 

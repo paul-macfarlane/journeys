@@ -40,7 +40,11 @@ export type ApplyEdit = (next: GraphDocument, edit?: EditMeta) => void;
  * names it in the same breath. `markChoiceId` names the Choice whose row is
  * marked as the one in hand — an arrow clicked, or a Choice just drawn — and
  * moves no focus at all: the Author is working on the map, and the panel says
- * which Choice that is rather than reaching for the keyboard.
+ * which Choice that is rather than reaching for the keyboard. `focusChoice`
+ * is the exception, for an arrow taken in hand from the keyboard (Enter or
+ * Space on a focused arrow, ticket 88): that Author is already at the
+ * keyboard, so it moves onto the marked row's label field instead of being
+ * dropped on the page as the arrow is redrawn.
  *
  * The other two are about the map rather than the panel, and the view is the
  * Author's: `zoom` makes the Zoom-to-step move on the opened Step — for a
@@ -56,6 +60,7 @@ export type ApplyEdit = (next: GraphDocument, edit?: EditMeta) => void;
 export type SelectStepOptions = {
   focusTitle?: boolean;
   markChoiceId?: string;
+  focusChoice?: boolean;
   zoom?: boolean;
   keepView?: boolean;
   reveal?: boolean;
@@ -71,6 +76,13 @@ export type SelectStepOptions = {
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
+
+/**
+ * An ask, from outside the panel, for the keyboard to go to one Choice's
+ * label field: a new object for every ask, so asking twice for the same
+ * Choice is still two asks.
+ */
+export type ChoiceFocus = { choiceId: string };
 
 /** One Choice, named the way the document names it. */
 export type CanvasArrow = { stepId: string; choiceId: string };
