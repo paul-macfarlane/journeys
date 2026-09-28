@@ -1,6 +1,6 @@
 # 86: Split the canvas, the Draft editor, and the layout module
 
-Status: in-progress
+Status: done
 Blocked by: 81
 Owner: Claude (Fable 5.1), chunk 7 orchestrator, 2026-09-27
 Parent: `.scratch/journeys-platform/spec.md`
@@ -47,3 +47,44 @@ Acceptance criteria:
 Verification follows `docs/agents/testing.md` (`polish`). Use `CONTEXT.md` vocabulary. Origin: ticket 72.
 
 ## Comments
+
+### 2026-09-27 — Claude, chunk 7 orchestrator
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/113 (chunk 7, with ticket 53).
+
+- **Workers** (one worktree `chunk-7-editor-split-and-phone-sheet/journeys`, sequential, because both deliverables edit `journey-canvas.tsx`, `draft-editor.tsx` and `canvas-shared.ts`; confirmed at closeout, D2 rewrote all three after D1's edits):
+  - **D1** (Sonnet, 98515f7):
+    - `layout.ts` split into the orchestrator plus `layout-dagre.ts`, `layout-routing.ts`, `layout-labels.ts` and `layout-constants.ts`.
+    - Geometry moved to `src/lib/graph/geometry.ts`, with `geometry.test.ts`.
+    - `indexProblems` added to `validate.ts`, computed once in `DraftEditor`.
+  - **D2** (Opus, 18c1be7):
+    - Canvas split into `step-node.tsx`, `choice-line.tsx`, `canvas-elements.ts`, `use-canvas-viewport.ts` and `use-canvas-keyboard.ts`.
+    - Editor state moved into the hooks `use-draft-document.ts`, `use-step-selection.ts` and `use-panel-visibility.ts`.
+    - The canvas takes `onEdit(EditCommand)` (`runEditCommand` in `edit.ts`) and `onSelect(SelectCommand)`.
+  - Review fixes **R-fix** (Opus, 75dd790) and the flake fix **F-flake** (Opus, e7cb526), shared with ticket 53.
+- **Deviations:**
+  - **AC-2:** the two `problemsByAddress` tests moved from `layout.test.ts` to `validate.test.ts` as `indexProblems` tests, with the same fixtures and expectations. The ticket's own "What to build" hides the key encoding. Paul approved this, 2026-09-27.
+  - **AC-3:** two full-page screenshots in `step-editing.spec.ts` became viewport screenshots.
+    - A full-page capture in Chromium passes through a 1×1 window. That matches ticket 53's phone query and remounts the panel.
+    - Before the fix, 6 of 20 loaded runs failed. After it, 20 of 20 pass, and base passes 20 of 20.
+    - No assertion changed.
+  - `layout-dagre.ts` is 455 lines. The 700-line cap applies only under `src/components/journeys`.
+  - `rich-text-editor.tsx` (703 lines) was already over the cap and was not touched.
+- **`[AI CODE REVIEW]`:** one reviewer (Opus) read the whole chunk diff `1b52f52..75dd790^`. I adjudicated the findings.
+  - Findings for 86, all non-blocking, all fixed in R-fix:
+    - R6: `EditOutcome` gains `refused`, and `handleEdit` no longer repeats `deleteStep`'s Start rule.
+    - R7 to R10: four stale comments; one of them leaked the Choice key encoding.
+  - The reviewer checked the `handleEdit` follow-ups against the deleted wrappers, the adopt path, the viewport effects, and the moved components (compared with whitespace ignored). All were equivalent.
+  - Ticket 53's findings are in its closeout.
+  - No open findings.
+- **Verdicts** at e7cb526, on local `next start` over Docker Postgres 18. Capture: `test-results/chunk-7-commands.txt`.
+  - **AC-1 PASS:**
+    - `journey-canvas.tsx` is 694 lines and `draft-editor.tsx` 583. Nothing else under `src/components/journeys` is over 700 lines, apart from the existing `rich-text-editor.tsx`.
+    - `JourneyCanvasProps` has 8 members.
+  - **AC-2 PASS:**
+    - `geometry.test.ts` exists.
+    - `layout.test.ts` changes only in its imports and the moved block; `validate.test.ts` gains the `indexProblems` block.
+    - 712 unit tests pass.
+  - **AC-3 PASS, with the deviation above:** `canvas.spec.ts` and `draft.spec.ts` are unchanged. The full suite gives 146 passed, 0 failed, 0 flaky.
+- **Command chain** (`node_modules/.atlas-c7/chain.sh`, run once at the chunk's end): `pnpm lint`, `format:check`, `typecheck`, `test`, `build`, then `E2E_EVIDENCE=canvas-phone-sheet,canvas-tablet-stacked-panel pnpm test:e2e:prebuilt`.
+- **Earlier run, recorded as FAIL at 75dd790:** 144 passed and 2 failed (`step-editing-image-caption-alt-and-preview` and `panel-outcomes-from-the-ending`). Both were diagnosed to the 1×1 cause above, from their traces, and neither run was rerun to pass.
