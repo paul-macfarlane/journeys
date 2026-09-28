@@ -1,11 +1,16 @@
 Ticket 89: Enter on an untouched Choice-target field keeps the Choice's target.
 
-Step (source): 5063bfc3-b56e-4777-8753-891248bbf41a
-Choice "Find the clinic" (6c950beb-0d5f-40d6-993e-a12071019388) target before Enter: 8b94daf7-4490-4958-81c0-e20e9d8b7b2a
+Step (source): 2e8cbe48-87f8-4ede-b689-4f761d467b4c
+Choice "Find the clinic" (964114b9-e60c-42e0-91e6-9ef308a25ea3) target before Enter: 5e25c392-0be4-4c2b-a599-b909a3ea93bc
 Draft row version before Enter: 1
-Choice "Find the clinic" (6c950beb-0d5f-40d6-993e-a12071019388) target after Enter, no navigation: 8b94daf7-4490-4958-81c0-e20e9d8b7b2a
-Draft row version after Enter, no navigation: 1 (unchanged)
+Choice "Find the clinic" (964114b9-e60c-42e0-91e6-9ef308a25ea3) target after Enter, and after typing then clearing then Enter: 5e25c392-0be4-4c2b-a599-b909a3ea93bc
+Draft row version re-read after those presses: 1
+Draft writes (next-action POSTs) during those presses: 0
 
 ArrowDown then Enter still retargets:
-Choice "Wait your turn" (aa742875-580a-4f40-be90-a305ecb5b9a5) target after ArrowDown+Enter: 8b94daf7-4490-4958-81c0-e20e9d8b7b2a
+Choice "Wait your turn" (3830ce08-0574-4d27-b411-64a4e0f118ca) target after ArrowDown+Enter: 5e25c392-0be4-4c2b-a599-b909a3ea93bc
 Draft row version after retargeting: 2
+
+Dangling target (Step missing-step not in the Draft), untouched Enter:
+Draft row version before Enter: 3
+Draft row version re-read after Enter: 3
