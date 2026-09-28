@@ -15,6 +15,7 @@ import {
   removeOutcome,
   renameOutcome,
   retargetChoiceToNewStep,
+  runEditCommand,
   setEndingOutcome,
   setLayoutDirection,
   setStart,
@@ -996,6 +997,158 @@ describe("setStepPrompt", () => {
         label: "x",
         required: false,
       }),
+    ).toBe(base);
+  });
+});
+
+describe("runEditCommand", () => {
+  const base = buildDocument();
+
+  it("adds a Step and names it as the one created", () => {
+    const before = snapshot(base);
+    const outcome = runEditCommand(base, { kind: "add-step" });
+
+    expect(outcome.stepId).not.toBeNull();
+    expect(outcome.choiceId).toBeNull();
+    expect(Object.keys(outcome.document.steps)).toHaveLength(4);
+    expect(outcome.document.steps[outcome.stepId ?? ""].title).toBe("");
+    expect(base).toEqual(before);
+  });
+
+  it("adds the next Step with an unlabelled Choice leading to it", () => {
+    const outcome = runEditCommand(base, {
+      kind: "add-next-step",
+      stepId: "ending-a",
+    });
+
+    expect(outcome.stepId).not.toBeNull();
+    expect(outcome.choiceId).toBeNull();
+    expect(outcome.document.steps["ending-a"].choices).toEqual([
+      expect.objectContaining({ label: "", targetStepId: outcome.stepId }),
+    ]);
+  });
+
+  it("duplicates a Step and names the copy", () => {
+    const outcome = runEditCommand(base, {
+      kind: "duplicate-step",
+      stepId: "ending-a",
+    });
+
+    expect(outcome.stepId).not.toBeNull();
+    expect(outcome.document.steps[outcome.stepId ?? ""].title).toBe(
+      "Ending A copy",
+    );
+  });
+
+  it("makes another Step the Start", () => {
+    const outcome = runEditCommand(base, {
+      kind: "set-start",
+      stepId: "ending-b",
+    });
+
+    expect(outcome).toEqual({
+      document: { ...base, startStepId: "ending-b" },
+      stepId: null,
+      choiceId: null,
+    });
+  });
+
+  it("deletes a Step, leaving the Choices into it dangling", () => {
+    const outcome = runEditCommand(base, {
+      kind: "delete-step",
+      stepId: "ending-b",
+    });
+
+    expect(outcome.document.steps["ending-b"]).toBeUndefined();
+    expect(outcome.document.steps.start.choices[1].targetStepId).toBe(
+      "ending-b",
+    );
+    expect(outcome.stepId).toBeNull();
+  });
+
+  it("connects two Steps with an unlabelled Choice and names it", () => {
+    const outcome = runEditCommand(base, {
+      kind: "connect-choice",
+      stepId: "ending-a",
+      targetStepId: "ending-b",
+    });
+
+    expect(outcome.choiceId).not.toBeNull();
+    expect(outcome.stepId).toBeNull();
+    expect(outcome.document.steps["ending-a"].choices).toEqual([
+      {
+        id: outcome.choiceId,
+        label: "",
+        targetStepId: "ending-b",
+        condition: null,
+        effect: null,
+      },
+    ]);
+  });
+
+  it("retargets a Choice", () => {
+    const outcome = runEditCommand(base, {
+      kind: "retarget-choice",
+      stepId: "start",
+      choiceId: "choice-a",
+      targetStepId: "ending-b",
+    });
+
+    expect(outcome.document.steps.start.choices[0].targetStepId).toBe(
+      "ending-b",
+    );
+    expect(outcome.stepId).toBeNull();
+    expect(outcome.choiceId).toBeNull();
+  });
+
+  it("removes every Choice named, across Steps", () => {
+    const outcome = runEditCommand(base, {
+      kind: "remove-choices",
+      choices: [
+        { stepId: "start", choiceId: "choice-a" },
+        { stepId: "start", choiceId: "choice-b" },
+      ],
+    });
+
+    expect(outcome.document.steps.start.choices).toEqual([]);
+  });
+
+  it("sets which way the map runs", () => {
+    const outcome = runEditCommand(base, {
+      kind: "set-layout-direction",
+      direction: "LR",
+    });
+
+    expect(outcome.document.layoutDirection).toBe("LR");
+  });
+
+  it("hands back the same document and nothing created when the edit is refused", () => {
+    const refused = { document: base, stepId: null, choiceId: null };
+
+    expect(
+      runEditCommand(base, { kind: "delete-step", stepId: "start" }),
+    ).toEqual(refused);
+    expect(
+      runEditCommand(base, { kind: "add-next-step", stepId: "missing" }),
+    ).toEqual(refused);
+    expect(
+      runEditCommand(base, { kind: "duplicate-step", stepId: "missing" }),
+    ).toEqual(refused);
+    expect(
+      runEditCommand(base, {
+        kind: "connect-choice",
+        stepId: "missing",
+        targetStepId: "start",
+      }),
+    ).toEqual(refused);
+    expect(
+      runEditCommand(base, { kind: "set-start", stepId: "missing" }),
+    ).toEqual(refused);
+    expect(
+      runEditCommand(base, { kind: "remove-choices", choices: [] }),
+    ).toEqual(refused);
+    expect(
+      runEditCommand(base, { kind: "delete-step", stepId: "start" }).document,
     ).toBe(base);
   });
 });

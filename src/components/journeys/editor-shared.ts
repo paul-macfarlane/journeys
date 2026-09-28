@@ -72,6 +72,23 @@ export type SelectStepOptions = {
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
 
+/** One Choice, named the way the document names it. */
+export type CanvasArrow = { stepId: string; choiceId: string };
+
+/**
+ * What the map asks of the editor that is not an edit to the document: a
+ * Step opened (a box or an arrow clicked), the arrow in hand taken hold of or
+ * let go of, the panel put away or brought back, and the Draft's one undo and
+ * redo. Edits travel as `EditCommand`s (`@/lib/graph/edit`) instead.
+ */
+export type SelectCommand =
+  | { kind: "step"; stepId: string; options?: SelectStepOptions }
+  | { kind: "arrow"; arrow: CanvasArrow | null }
+  | { kind: "show-panel" }
+  | { kind: "hide-panel" }
+  | { kind: "undo" }
+  | { kind: "redo" };
+
 /**
  * The Step the panel's last "Add choice" made with "New step", offered for
  * editing under the Choices until the Author moves on. `announcement` counts

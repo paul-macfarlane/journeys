@@ -563,3 +563,110 @@ export function endingCountsByOutcome(
 
   return counts;
 }
+
+/**
+ * The edits the map asks for, in the document's own words: one value per
+ * move, so the canvas hands the editor a single `onEdit(command)` rather than
+ * a callback per move. `add-next-step` and `connect-choice` make their Choice
+ * with an empty label — what the Choice says is the next thing the Author
+ * writes, on the Step it leaves. Undo and redo are not edits: they move the
+ * history, and travel beside these rather than among them.
+ */
+export type EditCommand =
+  | { kind: "add-step" }
+  | { kind: "add-next-step"; stepId: string }
+  | { kind: "duplicate-step"; stepId: string }
+  | { kind: "set-start"; stepId: string }
+  | { kind: "delete-step"; stepId: string }
+  | { kind: "connect-choice"; stepId: string; targetStepId: string }
+  | {
+      kind: "retarget-choice";
+      stepId: string;
+      choiceId: string;
+      targetStepId: string;
+    }
+  | {
+      kind: "remove-choices";
+      choices: Array<{ stepId: string; choiceId: string }>;
+    }
+  | { kind: "set-layout-direction"; direction: LayoutDirection };
+
+/**
+ * What a command made of the document: the document it became, the Step it
+ * created (add-step, add-next-step, duplicate-step), and the Choice it
+ * created (connect-choice). An edit that refused, or changed nothing, hands
+ * back the very document it was given with neither.
+ */
+export type EditOutcome = {
+  document: GraphDocument;
+  stepId: string | null;
+  choiceId: string | null;
+};
+
+/** One `EditCommand` run through the edit it names. Pure, like every edit here. */
+export function runEditCommand(
+  document: GraphDocument,
+  command: EditCommand,
+): EditOutcome {
+  const unchanged: EditOutcome = { document, stepId: null, choiceId: null };
+  const changed = (
+    next: GraphDocument,
+    created: { stepId?: string; choiceId?: string } = {},
+  ): EditOutcome =>
+    next === document
+      ? unchanged
+      : {
+          document: next,
+          stepId: created.stepId ?? null,
+          choiceId: created.choiceId ?? null,
+        };
+
+  switch (command.kind) {
+    case "add-step": {
+      const created = addStep(document);
+      return changed(created.document, { stepId: created.stepId });
+    }
+    case "add-next-step": {
+      const created = addChoiceToNewStep(document, command.stepId, {
+        label: "",
+      });
+      if (created.choiceId === "") return unchanged;
+      return changed(created.document, { stepId: created.stepId });
+    }
+    case "duplicate-step": {
+      const created = duplicateStep(document, command.stepId);
+      if (created.stepId === "") return unchanged;
+      return changed(created.document, { stepId: created.stepId });
+    }
+    case "set-start":
+      return changed(setStart(document, command.stepId));
+    case "delete-step": {
+      const result = deleteStep(document, command.stepId);
+      if (!result.ok) return unchanged;
+      return changed(result.document);
+    }
+    case "connect-choice": {
+      const created = addChoice(document, command.stepId, {
+        label: "",
+        targetStepId: command.targetStepId,
+      });
+      if (created.choiceId === "") return unchanged;
+      return changed(created.document, { choiceId: created.choiceId });
+    }
+    case "retarget-choice":
+      return changed(
+        updateChoice(document, command.stepId, command.choiceId, {
+          targetStepId: command.targetStepId,
+        }),
+      );
+    case "remove-choices": {
+      let next = document;
+      for (const choice of command.choices) {
+        next = removeChoice(next, choice.stepId, choice.choiceId);
+      }
+      return changed(next);
+    }
+    case "set-layout-direction":
+      return changed(setLayoutDirection(document, command.direction));
+  }
+}
