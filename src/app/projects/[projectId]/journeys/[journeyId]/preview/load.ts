@@ -48,3 +48,28 @@ export async function loadPreview({
     journeyHref,
   };
 }
+
+/**
+ * What both Preview screens' `generateMetadata` needs (ticket 91): the
+ * Journey, resolved for the signed-in Member the same way `loadPreview`
+ * resolves it — `requireSession` and `journeyForMember` are `cache()`d, so
+ * this pays no second query once the page itself runs. A non-Member and an
+ * unknown Journey both 404 here too (ticket 60's streamed-metadata trap):
+ * metadata streams in after the page, so a title returned for a missing
+ * Journey would replace the not-found page's own. The Draft is not read
+ * here — the title needs only the Journey.
+ */
+export async function journeyForPreviewMetadata({
+  projectId,
+  journeyId,
+}: {
+  projectId: string;
+  journeyId: string;
+}): Promise<MemberJourney> {
+  const session = await requireSession();
+
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) notFound();
+
+  return journey;
+}

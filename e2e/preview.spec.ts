@@ -63,6 +63,7 @@ test("preview", async ({ page, context }) => {
   // frame — title in the header, the Step's content and Choices — with only
   // the banner and its way back to the editor telling it apart.
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
+  await expect(page).toHaveTitle(`Preview: ${journeyTitle} · Journeys`);
   const headerTitle = frameHeader.getByText(journeyTitle, { exact: true });
   await expect(headerTitle).toBeVisible();
   // The way out (ticket 69) points at Preview's own routes: the Project
@@ -94,6 +95,7 @@ test("preview", async ({ page, context }) => {
   await expect(page).toHaveURL(
     `${E2E_BASE_URL}${journeyPath}/preview/waved-through`,
   );
+  await expect(page).toHaveTitle(`Preview: ${journeyTitle} · Journeys`);
   await expect(
     page.getByRole("heading", { name: "Waved through" }),
   ).toBeVisible();

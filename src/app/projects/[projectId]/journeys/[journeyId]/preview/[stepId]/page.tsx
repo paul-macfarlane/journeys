@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { RunnerFrame } from "@/components/runner/runner-frame";
@@ -10,7 +11,22 @@ import {
 import { hasStep, isEnding } from "@/lib/graph/document";
 
 import { previewChooseAction } from "../actions";
-import { loadPreview } from "../load";
+import { journeyForPreviewMetadata, loadPreview } from "../load";
+
+/**
+ * The tab title (ticket 91): "Preview: <Journey title>", with the root
+ * layout's template appending "· Journeys" — the same title on every Step
+ * screen as on Preview's start screen.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string; journeyId: string; stepId: string }>;
+}): Promise<Metadata> {
+  const { projectId, journeyId } = await params;
+  const journey = await journeyForPreviewMetadata({ projectId, journeyId });
+  return { title: `Preview: ${journey.title}` };
+}
 
 /**
  * Preview's per-Step screen: one Step of the Draft, walked exactly the way a
