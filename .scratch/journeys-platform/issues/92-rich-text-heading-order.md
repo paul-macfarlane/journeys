@@ -1,6 +1,6 @@
 # 92: Heading order in rendered rich text
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
