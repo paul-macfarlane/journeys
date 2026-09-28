@@ -8,6 +8,7 @@ import {
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import {
   counted,
+  type AddedStep,
   type ApplyEdit,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
@@ -313,6 +314,8 @@ export function StepPanel({
   markedChoiceId,
   onChange,
   onSelectStep,
+  added,
+  onChoiceAdded,
   onContentChange,
   onContentRefused,
   onDeleteStep,
@@ -335,6 +338,10 @@ export function StepPanel({
   markedChoiceId: string | null;
   onChange: ApplyEdit;
   onSelectStep: SelectStep;
+  /** The Step the last "Add choice" here made, while it is still news. */
+  added: AddedStep | null;
+  /** An "Add choice" landed: the New step it made, or `null` for none. */
+  onChoiceAdded: (stepId: string | null) => void;
   onContentChange: (stepId: string, content: Content) => void;
   onContentRefused: (error: string) => void;
   onDeleteStep: (stepId: string) => void;
@@ -367,6 +374,9 @@ export function StepPanel({
           autoComplete="off"
           autoFocus={focusTitle}
           maxLength={200}
+          // A new Step's title is empty; this is what it is called until
+          // the Author names it, on the map and everywhere else (`stepName`).
+          placeholder="Untitled step"
           value={step.title}
           // Named as the field it is, so a title typed in one go comes back
           // in one undo rather than a letter at a time.
@@ -408,6 +418,7 @@ export function StepPanel({
         resetKey={`${step.id}:${revision}`}
         content={step.content}
         history={false}
+        placeholder="Write what the participant reads…"
         onChange={(content) => onContentChange(step.id, content)}
         onRefused={onContentRefused}
       />
@@ -427,6 +438,8 @@ export function StepPanel({
         markedChoiceId={markedChoiceId}
         onChange={onChange}
         onSelectStep={onSelectStep}
+        added={added}
+        onChoiceAdded={onChoiceAdded}
       />
 
       {/* Only an Ending carries an Outcome; a Step a participant can walk on

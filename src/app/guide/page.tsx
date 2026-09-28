@@ -59,7 +59,7 @@ export default function GuidePage() {
           everything within it.
         </p>
 
-        <h3>Sign in</h3>
+        <h3 id="sign-in">Sign in</h3>
         <p>
           Go to <Link href="/sign-in">Sign in</Link> and choose Google or
           Discord. Journeys never sees a password; the provider tells it your
@@ -67,7 +67,7 @@ export default function GuidePage() {
           picture later in Settings.
         </p>
 
-        <h3>Create a Project</h3>
+        <h3 id="create-a-project">Create a Project</h3>
         <p>
           Your projects page lists every Project you belong to. Choose{" "}
           <strong>New project</strong>, give it a title, and you land on it. A
@@ -76,7 +76,7 @@ export default function GuidePage() {
           link.
         </p>
 
-        <h3>Create a Journey</h3>
+        <h3 id="create-a-journey">Create a Journey</h3>
         <p>
           From a Project, choose <strong>New journey</strong> and give it a
           title. A new Journey begins with one Step, its Start, and opens on the
@@ -84,7 +84,7 @@ export default function GuidePage() {
           no Participant can see.
         </p>
 
-        <h3>The canvas</h3>
+        <h3 id="the-canvas">The canvas</h3>
         <p>
           The canvas draws the Draft as a map: every Step is a box, every Choice
           an arrow from the Step it belongs to into the Step it leads to. The
@@ -129,7 +129,7 @@ export default function GuidePage() {
           caption="A Draft on the canvas, with a Step open in the panel."
         />
 
-        <h3>The Step panel</h3>
+        <h3 id="the-step-panel">The Step panel</h3>
         <p>
           The panel holds the open Step: its title, its content, its Choices,
           and, once it is an Ending, its Outcome. Content is rich text:

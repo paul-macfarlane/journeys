@@ -58,6 +58,24 @@ export type ThemePreset = (typeof THEME_PRESETS)[number]["id"];
 
 export const DEFAULT_THEME_PRESET: ThemePreset = "trail";
 
+/**
+ * What a fresh accent starts as, per preset (ticket 79 item 7): the same
+ * `#rrggbb` an author's eye would pick off that preset's own swatch, so
+ * ticking "Accent color" on Tide starts from Tide's teal, not Trail's
+ * spruce. Each is the light-mode `--primary` oklch this preset's block in
+ * `globals.css` sets, converted to sRGB; `trail`'s matches
+ * `BRAND_COLORS.spruce` exactly, which is the same color computed the same
+ * way (`docs/branding.md`'s table).
+ */
+export const PRESET_ACCENTS: Record<ThemePreset, string> = {
+  trail: "#095b41",
+  parchment: "#9e4421",
+  tide: "#005b60",
+  dusk: "#763584",
+  ember: "#a53e00",
+  slate: "#1e4eac",
+};
+
 const presetIds = THEME_PRESETS.map((preset) => preset.id) as [
   ThemePreset,
   ...ThemePreset[],

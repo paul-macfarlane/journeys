@@ -141,10 +141,12 @@ test("themes-settings: a Project's preset and accent reach the runner and the Pr
       accent: null,
     });
 
+  // The preset just chosen is Tide, so the fresh accent starts from Tide's
+  // own teal (ticket 79 item 7), not Trail's spruce.
   await page.getByRole("checkbox", { name: "Accent color" }).check();
   await expect
     .poll(async () => (await readProjectTheme(projectId)).accent)
-    .toBe("#095b41");
+    .toBe("#005b60");
   // Made until it takes, as `editJourneyField` is: two saves have just
   // asked for refreshes, and one landing between the fill and the blur can
   // put the stored accent back over the typed one before it is written.

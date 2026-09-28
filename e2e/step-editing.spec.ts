@@ -8,6 +8,7 @@ import {
   openFindStep,
   tagWithOutcome,
 } from "./setup/authoring";
+import { canvas, canvasNode } from "./setup/canvas";
 import { readDraft } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
@@ -100,23 +101,50 @@ async function retargetChoice(
   await expect(field).toHaveValue(title);
 }
 
-/** "Add choice" pointed at a Step that does not exist yet — the same motion. */
+/**
+ * The panel beside the map, on whichever Step the Author has open. Named
+ * exactly: the problems a Step carries are a region inside it. Its status
+ * line is found through it, never page-wide, where the Draft's save line is
+ * a status too.
+ */
+function stepPanel(page: Page) {
+  return page.getByRole("region", { name: "Step", exact: true });
+}
+
+/** "Add choice" in the panel, pointed at a Step that does not exist yet. */
+async function addChoiceToNewStepInPanel(
+  page: Page,
+  label: string,
+): Promise<void> {
+  const panel = stepPanel(page);
+  await panel.getByRole("button", { name: "Add choice", exact: true }).click();
+  await panel.getByLabel("Label", { exact: true }).fill(label);
+  await panel
+    .getByLabel("Target", { exact: true })
+    .selectOption({ label: "New step" });
+  await panel.getByRole("button", { name: "Add", exact: true }).click();
+}
+
+/**
+ * "Add choice" pointed at a Step that does not exist yet, and the new Step
+ * then opened and named. The panel stays on the Step the Choice was written
+ * on (ticket 79); the line under its Choices opens the new one, whose title
+ * is empty, reads "Untitled step" as its placeholder, and has the focus.
+ */
 async function addChoiceToNewStep(
   page: Page,
   label: string,
   title: string,
 ): Promise<void> {
-  await page.getByRole("button", { name: "Add choice", exact: true }).click();
-  await page.getByLabel("Label", { exact: true }).fill(label);
-  await page
-    .getByLabel("Target", { exact: true })
-    .selectOption({ label: "New step" });
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await addChoiceToNewStepInPanel(page, label);
+  await stepPanel(page)
+    .getByRole("button", { name: "Edit Untitled step", exact: true })
+    .click();
 
-  // The new Step is what the panel opens on, with its title field focused,
-  // so it can be named right away.
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
-  await expect(page.getByLabel("Step title")).toBeFocused();
+  const field = page.getByLabel("Step title");
+  await expect(field).toHaveValue("");
+  await expect(field).toHaveAttribute("placeholder", "Untitled step");
+  await expect(field).toBeFocused();
   await renameStep(page, title);
 }
 
@@ -694,7 +722,7 @@ test("step-editing-choices-reorder-retarget", async ({ page }) => {
     .nth(1)
     .getByRole("option", { name: "New step…", exact: true })
     .click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toHaveValue("");
   await expect(page.getByLabel("Step title")).toBeFocused();
   // And it is a Step of the Draft like any other: "Find step" offers it.
   await openFindStep(page);
@@ -712,7 +740,7 @@ test("step-editing-choices-reorder-retarget", async ({ page }) => {
   // "not yet reached" list.
   await chooseStep(page, "Border post");
   await rows.nth(1).getByRole("button", { name: "Open", exact: true }).click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toHaveValue("");
 
   await openFindStep(page);
   await expect(stepOption(page, "Turned back")).toBeVisible();
@@ -1051,6 +1079,242 @@ test("panel-outcomes-from-the-ending", async ({ page }) => {
     path: evidencePath(
       "panel-outcomes-from-the-ending",
       "panel-outcomes-from-the-ending.png",
+    ),
+    fullPage: true,
+  });
+});
+
+test("step-editing-add-choice-stays-on-step", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
+  await renameStep(page, "Border post");
+  const panel = stepPanel(page);
+  const title = page.getByLabel("Step title");
+
+  // A Choice to a New step leaves the panel on the Step it was written on,
+  // selects the new Step's box on the map, and says what it made.
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  await expect(title).toHaveValue("Border post");
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+  await expect(
+    panel.getByRole("button", { name: "Edit Untitled step", exact: true }),
+  ).toBeVisible();
+  // Two statuses in the Editor tabpanel now; the Draft's save line is still
+  // the one `expectSaved` finds, by its name.
+  await expectSaved(page);
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+  await expect(canvasNode(page, "Untitled step")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await expect(canvasNode(page, "Border post")).not.toHaveAttribute(
+    "aria-current",
+  );
+
+  // So a second "Add choice" lands on the same Step.
+  await addChoiceToNewStepInPanel(page, "Walk away");
+  await expect(title).toHaveValue("Border post");
+  await expect(
+    panel.getByRole("list", { name: "Choices" }).getByRole("listitem"),
+  ).toHaveCount(2);
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+
+  // From the top, so the sticky rows sit where they belong in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: evidencePath(
+      "step-editing-add-choice-stays-on-step",
+      "step-editing-add-choice-stays-on-step.png",
+    ),
+    fullPage: true,
+  });
+
+  // "Edit" opens the Step just made, its title empty and waiting.
+  await panel
+    .getByRole("button", { name: "Edit Untitled step", exact: true })
+    .click();
+  await expect(title).toHaveValue("");
+  await expect(title).toHaveAttribute("placeholder", "Untitled step");
+  await expect(title).toBeFocused();
+  // The line's live region stays, empty, so its next words are announced.
+  await expect(panel.getByRole("status")).toHaveText("");
+  await expect(canvasNode(page, "Border post")).not.toHaveAttribute(
+    "aria-current",
+  );
+  await renameStep(page, "Turned back");
+  await expect(canvasNode(page, "Turned back")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await expectSaved(page);
+
+  // Both Choices are the Start's; the one opened is the second made, and the
+  // first is still untitled, stored as an empty title.
+  const draft = await readDraft(journeyId);
+  const start = draft.steps[draft.startStepId];
+  expect(start.choices.map((choice) => choice.label)).toEqual([
+    "Wait your turn",
+    "Walk away",
+  ]);
+  expect(
+    start.choices.map((choice) => draft.steps[choice.targetStepId].title),
+  ).toEqual(["", "Turned back"]);
+
+  // An undo takes the add back, and the line naming what it made with it.
+  await addChoiceToNewStepInPanel(page, "Go back");
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+  await canvas(page).getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(
+    panel.getByRole("button", { name: "Edit Untitled step", exact: true }),
+  ).toHaveCount(0);
+  await expect(panel.getByRole("status")).toHaveText("");
+});
+
+/** A grey picture of a known size, served for the image test's address. */
+const PLACEHOLDER_IMAGE = [
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240">',
+  '<rect width="400" height="240" fill="#d4d4d4" />',
+  "</svg>",
+].join("");
+
+type Rect = { x: number; y: number; width: number; height: number };
+
+function overlaps(a: Rect, b: Rect): boolean {
+  return (
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height
+  );
+}
+
+function within(inner: Rect, outer: Rect): boolean {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
+}
+
+/**
+ * Ticket 57: the hint a brand-new Draft carries above the map, gone as soon
+ * as the Journey grows past its one Step and no Choices.
+ */
+test("empty-draft-map", async ({ page }) => {
+  await startJourney(page, mintedAuthorIds);
+
+  const hint = page.getByText(
+    "Write the Start Step in the panel, then add a Choice to make the next Step.",
+  );
+  await expect(hint).toBeVisible();
+  const link = page.getByRole("link", { name: "How the canvas works" });
+  await expect(link).toHaveAttribute("href", "/guide#the-canvas");
+
+  await page.screenshot({
+    path: evidencePath("empty-draft-map", "empty-draft-map.png"),
+    fullPage: true,
+  });
+
+  // A Choice — the Draft's second Step — is what makes it go.
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  await expect(hint).toHaveCount(0);
+});
+
+/**
+ * Ticket 57: the Step content editor's placeholder and the Choice label
+ * input's, both shown only while their field is empty.
+ */
+test("editor-placeholders", async ({ page }) => {
+  await startJourney(page, mintedAuthorIds);
+
+  const surface = page.getByLabel("Step content");
+  await expect(surface).toHaveAttribute(
+    "aria-placeholder",
+    "Write what the participant reads…",
+  );
+  await expect(surface.locator("p.is-empty")).toHaveAttribute(
+    "data-placeholder",
+    "Write what the participant reads…",
+  );
+
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  const labelField = stepPanel(page).getByLabel("Choice label");
+  // Cleared, so the placeholder is what the field shows.
+  await labelField.fill("");
+  await expect(labelField).toHaveValue("");
+  await expect(labelField).toHaveAttribute(
+    "placeholder",
+    "What the participant clicks",
+  );
+
+  // From the top, so the sticky rows do not cover the editor in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: evidencePath("editor-placeholders", "editor-placeholders.png"),
+    fullPage: true,
+  });
+});
+
+test("step-editing-image-tools-clear-of-text", async ({ page }) => {
+  // Stored images need an absolute http(s) address; this one is answered
+  // here, so the picture has a real size without the internet.
+  await page.route("https://example.com/doormat.svg", (route) =>
+    route.fulfill({ contentType: "image/svg+xml", body: PLACEHOLDER_IMAGE }),
+  );
+  await startJourney(page, mintedAuthorIds);
+  await renameStep(page, "Doorstep");
+
+  // A paragraph, then an image under it.
+  const surface = page.getByLabel("Step content");
+  await surface.click();
+  await page.keyboard.type("A key lies under the mat.");
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Image", exact: true }).click();
+  const imageDialog = page.getByRole("dialog");
+  await imageDialog
+    .getByLabel("Image URL")
+    .fill("https://example.com/doormat.svg");
+  await imageDialog
+    .getByLabel("Alt text", { exact: true })
+    .fill("A doormat on a step");
+  await imageDialog.getByRole("button", { name: "Insert image" }).click();
+  await expect(imageDialog).toBeHidden();
+
+  const paragraph = surface.locator("p", {
+    hasText: "A key lies under the mat.",
+  });
+  const picture = surface.locator("figure img");
+  await expect
+    .poll(() =>
+      picture.evaluate((element) => (element as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
+
+  // The image selected: its toolbar sits over the picture and nowhere near
+  // the paragraph above it.
+  await picture.click();
+  const tools = page.getByRole("toolbar", { name: "Image tools" });
+  await expect(tools.getByRole("button", { name: "Remove" })).toBeVisible();
+  await expect
+    .poll(async () => {
+      const [toolsBox, paragraphBox, pictureBox] = await Promise.all([
+        tools.boundingBox(),
+        paragraph.boundingBox(),
+        picture.boundingBox(),
+      ]);
+      if (!toolsBox || !paragraphBox || !pictureBox) return "not laid out";
+      if (overlaps(toolsBox, paragraphBox)) return "covers the paragraph";
+      if (!within(toolsBox, pictureBox)) return "outside the picture";
+      return "clear";
+    })
+    .toBe("clear");
+
+  // From the top, so the sticky rows do not cover the editor in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: evidencePath(
+      "step-editing-image-tools-clear-of-text",
+      "step-editing-image-tools-clear-of-text.png",
     ),
     fullPage: true,
   });

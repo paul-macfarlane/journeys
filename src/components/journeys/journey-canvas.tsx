@@ -47,6 +47,8 @@ import {
   sourceSide,
   targetSide,
   useCanvasColorMode,
+  WHOLE_MAP_FIT,
+  WHOLE_MAP_MAX_ZOOM,
   type ArrowDirection,
 } from "@/components/journeys/canvas-shared";
 import {
@@ -591,6 +593,8 @@ function StepNode({ id, data }: NodeProps<StepFlowNode>) {
         type="button"
         {...data.marks}
         aria-label={data.title}
+        // The box selected on the map, said as well as drawn heavier.
+        aria-current={data.isSelected ? "true" : undefined}
         // The peek is this box's description: the problems on it and the
         // opening of what it says, read out wherever the Author is. The peek
         // is rendered exactly while the box is hovered or focused, and a
@@ -1400,7 +1404,7 @@ function CanvasFlow({
   useEffect(() => {
     if (lastDirection.current === layout.direction) return;
     lastDirection.current = layout.direction;
-    void fitView({ duration: mapMoveDuration() });
+    void fitView({ maxZoom: WHOLE_MAP_MAX_ZOOM, duration: mapMoveDuration() });
   }, [fitView, layout.direction]);
 
   // A map that has just been given the whole width by the Author, or had it
@@ -1435,7 +1439,10 @@ function CanvasFlow({
     }
 
     if (request.box === null) {
-      void fitView({ duration: mapMoveDuration() });
+      void fitView({
+        maxZoom: WHOLE_MAP_MAX_ZOOM,
+        duration: mapMoveDuration(),
+      });
       return;
     }
     zoomToStep(request.box, request.maxZoom);
@@ -1466,6 +1473,7 @@ function CanvasFlow({
         deleteKeyCode={DELETE_KEYS}
         onBeforeDelete={beforeDelete}
         fitView
+        fitViewOptions={WHOLE_MAP_FIT}
         // Low enough that the whole of a real-sized Journey fits the map:
         // case-3 running left to right, with its ranks spread for labels,
         // needs just under a tenth, and a fit held above what the map needs
@@ -1615,7 +1623,7 @@ function CanvasFlow({
         onPaneClick={collapseToolbar}
       >
         <Background />
-        <Controls showInteractive={false} />
+        <Controls showInteractive={false} fitViewOptions={WHOLE_MAP_FIT} />
       </ReactFlow>
 
       {/* The delete confirmation, one for the whole map: opened by the

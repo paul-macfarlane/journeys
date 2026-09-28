@@ -72,6 +72,14 @@ export type SelectStepOptions = {
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
 
+/**
+ * The Step the panel's last "Add choice" made with "New step", offered for
+ * editing under the Choices until the Author moves on. `announcement` counts
+ * the adds, so a second add that reads the same ("Added "Untitled step"")
+ * is still a change the live region announces.
+ */
+export type AddedStep = { stepId: string; announcement: number };
+
 /** "1 step", "44 steps": the count and the noun that agrees with it. */
 export function counted(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;

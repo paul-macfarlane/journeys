@@ -265,7 +265,7 @@ export async function unpublishJourney(
 }
 
 export type RestoreVersionResult =
-  { ok: true; versionNumber: number } | WriteFailure;
+  { ok: true; versionNumber: number; draftVersion: number } | WriteFailure;
 
 /**
  * A stored Published Version document, parsed rather than trusted (ticket
@@ -293,6 +293,9 @@ export function parseVersionDocument(document: unknown): GraphDocument | null {
  * the Member's page last read, and a Draft another Member has written since
  * is answered `stale` and left alone. It is also how a Draft whose row
  * cannot be read is recovered: the restore replaces the row whole.
+ *
+ * Answers the Draft version the restore left, so the page can tell its own
+ * write from a later one.
  *
  * `not-found` for an unknown version and one belonging to some other
  * Journey alike, and for a Journey that went away since its membership was
@@ -336,5 +339,9 @@ export async function restoreVersion(
   );
   if (!written.ok) return written;
 
-  return { ok: true, versionNumber: row.versionNumber };
+  return {
+    ok: true,
+    versionNumber: row.versionNumber,
+    draftVersion: written.row.version,
+  };
 }

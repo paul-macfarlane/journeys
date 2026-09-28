@@ -80,6 +80,34 @@ test("project-create", async ({ page, context }) => {
   await expect(projectLink).toHaveAttribute("href", `/projects/${projectId}`);
 });
 
+/**
+ * Ticket 57: a Project's empty Journeys list points a first-time Author at
+ * "New journey" and at the guide section for it.
+ */
+test("empty-journeys-list", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Clinic Access ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+
+  await expect(page.getByText("No journeys yet")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Choose New journey to write your first one. It starts with a single Step, its Start.",
+    ),
+  ).toBeVisible();
+  const link = page.getByRole("link", { name: "How Journeys work" });
+  await expect(link).toHaveAttribute("href", "/guide#create-a-journey");
+
+  await page.screenshot({
+    path: evidencePath("empty-journeys-list", "empty-journeys-list.png"),
+    fullPage: true,
+  });
+});
+
 test("project-non-member", async ({ page, context, browser }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);

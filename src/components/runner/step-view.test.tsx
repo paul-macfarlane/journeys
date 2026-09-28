@@ -122,3 +122,17 @@ describe("StepView with no Prompt", () => {
     expect(html).toContain('aria-label="Choices"');
   });
 });
+
+describe("StepView with an untitled Step", () => {
+  it("heads the page with the name an Author sees, never an empty h1", () => {
+    const html = render({ ...queueStep(null), title: "" });
+
+    expect(html).toContain(">Untitled step</h1>");
+  });
+
+  it("heads a whitespace-only title the same way", () => {
+    const html = render({ ...queueStep(null), title: "   " });
+
+    expect(html).toContain(">Untitled step</h1>");
+  });
+});

@@ -27,6 +27,8 @@ import {
   sourceSide,
   targetSide,
   useCanvasColorMode,
+  WHOLE_MAP_FIT,
+  WHOLE_MAP_MAX_ZOOM,
 } from "@/components/journeys/canvas-shared";
 import { DirectionControl } from "@/components/journeys/direction-control";
 import { choiceLabel, counted } from "@/components/journeys/editor-shared";
@@ -343,7 +345,7 @@ function AnalyticsFlow({
   useEffect(() => {
     if (lastDirection.current === direction) return;
     lastDirection.current = direction;
-    void fitView({ duration: mapMoveDuration() });
+    void fitView({ maxZoom: WHOLE_MAP_MAX_ZOOM, duration: mapMoveDuration() });
   }, [direction, fitView]);
 
   const colorMode = useCanvasColorMode();
@@ -361,11 +363,12 @@ function AnalyticsFlow({
       edgesFocusable={false}
       elementsSelectable={false}
       fitView
+      fitViewOptions={WHOLE_MAP_FIT}
       // As the editor's map: low enough that a real-sized Journey fits.
       minZoom={0.05}
     >
       <Background />
-      <Controls showInteractive={false} />
+      <Controls showInteractive={false} fitViewOptions={WHOLE_MAP_FIT} />
     </ReactFlow>
   );
 }

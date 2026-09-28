@@ -154,7 +154,9 @@ test("members-add-refused", async ({ page, context }) => {
   await page.getByLabel("Email").fill(`nobody-${suffix}@example.com`);
   await page.getByRole("button", { name: "Add member" }).click();
   await expect(
-    page.getByText("No account has that email — they need to sign up first"),
+    page.getByText(
+      "No account has that email — they need to sign in once first.",
+    ),
   ).toBeVisible();
 
   await page.screenshot({

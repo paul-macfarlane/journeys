@@ -215,10 +215,13 @@ export async function saveDraftAction(
 
 /**
  * A refused publish carries every problem with the Draft, so an Author sees
- * the whole list rather than the first one.
+ * the whole list rather than the first one. A publish that went through
+ * carries the Draft version it published — the one it was guarded by, which
+ * is the version the editor's flush of a just-typed edit left — so the page
+ * can tell a later edit from the publish's own settling.
  */
 export type PublishJourneyActionResult =
-  { ok: true; versionNumber: number } | ActionFailure;
+  { ok: true; versionNumber: number; draftVersion: number } | ActionFailure;
 
 /**
  * Publishes a Journey's Draft as its next Published Version. A Draft that
@@ -248,7 +251,11 @@ export async function publishJourneyAction(
 
   revalidateJourneyPaths();
 
-  return { ok: true, versionNumber: published.versionNumber };
+  return {
+    ok: true,
+    versionNumber: published.versionNumber,
+    draftVersion: expected.data,
+  };
 }
 
 /** Clears a Journey's live pointer. Every Published Version stays. */
@@ -267,17 +274,22 @@ export async function unpublishJourneyAction(
   return { ok: true, id: journeyId };
 }
 
+export type RestoreVersionActionResult =
+  { ok: true; id: string; draftVersion: number } | ActionFailure;
+
 /**
  * Replaces the Draft with a Published Version's document. The version is
  * untouched, and so is whatever participants are walking. Guarded by
  * `draftVersion`, the Draft version the page last read (ticket 73).
+ * Answers the Draft version the restore left, which the acknowledgement of
+ * it is cleared past.
  */
 export async function restoreVersionAction(
   projectId: string,
   journeyId: string,
   versionId: string,
   draftVersion: unknown,
-): Promise<ActionResult> {
+): Promise<RestoreVersionActionResult> {
   const session = await requireSession();
 
   const expected = draftVersionSchema.safeParse(draftVersion);
@@ -296,5 +308,5 @@ export async function restoreVersionAction(
   if (!restored.ok) return failureResult(restored, nouns);
 
   revalidateJourneyPaths();
-  return { ok: true, id: journeyId };
+  return { ok: true, id: journeyId, draftVersion: restored.draftVersion };
 }

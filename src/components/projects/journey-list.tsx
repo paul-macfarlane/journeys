@@ -54,7 +54,14 @@ export function JourneyList({
         <CardHeader>
           <CardTitle>No journeys yet</CardTitle>
           <CardDescription>
-            Journeys you author in this project will appear here.
+            Choose New journey to write your first one. It starts with a single
+            Step, its Start.{" "}
+            <Link
+              href="/guide#create-a-journey"
+              className="underline underline-offset-4"
+            >
+              How Journeys work
+            </Link>
           </CardDescription>
         </CardHeader>
         <CardContent />

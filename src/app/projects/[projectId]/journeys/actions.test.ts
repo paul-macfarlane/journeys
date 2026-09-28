@@ -303,6 +303,7 @@ describe("restoreVersionAction", () => {
     doubles.versions.restoreVersion.mockResolvedValue({
       ok: true,
       versionNumber: 1,
+      draftVersion: 4,
     });
 
     const result = await restoreVersionAction(
@@ -312,7 +313,7 @@ describe("restoreVersionAction", () => {
       3,
     );
 
-    expect(result).toEqual({ ok: true, id: "journey-1" });
+    expect(result).toEqual({ ok: true, id: "journey-1", draftVersion: 4 });
     expect(doubles.versions.restoreVersion).toHaveBeenCalledWith(
       memberJourney,
       "version-1",
@@ -422,7 +423,7 @@ describe("publishJourneyAction", () => {
 
     const result = await publishJourneyAction("project-1", "journey-1", 0);
 
-    expect(result).toEqual({ ok: true, versionNumber: 3 });
+    expect(result).toEqual({ ok: true, versionNumber: 3, draftVersion: 0 });
   });
 
   it("publishes the Draft at the version the Member holds, and answers a newer one as stale", async () => {

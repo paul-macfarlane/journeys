@@ -82,7 +82,9 @@ async function storedProjectTitle(projectId: string): Promise<string> {
 
 /** The Draft's own status line, not the title form's above the tabs. */
 function draftStatus(page: Page) {
-  return page.getByRole("tabpanel", { name: "Editor" }).getByRole("status");
+  return page
+    .getByRole("tabpanel", { name: "Editor" })
+    .getByRole("status", { name: "Draft save status" });
 }
 
 test("draft-stale-save", async ({ page, context, browser }) => {
