@@ -224,12 +224,13 @@ test("public-project-page", async ({ page, context, browser }) => {
         .getByRole("banner")
         .getByRole("button", { name: "Dark mode" }),
     ).toBeVisible();
-    // The description's H2 is read one level down under the page's own
-    // `h1`, as all stored rich text is outside the editor (ticket 78).
+    // The description's own first heading always renders as h2, one level
+    // under the page's own `h1` (ticket 78, revised by ticket 92), whatever
+    // level it was written at.
     await expect(
       participant.getByRole("heading", {
         name: "About these journeys",
-        level: 3,
+        level: 2,
       }),
     ).toBeVisible();
     await expect(

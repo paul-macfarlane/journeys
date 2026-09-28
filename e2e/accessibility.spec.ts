@@ -1,5 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
+import type { Content } from "@/lib/graph/content";
+
 import {
   createJourney,
   createProject,
@@ -218,8 +220,9 @@ test("runner-single-h1: a Step whose content opens with an H1 still renders exac
         level: 1,
       }),
     ).toBeVisible();
-    // The content's own heading, shifted down one level
-    // (`shiftHeadingLevel` in `rich-text.tsx`): H1 -> h2, not a second h1.
+    // The content's own heading, normalised to the first level below the
+    // page's own h1 (`normalizeHeadingLevel` in `rich-text.tsx`): H1 -> h2,
+    // not a second h1.
     await expect(
       participant.getByRole("heading", { name: "Border crossing", level: 2 }),
     ).toBeVisible();
@@ -489,5 +492,80 @@ test("a11y-reduced-motion: popups and the map move at once for a reader who aske
     });
   } finally {
     await context.close();
+  }
+});
+
+test("a11y-heading-order: a public Project's description never skips a heading level (ticket 92)", async ({
+  page,
+  context,
+  browser,
+}) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  const suffix = uniqueSuffix();
+  const projectTitle = `A11y heading order ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  // A live Journey (ticket 42, decision 4): a Project with none is a 404,
+  // so the public page this test checks needs one to render at all.
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `A11y heading order journey ${suffix}`,
+  );
+  await publishDocument(journeyId, publishableDocument());
+
+  // A description opening with an H2 then an H3, and a paragraph — the
+  // shape that rendered h3-then-h4 under the fixed one-level shift ticket
+  // 92 replaced, an axe heading-order violation since nothing rendered the
+  // h2 in between.
+  const description: Content = {
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 2 },
+        content: [{ type: "text", text: "About this route" }],
+      },
+      {
+        type: "heading",
+        attrs: { level: 3 },
+        content: [{ type: "text", text: "What to bring" }],
+      },
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "Water and shade." }],
+      },
+    ],
+  };
+  await queryE2eDatabase(
+    'UPDATE "project" SET description_content = $1::jsonb WHERE id = $2',
+    [JSON.stringify(description), projectId],
+  );
+
+  const guestContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+  try {
+    const guest = await guestContext.newPage();
+    await guest.goto(`/p/${projectId}`);
+
+    await expect(
+      guest.getByRole("heading", { name: projectTitle, level: 1 }),
+    ).toBeVisible();
+    await expect(
+      guest.getByRole("heading", { name: "About this route", level: 2 }),
+    ).toBeVisible();
+    await expect(
+      guest.getByRole("heading", { name: "What to bring", level: 3 }),
+    ).toBeVisible();
+
+    await expectNoViolations(guest, "public project page, heading order");
+    await guest.screenshot({
+      path: evidencePath("a11y-heading-order", "public-project.png"),
+      fullPage: true,
+    });
+  } finally {
+    await guestContext.close();
   }
 });
