@@ -39,11 +39,8 @@ import { DeleteStepConfirmation } from "@/components/journeys/delete-step-dialog
 import { DirectionControl } from "@/components/journeys/direction-control";
 import {
   ARROW_DIRECTIONS,
-  arrowPoints,
   handleOffset,
-  labelPoint,
   NODE_BOX_CLASS,
-  smoothPath,
   sourceSide,
   targetSide,
   useCanvasColorMode,
@@ -62,13 +59,13 @@ import { Button } from "@/components/ui/button";
 import { contentPreview } from "@/lib/graph/content";
 import type { Point } from "@/lib/graph/crossings";
 import type { GraphDocument, LayoutDirection } from "@/lib/graph/document";
+import { arrowPoints, labelPoint, smoothPath } from "@/lib/graph/geometry";
 import {
   EDGE_LABEL_HEIGHT,
   EDGE_LABEL_MAX_WIDTH,
-  problemsByAddress,
   type GraphLayout,
 } from "@/lib/graph/layout";
-import type { PublishProblem } from "@/lib/graph/validate";
+import type { ProblemIndex } from "@/lib/graph/validate";
 import { mapMoveDuration } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
 
@@ -774,7 +771,7 @@ export type JourneyCanvasProps = {
    * doing — a Step found by name, or one just made.
    */
   locate: { request: number; view: "keep" | "reveal" | "zoom" };
-  problems: PublishProblem[];
+  problems: ProblemIndex;
   /** The one arrow the Author has clicked, if any. */
   selectedArrow: CanvasArrow | null;
   /**
@@ -864,8 +861,6 @@ function CanvasFlow({
   /** The Canvas itself, which is what Escape hands the keyboard back to. */
   canvasRef: RefObject<HTMLElement | null>;
 }) {
-  const addressed = useMemo(() => problemsByAddress(problems), [problems]);
-
   /**
    * The box showing the moves it carries, and whether it is showing them or
    * only the button that opens them. Nothing until the Author clicks a box:
@@ -909,9 +904,9 @@ function CanvasFlow({
     }
 
     const flowNodes: CanvasFlowNode[] = layout.nodes.map((node) => {
-      const stepProblems = (addressed.steps.get(node.stepId) ?? []).map(
-        (problem) => problem.message,
-      );
+      const stepProblems = problems
+        .problemsForStep(node.stepId)
+        .map((problem) => problem.message);
       const isSelected = node.stepId === selectedStepId;
       const common = {
         id: node.id,
@@ -991,7 +986,10 @@ function CanvasFlow({
 
     const flowEdges: ChoiceFlowEdge[] = layout.edges.map((edge) => {
       const label = choiceLabel(edge.label);
-      const problemCount = (addressed.choices.get(edge.id) ?? []).length;
+      const problemCount = problems.problemsForChoice(
+        edge.stepId,
+        edge.choiceId,
+      ).length;
       const marked = problemCount > 0;
       const isSelected =
         selectedArrow !== null &&
@@ -1055,14 +1053,7 @@ function CanvasFlow({
     });
 
     return { nodes: flowNodes, edges: flowEdges, arrows };
-  }, [
-    addressed,
-    document,
-    layout,
-    selectedArrow,
-    selectedStepId,
-    shownToolbar,
-  ]);
+  }, [document, layout, problems, selectedArrow, selectedStepId, shownToolbar]);
 
   // Every Step is a valid target, its own Step included: a loop is an
   // ordinary path since ticket 18. A placeholder is not a Step.

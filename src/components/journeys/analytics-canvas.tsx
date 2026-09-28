@@ -19,11 +19,8 @@ import {
 import { useEffect, useMemo, useRef } from "react";
 
 import {
-  arrowPoints,
   handleOffset,
-  labelPoint,
   NODE_BOX_CLASS,
-  smoothPath,
   sourceSide,
   targetSide,
   useCanvasColorMode,
@@ -45,6 +42,7 @@ import {
   type GraphDocument,
   type LayoutDirection,
 } from "@/lib/graph/document";
+import { arrowPoints, labelPoint, smoothPath } from "@/lib/graph/geometry";
 import {
   EDGE_LABEL_HEIGHT,
   EDGE_LABEL_MAX_WIDTH,

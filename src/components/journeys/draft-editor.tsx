@@ -56,8 +56,8 @@ import {
   type History,
   type HistoryMove,
 } from "@/lib/graph/history";
-import { layoutGraph, mapOrder, problemsByAddress } from "@/lib/graph/layout";
-import { validateForPublish, type PublishProblem } from "@/lib/graph/validate";
+import { layoutGraph, mapOrder } from "@/lib/graph/layout";
+import { indexProblems, validateForPublish } from "@/lib/graph/validate";
 import { cn } from "@/lib/utils";
 import { STATUS_TEXT } from "@/lib/autosave";
 
@@ -842,10 +842,10 @@ export function DraftEditor({
   const layout = useMemo(() => layoutGraph(document), [document]);
   const stepOrder = useMemo(() => mapOrder(layout), [layout]);
 
-  // The same problems, addressed by Step and by Choice, so the panel can show
-  // each one where it belongs rather than only in the flat list above.
-  const liveProblemAddresses = useMemo(
-    () => problemsByAddress(liveProblems),
+  // The same problems, indexed by Step and by Choice, so the canvas and the
+  // panel can each look up what belongs to them without deriving it twice.
+  const problemIndex = useMemo(
+    () => indexProblems(liveProblems),
     [liveProblems],
   );
 
@@ -863,30 +863,6 @@ export function DraftEditor({
   const selectedStep = hasStep(document, selectedStepId)
     ? document.steps[selectedStepId]
     : (document.steps[document.startStepId] ?? null);
-
-  const selectedStepProblems = useMemo(
-    () =>
-      selectedStep !== null
-        ? (liveProblemAddresses.steps.get(selectedStep.id) ?? [])
-        : [],
-    [liveProblemAddresses, selectedStep],
-  );
-
-  // The open Step's own Choice problems, stripped of the "<stepId>:" prefix
-  // `problemsByAddress` files them under, so the panel can key straight off
-  // the Choice id.
-  const selectedStepChoiceProblems = useMemo(() => {
-    const byChoice = new Map<string, PublishProblem[]>();
-    if (selectedStep === null) return byChoice;
-
-    const prefix = `${selectedStep.id}:`;
-    for (const [key, choiceProblems] of liveProblemAddresses.choices) {
-      if (key.startsWith(prefix)) {
-        byChoice.set(key.slice(prefix.length), choiceProblems);
-      }
-    }
-    return byChoice;
-  }, [liveProblemAddresses, selectedStep]);
 
   return (
     <div ref={rootRef} onBlur={handleBlur} className="flex flex-col gap-6">
@@ -1026,7 +1002,7 @@ export function DraftEditor({
               : (selectedStep?.id ?? "")
           }
           locate={locate}
-          problems={liveProblems}
+          problems={problemIndex}
           // In the row of controls above the map, because what it finds is
           // on the map.
           findStep={
@@ -1068,8 +1044,7 @@ export function DraftEditor({
               document={document}
               step={selectedStep}
               order={stepOrder}
-              problems={selectedStepProblems}
-              choiceProblems={selectedStepChoiceProblems}
+              problems={problemIndex}
               revision={revision}
               focusTitle={titleFocusStepId === selectedStep.id}
               markedChoiceId={

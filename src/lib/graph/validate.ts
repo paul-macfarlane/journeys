@@ -18,10 +18,9 @@ import {
  * back, because Steps are visited in `walkSteps` order: breadth-first from
  * the Start, following each Step's own Choice order, then every unreachable
  * Step sorted by id — never `layout.ts`'s dagre layout, which this module
- * must not import (`layout.ts` already imports `PublishProblem` from
- * here). Problems are
- * grouped by rule and, within a rule, in that Step order, so the Publish
- * dialog and the canvas can render the list without sorting.
+ * must not import. Problems are grouped by rule and, within a rule, in that
+ * Step order, so the Publish dialog and the canvas can render the list
+ * without sorting.
  */
 
 export type PublishProblemCode =
@@ -126,4 +125,53 @@ export function validateForPublish(document: GraphDocument): PublishProblem[] {
   }
 
   return problems;
+}
+
+/**
+ * A `validateForPublish` result, looked up by the Step or Choice it is
+ * about, so a caller never has to scan the flat list itself. A miss returns
+ * a shared empty array rather than `undefined`.
+ */
+export type ProblemIndex = {
+  problemsForStep(stepId: string): PublishProblem[];
+  problemsForChoice(stepId: string, choiceId: string): PublishProblem[];
+};
+
+/** The stable "nothing here" answer every lookup miss shares. */
+const NO_PROBLEMS: PublishProblem[] = [];
+
+/**
+ * Indexes `validateForPublish`'s output so the canvas and the panel can find
+ * the exact problems a Step or a Choice carries. A problem that names a
+ * Choice is filed under both its Step and its Choice; one that names only a
+ * Step is filed under the Step; `missing-start` names neither and is filed
+ * nowhere, since there is no Step or Choice to mark. Order within each list
+ * matches `problems`. The `"<stepId>:<choiceId>"` key this builds internally
+ * is never seen outside this function.
+ */
+export function indexProblems(problems: PublishProblem[]): ProblemIndex {
+  const steps = new Map<string, PublishProblem[]>();
+  const choices = new Map<string, PublishProblem[]>();
+
+  for (const problem of problems) {
+    if (problem.stepId === undefined) {
+      continue;
+    }
+    const stepList = steps.get(problem.stepId) ?? [];
+    stepList.push(problem);
+    steps.set(problem.stepId, stepList);
+
+    if (problem.choiceId !== undefined) {
+      const key = `${problem.stepId}:${problem.choiceId}`;
+      const choiceList = choices.get(key) ?? [];
+      choiceList.push(problem);
+      choices.set(key, choiceList);
+    }
+  }
+
+  return {
+    problemsForStep: (stepId) => steps.get(stepId) ?? NO_PROBLEMS,
+    problemsForChoice: (stepId, choiceId) =>
+      choices.get(`${stepId}:${choiceId}`) ?? NO_PROBLEMS,
+  };
 }

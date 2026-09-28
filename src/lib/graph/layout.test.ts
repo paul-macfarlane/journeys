@@ -17,18 +17,15 @@ import {
   layoutGraph,
   mapOrder,
   NODE_HEIGHT,
-  problemsByAddress,
 } from "@/lib/graph/layout";
-import { validateForPublish } from "@/lib/graph/validate";
 
 import case3 from "../../../scripts/seed/journey-stories/case-3.json";
 
 /**
- * Seam A for ticket 09: `layoutGraph` and `problemsByAddress`, exercised
- * through the one public interface the canvas calls. Every layout case also
- * checks that the input document is left exactly as it was — a deep-equal
- * snapshot taken before the call — because the module never mutates what it
- * is given.
+ * Seam A for ticket 09: `layoutGraph`, exercised through the one public
+ * interface the canvas calls. Every layout case also checks that the input
+ * document is left exactly as it was — a deep-equal snapshot taken before
+ * the call — because the module never mutates what it is given.
  */
 
 function choice(id: string, label: string, targetStepId: string): Choice {
@@ -1044,65 +1041,5 @@ describe("layoutGraph determinism", () => {
       layoutDirection: "LR" as const,
     };
     expect(layoutGraph(document)).toEqual(layoutGraph(document));
-  });
-});
-
-describe("problemsByAddress", () => {
-  it("groups validateForPublish problems by step and by choice, preserving order", () => {
-    const document: GraphDocument = {
-      schemaVersion: 1,
-      startStepId: "start",
-      allowBack: true,
-      steps: byId([
-        step("start", [choice("choice-dangling", "Go nowhere", "ghost")]),
-        // Tagged with an Outcome the document does not define, so this Step
-        // carries two problems of its own: nothing reaches it, and its tag
-        // names an Outcome that is gone.
-        step("orphan", [], {
-          title: "Orphan ending",
-          outcomeId: "outcome-renamed-away",
-        }),
-      ]),
-      outcomes: {},
-      layoutDirection: "TB",
-    };
-
-    const problems = validateForPublish(document);
-    expect(problems.map((problem) => problem.code)).toEqual([
-      "dangling-choice-target",
-      "unreachable-step",
-      "unknown-outcome",
-    ]);
-
-    const { steps, choices } = problemsByAddress(problems);
-
-    expect(steps.get("start")).toEqual([problems[0]]);
-    expect(steps.get("orphan")).toEqual([problems[1], problems[2]]);
-    expect(choices.get("start:choice-dangling")).toEqual([problems[0]]);
-  });
-
-  it("drops missing-start problems, which have no address", () => {
-    const document: GraphDocument = {
-      schemaVersion: 1,
-      startStepId: "ghost-start",
-      allowBack: true,
-      steps: byId([
-        step("only", [choice("choice-dangling", "Go nowhere", "ghost")]),
-      ]),
-      outcomes: {},
-      layoutDirection: "TB",
-    };
-
-    const problems = validateForPublish(document);
-    expect(problems.some((problem) => problem.code === "missing-start")).toBe(
-      true,
-    );
-
-    const { steps, choices } = problemsByAddress(problems);
-    const grouped = [...steps.values(), ...choices.values()].flat();
-    expect(grouped.some((problem) => problem.code === "missing-start")).toBe(
-      false,
-    );
-    expect(steps.get("only")).toEqual([problems[1]]);
   });
 });
