@@ -13,11 +13,12 @@ import { FindStep } from "@/components/journeys/find-step";
 import { StaleNotice } from "@/components/stale-notice";
 import { JourneyCanvas } from "@/components/journeys/journey-canvas";
 import { StepPanel } from "@/components/journeys/step-panel";
+import { StepPanelHost } from "@/components/journeys/step-panel-host";
 import { useDraftDocument } from "@/components/journeys/use-draft-document";
 import { usePanelVisibility } from "@/components/journeys/use-panel-visibility";
 import { useStepSelection } from "@/components/journeys/use-step-selection";
 import type { Content } from "@/lib/graph/content";
-import { hasStep, type GraphDocument } from "@/lib/graph/document";
+import { hasStep, stepName, type GraphDocument } from "@/lib/graph/document";
 import { runEditCommand, updateStep, type EditCommand } from "@/lib/graph/edit";
 import { layoutGraph, mapOrder } from "@/lib/graph/layout";
 import { indexProblems, validateForPublish } from "@/lib/graph/validate";
@@ -511,10 +512,15 @@ export function DraftEditor({
           onSelect={handleSelect}
         />
 
-        {/* Nothing of a panel that is away is left behind to be tabbed into
-            or read out: the column closes over it and it is not rendered. */}
-        <div ref={panelRef} className="min-w-0 overflow-hidden">
-          {selectedStep && panelShown ? (
+        {/* The column, or on a phone a bottom sheet over the map (ticket
+            53): the same panel either way, and put away the same way. */}
+        <StepPanelHost
+          open={selectedStep !== null && panelShown}
+          onClose={hidePanel}
+          panelRef={panelRef}
+          title={selectedStep ? stepName(selectedStep) : "Step"}
+        >
+          {selectedStep ? (
             <StepPanel
               document={document}
               step={selectedStep}
@@ -540,7 +546,7 @@ export function DraftEditor({
               onHidePanel={hidePanel}
             />
           ) : null}
-        </div>
+        </StepPanelHost>
       </div>
     </div>
   );

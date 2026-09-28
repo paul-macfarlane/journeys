@@ -337,7 +337,9 @@ export function useDraftDocument({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.altKey) return;
       if (!event.metaKey && !event.ctrlKey) return;
-      if (dialogIsOpen()) return;
+      // The Step sheet on a phone is the panel, not something over it: an
+      // edit made there is undone there (ticket 53).
+      if (dialogIsOpen({ ignoreStepSheet: true })) return;
 
       // Shift+Z arrives as "Z": the key is read in one case.
       const key = event.key.toLowerCase();

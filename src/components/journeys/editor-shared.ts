@@ -126,10 +126,22 @@ export const SELECT_CLASS =
  *
  * `window.document`: the Draft is what `document` names in the modules that
  * ask this.
+ *
+ * The Step panel as a bottom sheet on a phone (ticket 53) is a dialog too,
+ * marked `data-step-sheet`, and it counts like any other unless the asker
+ * says `ignoreStepSheet`: undo and redo do, because an edit made in the
+ * sheet is one to undo in place; "Find step" and the map's delete keys do
+ * not, because what they act on is behind the sheet. A dialog opened over
+ * the sheet — a delete confirmation — still counts for everyone.
  */
-export function dialogIsOpen(): boolean {
-  return (
-    window.document.querySelector('[role="dialog"], [role="alertdialog"]') !==
-    null
+export function dialogIsOpen({
+  ignoreStepSheet = false,
+}: { ignoreStepSheet?: boolean } = {}): boolean {
+  const open = window.document.querySelectorAll(
+    '[role="dialog"], [role="alertdialog"]',
+  );
+  return Array.from(open).some(
+    (dialog) =>
+      !ignoreStepSheet || dialog.closest("[data-step-sheet]") === null,
   );
 }

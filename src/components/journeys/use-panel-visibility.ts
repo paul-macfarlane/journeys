@@ -31,6 +31,12 @@ import {
  */
 export const SIDE_BY_SIDE_QUERY = "(width >= 64rem)";
 
+/**
+ * The widths at which the Step panel is a bottom sheet over the map rather
+ * than a column (ticket 53): phones, narrower than Tailwind's `sm` (40rem).
+ */
+export const PHONE_QUERY = "(width < 40rem)";
+
 export function usePanelVisibility(): {
   panelShown: boolean;
   /** Counts the Author's own toggles; see `fitRequest` below. */
@@ -123,8 +129,16 @@ export function usePanelVisibility(): {
   // server cannot know it, and a first render that assumed it would not be
   // the render the server sent. Nothing is written back — this is what is
   // already stored.
+  //
+  // A phone starts with the panel away whatever is stored: there the panel
+  // is a sheet over the map, and one covering the page before the Author
+  // has opened anything is not a panel beside their work but a wall in
+  // front of it. Opening a Step brings it up, as it brings the column back.
   useEffect(() => {
-    if (readPreference(PANEL_STORAGE_KEY) === "hidden") {
+    if (
+      readPreference(PANEL_STORAGE_KEY) === "hidden" ||
+      window.matchMedia(PHONE_QUERY).matches
+    ) {
       applyPanelShown(false, { remember: false });
     }
   }, [applyPanelShown]);
@@ -154,6 +168,9 @@ export function usePanelVisibility(): {
   useEffect(() => {
     if (panelScrollRequest === 0) return;
     if (window.matchMedia(SIDE_BY_SIDE_QUERY).matches) return;
+    // A phone's panel is a sheet that comes up over the map: nothing to
+    // scroll to.
+    if (window.matchMedia(PHONE_QUERY).matches) return;
     panelRef.current?.scrollIntoView({ block: "start" });
   }, [panelScrollRequest]);
 
