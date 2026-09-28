@@ -595,12 +595,17 @@ export type EditCommand =
  * What a command made of the document: the document it became, the Step it
  * created (add-step, add-next-step, duplicate-step), and the Choice it
  * created (connect-choice). An edit that refused, or changed nothing, hands
- * back the very document it was given with neither.
+ * back the very document it was given with neither; `refused` tells the two
+ * apart. It is true only where the edit itself said no — the Start deleted
+ * while it is the Start, a Step or Choice made from a Step that is not
+ * there — and false for an edit that simply had nothing to change, such as
+ * making the Start the Start or deleting a Step already gone.
  */
 export type EditOutcome = {
   document: GraphDocument;
   stepId: string | null;
   choiceId: string | null;
+  refused: boolean;
 };
 
 /** One `EditCommand` run through the edit it names. Pure, like every edit here. */
@@ -608,7 +613,13 @@ export function runEditCommand(
   document: GraphDocument,
   command: EditCommand,
 ): EditOutcome {
-  const unchanged: EditOutcome = { document, stepId: null, choiceId: null };
+  const unchanged: EditOutcome = {
+    document,
+    stepId: null,
+    choiceId: null,
+    refused: false,
+  };
+  const refused: EditOutcome = { ...unchanged, refused: true };
   const changed = (
     next: GraphDocument,
     created: { stepId?: string; choiceId?: string } = {},
@@ -619,6 +630,7 @@ export function runEditCommand(
           document: next,
           stepId: created.stepId ?? null,
           choiceId: created.choiceId ?? null,
+          refused: false,
         };
 
   switch (command.kind) {
@@ -630,19 +642,19 @@ export function runEditCommand(
       const created = addChoiceToNewStep(document, command.stepId, {
         label: "",
       });
-      if (created.choiceId === "") return unchanged;
+      if (created.choiceId === "") return refused;
       return changed(created.document, { stepId: created.stepId });
     }
     case "duplicate-step": {
       const created = duplicateStep(document, command.stepId);
-      if (created.stepId === "") return unchanged;
+      if (created.stepId === "") return refused;
       return changed(created.document, { stepId: created.stepId });
     }
     case "set-start":
       return changed(setStart(document, command.stepId));
     case "delete-step": {
       const result = deleteStep(document, command.stepId);
-      if (!result.ok) return unchanged;
+      if (!result.ok) return refused;
       return changed(result.document);
     }
     case "connect-choice": {
@@ -650,7 +662,7 @@ export function runEditCommand(
         label: "",
         targetStepId: command.targetStepId,
       });
-      if (created.choiceId === "") return unchanged;
+      if (created.choiceId === "") return refused;
       return changed(created.document, { choiceId: created.choiceId });
     }
     case "retarget-choice":

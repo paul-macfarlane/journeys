@@ -172,6 +172,13 @@ export type JourneyCanvasProps = {
      */
     canUndo: boolean;
     canRedo: boolean;
+    /**
+     * Pixels of the map's frame, up from its foot, hidden under a phone's
+     * Step sheet (ticket 53), and 0 wherever there is no sheet. An opened
+     * Step's box is centred in the part left in sight, and a box in the
+     * covered band is not on the map.
+     */
+    bottomInset: number;
   };
   /**
    * "Find step", the editor's, rendered first in the row of controls above
@@ -271,6 +278,7 @@ function CanvasFlow({
     locate,
     direction: layout.direction,
     fitRequest: view.fitRequest,
+    bottomInset: view.bottomInset,
   });
   const { moveFocus, escape, beforeDelete } = useCanvasKeyboard({
     nodes,
@@ -673,7 +681,10 @@ export function JourneyCanvas(props: JourneyCanvasProps) {
         )}
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl">
+      <div
+        data-map-frame=""
+        className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl"
+      >
         <ReactFlowProvider>
           <CanvasFlow {...props} canvasRef={canvasRef} />
         </ReactFlowProvider>

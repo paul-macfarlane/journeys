@@ -24,10 +24,10 @@ import {
 
 /**
  * The widths at which the Step panel is beside the map: Tailwind's `lg`
- * (64rem), the very query the editor's grid below goes to two columns on.
- * Read as that query and not its complement so an engine that cannot read
- * the range syntax answers the same way for both: no side-by-side grid, so
- * a stacked panel, so the scroll.
+ * (64rem), the very query the editor's grid in `draft-editor.tsx` goes to
+ * two columns on. Read as that query and not its complement so an engine
+ * that cannot read the range syntax answers the same way for both: no
+ * side-by-side grid, so a stacked panel, so the scroll.
  */
 export const SIDE_BY_SIDE_QUERY = "(width >= 64rem)";
 
@@ -42,6 +42,11 @@ export function usePanelVisibility(): {
   /** Counts the Author's own toggles; see `fitRequest` below. */
   fitRequest: number;
   hidePanel: () => void;
+  /**
+   * A phone's sheet closed: the panel away with nothing remembered and no
+   * whole-map fit. See its declaration.
+   */
+  dismissSheet: () => void;
   showPanel: () => void;
   /**
    * The panel brought back by an opening; true when it was away, which is
@@ -119,6 +124,19 @@ export function usePanelVisibility(): {
     () => setPanelByAuthor(true),
     [setPanelByAuthor],
   );
+  /**
+   * The phone's sheet closed — its Close, Escape, a tap on the map behind
+   * it. Ticket 53 has closing the sheet be `hidePanel`, and in effect it is:
+   * the panel goes away and the `StepPanel` unmounts, so its unmount save
+   * runs exactly as it does for "Hide panel". What is left out is the rest
+   * of the Author's toggle: a sheet put down is not a choice about how to
+   * read the map, so the browser remembers nothing, and the map, which the
+   * sheet only ever covered, is not fitted again.
+   */
+  const dismissSheet = useCallback(
+    () => void applyPanelShown(false, { remember: false }),
+    [applyPanelShown],
+  );
   /** The panel brought back by an opening rather than asked for. */
   const revealPanel = useCallback(
     () => applyPanelShown(true, { remember: false }),
@@ -178,6 +196,7 @@ export function usePanelVisibility(): {
     panelShown,
     fitRequest,
     hidePanel,
+    dismissSheet,
     showPanel,
     revealPanel,
     panelRef,

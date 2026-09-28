@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 /**
  * Whether the page answers `query` right now, kept current as the window is
@@ -10,13 +10,19 @@ import { useSyncExternalStore } from "react";
  * compiler's lint refuses.
  */
 export function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (listener) => {
+  // Stable for as long as the query is, so React subscribes once rather
+  // than on every render.
+  const subscribe = useCallback(
+    (listener: () => void) => {
       const list = window.matchMedia(query);
       list.addEventListener("change", listener);
       return () => list.removeEventListener("change", listener);
     },
-    () => window.matchMedia(query).matches,
-    () => false,
+    [query],
   );
+  const getSnapshot = useCallback(
+    () => window.matchMedia(query).matches,
+    [query],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }

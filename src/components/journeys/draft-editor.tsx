@@ -15,13 +15,17 @@ import { JourneyCanvas } from "@/components/journeys/journey-canvas";
 import { StepPanel } from "@/components/journeys/step-panel";
 import { StepPanelHost } from "@/components/journeys/step-panel-host";
 import { useDraftDocument } from "@/components/journeys/use-draft-document";
-import { usePanelVisibility } from "@/components/journeys/use-panel-visibility";
+import {
+  PHONE_QUERY,
+  usePanelVisibility,
+} from "@/components/journeys/use-panel-visibility";
 import { useStepSelection } from "@/components/journeys/use-step-selection";
 import type { Content } from "@/lib/graph/content";
 import { hasStep, stepName, type GraphDocument } from "@/lib/graph/document";
 import { runEditCommand, updateStep, type EditCommand } from "@/lib/graph/edit";
 import { layoutGraph, mapOrder } from "@/lib/graph/layout";
 import { indexProblems, validateForPublish } from "@/lib/graph/validate";
+import { useMediaQuery } from "@/lib/media-query";
 import { cn } from "@/lib/utils";
 import { STATUS_TEXT } from "@/lib/autosave";
 
@@ -58,6 +62,7 @@ export function DraftEditor({
     panelShown,
     fitRequest,
     hidePanel,
+    dismissSheet,
     showPanel,
     revealPanel,
     panelRef,
@@ -120,6 +125,18 @@ export function DraftEditor({
   const [findFocusRequest, setFindFocusRequest] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // On a phone the panel is a sheet over the map (ticket 53): closed by its
+  // own Close rather than "Hide panel", and covering the foot of the map's
+  // frame by as many pixels as `mapCover` says, which the map centres an
+  // opened Step's box clear of.
+  const phone = useMediaQuery(PHONE_QUERY);
+  const [mapCover, setMapCover] = useState(0);
+  const mapFrame = useCallback(
+    () =>
+      rootRef.current?.querySelector<HTMLElement>("[data-map-frame]") ?? null,
+    [],
+  );
+
   // Cmd/Ctrl+K from anywhere on the Journey page is the way into "Find step",
   // wherever the Author's hands happen to be. On `window` rather than on the
   // field, because the point of it is not having to reach for the field; the
@@ -146,10 +163,17 @@ export function DraftEditor({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  /** Focus leaving the editor entirely is the Author pausing: write now. */
+  /**
+   * Focus leaving the editor entirely is the Author pausing: write now. A
+   * phone's sheet is the editor too, though it is portalled out of this
+   * element: moving between its fields debounces like the column's.
+   */
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     const next = event.relatedTarget;
     if (next !== null && rootRef.current?.contains(next)) return;
+    if (next instanceof Element && next.closest("[data-step-sheet]") !== null) {
+      return;
+    }
     void flushSave();
   }
 
@@ -267,12 +291,7 @@ export function DraftEditor({
           // Refused only for the Start, which cannot go while it is the
           // Start; a Step already gone deletes nothing but is answered the
           // same as one that went.
-          if (
-            hasStep(before, command.stepId) &&
-            before.startStepId === command.stepId
-          ) {
-            return;
-          }
+          if (outcome.refused) return;
           // The Step that goes: an undo brings it back, and brings the
           // Author back to it.
           applyEdit(outcome.document, { stepId: command.stepId });
@@ -497,7 +516,14 @@ export function DraftEditor({
                 : (selectedStep?.id ?? ""),
             arrow: selectedArrow,
           }}
-          view={{ locate, fitRequest, panelShown, canUndo, canRedo }}
+          view={{
+            locate,
+            fitRequest,
+            panelShown,
+            canUndo,
+            canRedo,
+            bottomInset: mapCover,
+          }}
           // In the row of controls above the map, because what it finds is
           // on the map.
           findStep={
@@ -513,12 +539,15 @@ export function DraftEditor({
         />
 
         {/* The column, or on a phone a bottom sheet over the map (ticket
-            53): the same panel either way, and put away the same way. */}
+            53): the same panel either way, unmounted the same way when it
+            goes. */}
         <StepPanelHost
           open={selectedStep !== null && panelShown}
-          onClose={hidePanel}
+          onClose={phone ? dismissSheet : hidePanel}
           panelRef={panelRef}
           title={selectedStep ? stepName(selectedStep) : "Step"}
+          mapFrame={mapFrame}
+          onCover={setMapCover}
         >
           {selectedStep ? (
             <StepPanel
@@ -544,6 +573,7 @@ export function DraftEditor({
               onDeleteStep={removeStep}
               onDuplicateStep={duplicate}
               onHidePanel={hidePanel}
+              hideButton={!phone}
             />
           ) : null}
         </StepPanelHost>

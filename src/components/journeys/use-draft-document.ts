@@ -313,8 +313,8 @@ export function useDraftDocument({
   }, [applyMove, currentSnapshot]);
 
   // Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z — Ctrl+Y as well, for hands used to it —
-  // from anywhere on the Journey page, the Cmd/Ctrl+K listener above being
-  // the model for all of it: on `window`, because the point is not having to
+  // from anywhere on the Journey page, the Cmd/Ctrl+K listener in
+  // `draft-editor.tsx` being the model for all of it: on `window`, because the point is not having to
   // reach for the buttons; and a press made while a dialog is open belongs to
   // the dialog. A press carrying Alt is a different shortcut and not this one.
   //

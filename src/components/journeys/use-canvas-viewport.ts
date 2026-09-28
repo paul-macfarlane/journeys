@@ -1,6 +1,6 @@
 "use client";
 
-import { useReactFlow, useStore } from "@xyflow/react";
+import { getViewportForBounds, useReactFlow, useStore } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 
 import { WHOLE_MAP_MAX_ZOOM } from "@/components/journeys/canvas-shared";
@@ -15,6 +15,11 @@ import { mapMoveDuration } from "@/lib/reduced-motion";
  * Author put the panel away or brought it back (`fitRequest`), and the replay
  * of those moves on each resize the sliding columns hand the map. Rendered
  * inside the `ReactFlow` tree, whose hooks it reads the view through.
+ *
+ * On a phone the foot of the map's frame can be under the Step sheet
+ * (`bottomInset`, ticket 53): the moves to one box treat the band it covers
+ * as off the map and centre the box in what is left above it. Everywhere
+ * else the inset is 0 and the moves are React Flow's own `fitView`.
  */
 
 /** Sub-pixel rounding, so a box flush against the edge counts as on the map. */
@@ -37,12 +42,16 @@ const FIT_AFTER_TOGGLE_MS = 500;
  */
 const MEASURE_FRAMES = 30;
 
+/** `fitView`'s own padding, which a move clear of the sheet keeps to. */
+const FIT_PADDING = 0.1;
+
 export function useCanvasViewport({
   nodes,
   selectedStepId,
   locate,
   direction,
   fitRequest,
+  bottomInset,
 }: {
   /** The boxes as drawn, which a Step has to be among to be moved to. */
   nodes: CanvasFlowNode[];
@@ -54,6 +63,8 @@ export function useCanvasViewport({
   direction: LayoutDirection;
   /** See `JourneyCanvasProps["view"]["fitRequest"]`. */
   fitRequest: number;
+  /** See `JourneyCanvasProps["view"]["bottomInset"]`. */
+  bottomInset: number;
 }): {
   /** A box left off the map is brought onto it; one already on it stays put. */
   bringOntoMap: (nodeId: string) => void;
@@ -64,8 +75,59 @@ export function useCanvasViewport({
   // against; React Flow keeps it up to date as the pane resizes.
   const paneWidth = useStore((state) => state.width);
   const paneHeight = useStore((state) => state.height);
+  const minZoom = useStore((state) => state.minZoom);
 
-  /** Whether the whole of a box is inside the map's frame right now. */
+  /**
+   * One box shown on its own, never closer than `maxZoom`: `fitView` on it.
+   * With the foot of the frame under a sheet, the same fit is made in the
+   * part of the frame left in sight, so the box's middle lands half the
+   * inset above the frame's own — still through `fitView`, because React
+   * Flow queues a `fitView` and makes it after the next render: a
+   * `setViewport` made in between would be overwritten by an earlier move
+   * still in the queue, where a later `fitView` replaces it. The zoom is
+   * the one the part in sight allows, and the padding above the box is
+   * what is left over in that part split evenly, so the padding below it
+   * is the same plus the inset.
+   */
+  const fitBox = useCallback(
+    (nodeId: string, maxZoom: number) => {
+      if (bottomInset === 0) {
+        void fitView({
+          nodes: [{ id: nodeId }],
+          maxZoom,
+          duration: mapMoveDuration(),
+        });
+        return;
+      }
+      const bounds = getNodesBounds([nodeId]);
+      const inSight = Math.max(1, paneHeight - bottomInset);
+      const { zoom } = getViewportForBounds(
+        bounds,
+        paneWidth,
+        inSight,
+        minZoom,
+        maxZoom,
+        FIT_PADDING,
+      );
+      const gap = Math.max(0, Math.floor((inSight - bounds.height * zoom) / 2));
+      void fitView({
+        nodes: [{ id: nodeId }],
+        maxZoom,
+        duration: mapMoveDuration(),
+        padding: {
+          top: `${gap}px`,
+          bottom: `${gap + bottomInset}px`,
+          x: FIT_PADDING,
+        },
+      });
+    },
+    [bottomInset, fitView, getNodesBounds, minZoom, paneHeight, paneWidth],
+  );
+
+  /**
+   * Whether the whole of a box is inside the map's frame right now, less
+   * any band of it under a sheet.
+   */
   const isOnMap = useCallback(
     (nodeId: string): boolean => {
       const bounds = getNodesBounds([nodeId]);
@@ -74,10 +136,11 @@ export function useCanvasViewport({
         bounds.x * zoom + x >= -IN_VIEW_TOLERANCE &&
         bounds.y * zoom + y >= -IN_VIEW_TOLERANCE &&
         (bounds.x + bounds.width) * zoom + x <= paneWidth + IN_VIEW_TOLERANCE &&
-        (bounds.y + bounds.height) * zoom + y <= paneHeight + IN_VIEW_TOLERANCE
+        (bounds.y + bounds.height) * zoom + y <=
+          paneHeight - bottomInset + IN_VIEW_TOLERANCE
       );
     },
-    [getNodesBounds, getViewport, paneHeight, paneWidth],
+    [bottomInset, getNodesBounds, getViewport, paneHeight, paneWidth],
   );
 
   /** A box left off the map is brought onto it; one already on it stays put. */
@@ -85,13 +148,9 @@ export function useCanvasViewport({
     (nodeId: string) => {
       if (paneWidth === 0 || paneHeight === 0) return;
       if (isOnMap(nodeId)) return;
-      void fitView({
-        nodes: [{ id: nodeId }],
-        maxZoom: 1,
-        duration: mapMoveDuration(),
-      });
+      fitBox(nodeId, 1);
     },
-    [fitView, isOnMap, paneHeight, paneWidth],
+    [fitBox, isOnMap, paneHeight, paneWidth],
   );
 
   /**
@@ -134,16 +193,12 @@ export function useCanvasViewport({
           return;
         }
 
-        void fitView({
-          nodes: [{ id: nodeId }],
-          maxZoom,
-          duration: mapMoveDuration(),
-        });
+        fitBox(nodeId, maxZoom);
       }
 
       attempt();
     },
-    [fitView, getInternalNode, paneHeight, paneWidth],
+    [fitBox, getInternalNode, paneHeight, paneWidth],
   );
 
   // Nothing is left waiting on a frame that would land after the map is gone.
@@ -281,6 +336,32 @@ export function useCanvasViewport({
     }
     zoomToStep(request.box, request.maxZoom);
   }, [fitView, paneHeight, paneWidth, zoomToStep]);
+
+  // A phone's sheet comes up a frame or two after the opening that raised
+  // it, and is measured after that, so the move that opening made went to
+  // the middle of the whole frame — under the sheet. Each new measure of
+  // the sheet makes the move again: the Zoom-to-step move while its request
+  // is still fresh, and otherwise a box the sheet has grown over brought
+  // back into sight. A sheet going down (0) uncovers everything and moves
+  // nothing; without a sheet the inset never changes and this never runs.
+  const lastInset = useRef(bottomInset);
+  useEffect(() => {
+    if (lastInset.current === bottomInset) return;
+    lastInset.current = bottomInset;
+    if (bottomInset === 0) return;
+
+    const request = viewRequest.current;
+    if (
+      request !== null &&
+      request.box !== null &&
+      performance.now() - request.at <= FIT_AFTER_TOGGLE_MS
+    ) {
+      zoomToStep(request.box, request.maxZoom);
+      return;
+    }
+    if (!nodes.some((node) => node.id === selectedStepId)) return;
+    bringOntoMap(selectedStepId);
+  }, [bottomInset, bringOntoMap, nodes, selectedStepId, zoomToStep]);
 
   return { bringOntoMap };
 }

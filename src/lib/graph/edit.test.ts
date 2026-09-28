@@ -1050,6 +1050,7 @@ describe("runEditCommand", () => {
       document: { ...base, startStepId: "ending-b" },
       stepId: null,
       choiceId: null,
+      refused: false,
     });
   });
 
@@ -1122,8 +1123,13 @@ describe("runEditCommand", () => {
     expect(outcome.document.layoutDirection).toBe("LR");
   });
 
-  it("hands back the same document and nothing created when the edit is refused", () => {
-    const refused = { document: base, stepId: null, choiceId: null };
+  it("hands back the same document, nothing created, and says so when the edit is refused", () => {
+    const refused = {
+      document: base,
+      stepId: null,
+      choiceId: null,
+      refused: true,
+    };
 
     expect(
       runEditCommand(base, { kind: "delete-step", stepId: "start" }),
@@ -1142,13 +1148,37 @@ describe("runEditCommand", () => {
       }),
     ).toEqual(refused);
     expect(
-      runEditCommand(base, { kind: "set-start", stepId: "missing" }),
-    ).toEqual(refused);
-    expect(
-      runEditCommand(base, { kind: "remove-choices", choices: [] }),
-    ).toEqual(refused);
-    expect(
       runEditCommand(base, { kind: "delete-step", stepId: "start" }).document,
     ).toBe(base);
+  });
+
+  it("does not call an edit that changed nothing a refusal", () => {
+    const unchanged = {
+      document: base,
+      stepId: null,
+      choiceId: null,
+      refused: false,
+    };
+
+    expect(
+      runEditCommand(base, { kind: "set-start", stepId: "start" }),
+    ).toEqual(unchanged);
+    expect(
+      runEditCommand(base, { kind: "set-start", stepId: "missing" }),
+    ).toEqual(unchanged);
+    expect(
+      runEditCommand(base, { kind: "remove-choices", choices: [] }),
+    ).toEqual(unchanged);
+    // A Step already gone deletes nothing, and is answered as one that went.
+    expect(
+      runEditCommand(base, { kind: "delete-step", stepId: "missing" }),
+    ).toEqual(unchanged);
+  });
+
+  it("marks a Step that was made as no refusal", () => {
+    expect(runEditCommand(base, { kind: "add-step" }).refused).toBe(false);
+    expect(
+      runEditCommand(base, { kind: "delete-step", stepId: "ending-b" }).refused,
+    ).toBe(false);
   });
 });
