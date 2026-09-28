@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import type { GraphDocument } from "@/lib/graph/document";
@@ -9,7 +11,7 @@ import {
   tagWithOutcome,
 } from "./setup/authoring";
 import { canvas, canvasNode } from "./setup/canvas";
-import { readDraft } from "./setup/documents";
+import { readDraft, readDraftRow } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   addChoiceToStep,
@@ -17,7 +19,7 @@ import {
   renameStep,
   startJourney,
 } from "./setup/editor";
-import { evidencePath } from "./setup/evidence";
+import { capturePath, evidencePath } from "./setup/evidence";
 import { cleanup, closePools } from "./setup/session";
 
 /**
@@ -945,6 +947,124 @@ test("panel-choice-target-search", async ({ page }) => {
     ),
     fullPage: true,
   });
+});
+
+test("panel-choice-target-enter", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
+
+  // A Start with two Choices, each on a Step of its own, so neither
+  // Choice's target is the first option its own field offers (ticket 89 —
+  // the walk retargeted "Wait your turn" exactly because it was).
+  await renameStep(page, "Border post");
+  await addChoiceToNewStep(page, "Wait your turn", "Waved through");
+  await chooseStep(page, "Border post");
+  await addChoiceToNewStep(page, "Find the clinic", "Clinic tent");
+  await chooseStep(page, "Border post");
+  await expectSaved(page);
+
+  const rows = page
+    .getByRole("list", { name: "Choices" })
+    .getByRole("listitem");
+  const firstRow = rows.nth(0);
+  const secondRow = rows.nth(1);
+  await expect(firstRow.getByLabel("Choice target")).toHaveValue(
+    "Waved through",
+  );
+  await expect(secondRow.getByLabel("Choice target")).toHaveValue(
+    "Clinic tent",
+  );
+
+  const stored = await readDraft(journeyId);
+  const borderPostId = stepIdByTitle(stored, "Border post");
+  const clinicTentId = stepIdByTitle(stored, "Clinic tent");
+  const waitYourTurnId = stored.steps[borderPostId].choices.find(
+    (choice) => choice.label === "Wait your turn",
+  )!.id;
+  const findTheClinicId = stored.steps[borderPostId].choices.find(
+    (choice) => choice.label === "Find the clinic",
+  )!.id;
+
+  const before = await readDraftRow(journeyId);
+
+  // Tab from the Choice's own label field onto its target field, by
+  // keyboard alone.
+  await secondRow.getByLabel("Choice label").focus();
+  await page.keyboard.press("Tab");
+  const targetField = secondRow.getByLabel("Choice target");
+  await expect(targetField).toBeFocused();
+
+  const listbox = secondRow.getByRole("listbox", { name: "Steps" });
+  await expect(listbox).toBeVisible();
+  const chosenOption = secondRow.getByRole("option", {
+    name: "Clinic tent",
+    exact: true,
+  });
+  await expect(chosenOption).toBeVisible();
+  const chosenOptionId = await chosenOption.getAttribute("id");
+  expect(chosenOptionId, "the chosen option has no id").not.toBeNull();
+  await expect(targetField).toHaveAttribute(
+    "aria-activedescendant",
+    chosenOptionId!,
+  );
+
+  await page.screenshot({
+    path: evidencePath("panel-choice-target-enter", "target-field.png"),
+    fullPage: true,
+  });
+
+  // Enter with nothing navigated and nothing typed: the list closes, the
+  // field still names the current target, and the Draft is not written.
+  await page.keyboard.press("Enter");
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Clinic tent");
+
+  await page.waitForTimeout(1_000);
+  await expect
+    .poll(async () => (await readDraftRow(journeyId)).version)
+    .toBe(before.version);
+  const afterNoop = await readDraft(journeyId);
+  const noopTarget = afterNoop.steps[borderPostId].choices.find(
+    (choice) => choice.id === findTheClinicId,
+  )?.targetStepId;
+  expect(noopTarget).toBe(clinicTentId);
+
+  // ArrowDown then Enter still retargets: moving off the chosen option and
+  // choosing a different one behaves as before.
+  await firstRow.getByLabel("Choice target").click();
+  const firstListbox = firstRow.getByRole("listbox", { name: "Steps" });
+  await expect(firstListbox).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(firstListbox).toHaveCount(0);
+  await expect(firstRow.getByLabel("Choice target")).toHaveValue("Clinic tent");
+  await expectSaved(page);
+
+  const after = await readDraft(journeyId);
+  const retargeted = after.steps[borderPostId].choices.find(
+    (choice) => choice.id === waitYourTurnId,
+  )?.targetStepId;
+  expect(retargeted).toBe(clinicTentId);
+
+  const afterRow = await readDraftRow(journeyId);
+  writeFileSync(
+    capturePath(
+      "panel-choice-target-enter",
+      "ac-1-choice-target-unchanged.txt",
+    ),
+    [
+      `Ticket 89: Enter on an untouched Choice-target field keeps the Choice's target.`,
+      ``,
+      `Step (source): ${borderPostId}`,
+      `Choice "Find the clinic" (${findTheClinicId}) target before Enter: ${clinicTentId}`,
+      `Draft row version before Enter: ${before.version}`,
+      `Choice "Find the clinic" (${findTheClinicId}) target after Enter, no navigation: ${noopTarget}`,
+      `Draft row version after Enter, no navigation: ${before.version} (unchanged)`,
+      ``,
+      `ArrowDown then Enter still retargets:`,
+      `Choice "Wait your turn" (${waitYourTurnId}) target after ArrowDown+Enter: ${retargeted}`,
+      `Draft row version after retargeting: ${afterRow.version}`,
+    ].join("\n"),
+  );
 });
 
 test("panel-outcomes-from-the-ending", async ({ page }) => {

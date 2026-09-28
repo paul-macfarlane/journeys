@@ -95,6 +95,20 @@ function wrapActive(current: number, step: 1 | -1, length: number): number {
 }
 
 /**
+ * The option a field opens on: the one already chosen, matched by id — never
+ * by name, since titles can repeat — or the first option when nothing is
+ * chosen or the chosen id is not among the options (a dangling target).
+ */
+function initialActiveIndex(
+  options: ComboboxOption[],
+  chosenId: string | undefined,
+): number {
+  if (chosenId === undefined) return 0;
+  const index = options.findIndex((option) => option.id === chosenId);
+  return index === -1 ? 0 : index;
+}
+
+/**
  * Which side of `anchor` the list opens on, settled as it opens and not
  * after: the panel's column clips what overflows it, so a list opened
  * downwards from a field near the foot of a tall panel is cut off with
@@ -258,6 +272,7 @@ export function Combobox({
   options,
   action,
   value,
+  chosenId,
   placeholder,
   emptyMessage,
   className,
@@ -277,6 +292,14 @@ export function Combobox({
    * undefined by a field that is only ever a query.
    */
   value?: string;
+  /**
+   * The id of what is chosen now, matched by id and never by name — Step
+   * titles can repeat. Opens the list on this option rather than the first
+   * one, marks it with the check `OptionList` already draws, and makes
+   * choosing it again — by Enter or by click — write nothing, since nothing
+   * changed. Left undefined by a field that is only ever a query.
+   */
+  chosenId?: string;
   placeholder?: string;
   /** What is said in place of an empty list: "No steps match". */
   emptyMessage: string;
@@ -326,6 +349,17 @@ export function Combobox({
   }, [focusRequest]);
 
   function choose(id: string) {
+    // The option already chosen, taken again: nothing changed, so nothing is
+    // written — Enter on an untouched field, or a click on the checked
+    // option, must not silently retarget a Choice at whatever the list
+    // happened to open on (ticket 89).
+    if (chosenId !== undefined && id === chosenId) {
+      setOpen(false);
+      setTyped(null);
+      fieldRef.current?.focus();
+      return;
+    }
+
     onChoose(id, query.trim());
     setOpen(false);
     // A field that names its value shows what was just chosen; one that is
@@ -340,7 +374,7 @@ export function Combobox({
       event.preventDefault();
       if (!open) {
         setOpen(true);
-        setActiveIndex(0);
+        setActiveIndex(initialActiveIndex(entries.options, chosenId));
         return;
       }
       if (entries.options.length === 0) return;
@@ -399,12 +433,26 @@ export function Combobox({
           setActiveIndex(0);
         }}
         onFocus={(event) => {
+          // Opening on the option already chosen, not the first one: an
+          // Author tabbing in and pressing Enter without navigating must
+          // land back where they started (ticket 89). Only while nothing has
+          // been typed yet and the list was not already open — a click that
+          // refocuses an open, filtered list leaves the active option where
+          // typing put it.
+          if (!open && typed === null) {
+            setActiveIndex(initialActiveIndex(entries.options, chosenId));
+          }
           setOpen(true);
           // The name of what is chosen, selected rather than left with a
           // caret in it: typing replaces the answer, it does not edit it.
           if (namesValue) event.target.select();
         }}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (!open && typed === null) {
+            setActiveIndex(initialActiveIndex(entries.options, chosenId));
+          }
+          setOpen(true);
+        }}
         onBlur={() => {
           setOpen(false);
           if (namesValue) setTyped(null);
@@ -421,6 +469,7 @@ export function Combobox({
           optionIdPrefix={optionIdPrefix}
           options={entries.options}
           active={active}
+          chosenId={chosenId}
           emptyMessage={emptyMessage}
           empty={entries.matches.length === 0}
           onChoose={choose}

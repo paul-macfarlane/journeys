@@ -1,0 +1,11 @@
+Ticket 89: Enter on an untouched Choice-target field keeps the Choice's target.
+
+Step (source): 5063bfc3-b56e-4777-8753-891248bbf41a
+Choice "Find the clinic" (6c950beb-0d5f-40d6-993e-a12071019388) target before Enter: 8b94daf7-4490-4958-81c0-e20e9d8b7b2a
+Draft row version before Enter: 1
+Choice "Find the clinic" (6c950beb-0d5f-40d6-993e-a12071019388) target after Enter, no navigation: 8b94daf7-4490-4958-81c0-e20e9d8b7b2a
+Draft row version after Enter, no navigation: 1 (unchanged)
+
+ArrowDown then Enter still retargets:
+Choice "Wait your turn" (aa742875-580a-4f40-be90-a305ecb5b9a5) target after ArrowDown+Enter: 8b94daf7-4490-4958-81c0-e20e9d8b7b2a
+Draft row version after retargeting: 2

@@ -234,6 +234,7 @@ export function ChoiceList({
                         ? "Missing step"
                         : stepName(document.steps[choice.targetStepId])
                     }
+                    chosenId={dangling ? undefined : choice.targetStepId}
                     action={newStepOption}
                     onChoose={(targetStepId) =>
                       retarget(choice.id, targetStepId)
