@@ -1,4 +1,10 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Browser,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 import type { Content } from "@/lib/graph/content";
 
@@ -567,5 +573,97 @@ test("a11y-heading-order: a public Project's description never skips a heading l
     });
   } finally {
     await guestContext.close();
+  }
+});
+
+/**
+ * Waits out a menu popup's fade-in: checked mid-fade, its text blends toward
+ * the page and reads short of the contrast it has once it lands.
+ */
+async function settled(menu: Locator): Promise<void> {
+  await menu.evaluate((element) =>
+    Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished),
+    ),
+  );
+}
+
+/**
+ * Opens one navbar menu, waits for its popup to settle, checks the page
+ * under axe with it open, and closes it again.
+ */
+async function expectMenuClean(
+  page: Page,
+  trigger: string,
+  label: string,
+): Promise<void> {
+  await page
+    .getByRole("banner")
+    .getByRole("button", { name: trigger, exact: true })
+    .click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toHaveAttribute("data-open", "");
+  await expect(menu).toBeVisible();
+  await settled(menu);
+  await expectNoViolations(page, label);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+}
+
+test("a11y-navbar-menus: zero axe violations with each navbar menu open, in both schemes (ticket 90)", async ({
+  page,
+  context,
+  browser,
+}) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  const suffix = uniqueSuffix();
+  const title = `A11y menus ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, title);
+
+  // The three navbar menus: the switcher labelled "Projects" outside a
+  // Project, the same switcher naming the page's Project on its page, and
+  // the Account menu with its Theme row.
+  async function checkAll(target: Page, scheme: string): Promise<void> {
+    await target.goto("/projects");
+    await expectMenuClean(target, "Projects", `Projects menu, ${scheme}`);
+    await target.goto(`/projects/${projectId}`);
+    await expect(
+      target.getByRole("heading", { name: title, level: 1 }),
+    ).toBeVisible();
+    await expectMenuClean(target, title, `Project switcher, ${scheme}`);
+    await expectMenuClean(
+      target,
+      "Account: Test Author",
+      `Account menu, ${scheme}`,
+    );
+  }
+
+  await checkAll(page, "light");
+
+  await page
+    .getByRole("banner")
+    .getByRole("button", { name: "Account: Test Author" })
+    .click();
+  const accountMenu = page.getByRole("menu");
+  await expect(accountMenu).toHaveAttribute("data-open", "");
+  await expect(accountMenu.getByText(author.email)).toBeVisible();
+  await settled(accountMenu);
+  await page.screenshot({
+    path: evidencePath("a11y-navbar-menus", "account-menu.png"),
+  });
+  await page.keyboard.press("Escape");
+
+  const dark = await darkContextFor(browser, page);
+  try {
+    await dark.page.goto("/projects");
+    await expect(dark.page.locator("html")).toHaveClass(/\bdark\b/);
+    await checkAll(dark.page, "dark");
+  } finally {
+    await dark.close();
   }
 });

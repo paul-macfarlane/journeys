@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavbarPortalContainer } from "@/components/navbar/navbar-header";
 import type { SwitcherProject } from "@/lib/navbar";
 
 /**
@@ -33,6 +34,7 @@ export function ProjectSwitcher({
 }) {
   const label = current?.title ?? "Projects";
   const currentId = current?.id ?? null;
+  const container = useNavbarPortalContainer();
 
   return (
     <DropdownMenu>
@@ -47,7 +49,7 @@ export function ProjectSwitcher({
         <span className="truncate">{label}</span>
         <ChevronDownIcon aria-hidden />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64">
+      <DropdownMenuContent container={container} className="w-64">
         {projects.map((project) => {
           const isCurrent = project.id === currentId;
           return (

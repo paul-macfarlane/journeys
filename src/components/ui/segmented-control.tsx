@@ -57,6 +57,17 @@ export function nextSegmentValue<V extends string>(
 }
 
 /**
+ * The pill the segments sit in, and how a checked segment paints itself
+ * (the primary pair, from its `aria-checked`). Shared with the account
+ * menu's Theme row (ticket 90), which draws the same pill out of menu
+ * items rather than radios.
+ */
+export const SEGMENT_GROUP_CLASS =
+  "inline-flex items-center gap-0.5 rounded-lg bg-secondary p-0.5";
+export const SEGMENT_CHECKED_CLASS =
+  "aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:hover:bg-primary/80";
+
+/**
  * One choice with one answer, laid out as a row of segments: a radio group
  * whose radios are buttons, so it reads as the choice it is and paints the
  * checked answer at a glance in either theme (ticket 48's direction control,
@@ -119,10 +130,7 @@ export function SegmentedControl<V extends string>({
       ref={groupRef}
       role="radiogroup"
       aria-label={label}
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg bg-secondary p-0.5",
-        className,
-      )}
+      className={cn(SEGMENT_GROUP_CLASS, className)}
     >
       {options.map((option, index) => {
         const checked = option.value === value;
@@ -139,10 +147,7 @@ export function SegmentedControl<V extends string>({
             data-segment={option.value}
             onClick={() => onValueChange(option.value)}
             onKeyDown={handleKeyDown}
-            className={cn(
-              "aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:hover:bg-primary/80",
-              segmentClassName,
-            )}
+            className={cn(SEGMENT_CHECKED_CLASS, segmentClassName)}
           >
             {option.icon === undefined ? (
               option.label
