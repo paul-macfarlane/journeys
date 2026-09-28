@@ -88,3 +88,11 @@ Verification follows `docs/agents/testing.md` (`polish`). Use `CONTEXT.md` vocab
   - **AC-3 PASS, with the deviation above:** `canvas.spec.ts` and `draft.spec.ts` are unchanged. The full suite gives 146 passed, 0 failed, 0 flaky.
 - **Command chain** (`node_modules/.atlas-c7/chain.sh`, run once at the chunk's end): `pnpm lint`, `format:check`, `typecheck`, `test`, `build`, then `E2E_EVIDENCE=canvas-phone-sheet,canvas-tablet-stacked-panel pnpm test:e2e:prebuilt`.
 - **Earlier run, recorded as FAIL at 75dd790:** 144 passed and 2 failed (`step-editing-image-caption-alt-and-preview` and `panel-outcomes-from-the-ending`). Both were diagnosed to the 1×1 cause above, from their traces, and neither run was rerun to pass.
+
+### 2026-09-27 — Claude, chunk 7 orchestrator (CI fix)
+
+`[SCOPE CHANGE]`: CI on PR #113 failed `a11y-journey-page`. axe's `document-title` rule fired on the Versions tab. The same failure appears on the `staging` run at 1b52f52, so it predates this chunk.
+
+- **Cause:** found in the CI trace. The tab switch (`UrlTabs`, a `router.replace`) committed the new page with its `<title>`, 22 meta tags and 4 links stripped from the head. They were put back 0.6 s later, and axe read the head in between. Next 16 streams metadata after the page for every user agent it does not list as a bot.
+- **Fix:** e27519d sets `htmlLimitedBots: /.*/` in `next.config.ts`, so metadata is resolved before the page. A local probe with 4× CPU throttling and a full-page screenshot before each switch shows the title removed and re-added in the same millisecond on every tab switch.
+- **Verified:** the full chain passed at e27519d: 712 unit tests, and 146 e2e passed, 0 failed, 0 flaky (`test-results/chunk-7-commands.txt`).
