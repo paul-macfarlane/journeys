@@ -32,7 +32,7 @@ import {
   setStepPrompt,
   updateStep,
 } from "@/lib/graph/edit";
-import type { PublishProblem } from "@/lib/graph/validate";
+import type { ProblemIndex } from "@/lib/graph/validate";
 
 /**
  * One Step, opened for editing: its title, its rich text, its Prompt, its
@@ -308,7 +308,6 @@ export function StepPanel({
   step,
   order,
   problems,
-  choiceProblems,
   revision,
   focusTitle,
   markedChoiceId,
@@ -321,15 +320,14 @@ export function StepPanel({
   onDeleteStep,
   onDuplicateStep,
   onHidePanel,
+  hideButton = true,
 }: {
   document: GraphDocument;
   step: Step;
   /** Step ids in the order the map lays the boxes out, for the Choice rows. */
   order: string[];
-  /** The live publish problems addressed to this Step. */
-  problems: PublishProblem[];
-  /** This Step's own Choices' live publish problems, keyed by Choice id. */
-  choiceProblems: Map<string, PublishProblem[]>;
+  /** The live publish problems, indexed by Step and by Choice. */
+  problems: ProblemIndex;
   /** Bumped each time the Draft was replaced from outside the editor. */
   revision: number;
   /** True when this Step was just created from a Choice and wants a name. */
@@ -348,8 +346,25 @@ export function StepPanel({
   onDuplicateStep: (stepId: string) => void;
   /** The panel put away, leaving the map the whole width. */
   onHidePanel: () => void;
+  /**
+   * Whether the panel carries its own "Hide panel". Not in a phone's sheet,
+   * whose Close is the way it goes away.
+   */
+  hideButton?: boolean;
 }) {
   const isStart = document.startStepId === step.id;
+  const stepProblems = problems.problemsForStep(step.id);
+  // Keyed by Choice id, the way `ChoiceList` reads it.
+  const choiceProblems = useMemo(
+    () =>
+      new Map(
+        step.choices.map((choiceEntry) => [
+          choiceEntry.id,
+          problems.problemsForChoice(step.id, choiceEntry.id),
+        ]),
+      ),
+    [problems, step],
+  );
 
   return (
     <section
@@ -358,11 +373,13 @@ export function StepPanel({
     >
       {/* Above the title field and out of the way at the panel's edge: a
           thing done to the panel rather than to the Step it is showing. */}
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" onClick={onHidePanel}>
-          Hide panel
-        </Button>
-      </div>
+      {hideButton ? (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onHidePanel}>
+            Hide panel
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="step-title">Step title</Label>
@@ -389,7 +406,7 @@ export function StepPanel({
         />
       </div>
 
-      {problems.length > 0 ? (
+      {stepProblems.length > 0 ? (
         <section
           aria-label="Step problems"
           className="flex flex-col gap-2 rounded-xl px-4 py-3 ring-1 ring-destructive/40"
@@ -403,7 +420,7 @@ export function StepPanel({
             aria-label="Step problems list"
             className="flex list-disc flex-col gap-1 pl-5 text-sm text-destructive"
           >
-            {problems.map((problem) => (
+            {stepProblems.map((problem) => (
               <li key={`${problem.code}-${problem.choiceId ?? ""}`}>
                 {problem.message}
               </li>

@@ -19,11 +19,8 @@ import {
 import { useEffect, useMemo, useRef } from "react";
 
 import {
-  arrowPoints,
   handleOffset,
-  labelPoint,
   NODE_BOX_CLASS,
-  smoothPath,
   sourceSide,
   targetSide,
   useCanvasColorMode,
@@ -45,6 +42,7 @@ import {
   type GraphDocument,
   type LayoutDirection,
 } from "@/lib/graph/document";
+import { arrowPoints, labelPoint, smoothPath } from "@/lib/graph/geometry";
 import {
   EDGE_LABEL_HEIGHT,
   EDGE_LABEL_MAX_WIDTH,
@@ -58,8 +56,8 @@ import "@xyflow/react/dist/style.css";
 /**
  * A Published Version as a map with the numbers on it: one box per Step,
  * one arrow per Choice, laid out by the same `layoutGraph` as the editor's
- * Canvas and drawn with the same geometry (`canvas-shared.ts`), so the shape
- * an Author reads the numbers off is exactly the shape they built.
+ * Canvas and drawn with the same geometry (`@/lib/graph/geometry`), so the
+ * shape an Author reads the numbers off is exactly the shape they built.
  *
  * Every arrow carries its Choice's take-rate — the share of visits to its
  * Step that went this way — and how many times it was walked, and is drawn

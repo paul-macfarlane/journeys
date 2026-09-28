@@ -381,12 +381,18 @@ test("step-editing-image-caption-alt-and-preview", async ({
     imageTools.getByRole("button", { name: "Remove" }),
   ).toBeVisible();
 
+  // The viewport, not the full page: Chromium takes a full-page capture
+  // (`captureBeyondViewport`) through a frame in which the window reports a
+  // 1×1 viewport. That frame matches the phone query, so the Step panel is
+  // moved into the bottom sheet and back, which remounts the editor and
+  // drops the image's selection and its toolbar before "Edit image" can be
+  // pressed. No Author's window is ever 1×1. The picture and its toolbar
+  // are in view, since they were just clicked.
   await page.screenshot({
     path: evidencePath(
       "step-editing-image-caption-alt-and-preview",
       "selected-image.png",
     ),
-    fullPage: true,
   });
 
   // Editing rewrites the selected image's caption and alt in place.
@@ -993,9 +999,15 @@ test("panel-outcomes-from-the-ending", async ({ page }) => {
       .getByRole("listbox", { name: "Outcomes" })
       .getByRole("option", { name: "Reached care", exact: true }),
   ).toContainText("2 endings");
+  // The viewport, not the full page: Chromium takes a full-page capture
+  // (`captureBeyondViewport`) through a frame in which the window reports a
+  // 1×1 viewport. That frame matches the phone query, so the Step panel is
+  // moved into the bottom sheet and back, which remounts the Outcome field.
+  // The list is then closed and the focus is on the page, not in the list,
+  // before Escape is pressed. No Author's window is ever 1×1. The open list
+  // is in view, since its field was just clicked.
   await page.screenshot({
     path: evidencePath("panel-outcomes-from-the-ending", "outcome-open.png"),
-    fullPage: true,
   });
 
   // Escape puts the list away and hands the focus back to the field.
