@@ -1,6 +1,6 @@
 # 89: Choice target combobox: Enter retargets on open
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`

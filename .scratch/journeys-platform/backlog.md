@@ -2,7 +2,7 @@
 
 The single source of truth for **what to work on next**. The order below is Paul's. Tickets hold the what and the why. The spec's `[SCOPE CHANGE]` records hold the reasons for a re-order. This file holds only the order and each ticket's current status. Maintenance rules are in `docs/agents/issue-tracker.md` ("Priority").
 
-Last re-ordered: 2026-09-26, chunk 3 re-formed when Paul cut the Judge (87 replaces 84 and 76); before that, grouped into chunks (Paul). Direction: polish, bug fixes, stability, and a clean technical design, with no feature bloat and no AI authoring. Ticket 72's proposed order, with three moves: 83 joins 81 and 73, 76 runs before 75, and 57 runs before 86 and 53.
+Last re-ordered: 2026-09-27, tickets 88–92 placed as chunk 9, run before chunk 8 (Paul). Before that, 2026-09-26: chunk 3 re-formed when Paul cut the Judge (87 replaces 84 and 76); before that, grouped into chunks (Paul). Direction: polish, bug fixes, stability, and a clean technical design, with no feature bloat and no AI authoring. Ticket 72's proposed order, with three moves: 83 joins 81 and 73, 76 runs before 75, and 57 runs before 86 and 53.
 
 ## Ordered
 
@@ -27,7 +27,12 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 14 | 6 | [57 Empty states and placeholders](issues/57-in-app-help.md) | polish | done | PR #112; rescoped 2026-09-26 |
 | 15 | **7 Editor split and phone sheet** (polish) | [86 Split the canvas, the Draft editor, and the layout module](issues/86-split-editor-modules.md) | polish | done | PR #113 |
 | 16 | 7 | [53 The Step panel as a sheet on narrow screens](issues/53-mobile-step-sheet.md) | polish | done | PR #113; decisions settled 2026-09-27 |
-| 17 | **8 AI editing** (contract) | [80 AI editing](issues/80-ai-editing.md) | contract | ready-for-agent | Reach goal |
+| 17 | **9 Accessibility follow-ups** (contract) | [88 Canvas arrows: keyboard focus and order](issues/88-canvas-arrow-focus.md) | polish | ready-for-agent | From 78's walk (chunk 5); runs before chunk 8 (Paul, 2026-09-27) |
+| 18 | 9 | [89 Choice target combobox: Enter retargets on open](issues/89-choice-target-enter.md) | contract | ready-for-agent | Keyboard-only Draft change |
+| 19 | 9 | [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | ready-for-agent | |
+| 20 | 9 | [91 Preview page title](issues/91-preview-title.md) | polish | ready-for-agent | |
+| 21 | 9 | [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | ready-for-agent | |
+| 22 | **8 AI editing** (contract) | [80 AI editing](issues/80-ai-editing.md) | contract | ready-for-agent | Reach goal |
 
 ## Awaiting a place in the order
 
@@ -35,11 +40,6 @@ New tickets land here until Paul places them.
 
 | Ticket | Route | Status | Note |
 |---|---|---|---|
-| [88 Canvas arrows: keyboard focus and order](issues/88-canvas-arrow-focus.md) | polish | needs-triage | From 78's walk (chunk 5) |
-| [89 Choice target combobox: Enter retargets on open](issues/89-choice-target-enter.md) | contract | needs-triage | From 78's walk; keyboard-only Draft change |
-| [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | needs-triage | From 78's walk |
-| [91 Preview page title](issues/91-preview-title.md) | polish | needs-triage | From 78's walk |
-| [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | needs-triage | From 78's walk |
 | [93 Home, guide, and legal pages: stills, copy, and the footer](issues/93-public-pages-copy-and-stills.md) | polish | needs-triage | Paul's 2026-09-27 read of `/`, `/guide`, `/privacy`, `/terms`; after chunk 5 (same files) |
 | [94 Look at an older Published Version before restoring it](issues/94-view-a-published-version.md) | contract | needs-triage | Read-only map and Preview per Version |
 

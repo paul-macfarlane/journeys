@@ -1,6 +1,6 @@
 # 91: Preview page title
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
