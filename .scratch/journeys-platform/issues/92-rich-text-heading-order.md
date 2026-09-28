@@ -1,8 +1,8 @@
 # 92: Heading order in rendered rich text
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: None
-Owner:
+Owner: Claude, chunk 9 orchestrator (2026-09-28)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish
