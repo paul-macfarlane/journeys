@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Blocked by: 48
-Owner:
+Owner: Claude (Fable 5.1), chunk 7 orchestrator, 2026-09-27 (starts after 86 closes)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish
@@ -19,8 +19,22 @@ Route: polish
 
 **What to build (after the decisions):** the primitive, a `StepPanelHost` that picks the container from a media query, the `dialogIsOpen()` guard taught to ignore the sheet, and specs `canvas-phone-sheet` (375 × 667: tap a box, the sheet opens with the Step's title, edit the title, close, the box shows the new title) and a tablet check at the chosen boundary.
 
-Acceptance criteria: completed after the decisions.
+Acceptance criteria (settled with Paul, 2026-09-27; see Comments):
+
+- [ ] Below `sm` (640 px) selecting a Step on the map opens the panel as a bottom sheet (`StepPanelHost`) hosting the same `StepPanel`; the sheet has a grab-handle strip and a Close button, is sized to its content up to about 85% of the viewport, and leaves a strip of the map visible above it.
+- [ ] Closing the sheet is `hidePanel`: the unmount save runs and the box shows the edit. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z work while the sheet is open; Cmd/Ctrl+K stays off while it is open.
+- [ ] At and above `sm` nothing changes: the tablet check at 768 px proves the stacked panel and ticket 48's scroll are still used, and the side-by-side layout above `lg` is untouched.
+- [ ] Specs `canvas-phone-sheet` (375 × 667: tap a box, the sheet opens with the Step's title, edit the title, close, the box shows the new title) and `canvas-tablet-stacked-panel` (768 px) pass, plus the chunk's one full `pnpm test:e2e`.
 
 Verification and evidence follow `docs/agents/testing.md` ("Proportional verification", `polish`); never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Spec: `.scratch/journeys-platform/spec.md`. Origin: Paul's staging regression notes, 2026-09-23, item 7.
 
 ## Comments
+### 2026-09-27 — Claude, chunk 7 orchestrator
+
+Decisions settled with Paul at the chunk's start (chunk rule):
+
+- **Container:** a bottom sheet on the installed Base UI Dialog (`@base-ui/react`), styled as a sheet in `src/components/ui/sheet.tsx`. No new dependency, so no lockfile commit. Not vaul, not a full-screen modal.
+- **Boundary:** phones only, below `sm` (640 px). Tablets and small laptops keep today's stacked panel with ticket 48's scroll-into-view.
+- **Shortcuts:** the `dialogIsOpen()` guard learns to ignore the sheet for undo and redo, so an edit made in the sheet can be undone in place; Cmd/Ctrl+K stays off while the sheet is open, because Find step would open behind a modal. The sheet hosts the same `StepPanel` unchanged (one component, two containers); closing it is `hidePanel`, so ticket 26's unmount save already runs.
+
+Owner recorded now; work starts after ticket 86's closeout, per the chunk rule.

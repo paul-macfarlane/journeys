@@ -1,8 +1,8 @@
 # 86: Split the canvas, the Draft editor, and the layout module
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 81
-Owner:
+Owner: Claude (Fable 5.1), chunk 7 orchestrator, 2026-09-27
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish (behaviour-preserving; no schema, auth, or route change)
