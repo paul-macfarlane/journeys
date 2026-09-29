@@ -16,7 +16,7 @@ import {
   type NodeTypes,
   useReactFlow,
 } from "@xyflow/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type FocusEvent } from "react";
 
 import {
   handleOffset,
@@ -70,9 +70,9 @@ import "@xyflow/react/dist/style.css";
  * turn, and, on a Published Version's own view (`VersionMap`, ticket 94),
  * select: there the map carries no numbers at all — no figure on a box, only
  * the Choice on an arrow, every arrow the same weight — and each box is a
- * button that picks the Step the view's panel shows. Which way it runs is the reader's to choose, from the same control
- * the editor's map has in the same place, the row across the top of the
- * frame: a Published Version is immutable, so turning the map is a way of
+ * button that picks the Step the view's panel shows. Which way it runs is
+ * the reader's to choose, from the same control the editor's map has in
+ * the same place, the row across the top of the frame: a Published Version is immutable, so turning the map is a way of
  * reading it and not an edit, and the browser keeps the choice for every
  * version and every Journey it reads — as it keeps whether the editor's
  * panel is put away — with the version's own direction until it has chosen.
@@ -193,7 +193,50 @@ function AnalyticsEdge({
  * leads to a Step that exists: the layout never holds the editor's
  * "missing step" placeholder here, and there is one kind of box.
  */
-function AnalyticsNode({ data }: NodeProps<AnalyticsFlowNode>) {
+function AnalyticsNode({
+  data,
+  positionAbsoluteX,
+  positionAbsoluteY,
+  width,
+  height,
+}: NodeProps<AnalyticsFlowNode>) {
+  const { getZoom, setCenter } = useReactFlow();
+
+  // Tabbing onto a box the map has panned out of sight: the browser brings
+  // a focused element into view by scrolling whatever clips it — here the
+  // flow's own containers, which React Flow never expects to be scrolled,
+  // so the map would sit offset from where it thinks it is. Undo that, and
+  // pan the map instead, at the zoom the Member chose.
+  function revealOnFocus(event: FocusEvent<HTMLButtonElement>) {
+    const box = event.currentTarget;
+    const flow = box.closest<HTMLElement>(".react-flow");
+    if (flow === null) return;
+    for (
+      let element = box.parentElement;
+      element !== null;
+      element = element.parentElement
+    ) {
+      if (element.scrollTop !== 0) element.scrollTop = 0;
+      if (element.scrollLeft !== 0) element.scrollLeft = 0;
+      if (element === flow) break;
+    }
+
+    const boxRect = box.getBoundingClientRect();
+    const frame = flow.getBoundingClientRect();
+    const inside =
+      boxRect.left >= frame.left &&
+      boxRect.right <= frame.right &&
+      boxRect.top >= frame.top &&
+      boxRect.bottom <= frame.bottom;
+    if (inside) return;
+
+    void setCenter(
+      positionAbsoluteX + (width ?? 0) / 2,
+      positionAbsoluteY + (height ?? 0) / 2,
+      { zoom: getZoom(), duration: mapMoveDuration() },
+    );
+  }
+
   return (
     <>
       <Handle
@@ -209,9 +252,11 @@ function AnalyticsNode({ data }: NodeProps<AnalyticsFlowNode>) {
         // the map is walked from the keyboard as well as by pointer. Its
         // click — a pointer's, or Enter's and Space's — reaches the map's
         // `onNodeClick`, which selects; React Flow lets a box take pointer
-        // events at all only while the map has that handler.
+        // events at all only while the map has that handler. Focus pans a
+        // box out of sight into view (`revealOnFocus`).
         <button
           type="button"
+          onFocus={revealOnFocus}
           aria-label={data.title}
           aria-pressed={data.selected}
           className={cn(
@@ -427,6 +472,9 @@ function AnalyticsFlow({
       nodesFocusable={false}
       edgesFocusable={false}
       elementsSelectable={false}
+      // Space is React Flow's key for panning by drag; where the boxes are
+      // buttons it has to press the focused one instead.
+      panActivationKeyCode={onSelectStep === null ? undefined : null}
       onNodeClick={
         onSelectStep === null
           ? undefined

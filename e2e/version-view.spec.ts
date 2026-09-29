@@ -96,6 +96,14 @@ function viewPath(projectId: string, journeyId: string, n: number): string {
   return `/projects/${projectId}/journeys/${journeyId}/versions/${n}`;
 }
 
+/** Every Run of any of the Journey's Published Versions. */
+function runsOf(journeyId: string) {
+  return queryE2eDatabase(
+    'SELECT r.id FROM "run" r JOIN "published_version" v ON v.id = r.version_id WHERE v.journey_id = $1',
+    [journeyId],
+  );
+}
+
 test("version-view", async ({ page, context }) => {
   const { projectId, journeyId, journeyTitle } = await journeyWithTwoVersions(
     page,
@@ -120,7 +128,7 @@ test("version-view", async ({ page, context }) => {
     }),
   ).toBeVisible();
 
-  // The Preview link (ticket 94, D2) beside Restore, and the sentence
+  // The Preview link beside Restore, and the sentence
   // naming which Theme it wears — the journey's current one, since a
   // Published Version snapshots none of its own.
   await expect(
@@ -143,11 +151,14 @@ test("version-view", async ({ page, context }) => {
 
   // The Start is selected until another box is, and its content shows.
   const panel = main.getByRole("region", { name: "Selected step" });
+  // Selection is announced politely, and loading the page announces nothing.
+  const announcer = panel.locator('[aria-live="polite"]');
+  await expect(announcer).toHaveText("");
   await expect(
     map.getByRole("button", { name: START_STEP_TITLE, exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    panel.getByRole("heading", { name: START_STEP_TITLE }),
+    panel.getByRole("heading", { name: START_STEP_TITLE, exact: true }),
   ).toBeVisible();
   await expect(panel).toContainText(V1_START_TEXT);
   const choices = panel.getByRole("list", { name: "Choices" });
@@ -162,8 +173,9 @@ test("version-view", async ({ page, context }) => {
     map.getByRole("button", { name: V1_ENDING_TITLE, exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    panel.getByRole("heading", { name: V1_ENDING_TITLE }),
+    panel.getByRole("heading", { name: V1_ENDING_TITLE, exact: true }),
   ).toBeVisible();
+  await expect(announcer).toHaveText(`Showing ${V1_ENDING_TITLE}`);
   await expect(panel).toContainText(
     "You lose your place, and the post closes behind you.",
   );
@@ -178,9 +190,22 @@ test("version-view", async ({ page, context }) => {
   await page.keyboard.press("Enter");
   await expect(wavedThrough).toHaveAttribute("aria-pressed", "true");
   await expect(
-    panel.getByRole("heading", { name: "Waved through" }),
+    panel.getByRole("heading", { name: "Waved through", exact: true }),
   ).toBeVisible();
   await expect(panel).toContainText("Reached care");
+
+  // Space presses a box as well: it is a button there, not the map's pan
+  // key.
+  const startBox = map.getByRole("button", {
+    name: START_STEP_TITLE,
+    exact: true,
+  });
+  await startBox.focus();
+  await page.keyboard.press("Space");
+  await expect(startBox).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    panel.getByRole("heading", { name: START_STEP_TITLE, exact: true }),
+  ).toBeVisible();
   await map.getByRole("button", { name: V1_ENDING_TITLE, exact: true }).click();
 
   // Nothing of Version 2.
@@ -209,6 +234,32 @@ test("version-view", async ({ page, context }) => {
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+
+  // Focus brings a box the narrower map has left out of sight into it, by
+  // panning the map — never by scrolling the map's own container.
+  const flow = map.locator(".react-flow");
+  for (const title of [START_STEP_TITLE, "Waved through", V1_ENDING_TITLE]) {
+    const box = map.getByRole("button", { name: title, exact: true });
+    await box.focus();
+    await expect
+      .poll(async () => {
+        const [inner, outer] = await Promise.all([
+          box.boundingBox(),
+          flow.boundingBox(),
+        ]);
+        if (inner === null || outer === null) return false;
+        return (
+          inner.x >= outer.x - 1 &&
+          inner.y >= outer.y - 1 &&
+          inner.x + inner.width <= outer.x + outer.width + 1 &&
+          inner.y + inner.height <= outer.y + outer.height + 1
+        );
+      }, `${title} inside the map`)
+      .toBe(true);
+    expect(
+      await flow.evaluate((element) => [element.scrollTop, element.scrollLeft]),
+    ).toEqual([0, 0]);
+  }
 });
 
 test("version-view-restore", async ({ page, context }) => {
@@ -218,7 +269,7 @@ test("version-view-restore", async ({ page, context }) => {
   );
 
   await page.goto(viewPath(projectId, journeyId, 1));
-  await page.getByRole("button", { name: "Restore" }).click();
+  await page.getByRole("button", { name: "Restore", exact: true }).click();
   await page.getByRole("button", { name: "Restore version" }).click();
 
   await expect(page.getByRole("status")).toHaveText(
@@ -242,7 +293,6 @@ test("version-view-restore", async ({ page, context }) => {
 /** Version 2's Start text, for `version-preview`'s "nothing of Version 2" check. */
 const PREVIEW_V2_START_TEXT =
   "The queue has grown since the rain began, and the questions have too.";
-const PREVIEW_V2_ENDING_TITLE = "Sent home";
 
 /**
  * `promptDocument()` with its Start rewritten and an Ending renamed — the
@@ -260,7 +310,7 @@ function versionTwoPromptDocument(): GraphDocument {
       },
     ],
   };
-  document.steps["turned-back"].title = PREVIEW_V2_ENDING_TITLE;
+  document.steps["turned-back"].title = V2_ENDING_TITLE;
   return document;
 }
 
@@ -281,10 +331,20 @@ test("version-preview", async ({ page, context }) => {
   await publishDocument(journeyId, promptDocument());
   await publishDocument(journeyId, versionTwoPromptDocument());
 
-  const runsBefore = await queryE2eDatabase(
-    'SELECT r.id FROM "run" r JOIN "published_version" v ON v.id = r.version_id WHERE v.journey_id = $1',
-    [journeyId],
-  );
+  const runsBefore = await runsOf(journeyId);
+
+  // Version 1's own view shows the prompted Step's Prompt in its panel.
+  await page.goto(viewPath(projectId, journeyId, 1));
+  const viewMain = page.getByRole("main");
+  await viewMain
+    .getByRole("region", { name: "Version map" })
+    .getByRole("button", { name: QUEUE_STEP_TITLE, exact: true })
+    .click();
+  const panel = viewMain.getByRole("region", { name: "Selected step" });
+  await expect(
+    panel.getByRole("heading", { name: QUEUE_STEP_TITLE, exact: true }),
+  ).toBeVisible();
+  await expect(panel).toContainText(QUEUE_PROMPT);
 
   // From the Versions tab, Version 1's row: Preview.
   await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
@@ -313,7 +373,7 @@ test("version-preview", async ({ page, context }) => {
     page.getByText("The queue has not moved in an hour."),
   ).toBeVisible();
   await expect(page.getByText(PREVIEW_V2_START_TEXT)).toHaveCount(0);
-  await expect(page.getByText(PREVIEW_V2_ENDING_TITLE)).toHaveCount(0);
+  await expect(page.getByText(V2_ENDING_TITLE)).toHaveCount(0);
 
   // The Start's optional Prompt, answered, then on to the middle Step —
   // Choices are that same form's buttons while a Prompt sits above them.
@@ -340,10 +400,7 @@ test("version-preview", async ({ page, context }) => {
   });
 
   // Preview records nothing: no new Run, and so no new Response either.
-  const runsAfter = await queryE2eDatabase(
-    'SELECT r.id FROM "run" r JOIN "published_version" v ON v.id = r.version_id WHERE v.journey_id = $1',
-    [journeyId],
-  );
+  const runsAfter = await runsOf(journeyId);
   expect(runsAfter).toHaveLength(runsBefore.length);
 
   const responseRows = await queryE2eDatabase(
@@ -440,14 +497,19 @@ test("version-view-unreadable", async ({ page, context }) => {
   );
 
   // Its Preview is the same story: 200, and the same "can't be read"
-  // naming, never a crash or a redirect loop (ticket 94, D2).
+  // naming, never a crash or a redirect loop — with the way back to the
+  // Version's view.
   const previewResponse = await page.goto(
     `${viewPath(projectId, journeyId, 2)}/preview`,
   );
   expect(previewResponse?.status()).toBe(200);
+  const unreadable = page.getByRole("region", {
+    name: "Version 2 can't be read",
+  });
+  await expect(unreadable).toBeVisible();
   await expect(
-    page.getByRole("region", { name: "Version 2 can't be read" }),
-  ).toBeVisible();
+    unreadable.getByRole("link", { name: "Back to Version 2", exact: true }),
+  ).toHaveAttribute("href", viewPath(projectId, journeyId, 2));
 
   await page.screenshot({
     path: evidencePath(

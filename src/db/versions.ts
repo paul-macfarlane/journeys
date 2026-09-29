@@ -351,7 +351,7 @@ export async function restoreVersion(
  * Preview walks it: its graph, the title and description it was published
  * with, when and by whom, and whether participants are walking it now.
  */
-export type VersionView =
+export type PublishedVersionRead =
   | {
       kind: "ok";
       id: string;
@@ -371,7 +371,7 @@ export type VersionView =
   | { kind: "unreadable"; id: string; versionNumber: number };
 
 /** A `published_version` row read through the document contract, never trusted. */
-export function toVersionView(row: {
+export function toPublishedVersionRead(row: {
   journeyId: string;
   id: string;
   versionNumber: number;
@@ -381,7 +381,7 @@ export function toVersionView(row: {
   publishedAt: Date;
   publishedByName: string | null;
   liveVersionId: string | null;
-}): VersionView {
+}): PublishedVersionRead {
   const parsed = graphDocumentSchema.safeParse(row.document);
   if (!parsed.success) {
     logUnreadable("published version", {
@@ -411,7 +411,7 @@ export function toVersionView(row: {
 export async function getVersionByNumber(
   existing: MemberJourney,
   versionNumber: number,
-): Promise<VersionView | null> {
+): Promise<PublishedVersionRead | null> {
   const [row] = await db
     .select({
       id: publishedVersion.id,
@@ -435,5 +435,7 @@ export async function getVersionByNumber(
     )
     .limit(1);
 
-  return row ? toVersionView({ journeyId: existing.id, ...row }) : null;
+  return row
+    ? toPublishedVersionRead({ journeyId: existing.id, ...row })
+    : null;
 }

@@ -12,14 +12,16 @@ import { hasStep, type GraphDocument } from "@/lib/graph/document";
 import { readResponse, refusalNotice } from "@/lib/graph/prompt";
 import { requireSession } from "@/lib/session";
 import { effectiveTheme, type Theme } from "@/lib/theme";
+import { isVersionNumber, parseVersionNumber } from "@/lib/version-number";
 
 /**
- * What Preview walks (ticket 94, D2): the Draft, or one Published Version by
+ * What Preview walks (ticket 94): the Draft, or one Published Version by
  * its number. Both route pairs — `.../preview` and
- * `.../versions/<n>/preview` — share this module's loader and action so the
- * two surfaces cannot drift: what differs between walking the Draft and
- * walking a Version is the source of the graph and the way back, never the
- * runner around it.
+ * `.../versions/<n>/preview` — share this module's loaders and action, and
+ * `./screens`' bodies, so the two surfaces cannot drift: what differs
+ * between walking the Draft and walking a Version is the source of the
+ * graph and the way back, never the runner around it. A private folder
+ * (`_preview`), so Next routes none of it.
  */
 export type PreviewSource =
   { kind: "draft" } | { kind: "version"; versionNumber: number };
@@ -51,7 +53,8 @@ type StoredSource =
  * Draft (`@/db/drafts`) or a Published Version by number (`@/db/versions`),
  * whichever `sourceKind`/`versionNumber` name. The two routes answer
  * `unreadable` differently — the Draft's redirects, a Version's renders a
- * `CannotBeRead` — so this only reports it.
+ * `CannotBeRead` — so this only reports it. Primitive arguments, so the
+ * page and its metadata share one read.
  */
 const loadStoredSource = cache(async function loadStoredSource(
   projectId: string,
@@ -84,6 +87,19 @@ const loadStoredSource = cache(async function loadStoredSource(
   };
 });
 
+function readSource(
+  projectId: string,
+  journeyId: string,
+  source: PreviewSource,
+) {
+  return loadStoredSource(
+    projectId,
+    journeyId,
+    source.kind,
+    source.kind === "version" ? source.versionNumber : undefined,
+  );
+}
+
 /**
  * Every Choice link, the "Start over" link, and the Preview action all build
  * on one base href per source: `.../preview` for the Draft, and
@@ -107,85 +123,126 @@ function originFor(journeyHref: string, source: PreviewSource) {
   };
 }
 
+/** Everything a Preview screen (`./screens`) draws from, for either source. */
 export type PreviewLoaded = {
-  journey: MemberJourney;
+  source: PreviewSource;
   document: GraphDocument;
+  /** The Journey's own for the Draft, the Version's own for a Version. */
   title: string;
   description: string;
+  /** The Theme a Participant will see: the Journey's override, else its Project's. */
   theme: Theme;
-  journeyHref: string;
+  /** The Author's Project page, the header's way out (ticket 69). */
+  project: { title: string; href: string };
   base: string;
   backHref: string;
   backLabel: string;
 };
 
-export type PreviewResult =
-  | ({ kind: "ok" } & PreviewLoaded)
-  /**
-   * A Published Version whose row cannot be read (ticket 83's pattern):
-   * both Version preview routes still answer 200 and say so, rather than
-   * crashing or redirecting in a loop.
-   */
-  | { kind: "unreadable"; versionNumber: number; journeyHref: string };
-
 /**
- * What every Preview screen starts from: the Journey, resolved for the
- * signed-in Member — a non-Member and an unknown Journey both 404 — the
- * source's graph, the title and description it shows (the Journey's own for
- * the Draft, the Version's own for a Version — ticket 94's decision), the
- * Theme a Participant will see, and the hrefs the page builds its links
- * from. A Draft that cannot be read has nothing to preview: the Journey page
- * says so and offers a Restore, so this redirects there. A Version that
- * cannot be read is different: the Journey page never 404s on it, so this
- * reports it instead of bouncing, and the page renders a `CannotBeRead`
- * itself.
+ * The source, loaded for the signed-in Member — a non-Member, an unknown
+ * Journey, and a missing source all 404 — or `unreadable` when its row
+ * fails its document contract; the callers below decide what that means.
  */
-export async function loadPreviewSource({
-  projectId,
-  journeyId,
-  source,
-}: {
-  projectId: string;
-  journeyId: string;
-  source: PreviewSource;
-}): Promise<PreviewResult> {
+async function loadPreviewSource(
+  projectId: string,
+  journeyId: string,
+  source: PreviewSource,
+): Promise<{ kind: "ok"; loaded: PreviewLoaded } | { kind: "unreadable" }> {
   const journey = await loadJourney(projectId, journeyId);
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
 
-  const stored = await loadStoredSource(
-    projectId,
-    journeyId,
-    source.kind,
-    source.kind === "version" ? source.versionNumber : undefined,
-  );
-
+  const stored = await readSource(projectId, journeyId, source);
   if (stored.kind === "missing") notFound();
-
-  if (stored.kind === "unreadable") {
-    if (source.kind === "draft") redirect(journeyHref);
-    return {
-      kind: "unreadable",
-      versionNumber: source.versionNumber,
-      journeyHref,
-    };
-  }
+  if (stored.kind === "unreadable") return { kind: "unreadable" };
 
   return {
     kind: "ok",
-    journey,
-    document: stored.document,
-    title: stored.title,
-    description: stored.description,
-    theme: effectiveTheme(journey.project.theme, journey.theme),
-    journeyHref,
-    ...originFor(journeyHref, source),
+    loaded: {
+      source,
+      document: stored.document,
+      title: stored.title,
+      description: stored.description,
+      theme: effectiveTheme(journey.project.theme, journey.theme),
+      project: { title: journey.project.title, href: `/projects/${projectId}` },
+      ...originFor(journeyHref, source),
+    },
   };
 }
 
 /**
- * Both Preview screens' tab title: "Preview: <Journey title>" for the Draft,
- * "Preview: Version <n>: <version title>" for a Version (the Journey's own
- * title when that Version cannot be read). Everything the screen itself
+ * What the Draft's Preview screens start from (ticket 82): the Journey,
+ * resolved for the signed-in Member — a non-Member and an unknown Journey
+ * both 404 — its Draft, and the Theme a Participant will see, so an Author
+ * sees the look along with the words. A Draft that cannot be read has
+ * nothing to preview: the Journey page says so and offers a Restore
+ * (ticket 73), so this sends the Author there.
+ */
+export async function loadDraftPreview({
+  projectId,
+  journeyId,
+}: {
+  projectId: string;
+  journeyId: string;
+}): Promise<PreviewLoaded> {
+  const result = await loadPreviewSource(projectId, journeyId, {
+    kind: "draft",
+  });
+  if (result.kind === "unreadable") {
+    redirect(`/projects/${projectId}/journeys/${journeyId}`);
+  }
+  return result.loaded;
+}
+
+export type VersionPreviewResult =
+  | { kind: "ok"; versionNumber: number; loaded: PreviewLoaded }
+  /**
+   * A Published Version whose row cannot be read (ticket 83's pattern):
+   * both Version Preview routes still answer 200 and say so, rather than
+   * crashing or redirecting in a loop.
+   */
+  | { kind: "unreadable"; versionNumber: number; viewHref: string };
+
+/**
+ * A Published Version's Preview screens start from the same place as the
+ * Draft's, but by version number: an address that is no Version number at
+ * all 404s here, exactly as the Version's own view does, before the rest
+ * is resolved — a non-Member, an unknown Journey, and a number this
+ * Journey has none by. Unlike the Draft, a Version that cannot be read is
+ * not bounced: the Journey page never 404s on it, so this reports it and
+ * the page renders a `CannotBeRead` itself.
+ */
+export async function loadVersionPreview({
+  projectId,
+  journeyId,
+  versionNumber: segment,
+}: {
+  projectId: string;
+  journeyId: string;
+  versionNumber: string;
+}): Promise<VersionPreviewResult> {
+  const versionNumber = parseVersionNumber(segment);
+  if (versionNumber === null) notFound();
+
+  const result = await loadPreviewSource(projectId, journeyId, {
+    kind: "version",
+    versionNumber,
+  });
+  if (result.kind === "unreadable") {
+    return {
+      kind: "unreadable",
+      versionNumber,
+      viewHref: `/projects/${projectId}/journeys/${journeyId}/versions/${versionNumber}`,
+    };
+  }
+  return { kind: "ok", versionNumber, loaded: result.loaded };
+}
+
+/**
+ * Every Preview screen's tab title, with the root layout's template
+ * appending "· Journeys": "Preview: <Journey title>" for the Draft (ticket
+ * 91), "Preview: Version <n>: <version title>" for a Version (the Journey's
+ * own title when that Version cannot be read). Everything the screen itself
  * 404s on 404s here too — a non-Member, an unknown Journey, a missing
  * source, and on a Step screen (`stepId`) a Step the source does not have —
  * since metadata streams in after the page (ticket 60's trap). An
@@ -193,24 +250,14 @@ export async function loadPreviewSource({
  * sends the Author to the Journey page, and a Version's says it cannot be
  * read.
  */
-export async function previewMetadata({
-  projectId,
-  journeyId,
-  source,
-  stepId,
-}: {
-  projectId: string;
-  journeyId: string;
-  source: PreviewSource;
-  stepId?: string;
-}): Promise<Metadata> {
+async function previewMetadata(
+  projectId: string,
+  journeyId: string,
+  source: PreviewSource,
+  stepId: string | undefined,
+): Promise<Metadata> {
   const journey = await loadJourney(projectId, journeyId);
-  const stored = await loadStoredSource(
-    projectId,
-    journeyId,
-    source.kind,
-    source.kind === "version" ? source.versionNumber : undefined,
-  );
+  const stored = await readSource(projectId, journeyId, source);
   if (stored.kind === "missing") notFound();
   if (
     stepId !== undefined &&
@@ -227,6 +274,44 @@ export async function previewMetadata({
   return { title: `Preview: Version ${source.versionNumber}: ${title}` };
 }
 
+/** The Draft's Preview screens' tab title; see `previewMetadata`. */
+export function draftPreviewMetadata({
+  projectId,
+  journeyId,
+  stepId,
+}: {
+  projectId: string;
+  journeyId: string;
+  stepId?: string;
+}): Promise<Metadata> {
+  return previewMetadata(projectId, journeyId, { kind: "draft" }, stepId);
+}
+
+/**
+ * A Version's Preview screens' tab title; see `previewMetadata`. An
+ * address that is no Version number 404s, as `loadVersionPreview` does.
+ */
+export async function versionPreviewMetadata({
+  projectId,
+  journeyId,
+  versionNumber: segment,
+  stepId,
+}: {
+  projectId: string;
+  journeyId: string;
+  versionNumber: string;
+  stepId?: string;
+}): Promise<Metadata> {
+  const versionNumber = parseVersionNumber(segment);
+  if (versionNumber === null) notFound();
+  return previewMetadata(
+    projectId,
+    journeyId,
+    { kind: "version", versionNumber },
+    stepId,
+  );
+}
+
 /**
  * Where a Step with a Prompt posts its form, for the Draft and for a
  * Version alike. Preview walks its source through the participant runner's
@@ -236,7 +321,9 @@ export async function previewMetadata({
  * runner's own rule, so a required Prompt left blank is refused here
  * exactly as it would be live, and then it goes where the Choice leads.
  * Member-only like every Preview page; a non-Member is sent to the Journey
- * page, which 404s. A source that has gone unreadable since the screen
+ * page, which 404s. A Version number is a bound argument the client
+ * controls, so one that is no Version number goes there too, before the
+ * database is asked. A source that has gone unreadable since the screen
  * loaded sends the Author back to where that source is explained.
  */
 export async function choosePreviewStep(
@@ -248,6 +335,10 @@ export async function choosePreviewStep(
 ): Promise<void> {
   const session = await requireSession();
   const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
+
+  if (source.kind === "version" && !isVersionNumber(source.versionNumber)) {
+    redirect(journeyHref);
+  }
 
   const journey = await journeyForMember(projectId, journeyId, session.user.id);
   if (!journey) redirect(journeyHref);

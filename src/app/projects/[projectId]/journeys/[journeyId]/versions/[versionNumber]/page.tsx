@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { CannotBeRead } from "@/components/cannot-be-read";
 import {
@@ -32,13 +33,16 @@ type Params = Promise<{
  * The Journey and the Version the address names, for the page and its
  * metadata alike, or null for everything that 404s: a non-Member, an
  * unknown Project or Journey, an address that is no Version number, and a
- * number this Journey has no Version by. `requireSession` and
- * `journeyForMember` are `cache()`d, so the page pays the membership query
- * once.
+ * number this Journey has no Version by. `cache()`d on the address's
+ * primitive segments, so the page and its metadata make one membership
+ * query and one Version read — and an unreadable Version logs once.
  */
-async function resolve(params: Params) {
+const resolve = cache(async function resolve(
+  projectId: string,
+  journeyId: string,
+  versionNumber: string,
+) {
   const session = await requireSession();
-  const { projectId, journeyId, versionNumber } = await params;
   const journey = await journeyForMember(projectId, journeyId, session.user.id);
   if (!journey) return null;
   const number = parseVersionNumber(versionNumber);
@@ -46,6 +50,11 @@ async function resolve(params: Params) {
   const version = await getVersionByNumber(journey, number);
   if (!version) return null;
   return { projectId, journey, version };
+});
+
+async function resolveParams(params: Params) {
+  const { projectId, journeyId, versionNumber } = await params;
+  return resolve(projectId, journeyId, versionNumber);
 }
 
 /**
@@ -60,7 +69,7 @@ export async function generateMetadata({
 }: {
   params: Params;
 }): Promise<Metadata> {
-  const resolved = await resolve(params);
+  const resolved = await resolveParams(params);
   if (!resolved) notFound();
   const { journey, version } = resolved;
   const title = version.kind === "ok" ? version.title : journey.title;
@@ -73,7 +82,7 @@ export async function generateMetadata({
  * Nothing here edits it — a Published Version is immutable.
  */
 export default async function VersionPage({ params }: { params: Params }) {
-  const resolved = await resolve(params);
+  const resolved = await resolveParams(params);
   if (!resolved) notFound();
   const { projectId, journey, version } = resolved;
 

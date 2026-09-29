@@ -8,8 +8,17 @@
  */
 const MAX_VERSION_NUMBER = 2_147_483_647;
 
+/**
+ * The range half of that rule, for a number that arrives already a number:
+ * a Version Preview action's bound argument, which the client controls, so
+ * it must be checked before it reaches the database.
+ */
+export function isVersionNumber(n: number): boolean {
+  return Number.isInteger(n) && n >= 1 && n <= MAX_VERSION_NUMBER;
+}
+
 export function parseVersionNumber(segment: string): number | null {
   if (!/^[1-9]\d*$/.test(segment)) return null;
   const versionNumber = Number(segment);
-  return versionNumber <= MAX_VERSION_NUMBER ? versionNumber : null;
+  return isVersionNumber(versionNumber) ? versionNumber : null;
 }

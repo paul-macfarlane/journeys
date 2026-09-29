@@ -110,7 +110,7 @@ export function RunnerFrame({
    * Preview (ticket 94) says "Back to Version <n>" instead, since its way
    * back is that Version's own view, not the editor.
    */
-  preview?: { editorHref: string; label?: string };
+  preview?: { backHref: string; label?: string };
   /** The Project the Journey belongs to, linked above the Journey's title. */
   project?: { title: string; href: string };
   /** The header's "Start over"; omitted where the screen already offers one. */
@@ -146,7 +146,7 @@ export function RunnerFrame({
           <div className="mx-auto flex w-full max-w-prose flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 sm:px-6">
             <span>Preview — nothing is recorded.</span>
             <a
-              href={preview.editorHref}
+              href={preview.backHref}
               className="hover:text-foreground underline underline-offset-4"
             >
               {preview.label ?? "Back to editor"}

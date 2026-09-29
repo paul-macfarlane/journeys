@@ -4,7 +4,11 @@ vi.mock("@/db", () => ({ db: {} }));
 
 import { createDraftDocument } from "@/lib/graph/document";
 
-import { parseVersionDocument, toLiveVersion, toVersionView } from "./versions";
+import {
+  parseVersionDocument,
+  toLiveVersion,
+  toPublishedVersionRead,
+} from "./versions";
 
 /**
  * Ticket 83: `getLiveVersion`'s row is read with `safeParse`. A Published
@@ -74,12 +78,12 @@ describe("parseVersionDocument", () => {
 });
 
 /**
- * Ticket 94: the read behind a Published Version's own view (and, next,
- * its Preview). A row that satisfies the contract answers everything the
+ * Ticket 94: the read behind a Published Version's own view and its
+ * Preview. A row that satisfies the contract answers everything the
  * view shows about it, live or not; one that fails answers `unreadable`
  * with its id and number, logged, never thrown.
  */
-describe("toVersionView", () => {
+describe("toPublishedVersionRead", () => {
   const document = createDraftDocument();
   const publishedAt = new Date("2026-09-20T10:00:00.000Z");
   const row = {
@@ -94,7 +98,9 @@ describe("toVersionView", () => {
   };
 
   it("reads a row that satisfies the contract, naming whether it is live", () => {
-    expect(toVersionView({ ...row, liveVersionId: "version-1" })).toEqual({
+    expect(
+      toPublishedVersionRead({ ...row, liveVersionId: "version-1" }),
+    ).toEqual({
       kind: "ok",
       id: "version-1",
       versionNumber: 1,
@@ -105,10 +111,12 @@ describe("toVersionView", () => {
       publishedByName: "Ada",
       isLive: true,
     });
-    expect(toVersionView({ ...row, liveVersionId: "version-2" })).toMatchObject(
-      { kind: "ok", isLive: false },
-    );
-    expect(toVersionView({ ...row, liveVersionId: null })).toMatchObject({
+    expect(
+      toPublishedVersionRead({ ...row, liveVersionId: "version-2" }),
+    ).toMatchObject({ kind: "ok", isLive: false });
+    expect(
+      toPublishedVersionRead({ ...row, liveVersionId: null }),
+    ).toMatchObject({
       kind: "ok",
       isLive: false,
     });
@@ -117,7 +125,7 @@ describe("toVersionView", () => {
   it("reads a row that fails the contract as unreadable, keeping its id and number", () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(
-      toVersionView({
+      toPublishedVersionRead({
         ...row,
         document: { schemaVersion: 1, steps: "broken" },
         liveVersionId: "version-1",

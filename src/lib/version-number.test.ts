@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseVersionNumber } from "./version-number";
+import { isVersionNumber, parseVersionNumber } from "./version-number";
 
 /**
  * Ticket 94: a Published Version's view is addressed by its number, as
@@ -18,6 +18,23 @@ describe("parseVersionNumber", () => {
     "answers null for %j",
     (segment) => {
       expect(parseVersionNumber(segment)).toBe(null);
+    },
+  );
+});
+
+/**
+ * The same rule for a number that arrives already a number — a Version
+ * Preview action's bound argument, which the client controls.
+ */
+describe("isVersionNumber", () => {
+  it.each([1, 42, 2_147_483_647])("accepts %s", (n) => {
+    expect(isVersionNumber(n)).toBe(true);
+  });
+
+  it.each([0, -1, 1.5, 2_147_483_648, Number.NaN, Number.POSITIVE_INFINITY])(
+    "refuses %s",
+    (n) => {
+      expect(isVersionNumber(n)).toBe(false);
     },
   );
 });
