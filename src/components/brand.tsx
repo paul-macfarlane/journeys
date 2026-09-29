@@ -1,3 +1,4 @@
+import { FooterLink } from "@/components/footer-link";
 import { cn } from "@/lib/utils";
 
 /**
@@ -70,8 +71,10 @@ export function Wordmark({
 /**
  * The two legal pages, as a labelled navigation so a spec (and a screen
  * reader) can find them on any footer. Plain anchors, never `next/link`:
- * the runner frame carries no client bundle and the pages are static, so a
- * whole-document navigation costs nothing anywhere this renders.
+ * the pages are static, so a whole-document navigation costs nothing
+ * anywhere this renders. `FooterLink`
+ * (ticket 93) is the one small client island that marks whichever of these
+ * is the current page.
  */
 export function LegalLinks({ className }: { className?: string }) {
   return (
@@ -79,18 +82,8 @@ export function LegalLinks({ className }: { className?: string }) {
       aria-label="Legal"
       className={cn("flex items-center gap-4 text-sm", className)}
     >
-      <a
-        href="/privacy"
-        className="hover:text-foreground underline-offset-4 hover:underline"
-      >
-        Privacy
-      </a>
-      <a
-        href="/terms"
-        className="hover:text-foreground underline-offset-4 hover:underline"
-      >
-        Terms
-      </a>
+      <FooterLink href="/privacy">Privacy</FooterLink>
+      <FooterLink href="/terms">Terms</FooterLink>
     </nav>
   );
 }

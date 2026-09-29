@@ -45,7 +45,7 @@ export function ProsePage({
             <p className="text-muted-foreground text-sm">{subtitle}</p>
           ) : null}
         </div>
-        <div className="[&_a]:hover:text-foreground flex flex-col gap-4 leading-relaxed [&_a]:underline [&_a]:underline-offset-4 [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-medium [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-medium [&_li]:pl-1 [&_ul]:flex [&_ul]:list-disc [&_ul]:flex-col [&_ul]:gap-2 [&_ul]:pl-6">
+        <div className="[&_a]:hover:text-foreground flex flex-col gap-4 leading-relaxed [&_a]:underline [&_a]:underline-offset-4 [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-medium [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-medium [&_h4]:mt-2 [&_h4]:font-medium [&_li]:pl-1 [&_ul]:flex [&_ul]:list-disc [&_ul]:flex-col [&_ul]:gap-2 [&_ul]:pl-6">
           {children}
         </div>
       </main>

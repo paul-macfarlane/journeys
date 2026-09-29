@@ -1,8 +1,8 @@
 # 93: Home, guide, and legal pages: stills, copy, and the footer
 
-Status: ready-for-agent
+Status: done
 Blocked by: 42, 78
-Owner:
+Owner: atlas-implement (chunk 11)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish
@@ -30,3 +30,45 @@ Decisions Paul settled on 2026-09-27 (recorded here, not open):
 - `e2e/landing.spec.ts` and `e2e/guide.spec.ts` assert the new copy for items 2–5 and a still per item 1 (the `prompt` still is not the Dusk one; the `themes` still is of the runner). One screenshot per spec, per `docs/agents/testing.md`.
 - A footer check (in an existing public-page spec) asserts `aria-current="page"` on `/guide` and `/privacy`, and none in the runner.
 - `/terms` contains the discretion clause and a new date.
+
+
+## Comments
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/118 (chunk 11, this ticket alone).
+
+- **Delivery:** the chunk branch `feat/chunk-11-public-pages-copy` and a second worktree for the footer. D1 and D3 ran in parallel, then D2 ran after D1.
+  - **D1** (Sonnet, 1d1baa5): the recording script and the re-recorded `public/demo/`, plus the `themes` still and the hue probe in the guide spec.
+  - **D2** (Opus, 7da497c): items 2, 3, 4, 5 and 7, and the landing, guide and legal-pages assertions.
+  - **D3** (Sonnet, d037d69, cherry-picked as 39c5c9a): the `FooterLink` island and the `footer-current-page` test.
+  - **Review fixes** (orchestrator, 0e59677): see the review below.
+- **Why D3 ran in parallel:** it touched no file D1 or D2 touched. The cherry-pick applied cleanly, which confirms that. D2 waited for D1 because both edit `e2e/guide.spec.ts`, and they did.
+- **Choices left open by the ticket:**
+  - The home page and the guide say "one screen holding text and images".
+  - `APP_TAGLINE` reads "Branching experiences of text and images you can write, publish, and share."
+  - The terms say "Add only Authors you trust".
+  - The `themes` still is the demo Journey's Start Step in the runner, in Dusk.
+  - The guide's "Build it" stage carries `h4` sub-stages, so `ProsePage` gained an `h4` style.
+- **AI review** (one reviewer, both axes). Nothing blocking. Resolved:
+  - legal-pages evidence re-captured;
+  - Dusk restored even if the context fails to open;
+  - one readback in the hue probe;
+  - the guide spec asserts item 2;
+  - Settings in the account menu told apart from the Project and Journey Settings tabs;
+  - lower-case "participants" on /about;
+  - two stale comments.
+
+  Declined: trimming the `SiteFooter` comment, which is accurate. Follow-ups outside this ticket: `README.md` still says "text-based journeys", and the Rich text feature card says "edited in place on the canvas".
+- **Evidence:**
+  - **DoD-1:** `test-results/dod-1-commands.txt` holds the chain at 0e59677:
+    - `pnpm format:check`, `pnpm lint`, `pnpm typecheck` and `pnpm test` (744 passed)
+    - the full `pnpm test:e2e`: 156 passed, 0 failed, 0 retries
+
+| Criterion | Verdict | Test and evidence |
+|---|---|---|
+| Item 1, stills | PASS | `guide` (themes still served; hue probe: `prompt-light.png` under 5% purple, `themes-light.png` over 30%); `public/demo/` read by eye, with `run` and `prompt` in Trail and `themes` as the runner in Dusk in both schemes |
+| Items 2–5 | PASS | `landing` (`test-results/landing/landing.png`), `guide` (`test-results/guide/guide.png`), `legal-pages` ("Two kinds of users") |
+| Item 6, footer | PASS | `footer-current-page` (`test-results/footer-current-page/footer-current-page.png`) |
+| Item 7, terms | PASS | `legal-pages` (discretion clause, "Last updated 28 September 2026") |
+
+- **Still owed:** a staging smoke after Paul merges. Open `/`, `/guide`, `/privacy` and `/terms`, and check the stills, the footer's current link, and the new terms date.
+- **State log:** `ready-for-agent` → `in-progress` → `ai-review` → `ready-for-human` → `done`. `done` is set in this commit and becomes true on `staging` when Paul merges.

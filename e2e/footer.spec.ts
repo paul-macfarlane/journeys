@@ -177,3 +177,96 @@ test("guest-appearance: a guest chooses dark from the footer, and it follows the
 
   await guestContext.close();
 });
+
+/**
+ * Ticket 93: the footer marks the page you are on. `/guide` and `/privacy`
+ * each carry `aria-current="page"` on their own link and none on the
+ * others; the current link is visibly the foreground colour, in both
+ * schemes; and in the runner, where no footer `href` ever matches the
+ * path, nothing is current.
+ */
+test("footer-current-page: the footer's own link carries aria-current and a foreground colour", async ({
+  page,
+  context,
+}) => {
+  const footer = () => page.getByRole("contentinfo");
+
+  await page.goto("/guide");
+  await expect(footer().getByRole("link", { name: "Guide" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(
+    footer().getByRole("link", { name: "About" }),
+  ).not.toHaveAttribute("aria-current", "page");
+  await expect(
+    footer().getByRole("link", { name: "Privacy" }),
+  ).not.toHaveAttribute("aria-current", "page");
+  await expect(
+    footer().getByRole("link", { name: "Terms" }),
+  ).not.toHaveAttribute("aria-current", "page");
+
+  await page.goto("/privacy");
+  const legal = footer().getByRole("navigation", { name: "Legal" });
+  await expect(legal.getByRole("link", { name: "Privacy" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(
+    footer().getByRole("link", { name: "Guide" }),
+  ).not.toHaveAttribute("aria-current", "page");
+
+  // The visible state: the current link reads as the foreground colour,
+  // the same as the page heading, and differs from a non-current link's
+  // colour, in both light and dark.
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+    await page.goto("/guide");
+    if (colorScheme === "dark") {
+      await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    } else {
+      await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+    }
+
+    const heading = page.getByRole("heading", { name: "Guide", level: 1 });
+    const current = footer().getByRole("link", { name: "Guide" });
+    const notCurrent = footer().getByRole("link", { name: "About" });
+
+    const headingColor = await heading.evaluate(
+      (el) => getComputedStyle(el).color,
+    );
+    await expect
+      .poll(() => current.evaluate((el) => getComputedStyle(el).color))
+      .toBe(headingColor);
+    await expect
+      .poll(() => notCurrent.evaluate((el) => getComputedStyle(el).color))
+      .not.toBe(headingColor);
+  }
+
+  await footer().scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: evidencePath("footer-current-page", "footer-current-page.png"),
+  });
+
+  // The runner: no footer link ever matches `/j/<id>`.
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  await page.goto("/projects");
+  const suffix = uniqueSuffix();
+  const projectId = await createProject(page, `Footer current ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Footer current journey ${suffix}`,
+    "For the footer-current-page spec.",
+  );
+  await writeDraftDocument(journeyId, runnerDocument());
+  await publishDocument(journeyId, runnerDocument());
+
+  await page.goto(`/j/${journeyId}`);
+  await expect(
+    page.getByRole("heading", { name: START_STEP_TITLE }),
+  ).toBeVisible();
+  await expect(footer().locator("[aria-current]")).toHaveCount(0);
+});

@@ -19,7 +19,8 @@ const FEATURE_HEADINGS = [
  * with a still per theme, "Play a Journey" to the seed Project (a fixed id,
  * so no configuration), the story teaser to /about, the guide link under
  * the grid, the About and Guide footer links, and one sign-in call to
- * action while signed out. Screenshots in both themes and at phone width.
+ * action while signed out. Checked in both themes and at phone width; one
+ * screenshot, light.
  */
 test("landing page explains the product and offers a single sign-in link while signed out", async ({
   page,
@@ -39,8 +40,17 @@ test("landing page explains the product and offers a single sign-in link while s
   );
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     "content",
-    "Write branching, text-based journeys as a graph of steps and choices, publish an immutable version, and share it by link — participants walk it with no account.",
+    "Write branching journeys of text and images as a graph of steps and choices, publish an immutable version, and share it by link — participants walk it with no account.",
   );
+
+  // Ticket 93 item 2: a Step holds text and images, and the copy says so
+  // rather than calling the product text-based.
+  await expect(
+    page.getByRole("main").getByText(/Authors build a journey as a graph/),
+  ).toContainText("text and images");
+  const body = page.locator("body");
+  await expect(body).not.toContainText("screen of text");
+  await expect(body).not.toContainText("text-based");
 
   // The hero: the recording of the canvas (ticket 38's block, asserted in
   // detail by the test below).
@@ -135,7 +145,7 @@ test("landing page explains the product and offers a single sign-in link while s
   ).toHaveAttribute("href", "/terms");
 
   await page.screenshot({
-    path: evidencePath("landing", "landing-light.png"),
+    path: evidencePath("landing", "landing.png"),
     fullPage: true,
   });
 
@@ -148,10 +158,6 @@ test("landing page explains the product and offers a single sign-in link while s
   await expect(
     features.locator('img[data-still-scheme="light"]:visible'),
   ).toHaveCount(0);
-  await page.screenshot({
-    path: evidencePath("landing", "landing-dark.png"),
-    fullPage: true,
-  });
 
   // Phone width: one column, nothing wider than the viewport.
   await page.emulateMedia({ colorScheme: "light" });
@@ -161,10 +167,6 @@ test("landing page explains the product and offers a single sign-in link while s
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
   expect(overflow, "no horizontal scroll at 375px").toBe(false);
-  await page.screenshot({
-    path: evidencePath("landing", "landing-375.png"),
-    fullPage: true,
-  });
 });
 
 /**

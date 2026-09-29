@@ -53,6 +53,12 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
   await expect(
     page.getByRole("heading", { name: "Where it lives" }),
   ).toBeVisible();
+  // Ticket 93: "users" for Authors and Participants together, and the date
+  // the copy last changed.
+  await expect(
+    page.getByRole("heading", { name: "Two kinds of users", level: 2 }),
+  ).toBeVisible();
+  await expect(page.getByText("Last updated 28 September 2026")).toBeVisible();
   // The legal pages carry the same footer as everywhere else, on one row
   // across the page like the sign-in page's (ticket 62), in both schemes.
   await expect(
@@ -81,6 +87,11 @@ test("legal-pages: /privacy and /terms render and are linked from the sign-in pa
   await expect(
     page.getByRole("heading", { name: "Your journeys" }),
   ).toBeVisible();
+  // Ticket 93 item 7: the discretion clause, and the date it was added.
+  await expect(page.getByRole("main")).toContainText(
+    "that it judges inappropriate, at its discretion, even when no rule listed here is broken",
+  );
+  await expect(page.getByText("Last updated 28 September 2026")).toBeVisible();
   await expectFooterOnOneRow(page);
   await page.screenshot({
     path: evidencePath("legal-pages", "terms.png"),

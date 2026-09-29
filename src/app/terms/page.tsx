@@ -51,7 +51,7 @@ export default function TermsPage() {
         </li>
         <li>
           Members of a project can read and edit everything in it, including
-          your journeys and their runs. Add people you trust.
+          your journeys and their runs. Add only Authors you trust.
         </li>
       </ul>
 
@@ -79,8 +79,10 @@ export default function TermsPage() {
         </li>
       </ul>
       <p>
-        We may remove content or suspend an account that breaks these terms. We
-        will tell you why, at the email address on your account.
+        Journeys may remove any content, or suspend an account, that it judges
+        inappropriate, at its discretion, even when no rule listed here is
+        broken. It will usually tell you why, at the email address on your
+        account.
       </p>
 
       <h2>The service</h2>
