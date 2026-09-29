@@ -806,25 +806,6 @@ async function prepareStillsState(
     );
     await publishFromHeader(page, source.versions.journeyId, 2);
 
-    // Themes: a Journey given a Theme of its own, Dusk.
-    await page.goto(
-      `${journeyPath(source, source.themes.journeyId)}?tab=settings`,
-    );
-    await page
-      .getByRole("checkbox", { name: "Use a different theme for this journey" })
-      .check();
-    await expect(page.getByRole("radio", { name: /^Trail/ })).toBeChecked();
-    await page.getByRole("radio", { name: /^Dusk/ }).check();
-    await expect
-      .poll(async () => {
-        const [row] = await queryE2eDatabase<{ theme_preset: string | null }>(
-          'SELECT theme_preset FROM "journey" WHERE id = $1',
-          [source.themes.journeyId],
-        );
-        return row.theme_preset;
-      })
-      .toBe("dusk");
-
     // Run and analytics: their Journeys published (once each, unless one
     // is the versions Journey, already live), then the analytics Journey
     // walked by this script's own Participants — one to every Ending, the
@@ -898,14 +879,6 @@ async function captureStills(
     ).toBeVisible();
     await still(page, "versions", scheme);
 
-    // themes: the Theme row with Dusk chosen.
-    await page.goto(
-      `${journeyPath(source, source.themes.journeyId)}?tab=settings`,
-    );
-    await expect(page.getByRole("radio", { name: /^Dusk/ })).toBeChecked();
-    await frameElement(page.getByRole("region", { name: "Theme" }));
-    await still(page, "themes", scheme);
-
     // rich-text: a Step's rich text with its image and its caption. The
     // figure is brought up by as little as it takes, so the map keeps most
     // of the frame's left; the caption's long URL can overflow the panel,
@@ -957,22 +930,12 @@ async function captureStills(
     await context.close();
   }
 
-  // run: a Participant of their own, no session, a few Choices in. The
-  // demo source gives the same Journey Dusk for the themes still; on the
-  // landing page's "Anonymous runs" card a purple runner beside the app's
-  // own palette reads as a mistake, so the runner is shot in the Project's
-  // Theme and Dusk is put back for the next scheme's themes still.
+  // run: a Participant of their own, no session, a few Choices in, in the
+  // Project's own Theme, Trail — the same palette the site is in, so a
+  // runner shot beside the app's own look on the landing page never reads
+  // as a mistake.
   const played = seedJourney(journeys, source.run.journeyId);
   const route = routeTo(played.document, source.run.stepId);
-  const [{ theme_preset: runPreset }] = await queryE2eDatabase<{
-    theme_preset: string | null;
-  }>('SELECT theme_preset FROM "journey" WHERE id = $1', [
-    source.run.journeyId,
-  ]);
-  await queryE2eDatabase(
-    'UPDATE "journey" SET theme_preset = NULL WHERE id = $1',
-    [source.run.journeyId],
-  );
   const participant = await newContext(browser, scheme, null);
   try {
     const runner = await participant.newPage();
@@ -1000,9 +963,50 @@ async function captureStills(
     await still(runner, "run", scheme);
   } finally {
     await participant.close();
+  }
+
+  // themes: a Participant's view of the themes Journey, at its Start Step,
+  // wearing Dusk instead of the Project's Theme — the one still where a
+  // different Theme appears. The versions still above already published
+  // this Journey twice (both sources point `themes.journeyId` at the same
+  // Journey as `versions.journeyId`); a clear error beats silently shooting
+  // an unpublished runner if that ever stops being true.
+  if (source.themes.journeyId !== source.versions.journeyId) {
+    throw new Error(
+      "the themes still assumes its Journey is already published by the versions still's publish; source.themes.journeyId must equal source.versions.journeyId",
+    );
+  }
+  const [{ theme_preset: themesPreset }] = await queryE2eDatabase<{
+    theme_preset: string | null;
+  }>('SELECT theme_preset FROM "journey" WHERE id = $1', [
+    source.themes.journeyId,
+  ]);
+  const themesParticipant = await newContext(browser, scheme, null);
+  try {
     await queryE2eDatabase(
       'UPDATE "journey" SET theme_preset = $2 WHERE id = $1',
-      [source.run.journeyId, runPreset],
+      [source.themes.journeyId, "dusk"],
+    );
+    const themesPage = await themesParticipant.newPage();
+    await themesPage.goto(`/j/${source.themes.journeyId}`);
+    await expectScheme(themesPage, scheme);
+    await expect(themesPage.locator('[data-theme="dusk"]')).toBeVisible();
+    // Its Choices are the point, framed the way the `run` still frames them.
+    await imagesSettled(themesPage);
+    const choices = themesPage.locator('[aria-label="Choices"]');
+    await expect(
+      choices.getByRole("link").or(choices.getByRole("button")).first(),
+    ).toBeVisible();
+    await choices.evaluate((element) => {
+      element.scrollIntoView({ block: "end", behavior: "instant" });
+      window.scrollBy({ top: 16, behavior: "instant" });
+    });
+    await still(themesPage, "themes", scheme);
+  } finally {
+    await themesParticipant.close();
+    await queryE2eDatabase(
+      'UPDATE "journey" SET theme_preset = $2 WHERE id = $1',
+      [source.themes.journeyId, themesPreset],
     );
   }
 

@@ -1,5 +1,6 @@
 import { AppearanceControl } from "@/components/appearance-control";
 import { LegalLinks, Wordmark } from "@/components/brand";
+import { FooterLink } from "@/components/footer-link";
 import { COPYRIGHT_HOLDER, COPYRIGHT_YEAR, REPOSITORY_URL } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
@@ -12,10 +13,15 @@ import { cn } from "@/lib/utils";
  * need nothing `next/link` would add — so this is the one place the app
  * names itself, consistent everywhere a Participant or an Author sees it.
  *
- * The one client part is `AppearanceControl` (ticket 70): light, dark, or
- * the system's, for a guest who has no account menu to choose from. It is a
- * small island under the root layout's `ThemeProvider`, which every page,
- * the runner included, already hydrates.
+ * Two small client islands sit inside it. `AppearanceControl` (ticket 70):
+ * light, dark, or the system's, for a guest who has no account menu to
+ * choose from. `FooterLink` (ticket 93): the About, Guide, Privacy, and
+ * Terms anchors are still plain `<a>` tags everywhere else; it is only the
+ * island that knows which one is the current page, marking it
+ * `aria-current="page"` with a visible foreground colour. Both are small
+ * islands under the root layout's `ThemeProvider` and router, which every
+ * page, the runner included, already hydrates. In the runner (`/j/...`)
+ * no footer `href` matches the path, so nothing is ever current there.
  */
 export function SiteFooter({
   width = "page",
@@ -54,18 +60,8 @@ export function SiteFooter({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <a
-            href="/about"
-            className="hover:text-foreground underline-offset-4 hover:underline"
-          >
-            About
-          </a>
-          <a
-            href="/guide"
-            className="hover:text-foreground underline-offset-4 hover:underline"
-          >
-            Guide
-          </a>
+          <FooterLink href="/about">About</FooterLink>
+          <FooterLink href="/guide">Guide</FooterLink>
           <a
             href={REPOSITORY_URL}
             className="hover:text-foreground underline-offset-4 hover:underline"

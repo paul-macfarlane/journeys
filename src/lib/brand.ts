@@ -11,13 +11,13 @@
 export const APP_NAME = "Journeys";
 
 export const APP_TAGLINE =
-  "Branching, text-based experiences you can write, publish, and share.";
+  "Branching experiences of text and images you can write, publish, and share.";
 
 /** Where a reader of /privacy or /terms writes to. */
 export const CONTACT_EMAIL = "pauljosephmacfarlane@gmail.com";
 
 /** The day the legal pages were last changed, shown on both. */
-export const LEGAL_UPDATED = "22 September 2026";
+export const LEGAL_UPDATED = "28 September 2026";
 
 /** Where the site footer's GitHub link points. */
 export const REPOSITORY_URL = "https://github.com/paul-macfarlane/journeys";

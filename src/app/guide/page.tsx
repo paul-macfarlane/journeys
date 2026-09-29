@@ -30,11 +30,42 @@ const SECTIONS = [
   { id: "good-to-know", title: "Good to know" },
 ] as const;
 
+/**
+ * The "For Authors" section in the order an Author meets it (ticket 93):
+ * from signing in to reading what Participants did. Each is an `h3` with
+ * this id, and the contents list names them under "For Authors".
+ */
+const AUTHOR_STAGES = [
+  { id: "sign-in", title: "Sign in" },
+  { id: "create-a-project", title: "Create a Project" },
+  { id: "add-members", title: "Add Members" },
+  { id: "create-a-journey", title: "Create a Journey" },
+  { id: "build-it", title: "Build it" },
+  { id: "customise-it", title: "Customise it" },
+  { id: "preview", title: "Preview" },
+  { id: "publish", title: "Publish" },
+  { id: "share-the-link", title: "Share the link" },
+  { id: "edit-after-publishing", title: "Edit after publishing" },
+  { id: "analytics-and-responses", title: "Read Analytics and Responses" },
+  { id: "your-author-page", title: "Your Author page" },
+] as const;
+
+type AuthorStageId = (typeof AUTHOR_STAGES)[number]["id"];
+
+/** One lifecycle stage's heading, its text taken from AUTHOR_STAGES. */
+function Stage({ id }: { id: AuthorStageId }) {
+  return (
+    <h3 id={id} className="scroll-mt-6">
+      {AUTHOR_STAGES.find((stage) => stage.id === id)?.title}
+    </h3>
+  );
+}
+
 export default function GuidePage() {
   return (
     <ProsePage
       title="Guide"
-      subtitle="Journeys is for writing branching, text-based experiences and sharing them by link. Authors sign in and build; Participants walk what is published without an account. This page covers both."
+      subtitle="Journeys is for writing branching journeys, where each Step is one screen holding text and images, and sharing them by link. Authors sign in and build; Participants walk what is published without an account. This page covers both."
     >
       <nav
         aria-labelledby="contents-heading"
@@ -47,6 +78,18 @@ export default function GuidePage() {
           {SECTIONS.map((section) => (
             <li key={section.id}>
               <a href={`#${section.id}`}>{section.title}</a>
+              {section.id === "for-authors" ? (
+                <ol
+                  aria-label="Stages for Authors"
+                  className="mt-1 flex list-[lower-alpha] flex-col gap-1 pl-5"
+                >
+                  {AUTHOR_STAGES.map((stage) => (
+                    <li key={stage.id}>
+                      <a href={`#${stage.id}`}>{stage.title}</a>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
             </li>
           ))}
         </ol>
@@ -54,37 +97,53 @@ export default function GuidePage() {
 
       <Section {...SECTIONS[0]}>
         <p>
-          An Author is a signed-in person who writes Journeys. Everything an
+          An Author is a signed-in user who writes Journeys. Everything an
           Author makes lives in a Project, and every Member of a Project can do
-          everything within it.
+          everything within it. This section follows a Journey from the first
+          sign-in to reading what Participants did.
         </p>
 
-        <h3 id="sign-in">Sign in</h3>
+        <Stage id="sign-in" />
         <p>
-          Go to <Link href="/sign-in">Sign in</Link> and choose Google or
-          Discord. Journeys never sees a password; the provider tells it your
-          name, email address, and picture, and you can change the name and
-          picture later in Settings.
+          Go to <Link href="/sign-in">Sign in</Link> and pick Google or Discord.
+          Journeys never sees a password; the provider tells it your name, email
+          address, and picture, and you can change the name and picture later
+          from Settings in your account menu.
         </p>
 
-        <h3 id="create-a-project">Create a Project</h3>
+        <Stage id="create-a-project" />
         <p>
-          Your projects page lists every Project you belong to. Choose{" "}
+          Your projects page lists every Project you belong to. Press{" "}
           <strong>New project</strong>, give it a title, and you land on it. A
           Project has a public page that lists its Journeys with a live
           Published Version, so a set of related Journeys can be shared with one
           link.
         </p>
 
-        <h3 id="create-a-journey">Create a Journey</h3>
+        <Stage id="add-members" />
         <p>
-          From a Project, choose <strong>New journey</strong> and give it a
+          Members are the Authors you share a Project with. Add another Author
+          from the Project’s Members tab by the email address they signed in
+          with; every Member is equal and can do everything, including adding
+          and removing Members.
+        </p>
+
+        <Stage id="create-a-journey" />
+        <p>
+          From a Project, press <strong>New journey</strong> and give it a
           title. A new Journey begins with one Step, its Start, and opens on the
           canvas. Until you publish it, everything you do is on the Draft, which
           no Participant can see.
         </p>
 
-        <h3 id="the-canvas">The canvas</h3>
+        <Stage id="build-it" />
+        <p>
+          You build a Journey on its Editor tab: the canvas draws its shape, the
+          Step panel holds the words and images of one Step, and a Prompt lets a
+          Step ask a question.
+        </p>
+
+        <h4 id="the-canvas">The canvas</h4>
         <p>
           The canvas draws the Draft as a map: every Step is a box, every Choice
           an arrow from the Step it belongs to into the Step it leads to. The
@@ -119,8 +178,9 @@ export default function GuidePage() {
             and Redo buttons above the map.
           </li>
           <li>
-            <strong>Hide the panel</strong> to give the map the whole width. The
-            choice is remembered in your browser, not on the Journey.
+            <strong>Hide the panel</strong> to give the map the whole width.
+            Your browser remembers whether the panel is hidden; it isn’t saved
+            on the Journey.
           </li>
         </ul>
         <Still
@@ -129,7 +189,7 @@ export default function GuidePage() {
           caption="A Draft on the canvas, with a Step open in the panel."
         />
 
-        <h3 id="the-step-panel">The Step panel</h3>
+        <h4 id="the-step-panel">The Step panel</h4>
         <p>
           The panel holds the open Step: its title, its content, its Choices,
           and, once it is an Ending, its Outcome. Content is rich text:
@@ -144,11 +204,11 @@ export default function GuidePage() {
           caption="A Step’s content in the panel."
         />
 
-        <h3>Prompts</h3>
+        <h4 id="prompts">Prompts</h4>
         <p>
           A Step can carry a Prompt: a free-text question a Participant may
-          answer before choosing. The Response is kept with the Run for the
-          Project’s Members to read; it never changes which Choice the
+          answer before making a Choice. The Response is kept with the Run for
+          the Project’s Members to read; it never changes which Choice the
           Participant takes.
         </p>
         <Still
@@ -157,12 +217,13 @@ export default function GuidePage() {
           caption="A Prompt shown above its Choices, as a Participant sees it."
         />
 
-        <h3>Themes</h3>
+        <Stage id="customise-it" />
         <p>
           A Theme is a small set of colours and a font applied to what
-          Participants see. Set one on the Project and every Journey in it
-          follows; a Journey can carry its own instead. Preview shows the result
-          before you publish.
+          Participants see. Set one on the Project’s Settings tab and every
+          Journey in it follows; a Journey can carry its own instead, from the
+          Journey’s Settings tab. A Journey’s title and description are edited
+          at the top of its own page.
         </p>
         <Still
           slug="themes"
@@ -170,23 +231,21 @@ export default function GuidePage() {
           caption="A published Journey wearing its Theme."
         />
 
-        <h3>Publish, restore, and Preview</h3>
+        <Stage id="preview" />
+        <p>
+          <strong>Preview</strong>, on the Journey’s page, walks the Draft the
+          way a Participant would, in the Journey’s Theme, and records nothing.
+          Use it to check a path before anyone else can walk it.
+        </p>
+
+        <Stage id="publish" />
         <p>
           Publishing makes a Published Version from the Draft as it stands. A
           Published Version never changes: at most one is live to Participants
-          at a time, and every earlier one is kept. The Versions tab lists them,
-          and from there you can restore any earlier one into the Draft to keep
-          editing from that point; publishing again makes a new Version.{" "}
-          <strong>Preview</strong> walks the Draft the way a Participant would,
-          and records nothing.
+          at a time, and every earlier one is kept.
         </p>
-        <Still
-          slug="versions"
-          alt="The Versions tab: the Draft row and the Published Versions beneath it, one of them marked live."
-          caption="The Versions tab."
-        />
 
-        <h3>Share the link</h3>
+        <Stage id="share-the-link" />
         <p>
           A live Journey has one link, shown on its page with a copy button.
           That link is the whole of discovery: nobody finds a Journey except by
@@ -194,7 +253,22 @@ export default function GuidePage() {
           every Journey in it that is live.
         </p>
 
-        <h3>Analytics on the graph</h3>
+        <Stage id="edit-after-publishing" />
+        <p>
+          Keep editing after you publish: the Draft stays private, and
+          Participants go on walking the live Published Version until you
+          publish again, which makes a new Version. The Versions tab lists every
+          Published Version. From there you can <strong>View</strong> an earlier
+          one or <strong>Preview</strong> it, and restore any of them into the
+          Draft to keep editing from that point.
+        </p>
+        <Still
+          slug="versions"
+          alt="The Versions tab: the Draft row and the Published Versions beneath it, one of them marked live."
+          caption="The Versions tab."
+        />
+
+        <Stage id="analytics-and-responses" />
         <p>
           The Analytics tab draws a Published Version the same way the canvas
           does, read-only, with the number of Runs on every box and every arrow,
@@ -207,15 +281,18 @@ export default function GuidePage() {
           alt="The Analytics tab: the Journey’s map with a Run count on every Step and every Choice arrow."
           caption="Runs drawn onto the graph."
         />
-
-        <h3>Members and Author pages</h3>
         <p>
-          Add another Author to a Project from its Members tab by the email
-          address they signed in with; every Member is equal and can do
-          everything, including adding and removing Members. From Settings you
-          can turn on your Author page, a public page with your name, picture,
-          bio, and links, together with the Projects you belong to that have a
-          live Journey. It is off until you turn it on.
+          The Responses tab lists what Participants typed into the Journey’s
+          Prompts, one list per Step that asks one, with nothing that says who
+          wrote which, or when.
+        </p>
+
+        <Stage id="your-author-page" />
+        <p>
+          From Settings in your account menu you can turn on your Author page, a
+          public page with your name, picture, bio, and links, together with the
+          Projects you belong to that have a live Journey. It is off until you
+          turn it on.
         </p>
       </Section>
 
@@ -241,8 +318,8 @@ export default function GuidePage() {
           </li>
           <li>
             <strong>Going back.</strong> Your browser’s Back returns you to an
-            earlier Step to choose differently. That is a Backtrack: your Run’s
-            path becomes the route you are on now, not every detour.
+            earlier Step to make a different Choice. That is a Backtrack: your
+            Run’s path becomes the route you are on now, not every detour.
           </li>
           <li>
             <strong>Endings.</strong> A Step with no Choices is an Ending, and

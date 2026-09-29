@@ -33,7 +33,7 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 20 | 9 | [91 Preview page title](issues/91-preview-title.md) | polish | done | PR #115 |
 | 21 | 9 | [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | done | PR #115 |
 | 22 | **10 Older Published Versions** (contract) | [94 Look at an older Published Version before restoring it](issues/94-view-a-published-version.md) | contract | done | PR #117; decisions settled 2026-09-28 (Paul) |
-| 23 | **11 Public pages copy** (polish) | [93 Home, guide, and legal pages: stills, copy, and the footer](issues/93-public-pages-copy-and-stills.md) | polish | ready-for-agent | Placed 2026-09-28 (Paul) |
+| 23 | **11 Public pages copy** (polish) | [93 Home, guide, and legal pages: stills, copy, and the footer](issues/93-public-pages-copy-and-stills.md) | polish | done | PR #118; placed 2026-09-28 (Paul) |
 | 24 | **8 AI editing** (contract) | [80 AI editing](issues/80-ai-editing.md) | contract | ready-for-agent | Reach goal; refreshed 2026-09-28 after the Judge cut; limit decided 2026-09-28 (Paul) |
 
 ## Awaiting a place in the order
