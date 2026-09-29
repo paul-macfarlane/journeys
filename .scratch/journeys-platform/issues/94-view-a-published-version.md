@@ -1,6 +1,6 @@
 # 94: Look at an older Published Version before restoring it
 
-Status: in-progress
+Status: done
 Blocked by: None
 Owner: Claude (Opus 5.5), chunk 10 orchestrator, 2026-09-28
 Parent: `.scratch/journeys-platform/spec.md`
@@ -74,3 +74,50 @@ Route: contract
 | DoD | `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`, then one full `pnpm test:e2e`; evidence run `E2E_EVIDENCE=version-view,version-preview,version-view-restore,version-view-not-member,version-view-unreadable` | `test-results/dod-1-commands.txt` |
 
 Deployed check: a smoke on staging after Paul merges (open an older Version's view and Preview).
+
+### 2026-09-28 — Claude, chunk 10 orchestrator
+
+`[AI CODE REVIEW]` Two fresh reviewers read the whole diff (`ac1c193..6f655c3`): one for correctness and conformity to this ticket, one for coding standards. Neither found a blocking issue, and every AC and "What fixed means" bullet was found met. Non-blocking findings and what happened to them:
+
+- **Fixed in 4768172:**
+  - The Version Preview action trusted its bound version number. A tampered POST could reach Postgres with `NaN` or an out-of-range number and get a 500. It is now checked with `isVersionNumber` before any read.
+  - The view's read ran twice per request, once for the page and once for metadata. It is now wrapped in `cache()`.
+  - The Version Preview pages copied the Draft's. The Draft and a Version now share one loader, one action and one set of screens in `[journeyId]/_preview/`, where no route reaches into another route's folder.
+  - The unreadable Version Preview had no way back. It now links to the Version's view.
+  - Tabbing to a box outside the map's frame left it unseen. The map now pans it into view, and Space presses the box instead of starting a pan.
+  - A change of the selected Step was not announced. The view now has a polite live announcement.
+  - Tests were missing for the Version branch of the Preview action and for a Prompt in the view's panel. Both are added, and the action tests now mock `@/db/versions`.
+  - Comments carried deliverable labels, and one test comment was stale. Both are fixed.
+  - The `VersionView` type clashed with the component of the same name. The type is renamed `PublishedVersionRead`.
+  - `RunnerFrame`'s `preview.editorHref` is renamed `backHref`.
+  - Import order, comment wrapping and e2e locator tidy-ups are done.
+- **Left as it is:** `generateMetadata` on the view does not 404 when the Journey has no Draft row. The Journey page has the same gap, and every Journey is created with its Draft.
+- **Accepted:** Preview's Run-count check reads 0 before and 0 after. It still proves that Preview writes no `run` row and no `response` row.
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/117 (chunk 10, this ticket alone).
+
+- **Delivery:** one worktree, `feat/chunk-10-older-published-versions`, run sequentially:
+  - **D1** (Opus, 8a445b4): the view, the by-number Version read, the Analytics canvas with counts optional and Step selection, the read-only Step panel, Restore, and the **View** link.
+  - **D2** (Sonnet, 6f655c3): Version Preview, the **Preview** links, the Theme sentence, and the `CONTEXT.md` change.
+  - **R-fix** (Opus, 4768172): the review fixes above.
+- **Why sequential:** it was predicted from two files. Checked against the real diffs, `version-list.tsx` was edited by both D1 and D2, but D2 never touched `src/db/versions.ts`, so only half the prediction held. D2 also depended on D1's `getVersionByNumber`.
+- **Decisions:** as in the `[EXECUTION PLAN]`: path-segment routes, the Analytics canvas with its counts off, and the Journey's current Theme with no snapshot. The snapshot was withdrawn by Paul the same day.
+- **Choices left open by the plan:**
+  - After a Restore from the view, the Member stays on the page and sees the acknowledgement, as on the Versions tab.
+  - The version number in the address must be a positive integer with no leading zero, below 2^31. Anything else 404s.
+- **Evidence:**
+  - **DoD-1:** `test-results/dod-1-commands.txt` holds the command chain at 4768172:
+    - `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (744 passed) and `pnpm build`
+    - the full `pnpm test:e2e:prebuilt`: 155 passed, 0 failed, 0 retries
+  - **Criteria** (each test writes one screenshot to `test-results/<test-name>/`):
+
+| Criterion | Verdict | Test |
+|---|---|---|
+| AC-1 | PASS | `version-view` |
+| AC-2 | PASS | `version-preview` |
+| AC-3 | PASS | `version-view-restore` |
+| AC-4 (view and Preview) | PASS | `version-view-not-member` |
+| Unreadable Version | PASS | `version-view-unreadable` |
+
+- **Still owed:** a staging smoke after Paul merges. Open an older Version from the Versions tab, check that its view and Preview show that Version's text, then Restore.
+- **State log:** `ready-for-agent` → `in-progress` → `ai-review` → `ready-for-human` → `done`, set in this commit and true on `staging` when Paul merges.
