@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { evidencePath } from "./setup/evidence";
 import { expectFooterOnOneRow } from "./setup/footer";
+import { purpleShare } from "./setup/hue-probe";
 import { cleanup, closePools, signInAs } from "./setup/session";
 
 const mintedAuthorIds: string[] = [];
@@ -55,6 +56,32 @@ test("guide", async ({ page }) => {
   const png = await page.request.get("/demo/canvas-light.png");
   expect(png.status()).toBe(200);
   expect(png.headers()["content-type"]).toBe("image/png");
+
+  // The themes still (ticket 93 item 1): the one still that shows a Theme
+  // other than the Project's own, Trail — the runner wearing Dusk.
+  const themesStill = page.locator(
+    'img[data-still="themes"][data-scheme="light"]',
+  );
+  await expect(themesStill).toBeVisible();
+  await expect(themesStill).toHaveAttribute("src", "/demo/themes-light.png");
+  const themesPng = await page.request.get("/demo/themes-light.png");
+  expect(themesPng.status()).toBe(200);
+  expect(themesPng.headers()["content-type"]).toBe("image/png");
+
+  // A hue probe on the committed stills themselves: the prompt still (the
+  // runner in the Project's own Theme, the green Trail) reads as almost no
+  // purple, and the themes still (the runner in Dusk, a plum) reads as
+  // mostly purple. Measured on the files committed with this ticket: prompt
+  // ~0%, themes ~55–65% (Dusk's paper, stripe, and Choice borders are
+  // purple; the Step's body text and background are not) — the thresholds
+  // below sit with a wide margin either side of those. A page of its own,
+  // so navigating to the PNGs never carries the guide page away.
+  const probe = await page.context().newPage();
+  const promptShare = await purpleShare(probe, "/demo/prompt-light.png");
+  const themesShare = await purpleShare(probe, "/demo/themes-light.png");
+  await probe.close();
+  expect(promptShare).toBeLessThan(0.05);
+  expect(themesShare).toBeGreaterThan(0.3);
 
   // The footer is the site's own.
   await expect(
