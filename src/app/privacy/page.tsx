@@ -20,11 +20,11 @@ export default function PrivacyPage() {
     <LegalPage title="Privacy policy">
       <p>
         Journeys is a small, independent service for writing and walking
-        branching, text-based journeys. This page says what it stores, why, and
-        what it never does. It is written to be read, not skimmed past.
+        branching journeys of text and images. This page says what it stores,
+        why, and what it never does. It is written to be read, not skimmed past.
       </p>
 
-      <h2>Two kinds of people</h2>
+      <h2>Two kinds of users</h2>
       <p>
         <strong>Authors</strong> sign in and write journeys.{" "}
         <strong>Participants</strong> walk a published journey from a link and

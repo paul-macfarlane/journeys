@@ -16,7 +16,8 @@ test.afterAll(async () => {
  * Ticket 55: the user guide at /guide. Public and static: the heading, the
  * table of contents whose links resolve to the three sections, one of the
  * ticket 38 stills rendered in the page's theme, in both themes and at
- * phone width. Then the Projects page header links to it.
+ * phone width (one screenshot, light). Ticket 93: "For Authors" in the
+ * order an Author meets it. Then the Projects page header links to it.
  */
 test("guide", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
@@ -43,6 +44,67 @@ test("guide", async ({ page }) => {
       section.getByRole("heading", { name: title, level: 2 }),
     ).toBeVisible();
   }
+
+  // Ticket 93 item 4: "For Authors" follows an Author's lifecycle, each
+  // stage an h3 the contents list links to beneath "For Authors".
+  const stages = [
+    ["Sign in", "sign-in"],
+    ["Create a Project", "create-a-project"],
+    ["Add Members", "add-members"],
+    ["Create a Journey", "create-a-journey"],
+    ["Build it", "build-it"],
+    ["Customise it", "customise-it"],
+    ["Preview", "preview"],
+    ["Publish", "publish"],
+    ["Share the link", "share-the-link"],
+    ["Edit after publishing", "edit-after-publishing"],
+    ["Read Analytics and Responses", "analytics-and-responses"],
+    ["Your Author page", "your-author-page"],
+  ] as const;
+  await expect(page.locator("section#for-authors h3")).toHaveText(
+    stages.map(([title]) => title),
+  );
+  expect(
+    await page
+      .locator("section#for-authors h3")
+      .evaluateAll((headings) => headings.map((h) => h.id)),
+  ).toEqual(stages.map(([, id]) => id));
+  const stageLinks = contents.getByRole("list", {
+    name: "Stages for Authors",
+  });
+  await expect(stageLinks.getByRole("link")).toHaveText(
+    stages.map(([title]) => title),
+  );
+  for (const [title, id] of stages) {
+    await expect(
+      stageLinks.getByRole("link", { name: title, exact: true }),
+    ).toHaveAttribute("href", `#${id}`);
+    await expect(page.locator(`section#for-authors h3#${id}`)).toHaveText(
+      title,
+    );
+  }
+  // "For Participants" and "Good to know" still follow it.
+  const sectionOrder = await page
+    .locator("main section[id]")
+    .evaluateAll((sections) => sections.map((s) => s.id));
+  expect(sectionOrder).toEqual([
+    "for-authors",
+    "for-participants",
+    "good-to-know",
+  ]);
+
+  // Ticket 93 items 3 and 5: "choice" only ever means a Choice, and an
+  // Author is a user, not a person.
+  const authors = page.locator("section#for-authors");
+  await expect(authors).not.toContainText("The choice is remembered");
+  await expect(authors).toContainText(
+    "Your browser remembers whether the panel is hidden; it isn’t saved on the Journey.",
+  );
+  await expect(authors).toContainText("An Author is a signed-in user");
+  await expect(authors).toContainText(
+    "Members are the Authors you share a Project with",
+  );
+
   await contents.getByRole("link", { name: "For Participants" }).click();
   await expect(page).toHaveURL(/#for-participants$/);
 
@@ -91,7 +153,7 @@ test("guide", async ({ page }) => {
   await expectFooterOnOneRow(page);
 
   await page.screenshot({
-    path: evidencePath("guide", "guide-light.png"),
+    path: evidencePath("guide", "guide.png"),
     fullPage: true,
   });
 
@@ -100,10 +162,6 @@ test("guide", async ({ page }) => {
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
   await expect(still("dark")).toBeVisible();
   await expect(still("light")).toBeHidden();
-  await page.screenshot({
-    path: evidencePath("guide", "guide-dark.png"),
-    fullPage: true,
-  });
 
   // Phone width: no horizontal overflow, the contents and a still in view.
   await page.emulateMedia({ colorScheme: "light" });
@@ -116,10 +174,6 @@ test("guide", async ({ page }) => {
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
-  await page.screenshot({
-    path: evidencePath("guide", "guide-375.png"),
-    fullPage: true,
-  });
 });
 
 test("guide-link-from-projects", async ({ page, context }) => {

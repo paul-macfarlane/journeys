@@ -15,7 +15,7 @@ import { getSession } from "@/lib/session";
 // says what an Author does here rather than only what the app is.
 export const metadata: Metadata = {
   description:
-    "Write branching, text-based journeys as a graph of steps and choices, publish an immutable version, and share it by link — participants walk it with no account.",
+    "Write branching journeys of text and images as a graph of steps and choices, publish an immutable version, and share it by link — participants walk it with no account.",
   alternates: { canonical: "/" },
 };
 
@@ -48,7 +48,8 @@ export default async function LandingPage({
             Journeys
           </h1>
           <p className="text-muted-foreground max-w-2xl text-xl leading-relaxed sm:text-2xl">
-            Branching, text-based journeys you write, publish, and share.
+            Branching journeys of text and images that you write, publish, and
+            share.
           </p>
           <div className="flex flex-wrap items-center gap-4">
             <Link
@@ -85,10 +86,10 @@ export default async function LandingPage({
         <section className="text-muted-foreground flex max-w-prose flex-col gap-4 text-lg leading-relaxed">
           <p>
             Authors build a journey as a graph of steps and choices: each step
-            is one screen of text, and each choice leads to another step until
-            the path reaches an ending. Publishing takes an immutable snapshot
-            of the draft, and participants walk it from a link — no account, no
-            sign-up.
+            is one screen holding text and images, and each choice leads to
+            another step until the path reaches an ending. Publishing takes an
+            immutable snapshot of the draft, and participants walk it from a
+            link — no account, no sign-up.
           </p>
           <p>
             Journeys began as three interactive cases for healthcare education.{" "}
