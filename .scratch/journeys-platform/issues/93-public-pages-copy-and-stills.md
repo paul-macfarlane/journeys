@@ -1,8 +1,8 @@
 # 93: Home, guide, and legal pages: stills, copy, and the footer
 
-Status: ready-for-agent
+Status: in-progress
 Blocked by: 42, 78
-Owner:
+Owner: atlas-implement (chunk 11)
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`.
 Route: polish
