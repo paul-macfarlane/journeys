@@ -44,11 +44,12 @@ declare module "@tiptap/core" {
  * cursor, and the gap cursor enabled — editing conveniences that emit no
  * content of their own, so the closed content set stays the same either way.
  *
- * The runner's one-level shift (ticket 78) — `RichText` renders every stored
- * heading one level below what it was written at, H1 → `h2` through H3 →
- * `h4`, since a Step's own title is already the page's `h1` — needs no
- * extension change: Tiptap's Heading allows levels 1–6 by default, so none
- * of the three sets below overrides `levels`, and the shifted level is
+ * The runner's heading normalisation (ticket 78, revised by ticket 92) —
+ * `RichText` renders the first stored heading as `h2`, whatever level it was
+ * written at, and each later heading no more than one level deeper than the
+ * one before it, since a Step's own title is already the page's `h1` — needs
+ * no extension change: Tiptap's Heading allows levels 1–6 by default, so
+ * none of the three sets below overrides `levels`, and the rendered level is
  * always one Heading already recognizes.
  */
 

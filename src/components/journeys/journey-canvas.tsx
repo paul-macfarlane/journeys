@@ -202,6 +202,12 @@ export type JourneyCanvasProps = {
   onSelect: (command: SelectCommand) => void;
 };
 
+/** The arrows' description, in the map's own words (see `ariaLabelConfig`). */
+const ARIA_LABEL_CONFIG = {
+  "edge.a11yDescription.default":
+    "Press Enter or Space to open this Choice in the Step panel.",
+};
+
 function CanvasFlow({
   document,
   layout,
@@ -371,6 +377,10 @@ function CanvasFlow({
         // The node's own button takes focus; the wrapper would otherwise be a
         // second tab stop that opens nothing.
         nodesFocusable={false}
+        // What a screen reader is told about a focused arrow: React Flow's
+        // own sentence says Enter selects it and Delete removes it, but Enter
+        // here opens its Choice in the Step panel (ticket 88).
+        ariaLabelConfig={ARIA_LABEL_CONFIG}
         // Arrows only: which Step is open stays the panel's, and every node
         // above is `selectable: false`.
         elementsSelectable
@@ -458,6 +468,39 @@ function CanvasFlow({
             kind: "step",
             stepId: arrow.stepId,
             options: { markChoiceId: arrow.choiceId, scrollToPanel: true },
+          });
+        }}
+        // Enter or Space on a focused arrow (ticket 88) is the click above
+        // made from the keyboard, and the keyboard goes on to that Choice's
+        // label field in the panel. Caught on the way down, before React
+        // Flow's own handler on the arrow hears it: that one selects the
+        // arrow in its store, the arrow is redrawn in another layer as the
+        // selected one, and the keyboard is dropped on the page behind the
+        // map. Only the arrow itself: a key pressed anywhere inside the map
+        // is left to whatever holds it. Escape still reaches React Flow.
+        onKeyDownCapture={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          const target = event.target;
+          if (
+            !(target instanceof Element) ||
+            !target.classList.contains("react-flow__edge")
+          ) {
+            return;
+          }
+          const edgeId = target.getAttribute("data-id");
+          const arrow = edgeId === null ? undefined : arrows.get(edgeId);
+          if (arrow === undefined) return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          onSelect({
+            kind: "step",
+            stepId: arrow.stepId,
+            options: {
+              markChoiceId: arrow.choiceId,
+              focusChoice: true,
+              scrollToPanel: true,
+            },
           });
         }}
         // React Flow's own account of what the Author did to the arrows,

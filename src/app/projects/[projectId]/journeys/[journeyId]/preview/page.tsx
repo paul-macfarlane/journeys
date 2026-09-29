@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   ResponseNotice,
@@ -7,7 +9,20 @@ import {
 import { hasStep } from "@/lib/graph/document";
 
 import { previewChooseAction } from "./actions";
-import { loadPreview } from "./load";
+import { loadPreview, previewMetadata } from "./load";
+
+/**
+ * The tab title (ticket 91): "Preview: <Journey title>", with the root
+ * layout's template appending "· Journeys".
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string; journeyId: string }>;
+}): Promise<Metadata> {
+  const { projectId, journeyId } = await params;
+  return previewMetadata({ projectId, journeyId });
+}
 
 /**
  * Preview's first screen: the Draft's Start Step, exactly as a Participant

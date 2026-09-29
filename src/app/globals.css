@@ -463,6 +463,27 @@
   --xy-attribution-background-color: var(--background);
 }
 
+/* An arrow holding the keyboard (ticket 88): its line in the page's focus
+   ring colour, heavier than the arrow in hand (`SELECTED_STROKE_WIDTH`), at
+   full strength even when it is one of the dimmed ones. `--ring` follows
+   the scheme, so the mark reads in light and dark. `!important` because a
+   marked or selected arrow carries its stroke inline. React Flow's own
+   focus rule only swaps in the selected colour, which is the one an arrow
+   in hand already has. */
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--ring) !important;
+  stroke-width: 4px !important;
+}
+.react-flow__edge:focus-visible [data-emphasis-group] {
+  opacity: 1;
+}
+/* An arrow with a problem keeps its red while it holds the keyboard: the
+   heavier line alone says where the keyboard is. */
+.react-flow__edge[data-problems]:not([data-problems="0"]):focus-visible
+  .react-flow__edge-path {
+  stroke: var(--destructive) !important;
+}
+
 /* The attribution link itself has no variable to win with — React Flow's
    own stylesheet hardcodes `color: #999`, 4.24:1 against the box above at
    10px, short of WCAG's 4.5:1 in either scheme.

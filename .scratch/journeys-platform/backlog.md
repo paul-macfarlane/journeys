@@ -27,11 +27,11 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 14 | 6 | [57 Empty states and placeholders](issues/57-in-app-help.md) | polish | done | PR #112; rescoped 2026-09-26 |
 | 15 | **7 Editor split and phone sheet** (polish) | [86 Split the canvas, the Draft editor, and the layout module](issues/86-split-editor-modules.md) | polish | done | PR #113 |
 | 16 | 7 | [53 The Step panel as a sheet on narrow screens](issues/53-mobile-step-sheet.md) | polish | done | PR #113; decisions settled 2026-09-27 |
-| 17 | **9 Accessibility follow-ups** (contract) | [88 Canvas arrows: keyboard focus and order](issues/88-canvas-arrow-focus.md) | polish | ready-for-agent | From 78's walk (chunk 5); runs before chunk 8 (Paul, 2026-09-27) |
-| 18 | 9 | [89 Choice target combobox: Enter retargets on open](issues/89-choice-target-enter.md) | contract | ready-for-agent | Keyboard-only Draft change |
-| 19 | 9 | [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | ready-for-agent | |
-| 20 | 9 | [91 Preview page title](issues/91-preview-title.md) | polish | ready-for-agent | |
-| 21 | 9 | [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | ready-for-agent | |
+| 17 | **9 Accessibility follow-ups** (contract) | [88 Canvas arrows: keyboard focus and order](issues/88-canvas-arrow-focus.md) | polish | done | PR #115; From 78's walk (chunk 5); runs before chunk 8 (Paul, 2026-09-27) |
+| 18 | 9 | [89 Choice target combobox: Enter retargets on open](issues/89-choice-target-enter.md) | contract | done | PR #115; Keyboard-only Draft change |
+| 19 | 9 | [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | done | PR #115 |
+| 20 | 9 | [91 Preview page title](issues/91-preview-title.md) | polish | done | PR #115 |
+| 21 | 9 | [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | done | PR #115 |
 | 22 | **8 AI editing** (contract) | [80 AI editing](issues/80-ai-editing.md) | contract | ready-for-agent | Reach goal |
 
 ## Awaiting a place in the order

@@ -14,6 +14,7 @@ import {
 import {
   publishableDocument,
   publishDocument,
+  setProjectDescription,
   START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
@@ -224,12 +225,13 @@ test("public-project-page", async ({ page, context, browser }) => {
         .getByRole("banner")
         .getByRole("button", { name: "Dark mode" }),
     ).toBeVisible();
-    // The description's H2 is read one level down under the page's own
-    // `h1`, as all stored rich text is outside the editor (ticket 78).
+    // The description's own first heading always renders as h2, one level
+    // under the page's own `h1` (ticket 78, revised by ticket 92), whatever
+    // level it was written at.
     await expect(
       participant.getByRole("heading", {
         name: "About these journeys",
-        level: 3,
+        level: 2,
       }),
     ).toBeVisible();
     await expect(
@@ -354,9 +356,10 @@ test("project-link-preview", async ({ page, context, browser }) => {
     ],
   };
   const accent = "#ffcc00";
+  await setProjectDescription(projectId, description);
   await queryE2eDatabase(
-    'UPDATE "project" SET description_content = $1::jsonb, theme_preset = $2, theme_accent = $3 WHERE id = $4',
-    [JSON.stringify(description), "ember", accent, projectId],
+    'UPDATE "project" SET theme_preset = $1, theme_accent = $2 WHERE id = $3',
+    ["ember", accent, projectId],
   );
   const palette = linkPreviewPalette({ preset: "ember", accent });
 

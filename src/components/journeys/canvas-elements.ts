@@ -169,7 +169,14 @@ export function buildFlowElements({
     arrows.set(edge.id, { stepId: edge.stepId, choiceId: edge.choiceId });
 
     // What a spec reads off an arrow, and what a screen reader calls it.
+    //
+    // Out of the tab order (ticket 88): React Flow draws its arrows before
+    // its boxes, so as tab stops they came ahead of every Step. The tab order
+    // across the map is the boxes alone; an arrow still takes focus from a
+    // click or a script, and its Choice is reached from the Step panel.
+    // React Flow spreads these after its own `tabIndex`, so this one wins.
     const domAttributes: EdgeMarks = {
+      tabIndex: -1,
       "aria-roledescription": "choice",
       "data-choice-id": edge.choiceId,
       "data-problems": String(problemCount),

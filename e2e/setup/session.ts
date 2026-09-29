@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 
-import type { BrowserContext } from "@playwright/test";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -213,4 +213,24 @@ export async function closePools(): Promise<void> {
   pool = null;
   auth = null;
   await current?.end();
+}
+
+/**
+ * A second context for the same signed-in Author, in the other color
+ * scheme: the app follows the system scheme by default, so a fresh context
+ * with `colorScheme` set is a fresh Participant's — or here, the same
+ * Author's — read of it. The cookie jar is copied rather than minted again,
+ * so both contexts are the one Author's session.
+ */
+export async function darkContextFor(
+  browser: Browser,
+  page: Page,
+): Promise<{ page: Page; close: () => Promise<void> }> {
+  const context = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+    colorScheme: "dark",
+  });
+  await context.addCookies(await page.context().cookies());
+  const darkPage = await context.newPage();
+  return { page: darkPage, close: () => context.close() };
 }

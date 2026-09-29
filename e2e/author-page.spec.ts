@@ -5,7 +5,11 @@ import type { Content } from "@/lib/graph/content";
 import { linkPreviewPalette } from "@/lib/link-preview";
 
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
-import { publishableDocument, publishDocument } from "./setup/documents";
+import {
+  publishableDocument,
+  publishDocument,
+  setProjectDescription,
+} from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
@@ -84,10 +88,7 @@ test("author-page", async ({ page, context, browser }) => {
       },
     ],
   };
-  await queryE2eDatabase(
-    'UPDATE "project" SET description_content = $1::jsonb WHERE id = $2',
-    [JSON.stringify(description), projectA],
-  );
+  await setProjectDescription(projectA, description);
   await queryE2eDatabase(
     'UPDATE "user" SET bio = $1, links = $2::jsonb, image = $3 WHERE id = $4',
     [

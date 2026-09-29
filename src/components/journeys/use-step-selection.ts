@@ -5,6 +5,7 @@ import { useCallback, useRef, useState, type RefObject } from "react";
 import type {
   AddedStep,
   CanvasArrow,
+  ChoiceFocus,
   SelectStep,
 } from "@/components/journeys/editor-shared";
 import { hasStep, type GraphDocument } from "@/lib/graph/document";
@@ -34,6 +35,9 @@ export function useStepSelection({
   added: AddedStep | null;
   choiceAdded: (stepId: string | null) => void;
   titleFocusStepId: string | null;
+  choiceFocus: ChoiceFocus | null;
+  /** The label field `choiceFocus` asked for has the keyboard. */
+  choiceFocused: () => void;
   arrowSelection: CanvasArrow | null;
   selectArrow: (arrow: CanvasArrow | null) => void;
   locate: { request: number; view: "keep" | "reveal" | "zoom" };
@@ -72,6 +76,10 @@ export function useStepSelection({
   // The Step whose title field should take focus when it opens: one that was
   // just created, its title still empty (the map calls it "Untitled step").
   const [titleFocusStepId, setTitleFocusStepId] = useState<string | null>(null);
+
+  // The Choice whose label field should take the keyboard once its row is
+  // drawn: an arrow taken in hand from the keyboard (`focusChoice`).
+  const [choiceFocus, setChoiceFocus] = useState<ChoiceFocus | null>(null);
 
   /**
    * The arrow the Author has last clicked on the map, as asked for. Held here
@@ -135,6 +143,11 @@ export function useStepSelection({
       setArrowSelection(
         markChoiceId === undefined ? null : { stepId, choiceId: markChoiceId },
       );
+      setChoiceFocus(
+        options?.focusChoice && markChoiceId !== undefined
+          ? { choiceId: markChoiceId }
+          : null,
+      );
     },
     [requestPanelScroll, revealPanel],
   );
@@ -161,6 +174,21 @@ export function useStepSelection({
   }, []);
 
   /**
+   * The ask for a Choice's label field answered, and let go of: held on to,
+   * it would take the keyboard there again on every remount of the panel.
+   */
+  const choiceFocused = useCallback(() => setChoiceFocus(null), []);
+
+  /**
+   * The arrow in hand set from the map. Clearing it (a click on bare map)
+   * lets go of any ask for its Choice's label field with it.
+   */
+  const selectArrow = useCallback((arrow: CanvasArrow | null) => {
+    setArrowSelection(arrow);
+    if (arrow === null) setChoiceFocus(null);
+  }, []);
+
+  /**
    * A Draft adopted from outside the editor: the Step open stays open if the
    * adopted Draft still has it, and the Start stands in if not. The Step an
    * "Add choice" just made, and the box selected for it, were of the Draft
@@ -184,8 +212,10 @@ export function useStepSelection({
     added,
     choiceAdded,
     titleFocusStepId,
+    choiceFocus,
+    choiceFocused,
     arrowSelection,
-    selectArrow: setArrowSelection,
+    selectArrow,
     locate,
     adoptDraft,
   };

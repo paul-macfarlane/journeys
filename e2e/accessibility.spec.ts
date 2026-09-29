@@ -1,4 +1,6 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+import type { Content } from "@/lib/graph/content";
 
 import {
   createJourney,
@@ -10,6 +12,7 @@ import { expectNoViolations } from "./setup/axe";
 import {
   publishableDocument,
   publishDocument,
+  setProjectDescription,
   START_STEP_ID,
   START_STEP_TITLE,
   writeDraftDocument,
@@ -19,6 +22,7 @@ import { evidencePath } from "./setup/evidence";
 import {
   cleanup,
   closePools,
+  darkContextFor,
   queryE2eDatabase,
   signInAs,
 } from "./setup/session";
@@ -47,26 +51,6 @@ test.afterAll(async () => {
   await cleanup(mintedAuthorIds);
   await closePools();
 });
-
-/**
- * A second context for the same signed-in Author, in the other color
- * scheme: the app follows the system scheme by default, so a fresh context
- * with `colorScheme` set is a fresh Participant's — or here, the same
- * Author's — read of it. The cookie jar is copied rather than minted again,
- * so both contexts are the one Author's session.
- */
-async function darkContextFor(
-  browser: Browser,
-  page: Page,
-): Promise<{ page: Page; close: () => Promise<void> }> {
-  const context = await browser.newContext({
-    baseURL: E2E_BASE_URL,
-    colorScheme: "dark",
-  });
-  await context.addCookies(await page.context().cookies());
-  const darkPage = await context.newPage();
-  return { page: darkPage, close: () => context.close() };
-}
 
 test("a11y-project-page: zero axe violations in both schemes, and the Project's own title", async ({
   page,
@@ -218,8 +202,9 @@ test("runner-single-h1: a Step whose content opens with an H1 still renders exac
         level: 1,
       }),
     ).toBeVisible();
-    // The content's own heading, shifted down one level
-    // (`shiftHeadingLevel` in `rich-text.tsx`): H1 -> h2, not a second h1.
+    // The content's own heading, normalised to the first level below the
+    // page's own h1 (`normalizeHeadingLevel` in `rich-text.tsx`): H1 -> h2,
+    // not a second h1.
     await expect(
       participant.getByRole("heading", { name: "Border crossing", level: 2 }),
     ).toBeVisible();
@@ -489,5 +474,169 @@ test("a11y-reduced-motion: popups and the map move at once for a reader who aske
     });
   } finally {
     await context.close();
+  }
+});
+
+test("a11y-heading-order: a public Project's description never skips a heading level (ticket 92)", async ({
+  page,
+  context,
+  browser,
+}) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  const suffix = uniqueSuffix();
+  const projectTitle = `A11y heading order ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  // A live Journey (ticket 42, decision 4): a Project with none is a 404,
+  // so the public page this test checks needs one to render at all.
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `A11y heading order journey ${suffix}`,
+  );
+  await publishDocument(journeyId, publishableDocument());
+
+  // A description opening with an H2 then an H3, and a paragraph — the
+  // shape that rendered h3-then-h4 under the fixed one-level shift ticket
+  // 92 replaced, an axe heading-order violation since nothing rendered the
+  // h2 in between.
+  const description: Content = {
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 2 },
+        content: [{ type: "text", text: "About this route" }],
+      },
+      {
+        type: "heading",
+        attrs: { level: 3 },
+        content: [{ type: "text", text: "What to bring" }],
+      },
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "Water and shade." }],
+      },
+    ],
+  };
+  await setProjectDescription(projectId, description);
+
+  const guestContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+  try {
+    const guest = await guestContext.newPage();
+    await guest.goto(`/p/${projectId}`);
+
+    await expect(
+      guest.getByRole("heading", { name: projectTitle, level: 1 }),
+    ).toBeVisible();
+    await expect(
+      guest.getByRole("heading", { name: "About this route", level: 2 }),
+    ).toBeVisible();
+    await expect(
+      guest.getByRole("heading", { name: "What to bring", level: 3 }),
+    ).toBeVisible();
+
+    await expectNoViolations(guest, "public project page, heading order");
+    await guest.screenshot({
+      path: evidencePath("a11y-heading-order", "public-project.png"),
+      fullPage: true,
+    });
+  } finally {
+    await guestContext.close();
+  }
+});
+
+/**
+ * Waits out a menu popup's fade-in: checked mid-fade, its text blends toward
+ * the page and reads short of the contrast it has once it lands.
+ */
+async function settled(menu: Locator): Promise<void> {
+  await menu.evaluate((element) =>
+    Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished),
+    ),
+  );
+}
+
+/**
+ * Opens one navbar menu, waits for its popup to settle, checks the page
+ * under axe with it open, and closes it again.
+ */
+async function expectMenuClean(
+  page: Page,
+  trigger: string,
+  label: string,
+): Promise<void> {
+  await page
+    .getByRole("banner")
+    .getByRole("button", { name: trigger, exact: true })
+    .click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toHaveAttribute("data-open", "");
+  await expect(menu).toBeVisible();
+  await settled(menu);
+  await expectNoViolations(page, label);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+}
+
+test("a11y-navbar-menus: zero axe violations with each navbar menu open, in both schemes (ticket 90)", async ({
+  page,
+  context,
+  browser,
+}) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+  const suffix = uniqueSuffix();
+  const title = `A11y menus ${suffix}`;
+
+  await page.goto("/projects");
+  const projectId = await createProject(page, title);
+
+  // The three navbar menus: the switcher labelled "Projects" outside a
+  // Project, the same switcher naming the page's Project on its page, and
+  // the Account menu with its Theme row.
+  async function checkAll(target: Page, scheme: string): Promise<void> {
+    await target.goto("/projects");
+    await expectMenuClean(target, "Projects", `Projects menu, ${scheme}`);
+    await target.goto(`/projects/${projectId}`);
+    await expect(
+      target.getByRole("heading", { name: title, level: 1 }),
+    ).toBeVisible();
+    await expectMenuClean(target, title, `Project switcher, ${scheme}`);
+    await expectMenuClean(
+      target,
+      "Account: Test Author",
+      `Account menu, ${scheme}`,
+    );
+  }
+
+  await checkAll(page, "light");
+
+  await page
+    .getByRole("banner")
+    .getByRole("button", { name: "Account: Test Author" })
+    .click();
+  const accountMenu = page.getByRole("menu");
+  await expect(accountMenu).toHaveAttribute("data-open", "");
+  await expect(accountMenu.getByText(author.email)).toBeVisible();
+  await settled(accountMenu);
+  await page.screenshot({
+    path: evidencePath("a11y-navbar-menus", "account-menu.png"),
+  });
+  await page.keyboard.press("Escape");
+
+  const dark = await darkContextFor(browser, page);
+  try {
+    await dark.page.goto("/projects");
+    await expect(dark.page.locator("html")).toHaveClass(/\bdark\b/);
+    await checkAll(dark.page, "dark");
+  } finally {
+    await dark.close();
   }
 });

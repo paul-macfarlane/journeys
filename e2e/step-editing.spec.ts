@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import type { GraphDocument } from "@/lib/graph/document";
@@ -9,15 +11,16 @@ import {
   tagWithOutcome,
 } from "./setup/authoring";
 import { canvas, canvasNode } from "./setup/canvas";
-import { readDraft } from "./setup/documents";
+import { readDraft, readDraftRow } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   addChoiceToStep,
   expectSaved,
   renameStep,
+  seedDraft,
   startJourney,
 } from "./setup/editor";
-import { evidencePath } from "./setup/evidence";
+import { capturePath, evidencePath } from "./setup/evidence";
 import { cleanup, closePools } from "./setup/session";
 
 /**
@@ -450,10 +453,12 @@ test("step-editing-image-caption-alt-and-preview", async ({
   await expect(page.locator("figcaption")).toHaveText(
     "Photo: Ada Lovelace, CC BY 4.0",
   );
-  // The editor's own Heading 2 renders one level down in Preview and the
-  // runner alike (ticket 78): the Step's title is already the page's h1.
+  // The Step's content opens with the editor's own Heading 2, and a
+  // document's first heading renders as h2 in Preview and the runner alike,
+  // whatever level it was written at (ticket 92): the Step's title is
+  // already the page's h1.
   await expect(
-    page.getByRole("heading", { name: "The queue", level: 3 }),
+    page.getByRole("heading", { name: "The queue", level: 2 }),
   ).toBeVisible();
   await expect(page.locator("strong")).toHaveText("Papers ready");
   await expect(page.locator("li", { hasText: "Water" })).toHaveCount(1);
@@ -945,6 +950,204 @@ test("panel-choice-target-search", async ({ page }) => {
     ),
     fullPage: true,
   });
+});
+
+test("panel-choice-target-enter", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
+
+  // A Start with two Choices, each on a Step of its own, so neither
+  // Choice's target is the first option its own field offers (ticket 89 —
+  // the walk retargeted "Wait your turn" exactly because it was).
+  await renameStep(page, "Border post");
+  await addChoiceToNewStep(page, "Wait your turn", "Waved through");
+  await chooseStep(page, "Border post");
+  await addChoiceToNewStep(page, "Find the clinic", "Clinic tent");
+  await chooseStep(page, "Border post");
+  await expectSaved(page);
+
+  const rows = page
+    .getByRole("list", { name: "Choices" })
+    .getByRole("listitem");
+  const firstRow = rows.nth(0);
+  const secondRow = rows.nth(1);
+  await expect(firstRow.getByLabel("Choice target")).toHaveValue(
+    "Waved through",
+  );
+  await expect(secondRow.getByLabel("Choice target")).toHaveValue(
+    "Clinic tent",
+  );
+
+  const stored = await readDraft(journeyId);
+  const borderPostId = stepIdByTitle(stored, "Border post");
+  const clinicTentId = stepIdByTitle(stored, "Clinic tent");
+  const waitYourTurnId = stored.steps[borderPostId].choices.find(
+    (choice) => choice.label === "Wait your turn",
+  )!.id;
+  const findTheClinicId = stored.steps[borderPostId].choices.find(
+    (choice) => choice.label === "Find the clinic",
+  )!.id;
+  const targetOf = (draft: GraphDocument, choiceId: string) =>
+    draft.steps[borderPostId].choices.find((choice) => choice.id === choiceId)
+      ?.targetStepId;
+
+  // Every Draft write is a server action: a POST carrying `next-action`.
+  // Counted from here on, so a press that wrote anything shows up here.
+  const writes: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && "next-action" in request.headers()) {
+      writes.push(request.url());
+    }
+  });
+  // The Draft's save status, read once and not retried: an edit turns it
+  // from "Saved" in the same render as the keypress that made it, so a
+  // reading straight after the press says whether that press edited.
+  const saveStatus = page
+    .getByRole("tabpanel", { name: "Editor" })
+    .getByRole("status", { name: "Draft save status" });
+  async function expectNoEdit(): Promise<void> {
+    expect(await saveStatus.textContent()).toBe("Saved");
+  }
+
+  const before = await readDraftRow(journeyId);
+
+  // Tab from the Choice's own label field onto its target field, by
+  // keyboard alone.
+  await secondRow.getByLabel("Choice label").focus();
+  await page.keyboard.press("Tab");
+  const targetField = secondRow.getByLabel("Choice target");
+  await expect(targetField).toBeFocused();
+
+  const listbox = secondRow.getByRole("listbox", { name: "Steps" });
+  await expect(listbox).toBeVisible();
+  const chosenOption = secondRow.getByRole("option", {
+    name: "Clinic tent",
+    exact: true,
+  });
+  await expect(chosenOption).toBeVisible();
+  const chosenOptionId = await chosenOption.getAttribute("id");
+  expect(chosenOptionId, "the chosen option has no id").not.toBeNull();
+  await expect(targetField).toHaveAttribute(
+    "aria-activedescendant",
+    chosenOptionId!,
+  );
+
+  await page.screenshot({
+    path: evidencePath("panel-choice-target-enter", "target-field.png"),
+    fullPage: true,
+  });
+
+  // Enter with nothing navigated and nothing typed: the list closes, the
+  // field still names the current target, and nothing is edited.
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Clinic tent");
+
+  // A character typed and taken back again leaves the field untouched:
+  // Enter still chooses nothing.
+  await targetField.selectText();
+  await page.keyboard.type("x");
+  await expect(listbox).toBeVisible();
+  await expect(targetField).toHaveValue("x");
+  await page.keyboard.press("Backspace");
+  await expect(targetField).toHaveValue("Clinic tent");
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Clinic tent");
+
+  // Nothing posted, and the Draft row as it was.
+  expect(writes).toEqual([]);
+  const afterNoop = await readDraftRow(journeyId);
+  expect(afterNoop.version).toBe(before.version);
+  const noopTarget = targetOf(await readDraft(journeyId), findTheClinicId);
+  expect(noopTarget).toBe(clinicTentId);
+
+  // ArrowDown then Enter still retargets: moving off the chosen option and
+  // choosing a different one behaves as before. It is also the check that
+  // the presses above left nothing pending behind the save's debounce: one
+  // write lands, the Draft moves on by exactly one, and "Find the clinic"
+  // still points where it did.
+  await firstRow.getByLabel("Choice target").click();
+  const firstListbox = firstRow.getByRole("listbox", { name: "Steps" });
+  await expect(firstListbox).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(firstListbox).toHaveCount(0);
+  await expect(firstRow.getByLabel("Choice target")).toHaveValue("Clinic tent");
+  await expectSaved(page);
+
+  const afterRow = await readDraftRow(journeyId);
+  expect(afterRow.version).toBe(before.version + 1);
+  const after = await readDraft(journeyId);
+  const retargeted = targetOf(after, waitYourTurnId);
+  expect(retargeted).toBe(clinicTentId);
+  expect(targetOf(after, findTheClinicId)).toBe(clinicTentId);
+
+  // A Choice whose target Step is gone: the list opens on its first option,
+  // since none is the one stored, and an untouched Enter still chooses
+  // nothing — the Choice keeps pointing at the missing Step.
+  const missingStepId = "missing-step";
+  after.steps[borderPostId].choices = after.steps[borderPostId].choices.map(
+    (choice) =>
+      choice.id === findTheClinicId
+        ? { ...choice, targetStepId: missingStepId }
+        : choice,
+  );
+  await seedDraft(page, journeyId, after);
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await expectSaved(page);
+  await expect(targetField).toHaveValue("Missing step");
+  const danglingBefore = await readDraftRow(journeyId);
+  writes.length = 0;
+
+  await secondRow.getByLabel("Choice label").focus();
+  await page.keyboard.press("Tab");
+  await expect(targetField).toBeFocused();
+  await expect(listbox).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Missing step");
+  expect(writes).toEqual([]);
+  const danglingAfter = await readDraftRow(journeyId);
+  expect(danglingAfter.version).toBe(danglingBefore.version);
+
+  // The same debounce check: one later edit, one write, and the dangling
+  // Choice still pointing at the missing Step.
+  await renameStep(page, "Border crossing");
+  await expectSaved(page);
+  expect((await readDraftRow(journeyId)).version).toBe(
+    danglingBefore.version + 1,
+  );
+  expect(targetOf(await readDraft(journeyId), findTheClinicId)).toBe(
+    missingStepId,
+  );
+
+  writeFileSync(
+    capturePath(
+      "panel-choice-target-enter",
+      "ac-1-choice-target-unchanged.txt",
+    ),
+    [
+      `Ticket 89: Enter on an untouched Choice-target field keeps the Choice's target.`,
+      ``,
+      `Step (source): ${borderPostId}`,
+      `Choice "Find the clinic" (${findTheClinicId}) target before Enter: ${clinicTentId}`,
+      `Draft row version before Enter: ${before.version}`,
+      `Choice "Find the clinic" (${findTheClinicId}) target after Enter, and after typing then clearing then Enter: ${noopTarget}`,
+      `Draft row version re-read after those presses: ${afterNoop.version}`,
+      `Draft writes (next-action POSTs) during those presses: 0`,
+      ``,
+      `ArrowDown then Enter still retargets:`,
+      `Choice "Wait your turn" (${waitYourTurnId}) target after ArrowDown+Enter: ${retargeted}`,
+      `Draft row version after retargeting: ${afterRow.version}`,
+      ``,
+      `Dangling target (Step ${missingStepId} not in the Draft), untouched Enter:`,
+      `Draft row version before Enter: ${danglingBefore.version}`,
+      `Draft row version re-read after Enter: ${danglingAfter.version}`,
+    ].join("\n"),
+  );
 });
 
 test("panel-outcomes-from-the-ending", async ({ page }) => {

@@ -95,6 +95,20 @@ function wrapActive(current: number, step: 1 | -1, length: number): number {
 }
 
 /**
+ * The option a field opens on: the one already chosen, matched by id — never
+ * by name, since titles can repeat — or the first option when nothing is
+ * chosen or the chosen id is not among the options (a dangling target).
+ */
+function initialActiveIndex(
+  options: ComboboxOption[],
+  chosenId: string | undefined,
+): number {
+  if (chosenId === undefined) return 0;
+  const index = options.findIndex((option) => option.id === chosenId);
+  return index === -1 ? 0 : index;
+}
+
+/**
  * Which side of `anchor` the list opens on, settled as it opens and not
  * after: the panel's column clips what overflows it, so a list opened
  * downwards from a field near the foot of a tall panel is cut off with
@@ -258,6 +272,7 @@ export function Combobox({
   options,
   action,
   value,
+  chosenId,
   placeholder,
   emptyMessage,
   className,
@@ -277,6 +292,14 @@ export function Combobox({
    * undefined by a field that is only ever a query.
    */
   value?: string;
+  /**
+   * The id of what is chosen now, matched by id and never by name — Step
+   * titles can repeat. Opens the list on this option rather than the first
+   * one, marks it with the check `OptionList` already draws, and makes
+   * choosing it again — by Enter or by click — write nothing, since nothing
+   * changed. Left undefined by a field that is only ever a query.
+   */
+  chosenId?: string;
   placeholder?: string;
   /** What is said in place of an empty list: "No steps match". */
   emptyMessage: string;
@@ -303,6 +326,13 @@ export function Combobox({
   const [typed, setTyped] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  /**
+   * Whether the arrows have moved the active option since the list opened.
+   * With nothing typed and nothing navigated, the field is untouched, and
+   * Enter on it chooses nothing — even when the chosen id is not among the
+   * options (a dangling target) and the list opened on the first one.
+   */
+  const [navigated, setNavigated] = useState(false);
 
   const fieldRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -326,6 +356,17 @@ export function Combobox({
   }, [focusRequest]);
 
   function choose(id: string) {
+    // The option already chosen, taken again: nothing changed, so nothing is
+    // written — Enter on an untouched field, or a click on the checked
+    // option, must not silently retarget a Choice at whatever the list
+    // happened to open on (ticket 89).
+    if (chosenId !== undefined && id === chosenId) {
+      setOpen(false);
+      setTyped(null);
+      fieldRef.current?.focus();
+      return;
+    }
+
     onChoose(id, query.trim());
     setOpen(false);
     // A field that names its value shows what was just chosen; one that is
@@ -335,12 +376,27 @@ export function Combobox({
     fieldRef.current?.focus();
   }
 
+  /**
+   * The list opened from closed: on the option already chosen while nothing
+   * has been typed, and untouched until the arrows move it.
+   */
+  function openList() {
+    if (!open) {
+      if (typed === null) {
+        setActiveIndex(initialActiveIndex(entries.options, chosenId));
+      }
+      setNavigated(false);
+    }
+    setOpen(true);
+  }
+
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       if (!open) {
         setOpen(true);
-        setActiveIndex(0);
+        setActiveIndex(initialActiveIndex(entries.options, chosenId));
+        setNavigated(false);
         return;
       }
       if (entries.options.length === 0) return;
@@ -349,6 +405,7 @@ export function Combobox({
       setActiveIndex((current) =>
         wrapActive(current, step, entries.options.length),
       );
+      setNavigated(true);
       return;
     }
 
@@ -356,6 +413,13 @@ export function Combobox({
       if (!open || active < 0) return;
       // The Author is choosing, not submitting anything around the field.
       event.preventDefault();
+      // Untouched — nothing typed, the arrows never moved: the list is put
+      // away and nothing is chosen, so a Choice is never retargeted at
+      // whatever option the list happened to open on (ticket 89).
+      if (chosenId !== undefined && typed === null && !navigated) {
+        setOpen(false);
+        return;
+      }
       choose(entries.options[active].id);
       return;
     }
@@ -394,17 +458,33 @@ export function Combobox({
         }
         value={text}
         onChange={(event) => {
-          setTyped(event.target.value);
+          const next = event.target.value;
           setOpen(true);
+          // Typed and then cleared again, a field that names its value is
+          // back where it started: showing every option, on the one already
+          // chosen, untouched — so Enter chooses nothing.
+          if (namesValue && next === "") {
+            setTyped(null);
+            setActiveIndex(initialActiveIndex(options, chosenId));
+            setNavigated(false);
+            return;
+          }
+          setTyped(next);
           setActiveIndex(0);
         }}
         onFocus={(event) => {
-          setOpen(true);
+          // Opening on the option already chosen, not the first one: an
+          // Author tabbing in and pressing Enter without navigating must
+          // land back where they started (ticket 89). Only while nothing has
+          // been typed yet and the list was not already open — a click that
+          // refocuses an open, filtered list leaves the active option where
+          // typing put it.
+          openList();
           // The name of what is chosen, selected rather than left with a
           // caret in it: typing replaces the answer, it does not edit it.
           if (namesValue) event.target.select();
         }}
-        onClick={() => setOpen(true)}
+        onClick={openList}
         onBlur={() => {
           setOpen(false);
           if (namesValue) setTyped(null);
@@ -421,6 +501,7 @@ export function Combobox({
           optionIdPrefix={optionIdPrefix}
           options={entries.options}
           active={active}
+          chosenId={chosenId}
           emptyMessage={emptyMessage}
           empty={entries.matches.length === 0}
           onChoose={choose}

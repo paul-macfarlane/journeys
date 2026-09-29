@@ -10,6 +10,7 @@ import {
   counted,
   type AddedStep,
   type ApplyEdit,
+  type ChoiceFocus,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
@@ -311,6 +312,8 @@ export function StepPanel({
   revision,
   focusTitle,
   markedChoiceId,
+  focusChoice = null,
+  onChoiceFocused,
   onChange,
   onSelectStep,
   added,
@@ -334,6 +337,10 @@ export function StepPanel({
   focusTitle: boolean;
   /** A Choice on this Step that is the one in hand on the map, if any. */
   markedChoiceId: string | null;
+  /** The Choice whose label field the keyboard is asked onto, if any. */
+  focusChoice?: ChoiceFocus | null;
+  /** That Choice's label field has the keyboard: the ask is answered. */
+  onChoiceFocused?: () => void;
   onChange: ApplyEdit;
   onSelectStep: SelectStep;
   /** The Step the last "Add choice" here made, while it is still news. */
@@ -453,6 +460,8 @@ export function StepPanel({
         order={order}
         choiceProblems={choiceProblems}
         markedChoiceId={markedChoiceId}
+        focusChoice={focusChoice}
+        onChoiceFocused={onChoiceFocused}
         onChange={onChange}
         onSelectStep={onSelectStep}
         added={added}
