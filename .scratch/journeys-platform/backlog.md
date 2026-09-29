@@ -12,6 +12,7 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 |---|---|---|---|---|---|
 | – | – | [71 An image inside a list item is never silently dropped](issues/71-image-in-list-item.md) | contract | done | PR #97 |
 | – | – | [72 Codebase design review](issues/72-codebase-design-review.md) | polish | done | PR #99 |
+| – | – | [45 Atlas setup refresh](issues/45-atlas-setup-refresh.md) | polish | done | PR pending; closed 2026-09-28 without the grilling (Paul) |
 | 1 | **1 Saves and unreadable rows** (contract) | [81 One autosave loop](issues/81-one-autosave-loop.md) | polish | done | PR #101 |
 | 2 | 1 | [73 Stale saves are refused](issues/73-stale-saves-refused.md) | contract | done | PR #101 |
 | 3 | 1 | [83 Error pages and unreadable Published Versions](issues/83-error-surfaces.md) | contract | done | PR #101 |
@@ -50,7 +51,6 @@ Not ordered. Each needs something outside the backlog before it can move.
 |---|---|---|
 | [39 Loading states](issues/39-loading-states.md) | needs-info | vercel/next.js#86055 |
 | [44 Renaming the app](issues/44-rename.md) | needs-info | Paul choosing a name |
-| [45 Atlas setup refresh](issues/45-atlas-setup-refresh.md) | needs-info | A harness session with Paul |
 | [95 Video in Steps](issues/95-video-in-steps.md) | needs-info | Paul deciding scope and source (embed vs hosted) |
 
 ## Withdrawn (2026-09-26)

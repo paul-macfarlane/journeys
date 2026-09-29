@@ -1,0 +1,147 @@
+# Ticket 45 AC 2: setup-atlas refresh and verify (Atlas plugin 3.3.0)
+# Captured 2026-09-29T03:45Z on branch chore/45-atlas-setup-refresh
+
+## plan (refresh preview; apply would write nothing)
+unchanged	CLAUDE.md
+unchanged	docs/agents/issue-tracker.md
+unchanged	docs/agents/planning.md
+unchanged	docs/agents/testing.md
+unchanged	docs/agents/tooling.md
+unchanged	docs/agents/guardrails.md
+unchanged	docs/atlas-operators-guide.md
+unchanged	.gitignore
+unchanged	.gitattributes
+unchanged	README.md
+unchanged	.claude/settings.json
+unchanged	.claude/hooks/atlas/guard.py
+unchanged	.claude/hooks/atlas/atlas_guard/__init__.py
+unchanged	.claude/hooks/atlas/atlas_guard/cloud_policy.py
+unchanged	.claude/hooks/atlas/atlas_guard/config.py
+unchanged	.claude/hooks/atlas/atlas_guard/engine.py
+unchanged	.claude/hooks/atlas/atlas_guard/file_policy.py
+preserve	.claude/hooks/atlas/atlas_guard/git_policy.py
+unchanged	.claude/hooks/atlas/atlas_guard/host_policy.py
+unchanged	.claude/hooks/atlas/atlas_guard/mcp_policy.py
+unchanged	.claude/hooks/atlas/atlas_guard/secrets.py
+unchanged	.claude/hooks/atlas/atlas_guard/self_protection.py
+unchanged	.claude/hooks/atlas/atlas_guard/self_test.py
+unchanged	.claude/hooks/atlas/atlas_guard/shell_policy.py
+unchanged	.claude/hooks/atlas/atlas_guard/shell_syntax.py
+unchanged	.githooks/_atlas_python.sh
+unchanged	.githooks/pre-commit
+unchanged	.githooks/pre-commit.py
+unchanged	.githooks/pre-push
+unchanged	.githooks/pre-push.py
+unchanged	.githooks/commit-msg
+unchanged	.githooks/commit-msg.py
+unchanged	.gitleaks.toml
+preserve	CLAUDE.md	section: guidance	(team-modified; newer generated content available)
+preserve	docs/agents/issue-tracker.md	section: tracker	(team-modified; newer generated content available)
+preserve	docs/agents/planning.md	section: planning	(team-modified; newer generated content available)
+preserve	docs/agents/testing.md	section: testing	(team-modified; newer generated content available)
+preserve	README.md	section: readme	(team-modified; newer generated content available)
+
+## verify
+passed: false
+checks: 101, passing: 99
+PASS	managed:.claude/hooks/atlas/guard.py
+PASS	manifest:.claude/hooks/atlas/guard.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/__init__.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/__init__.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/cloud_policy.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/cloud_policy.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/config.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/config.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/engine.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/engine.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/file_policy.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/file_policy.py
+PASS	customized:.claude/hooks/atlas/atlas_guard/git_policy.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/git_policy.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/host_policy.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/host_policy.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/mcp_policy.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/mcp_policy.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/secrets.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/secrets.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/self_protection.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/self_protection.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/self_test.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/self_test.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/shell_policy.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/shell_policy.py
+PASS	managed:.claude/hooks/atlas/atlas_guard/shell_syntax.py
+PASS	manifest:.claude/hooks/atlas/atlas_guard/shell_syntax.py
+PASS	managed:.githooks/_atlas_python.sh
+PASS	manifest:.githooks/_atlas_python.sh
+PASS	managed:.githooks/pre-commit
+PASS	manifest:.githooks/pre-commit
+PASS	managed:.githooks/pre-commit.py
+PASS	manifest:.githooks/pre-commit.py
+PASS	managed:.githooks/pre-push
+PASS	manifest:.githooks/pre-push
+PASS	managed:.githooks/pre-push.py
+PASS	manifest:.githooks/pre-push.py
+PASS	managed:.githooks/commit-msg
+PASS	manifest:.githooks/commit-msg
+PASS	managed:.githooks/commit-msg.py
+PASS	manifest:.githooks/commit-msg.py
+PASS	managed:.gitleaks.toml
+PASS	manifest:.gitleaks.toml
+PASS	claude-hook-registrations
+PASS	legacy-local-audit-removed
+PASS	section:.gitattributes
+PASS	section:.gitignore
+PASS	section:CLAUDE.md	(sanctioned customization)
+PASS	section:README.md	(sanctioned customization)
+PASS	section:docs/agents/guardrails.md
+PASS	section:docs/agents/issue-tracker.md	(sanctioned customization)
+PASS	section:docs/agents/planning.md	(sanctioned customization)
+PASS	section:docs/agents/testing.md	(sanctioned customization)
+PASS	section:docs/agents/tooling.md
+PASS	section:docs/atlas-operators-guide.md
+PASS	section-markers:.gitignore
+PASS	read-trigger:CLAUDE.md:docs/agents/testing.md
+PASS	read-trigger:CLAUDE.md:CLAUDE.md
+PASS	read-trigger:CLAUDE.md:docs/agents/issue-tracker.md
+PASS	read-trigger:CLAUDE.md:docs/agents/triage-labels.md
+PASS	read-trigger:CLAUDE.md:docs/agents/planning.md
+PASS	read-trigger:CLAUDE.md:docs/agents/domain.md
+PASS	read-trigger:CLAUDE.md:docs/agents/tooling.md
+PASS	read-trigger:CLAUDE.md:docs/agents/guardrails.md
+PASS	read-trigger:README.md:docs/atlas-operators-guide.md
+PASS	read-trigger:README.md:CLAUDE.md
+PASS	read-trigger:README.md:docs/agents/guardrails.md
+PASS	read-trigger:docs/agents/guardrails.md:CLAUDE.md
+PASS	read-trigger:docs/agents/issue-tracker.md:docs/agents/triage-labels.md
+PASS	read-trigger:docs/agents/planning.md:.scratch/journeys-platform/decisions.md
+PASS	read-trigger:docs/agents/planning.md:docs/agents/testing.md
+PASS	read-trigger:docs/agents/planning.md:docs/agents/issue-tracker.md
+PASS	read-trigger:docs/agents/planning.md:docs/agents/triage-labels.md
+PASS	read-trigger:docs/agents/planning.md:docs/agents/domain.md
+PASS	read-trigger:docs/atlas-operators-guide.md:CLAUDE.md
+PASS	read-trigger:docs/atlas-operators-guide.md:docs/agents/issue-tracker.md
+PASS	read-trigger:docs/atlas-operators-guide.md:docs/agents/planning.md
+PASS	read-trigger:docs/atlas-operators-guide.md:docs/agents/testing.md
+PASS	read-trigger:docs/atlas-operators-guide.md:docs/agents/tooling.md
+PASS	read-trigger:docs/atlas-operators-guide.md:docs/agents/guardrails.md
+PASS	read-trigger:docs/atlas-operators-guide.md:docs/agents/domain.md
+PASS	read-trigger:docs/atlas-operators-guide.md:docs/agents/triage-labels.md
+PASS	self-test:.claude/hooks/atlas/guard.py
+PASS	self-test:.githooks/pre-commit.py
+PASS	self-test:.githooks/pre-push.py
+PASS	self-test:.githooks/commit-msg.py
+PASS	shim-self-test:.githooks/pre-commit
+PASS	shim-self-test:.githooks/pre-push
+PASS	shim-self-test:.githooks/commit-msg
+FAIL	git-hooks-active:journeys	[human prerequisite] true
+FAIL	git-hooks-active	[human prerequisite] true
+PASS	hook-path-decision
+PASS	hook-executable:.githooks/pre-commit
+PASS	hook-executable:.githooks/pre-push
+PASS	hook-executable:.githooks/commit-msg
+PASS	gitattributes-managed-block-present
+PASS	gitattributes-eol:.githooks/pre-commit
+PASS	gitattributes-eol:.githooks/pre-push
+PASS	gitattributes-eol:.githooks/commit-msg
+PASS	gitattributes-eol:.claude/hooks/atlas/guard.py
