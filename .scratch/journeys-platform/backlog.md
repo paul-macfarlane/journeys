@@ -12,7 +12,7 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 |---|---|---|---|---|---|
 | – | – | [71 An image inside a list item is never silently dropped](issues/71-image-in-list-item.md) | contract | done | PR #97 |
 | – | – | [72 Codebase design review](issues/72-codebase-design-review.md) | polish | done | PR #99 |
-| – | – | [45 Atlas setup refresh](issues/45-atlas-setup-refresh.md) | polish | done | PR pending; closed 2026-09-28 without the grilling (Paul) |
+| – | – | [45 Atlas setup refresh](issues/45-atlas-setup-refresh.md) | polish | done | PR #120; closed 2026-09-28 without the grilling (Paul) |
 | 1 | **1 Saves and unreadable rows** (contract) | [81 One autosave loop](issues/81-one-autosave-loop.md) | polish | done | PR #101 |
 | 2 | 1 | [73 Stale saves are refused](issues/73-stale-saves-refused.md) | contract | done | PR #101 |
 | 3 | 1 | [83 Error pages and unreadable Published Versions](issues/83-error-surfaces.md) | contract | done | PR #101 |

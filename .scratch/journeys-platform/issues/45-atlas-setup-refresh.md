@@ -32,7 +32,7 @@ Verification: the `setup-atlas` verify output captured as `test-results/ac-2-atl
 
 ### 2026-09-28 — Claude (Opus 5.5), harness session with Paul
 
-`[CLOSEOUT]` Closed by Paul's call in the harness session (2026-09-28: "we can mark the task … as done"), without the grilling. PR: pending.
+`[CLOSEOUT]` Closed by Paul's call in the harness session (2026-09-28: "we can mark the task … as done"), without the grilling. PR: #120.
 
 - `~/Code/atlas-plugins` pulled to `8f6701a` (only `docs/atlas-story.html` changed); the plugin is still 3.3.0 and the installed cache matches the repository.
 - `setup-atlas` refresh: `plan` with a setup plan mirroring the current guidance writes nothing. Every file is `unchanged` or `preserve`: the team-edited sections in `CLAUDE.md`, `README.md`, `docs/agents/issue-tracker.md`, `planning.md`, and `testing.md`, plus the adopted `git_policy.py`. A clean 3.3.0 generation diffed section by section differs only where Paul's policies sit (closeout-commit `done`, the never-clear evidence root, flaky-test rules, `staging`-only PRs); no upstream template text changed, so nothing was applied.
