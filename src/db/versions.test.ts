@@ -4,7 +4,11 @@ vi.mock("@/db", () => ({ db: {} }));
 
 import { createDraftDocument } from "@/lib/graph/document";
 
-import { parseVersionDocument, toLiveVersion } from "./versions";
+import {
+  parseVersionDocument,
+  toLiveVersion,
+  toPublishedVersionRead,
+} from "./versions";
 
 /**
  * Ticket 83: `getLiveVersion`'s row is read with `safeParse`. A Published
@@ -70,5 +74,67 @@ describe("parseVersionDocument", () => {
     expect(parseVersionDocument({ schemaVersion: 1, steps: "not a map" })).toBe(
       null,
     );
+  });
+});
+
+/**
+ * Ticket 94: the read behind a Published Version's own view and its
+ * Preview. A row that satisfies the contract answers everything the
+ * view shows about it, live or not; one that fails answers `unreadable`
+ * with its id and number, logged, never thrown.
+ */
+describe("toPublishedVersionRead", () => {
+  const document = createDraftDocument();
+  const publishedAt = new Date("2026-09-20T10:00:00.000Z");
+  const row = {
+    journeyId: "journey-1",
+    id: "version-1",
+    versionNumber: 1,
+    title: "Border Crossing",
+    description: "A journey",
+    document,
+    publishedAt,
+    publishedByName: "Ada",
+  };
+
+  it("reads a row that satisfies the contract, naming whether it is live", () => {
+    expect(
+      toPublishedVersionRead({ ...row, liveVersionId: "version-1" }),
+    ).toEqual({
+      kind: "ok",
+      id: "version-1",
+      versionNumber: 1,
+      title: "Border Crossing",
+      description: "A journey",
+      document,
+      publishedAt,
+      publishedByName: "Ada",
+      isLive: true,
+    });
+    expect(
+      toPublishedVersionRead({ ...row, liveVersionId: "version-2" }),
+    ).toMatchObject({ kind: "ok", isLive: false });
+    expect(
+      toPublishedVersionRead({ ...row, liveVersionId: null }),
+    ).toMatchObject({
+      kind: "ok",
+      isLive: false,
+    });
+  });
+
+  it("reads a row that fails the contract as unreadable, keeping its id and number", () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(
+      toPublishedVersionRead({
+        ...row,
+        document: { schemaVersion: 1, steps: "broken" },
+        liveVersionId: "version-1",
+      }),
+    ).toEqual({ kind: "unreadable", id: "version-1", versionNumber: 1 });
+    expect(logged).toHaveBeenCalledWith("[unreadable]", "published version", {
+      journeyId: "journey-1",
+      versionId: "version-1",
+    });
+    logged.mockRestore();
   });
 });

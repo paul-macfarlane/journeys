@@ -345,3 +345,97 @@ export async function restoreVersion(
     draftVersion: written.row.version,
   };
 }
+
+/**
+ * One Published Version as its own view shows it (ticket 94), and as its
+ * Preview walks it: its graph, the title and description it was published
+ * with, when and by whom, and whether participants are walking it now.
+ */
+export type PublishedVersionRead =
+  | {
+      kind: "ok";
+      id: string;
+      versionNumber: number;
+      title: string;
+      description: string;
+      document: GraphDocument;
+      publishedAt: Date;
+      /** Null once the account that published it is gone. */
+      publishedByName: string | null;
+      isLive: boolean;
+    }
+  /**
+   * A row that fails the document contract (ticket 83): the view says it
+   * cannot be read instead of drawing it.
+   */
+  | { kind: "unreadable"; id: string; versionNumber: number };
+
+/** A `published_version` row read through the document contract, never trusted. */
+export function toPublishedVersionRead(row: {
+  journeyId: string;
+  id: string;
+  versionNumber: number;
+  title: string;
+  description: string;
+  document: unknown;
+  publishedAt: Date;
+  publishedByName: string | null;
+  liveVersionId: string | null;
+}): PublishedVersionRead {
+  const parsed = graphDocumentSchema.safeParse(row.document);
+  if (!parsed.success) {
+    logUnreadable("published version", {
+      journeyId: row.journeyId,
+      versionId: row.id,
+    });
+    return { kind: "unreadable", id: row.id, versionNumber: row.versionNumber };
+  }
+  return {
+    kind: "ok",
+    id: row.id,
+    versionNumber: row.versionNumber,
+    title: row.title,
+    description: row.description,
+    document: parsed.data,
+    publishedAt: row.publishedAt,
+    publishedByName: row.publishedByName,
+    isLive: row.liveVersionId === row.id,
+  };
+}
+
+/**
+ * A Journey's Published Version by its number, or null when the Journey has
+ * none by that number — a number from some other Journey reads the same,
+ * because the row is selected under this Journey's id.
+ */
+export async function getVersionByNumber(
+  existing: MemberJourney,
+  versionNumber: number,
+): Promise<PublishedVersionRead | null> {
+  const [row] = await db
+    .select({
+      id: publishedVersion.id,
+      versionNumber: publishedVersion.versionNumber,
+      title: publishedVersion.title,
+      description: publishedVersion.description,
+      document: publishedVersion.document,
+      publishedAt: publishedVersion.publishedAt,
+      publishedByName: user.name,
+      liveVersionId: journey.liveVersionId,
+    })
+    .from(publishedVersion)
+    .innerJoin(journey, eq(journey.id, publishedVersion.journeyId))
+    // Left: the version outlives the Member who published it.
+    .leftJoin(user, eq(user.id, publishedVersion.publishedBy))
+    .where(
+      and(
+        eq(publishedVersion.journeyId, existing.id),
+        eq(publishedVersion.versionNumber, versionNumber),
+      ),
+    )
+    .limit(1);
+
+  return row
+    ? toPublishedVersionRead({ journeyId: existing.id, ...row })
+    : null;
+}

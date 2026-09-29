@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GraphDocument } from "@/lib/graph/document";
 
 /**
- * Seam A: the shell around Preview's one action — what it does with a
- * Response and a chosen Step — with the session and the Draft replaced by
- * doubles. Modeled on `src/app/j/[journeyId]/actions.test.ts`.
+ * Seam A: the shell around Preview's two actions — the Draft's and a
+ * Published Version's — what each does with a Response and a chosen Step,
+ * with the session, the Draft, and the Version replaced by doubles. Both
+ * delegate to `choosePreviewStep` in `./source`. Modeled on
+ * `src/app/j/[journeyId]/actions.test.ts`.
  */
 
 class RedirectSignal extends Error {
@@ -18,6 +20,7 @@ const doubles = vi.hoisted(() => ({
   session: { user: { id: "author-1" } },
   access: { journeyForMember: vi.fn() },
   drafts: { getDraft: vi.fn() },
+  versions: { getVersionByNumber: vi.fn() },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -28,11 +31,13 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/db/access", () => doubles.access);
 vi.mock("@/db/drafts", () => doubles.drafts);
+vi.mock("@/db/versions", () => doubles.versions);
 vi.mock("@/lib/session", () => ({
   requireSession: vi.fn(async () => doubles.session),
 }));
 
-import { previewChooseAction } from "./actions";
+import { previewChooseAction } from "../preview/actions";
+import { versionPreviewChooseAction } from "../versions/[versionNumber]/preview/actions";
 
 const PROJECT_ID = "project-1";
 const JOURNEY_ID = "journey-1";
@@ -114,12 +119,18 @@ function formResponding(text: string): FormData {
   return formData;
 }
 
-const BASE = `/projects/${PROJECT_ID}/journeys/${JOURNEY_ID}/preview`;
+const JOURNEY_HREF = `/projects/${PROJECT_ID}/journeys/${JOURNEY_ID}`;
+const BASE = `${JOURNEY_HREF}/preview`;
+const VERSION_BASE = `${JOURNEY_HREF}/versions/2/preview`;
 
 beforeEach(() => {
   vi.clearAllMocks();
   doubles.access.journeyForMember.mockResolvedValue({ id: JOURNEY_ID });
   doubles.drafts.getDraft.mockResolvedValue({
+    kind: "ok",
+    document: promptedDraft(),
+  });
+  doubles.versions.getVersionByNumber.mockResolvedValue({
     kind: "ok",
     document: promptedDraft(),
   });
@@ -138,7 +149,7 @@ describe("previewChooseAction for an Author who is not a Member", () => {
       ),
     );
 
-    expect(to).toBe(`/projects/${PROJECT_ID}/journeys/${JOURNEY_ID}`);
+    expect(to).toBe(JOURNEY_HREF);
     expect(doubles.access.journeyForMember).toHaveBeenCalledWith(
       PROJECT_ID,
       JOURNEY_ID,
@@ -182,5 +193,72 @@ describe("previewChooseAction on a Step with a required Prompt", () => {
     );
 
     expect(to).toBe(`${BASE}/queue?notice=response-preview`);
+  });
+});
+
+describe("versionPreviewChooseAction", () => {
+  it.each([0, -1, 1.5, 2_147_483_648, Number.NaN])(
+    "sends a bound number that is no Version number (%s) to the Journey page, reading nothing",
+    async (versionNumber) => {
+      const to = await redirectOf(
+        versionPreviewChooseAction(
+          PROJECT_ID,
+          JOURNEY_ID,
+          versionNumber,
+          "queue",
+          formResponding(RESPONSE),
+        ),
+      );
+
+      expect(to).toBe(JOURNEY_HREF);
+      expect(doubles.versions.getVersionByNumber).not.toHaveBeenCalled();
+    },
+  );
+
+  it("sends the Author to the Version's view when it cannot be read", async () => {
+    doubles.versions.getVersionByNumber.mockResolvedValue({
+      kind: "unreadable",
+      id: "version-2",
+      versionNumber: 2,
+    });
+
+    const to = await redirectOf(
+      versionPreviewChooseAction(
+        PROJECT_ID,
+        JOURNEY_ID,
+        2,
+        "queue",
+        formResponding(RESPONSE),
+      ),
+    );
+
+    expect(to).toBe(`${JOURNEY_HREF}/versions/2`);
+  });
+
+  it("follows the pressed Choice within the Version's Preview", async () => {
+    const formData = formResponding(RESPONSE);
+    formData.set("to", "turned");
+
+    const to = await redirectOf(
+      versionPreviewChooseAction(PROJECT_ID, JOURNEY_ID, 2, "queue", formData),
+    );
+
+    expect(to).toBe(`${VERSION_BASE}/turned`);
+    expect(doubles.versions.getVersionByNumber).toHaveBeenCalledWith(
+      { id: JOURNEY_ID },
+      2,
+    );
+    expect(doubles.drafts.getDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a blank Response to a required Prompt under the Version's Preview", async () => {
+    const formData = formResponding("   ");
+    formData.set("to", "turned");
+
+    const to = await redirectOf(
+      versionPreviewChooseAction(PROJECT_ID, JOURNEY_ID, 2, "queue", formData),
+    );
+
+    expect(to).toBe(`${VERSION_BASE}/queue?notice=response-required`);
   });
 });

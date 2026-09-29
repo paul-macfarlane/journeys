@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * A Journey's Published Versions, newest first: what was published, when, by
- * whom, which one participants are walking, and a way back to any of them.
+ * whom, which one participants are walking, a way to look at any of them on
+ * its own (ticket 94), and a way back to any of them.
  *
  * Above them, while it differs from the live version, the Draft: what would
  * be published next, when it was last edited, and the two things to do with
@@ -113,7 +114,23 @@ export function VersionList({
                 by {version.publishedByName ?? "a former member"}
               </span>
 
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
+                <Link
+                  href={`/projects/${projectId}/journeys/${journeyId}/versions/${version.versionNumber}`}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                  )}
+                >
+                  View
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/journeys/${journeyId}/versions/${version.versionNumber}/preview`}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                  )}
+                >
+                  Preview
+                </Link>
                 <RestoreVersionDialog
                   projectId={projectId}
                   journeyId={journeyId}
