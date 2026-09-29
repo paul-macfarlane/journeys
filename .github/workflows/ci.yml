@@ -26,6 +26,9 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/journeys
+      # The account-deletion integration test (ticket 77) runs against this
+      # same service database, migrated by `pnpm db:migrate` above.
+      DB_INTEGRATION_URL: postgres://postgres:postgres@localhost:5432/journeys
       BETTER_AUTH_SECRET: ci-only-secret-not-used-in-any-deployed-env
       BETTER_AUTH_URL: http://localhost:3000
       # Sign-in is never exercised in CI; env validation just requires these.

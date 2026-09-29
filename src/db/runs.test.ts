@@ -48,7 +48,7 @@ describe("toPublicJourney", () => {
         ...row,
         document: { schemaVersion: 1, steps: "not a map" },
       }),
-    ).toEqual({ kind: "unavailable", theme });
+    ).toEqual({ kind: "unavailable" });
   });
 });
 
@@ -70,6 +70,8 @@ describe("toRunForJourney", () => {
       backtrackCount: 0,
       startedAt: new Date("2026-09-26T12:00:00Z"),
       endedAt: null,
+      completedAt: null,
+      endingStepId: null,
       outcomeId: null,
     },
     version: { title: "Border Crossing", description: "A journey", document },

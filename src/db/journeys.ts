@@ -6,15 +6,16 @@ import "server-only";
 import { and, asc, count, eq, inArray, max } from "drizzle-orm";
 
 import { db } from "@/db";
+import type { MemberJourney, MemberProject } from "@/db/access";
 import {
   changedFields,
   guardedWrite,
   rowExists,
   stillHolds,
   stillHoldsOrRetired,
-  type StaleWrite,
 } from "@/db/guarded-write";
-import { draft, journey, member, project, publishedVersion } from "@/db/schema";
+import { lockProject } from "@/db/projects";
+import { draft, journey, publishedVersion } from "@/db/schema";
 import { createDraftDocument } from "@/lib/graph/document";
 import { moveInOrder, type MoveDirection } from "@/lib/journey-order";
 import { publishStateOf, type PublishState } from "@/lib/publish-state";
@@ -23,14 +24,17 @@ import {
   themePresetSchema,
   type ThemeOverride,
 } from "@/lib/theme";
+import type { WriteFailure } from "@/lib/write-result";
 
 /**
  * Data access for Journeys, mirroring `@/db/projects`.
  *
  * A Journey belongs to a Project, so its authorization rides on the same
- * Project membership: every read and write here re-checks it against the
- * signed-in Author, and an Author who is not a Member of the Journey's
- * Project cannot tell an existing Journey from one that never existed.
+ * Project membership, resolved once in `@/db/access` (ticket 82): every read
+ * and write a Member makes here takes the `MemberProject` or `MemberJourney`
+ * that check hands back and never checks again, and an Author who is not a
+ * Member of the Journey's Project cannot tell an existing Journey from one
+ * that never existed.
  *
  * Publish state is not a column: it is derived from the live-version
  * pointer and the count of Published Versions, so a Journey can never be
@@ -65,8 +69,11 @@ const journeyColumns = {
   updatedAt: journey.updatedAt,
 };
 
-/** The Journey itself plus the live pointer publish state is derived from. */
-const journeyStateColumns = {
+/**
+ * The Journey itself plus the live pointer publish state is derived from;
+ * `@/db/access` selects them too.
+ */
+export const journeyStateColumns = {
   ...journeyColumns,
   liveVersionId: journey.liveVersionId,
 };
@@ -132,34 +139,34 @@ function stateOf(
   return publishStateOf({ liveVersionId: row.liveVersionId, versionCount });
 }
 
+/**
+ * One `journey` row read with its publish state: the row's live pointer and
+ * its own count of Published Versions, one more query.
+ */
+export async function summarizeJourney(row: {
+  id: string;
+  title: string;
+  description: string;
+  themePreset: string | null;
+  themeAccent: string | null;
+  updatedAt: Date;
+  liveVersionId: string | null;
+}): Promise<JourneySummary> {
+  const versionCounts = await countVersionsByJourney([row.id]);
+  return toSummary(row, stateOf(row, versionCounts.get(row.id) ?? 0));
+}
+
 /** The Author's order: `position` first, `created_at` breaking any tie. */
 const listOrder = [asc(journey.position), asc(journey.createdAt)];
 
-/**
- * Serializes the writes that number a Project's Journeys. Two creates, or
- * a create and a move, running at once under READ COMMITTED would both read
- * the same positions and write the same number twice; holding the Project
- * row makes the second wait for the first and read what it wrote.
- */
-async function lockProject(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  projectId: string,
-): Promise<void> {
-  await tx
-    .select({ id: project.id })
-    .from(project)
-    .where(eq(project.id, projectId))
-    .for("update");
-}
-
 /** Every Journey in the Project, in the Author's order. */
 export async function listJourneysForProject(
-  projectId: string,
+  project: MemberProject,
 ): Promise<JourneySummary[]> {
   const rows = await db
     .select(journeyStateColumns)
     .from(journey)
-    .where(eq(journey.projectId, projectId))
+    .where(eq(journey.projectId, project.id))
     .orderBy(...listOrder);
 
   const versionCounts = await countVersionsByJourney(rows.map((row) => row.id));
@@ -212,15 +219,12 @@ export async function listPublicJourneysForProject(
  * Start Step and nothing else. Both rows in one transaction, because a
  * Journey without a Draft is a Journey an Author could never author. The
  * new Journey goes last in the Project's list.
- *
- * The caller is responsible for having already confirmed the Author is a
- * Member of `projectId` — every action that calls this resolves the Project
- * through `getProjectForMember` first, which is where that check lives.
  */
 export async function createJourney(
-  projectId: string,
+  project: MemberProject,
   input: { title: string; description: string },
 ): Promise<JourneySummary> {
+  const projectId = project.id;
   return db.transaction(async (tx) => {
     await lockProject(tx, projectId);
 
@@ -249,37 +253,6 @@ export async function createJourney(
   });
 }
 
-/**
- * The Journey behind a Project id and Journey id pair, but only for one of
- * the Project's Members. Returns null for a non-Member, an unknown Project,
- * and an unknown Journey alike, so callers can answer all three with the
- * same 404 — including a real Journey asked for under the wrong Project.
- */
-export async function getJourneyForMember(
-  projectId: string,
-  journeyId: string,
-  userId: string,
-): Promise<JourneySummary | null> {
-  const [row] = await db
-    .select(journeyStateColumns)
-    .from(journey)
-    .innerJoin(project, eq(project.id, journey.projectId))
-    .innerJoin(member, eq(member.projectId, project.id))
-    .where(
-      and(
-        eq(project.id, projectId),
-        eq(journey.id, journeyId),
-        eq(member.userId, userId),
-      ),
-    )
-    .limit(1);
-
-  if (!row) return null;
-
-  const versionCounts = await countVersionsByJourney([row.id]);
-  return toSummary(row, stateOf(row, versionCounts.get(row.id) ?? 0));
-}
-
 /** The Journey fields its title form and Theme settings write, by column. */
 type JourneyFields = {
   title: string;
@@ -295,27 +268,26 @@ const journeyFieldColumns = {
   themeAccent: journey.themeAccent,
 } as const;
 
+/** A title or Theme write's answer: the Journey as stored, or why not. */
+export type JourneyWriteResult =
+  { ok: true; journey: JourneySummary } | WriteFailure;
+
 /**
  * The guarded write `updateJourney` and `setJourneyTheme` share (ticket 73),
  * the Journey's twin of `@/db/projects`' own: only the fields whose value
  * differs from `baseline` are written, each only while the row still holds
  * its baseline value, so another Member's change to the same field since is
  * answered `stale`. Publish, unpublish, and move write other columns and
- * never make these stale. Null when the Author is not a Member of the
- * Journey's Project, or the Journey doesn't exist under that Project.
+ * never make these stale. `not-found` when the Journey went away since its
+ * membership was resolved.
  */
-async function updateJourneyForMember(
-  projectId: string,
-  journeyId: string,
-  userId: string,
+async function updateJourneyFields(
+  existing: MemberJourney,
   next: Partial<JourneyFields>,
   baseline: Partial<JourneyFields>,
-): Promise<JourneySummary | StaleWrite | null> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return null;
-
+): Promise<JourneyWriteResult> {
   const fields = changedFields(next, baseline);
-  if (fields.length === 0) return existing;
+  if (fields.length === 0) return { ok: true, journey: existing };
 
   const written = await guardedWrite(
     () =>
@@ -344,10 +316,10 @@ async function updateJourneyForMember(
         .returning(journeyColumns),
     () => rowExists(journey, journey.id, existing.id),
   );
-  if (!written.ok) return written.reason === "stale" ? written : null;
+  if (!written.ok) return written;
   // Title, description, and Theme are all this changes; publish state is
   // whatever the membership check already read.
-  return toSummary(written.row, existing.publishState);
+  return { ok: true, journey: toSummary(written.row, existing.publishState) };
 }
 
 /**
@@ -355,16 +327,12 @@ async function updateJourneyForMember(
  * untouched. `baseline` is what the Member edited from.
  */
 export function updateJourney(
-  projectId: string,
-  journeyId: string,
+  existing: MemberJourney,
   input: { title: string; description: string },
   baseline: { title: string; description: string },
-  userId: string,
-): Promise<JourneySummary | StaleWrite | null> {
-  return updateJourneyForMember(
-    projectId,
-    journeyId,
-    userId,
+): Promise<JourneyWriteResult> {
+  return updateJourneyFields(
+    existing,
     { title: input.title, description: input.description },
     { title: baseline.title, description: baseline.description },
   );
@@ -385,16 +353,12 @@ function themeColumns(theme: ThemeOverride) {
  * the baseline it replaces, through the Journey Theme schema.
  */
 export function setJourneyTheme(
-  projectId: string,
-  journeyId: string,
+  existing: MemberJourney,
   theme: ThemeOverride,
   baseline: ThemeOverride,
-  userId: string,
-): Promise<JourneySummary | StaleWrite | null> {
-  return updateJourneyForMember(
-    projectId,
-    journeyId,
-    userId,
+): Promise<JourneyWriteResult> {
+  return updateJourneyFields(
+    existing,
     themeColumns(theme),
     themeColumns(baseline),
   );
@@ -408,21 +372,16 @@ export function setJourneyTheme(
  * move first touches it, so the swap is visible rather than a no-op on
  * tied rows.
  *
- * Returns false when the Author is not a Member of the Journey's Project or
- * the Journey is not there, which callers answer with the same 404 as an
- * unknown id. A move off either end of the list is not an error: nothing
- * changes and the call returns true, so a control that was already stale
- * when clicked fails quietly.
+ * A move off either end of the list is not an error, and neither is a
+ * Journey another Member deleted a moment earlier: nothing changes and the
+ * call answers ok, so a control that was already stale when clicked fails
+ * quietly.
  */
 export async function moveJourney(
-  projectId: string,
-  journeyId: string,
+  existing: MemberJourney,
   direction: MoveDirection,
-  userId: string,
-): Promise<boolean> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return false;
-
+): Promise<{ ok: true }> {
+  const projectId = existing.projectId;
   await db.transaction(async (tx) => {
     await lockProject(tx, projectId);
 
@@ -449,21 +408,16 @@ export async function moveJourney(
     }
   });
 
-  return true;
+  return { ok: true };
 }
 
 /**
- * Hard-deletes a Journey. Returns false when the Author is not a Member of
- * its Project, which callers answer with the same 404 as an unknown id.
+ * Hard-deletes a Journey. A Journey another Member deleted a moment earlier
+ * is gone either way, so that is not a failure.
  */
 export async function deleteJourney(
-  projectId: string,
-  journeyId: string,
-  userId: string,
-): Promise<boolean> {
-  const existing = await getJourneyForMember(projectId, journeyId, userId);
-  if (!existing) return false;
-
+  existing: MemberJourney,
+): Promise<{ ok: true }> {
   await db.delete(journey).where(eq(journey.id, existing.id));
-  return true;
+  return { ok: true };
 }

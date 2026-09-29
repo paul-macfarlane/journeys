@@ -25,8 +25,8 @@ const FEATURES = [
   },
   {
     slug: "prompt",
-    title: "Prompts with an AI-decided choice",
-    text: "A step can ask an open question. An AI reads the participant's answer and picks the choice that fits it.",
+    title: "Prompts, read by the members",
+    text: "A step can ask an open question before its choices. Every answer is kept with the run, for the project's members to read.",
   },
   {
     slug: "themes",

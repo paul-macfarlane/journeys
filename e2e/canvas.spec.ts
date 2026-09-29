@@ -53,7 +53,7 @@ import {
   startJourney,
 } from "./setup/editor";
 import { evidencePath } from "./setup/evidence";
-import { cleanup, closePools } from "./setup/session";
+import { cleanup, closePools, darkContextFor } from "./setup/session";
 
 /**
  * Seam B for ticket 09: the Draft as a map on the Journey page — every Step a
@@ -233,7 +233,7 @@ async function addStepFromCanvas(page: Page, title: string): Promise<void> {
     .click();
 
   // The new Step is what the panel opens on, with its title field focused.
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toHaveValue("");
   await expect(page.getByLabel("Step title")).toBeFocused();
   await expect(canvasNodes(page)).toHaveCount(before + 1);
 
@@ -632,7 +632,7 @@ async function dropChoiceOnEmptyMap(
   await dragTo(page, connectHandle(page, fromTitle), nowhere);
 
   const title = page.getByLabel("Step title");
-  await expect(title).toHaveValue("Untitled step");
+  await expect(title).toHaveValue("");
   await expect(title).toBeFocused();
 }
 
@@ -768,7 +768,7 @@ for (const direction of DIRECTIONS) {
     // A Step, and the Choice that reaches it, in one motion.
     await expect(canvasNodes(page)).toHaveCount(2);
     await expect(canvasEdges(page)).toHaveCount(1);
-    await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+    await expect(page.getByLabel("Step title")).toHaveValue("");
     await expect(page.getByLabel("Step title")).toBeFocused();
 
     // And the map went to where it put it.
@@ -956,7 +956,7 @@ test("canvas-keyboard-navigation", async ({ page }) => {
   await firstChild
     .getByRole("button", { name: "Add next step", exact: true })
     .click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toHaveValue("");
   await renameStep(page, "Waved through");
 
   // The Step just made was zoomed to, at the zoom a lone Start was fitted
@@ -967,7 +967,7 @@ test("canvas-keyboard-navigation", async ({ page }) => {
   await secondChild
     .getByRole("button", { name: "Add next step", exact: true })
     .click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toHaveValue("");
   await renameStep(page, "Turned back");
   await expectSaved(page);
 
@@ -1912,7 +1912,7 @@ test.describe("the seeded map", () => {
       .getByRole("button", { name: "Add next step", exact: true })
       .click();
 
-    await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+    await expect(page.getByLabel("Step title")).toHaveValue("");
     await expect(page.getByLabel("Step title")).toBeFocused();
     await expect(canvasNodes(page)).toHaveCount(stepCount + 1);
     await expectBoxOnMap(page, "Untitled step");
@@ -2462,6 +2462,181 @@ test("canvas-arrow-select-and-delete", async ({ page }) => {
   );
 
   await expectSaved(page);
+});
+
+/**
+ * Where the keyboard is, said in the words the map uses: the name of the
+ * element holding it, what the map calls that element, and whether it is
+ * a box, a Choice's arrow, or nothing at all (`body`).
+ */
+function focusStop(page: Page) {
+  return page.evaluate(() => {
+    const active = window.document.activeElement;
+    return {
+      label: active?.getAttribute("aria-label") ?? "",
+      roleDescription: active?.getAttribute("aria-roledescription") ?? null,
+      onArrow: active?.closest('[aria-roledescription="choice"]') != null,
+      onBody: active === window.document.body,
+    };
+  });
+}
+
+/** What a focused arrow's line is drawn with, and the ring token beside it. */
+function arrowStroke(arrow: Locator) {
+  return arrow.evaluate((group) => {
+    const line = group.querySelector(".react-flow__edge-path");
+    const drawn = line === null ? null : getComputedStyle(line);
+    // The token resolved as a colour, the way the browser serializes the
+    // line's own: a probe beside the map, painted with it.
+    const probe = window.document.createElement("span");
+    probe.style.color = "var(--ring)";
+    (group.closest(".react-flow") ?? window.document.body).append(probe);
+    const ring = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      stroke: drawn?.stroke ?? "",
+      width: drawn?.strokeWidth ?? "",
+      ring,
+    };
+  });
+}
+
+test("canvas-arrow-focus", async ({ page, browser }) => {
+  const { projectId, journeyId } = await startJourney(page, mintedAuthorIds);
+  const journeyPath = `/projects/${projectId}/journeys/${journeyId}`;
+  const seeded = publishableDocument();
+  await seedDraft(page, journeyId, seeded);
+  await expect(canvasNodes(page)).toHaveCount(3);
+  await expect(canvasEdges(page)).toHaveCount(2);
+  await settledTransform(page);
+
+  // Tabbing from the row above the map through the map reaches every Step
+  // box, each once, and never a Choice's arrow: the arrows are reached from
+  // the Step panel's Choices instead (ticket 88).
+  await canvas(page)
+    .getByRole("button", { name: "Add step", exact: true })
+    .focus();
+  const stops = [];
+  for (let press = 0; press < 12; press += 1) {
+    await page.keyboard.press("Tab");
+    stops.push(await focusStop(page));
+  }
+  expect(stops.filter((stop) => stop.onArrow)).toEqual([]);
+  expect(
+    stops
+      .filter((stop) => stop.roleDescription === "step")
+      .map((stop) => stop.label)
+      .sort(),
+  ).toEqual(
+    Object.values(seeded.steps)
+      .map((step) => step.title)
+      .sort(),
+  );
+
+  // Another Step opened from the keyboard, so the Enter below has somewhere
+  // to move the panel from.
+  await canvasNode(page, "Waved through").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Step title")).toHaveValue("Waved through");
+
+  // An arrow focused by script — a click, or assistive technology — shows
+  // where the keyboard is: its line is drawn heavier, in the ring colour.
+  const arrow = canvasEdge(page, "choice-wait");
+  const resting = await arrowStroke(arrow);
+  await arrow.focus();
+  await expect(arrow).toBeFocused();
+  await expect(arrow.locator(".react-flow__edge-path")).toHaveCSS(
+    "stroke-width",
+    "4px",
+  );
+  const light = await arrowStroke(arrow);
+  expect(light.stroke).toBe(light.ring);
+  expect(light.stroke).not.toBe(resting.stroke);
+
+  await canvas(page).screenshot({
+    path: evidencePath("canvas-arrow-focus", "arrow-focused.png"),
+  });
+  await expect(arrow).toBeFocused();
+
+  // Enter on the arrow takes its Choice in hand, the way a click does, and
+  // hands the keyboard to that Choice's label in the panel — never to the
+  // page behind the map.
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  const label = markedChoiceRow(page).getByLabel("Choice label");
+  await expect(label).toHaveValue("Wait your turn");
+  await expect(label).toBeFocused();
+  expect((await focusStop(page)).onBody).toBe(false);
+  await expect(arrow).toHaveAttribute("data-emphasis", "selected");
+
+  // Space does the same as Enter.
+  const leave = canvasEdge(page, "choice-leave");
+  await leave.focus();
+  await expect(leave).toBeFocused();
+  await page.keyboard.press("Space");
+  const leaveLabel = markedChoiceRow(page).getByLabel("Choice label");
+  await expect(leaveLabel).toHaveValue("Walk away");
+  await expect(leaveLabel).toBeFocused();
+  await expect(leave).toHaveAttribute("data-emphasis", "selected");
+
+  // The same indicator in the dark scheme, in its own ring colour.
+  const dark = await darkContextFor(browser, page);
+  try {
+    await dark.page.goto(journeyPath);
+    await expect(dark.page.locator("html")).toHaveClass(/\bdark\b/);
+    await expect(canvasEdges(dark.page)).toHaveCount(2);
+    await settledTransform(dark.page);
+
+    // A key pressed first, as an Author reaching the map by keyboard would.
+    await canvas(dark.page)
+      .getByRole("button", { name: "Add step", exact: true })
+      .focus();
+    await dark.page.keyboard.press("Tab");
+
+    const darkArrow = canvasEdge(dark.page, "choice-wait");
+    await darkArrow.focus();
+    await expect(darkArrow).toBeFocused();
+    await expect(darkArrow.locator(".react-flow__edge-path")).toHaveCSS(
+      "stroke-width",
+      "4px",
+    );
+    const darkStroke = await arrowStroke(darkArrow);
+    expect(darkStroke.stroke).toBe(darkStroke.ring);
+    expect(darkStroke.ring).not.toBe(light.ring);
+  } finally {
+    await dark.close();
+  }
+
+  // At phone width the Step panel is a bottom sheet over the map (ticket
+  // 53): Enter on a focused arrow opens it on the Choice's Step, with the
+  // keyboard on that Choice's label inside the sheet.
+  const phoneContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+    viewport: { width: 375, height: 812 },
+  });
+  try {
+    await phoneContext.addCookies(await page.context().cookies());
+    const phone = await phoneContext.newPage();
+    await phone.goto(journeyPath);
+    await expect(canvasEdges(phone)).toHaveCount(2);
+    await settledTransform(phone);
+
+    const phoneArrow = canvasEdge(phone, "choice-wait");
+    await phoneArrow.focus();
+    await expect(phoneArrow).toBeFocused();
+    await phone.keyboard.press("Enter");
+
+    const sheet = phone.locator('[role="dialog"][data-step-sheet]');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByLabel("Step title")).toHaveValue("Border post");
+    const sheetLabel = sheet
+      .locator('li[aria-current="true"]')
+      .getByLabel("Choice label");
+    await expect(sheetLabel).toHaveValue("Wait your turn");
+    await expect(sheetLabel).toBeFocused();
+  } finally {
+    await phoneContext.close();
+  }
 });
 
 test("canvas-delete-key-step", async ({ page }, testInfo) => {
@@ -3071,9 +3246,7 @@ test.describe("authoring from the map", () => {
     // What the Choice is called is the next thing to write, not something
     // the drag decided.
     expect(start.choices[0].label).toBe("");
-    expect(stored.steps[start.choices[0].targetStepId].title).toBe(
-      "Untitled step",
-    );
+    expect(stored.steps[start.choices[0].targetStepId].title).toBe("");
 
     await page.screenshot({
       path: evidencePath(
@@ -3550,7 +3723,7 @@ test.describe("undo and redo", () => {
       .click();
 
     const title = page.getByLabel("Step title");
-    await expect(title).toHaveValue("Untitled step");
+    await expect(title).toHaveValue("");
     await expect(title).toBeFocused();
 
     await retypeField(title, "Clinic tent");
@@ -3559,7 +3732,7 @@ test.describe("undo and redo", () => {
     // One press gives the field back as it stood before the typing, rather
     // than a letter at a time, and leaves the Author on the same Step.
     await page.keyboard.press("ControlOrMeta+z");
-    await expect(title).toHaveValue("Untitled step");
+    await expect(title).toHaveValue("");
 
     await expectSaved(page);
     const undone = await readDraft(journeyId);
@@ -3623,13 +3796,13 @@ test.describe("undo and redo", () => {
 
     // The press took back the document's last edit — the naming of the other
     // Step — so the panel went to the Step that edit was on.
-    await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+    await expect(page.getByLabel("Step title")).toHaveValue("");
 
     // And an edit of the open Step's own is taken back without the panel
     // moving anywhere at all.
     await retypeField(page.getByLabel("Step title"), "Clinic tent");
     await page.keyboard.press("ControlOrMeta+z");
-    await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+    await expect(page.getByLabel("Step title")).toHaveValue("");
     await expect(canvasNode(page, "Untitled step")).toBeVisible();
 
     await expectSaved(page);
@@ -3904,8 +4077,8 @@ test("canvas-dark-controls", async ({ page }) => {
   await page.getByRole("button", { name: "Account: Test Author" }).click();
   await page
     .getByRole("menu")
-    .getByRole("radiogroup", { name: "Theme" })
-    .getByRole("radio", { name: "Dark" })
+    .getByRole("group", { name: "Theme" })
+    .getByRole("menuitemradio", { name: "Dark" })
     .click();
   await expect(page.locator("html")).toHaveClass(/\bdark\b/);
   await page.keyboard.press("Escape");
@@ -4047,5 +4220,27 @@ test("canvas-stacked-panel-scroll", async ({ page }) => {
       "canvas-stacked-panel-scroll",
       "canvas-stacked-panel-scroll.png",
     ),
+  });
+});
+
+test("canvas-fit-view-capped", async ({ page }) => {
+  // A new Journey's map is its Start alone: the smallest map there is, and
+  // the one a fit without a ceiling draws at poster size.
+  await startJourney(page, mintedAuthorIds);
+  await expect(canvasNodes(page)).toHaveCount(1);
+
+  // The first fit stops at the cap rather than filling the frame with the box.
+  expect(await zoomOf(page)).toBeLessThanOrEqual(1.25);
+
+  // As does every other whole-map fit: the map turned a quarter, and the
+  // map given the whole width.
+  await setDirection(page, "Left to right");
+  expect(await zoomOf(page)).toBeLessThanOrEqual(1.25);
+  await hidePanel(page);
+  expect(await zoomOf(page)).toBeLessThanOrEqual(1.25);
+
+  await page.screenshot({
+    path: evidencePath("canvas-fit-view-capped", "canvas-fit-view-capped.png"),
+    fullPage: true,
   });
 });

@@ -8,7 +8,9 @@ import {
 import { DeleteStepDialog } from "@/components/journeys/delete-step-dialog";
 import {
   counted,
+  type AddedStep,
   type ApplyEdit,
+  type ChoiceFocus,
   type SelectStep,
 } from "@/components/journeys/editor-shared";
 import { RichTextEditor } from "@/components/journeys/rich-text-editor";
@@ -31,8 +33,7 @@ import {
   setStepPrompt,
   updateStep,
 } from "@/lib/graph/edit";
-import { isDeciding } from "@/lib/graph/prompt";
-import type { PublishProblem } from "@/lib/graph/validate";
+import type { ProblemIndex } from "@/lib/graph/validate";
 
 /**
  * One Step, opened for editing: its title, its rich text, its Prompt, its
@@ -252,13 +253,7 @@ function PromptField({
 }) {
   const labelFieldId = useId();
   const requiredFieldId = useId();
-  const decidesFieldId = useId();
-  const decidesReasonId = useId();
   const required = step.prompt?.required ?? false;
-  const decides = step.prompt?.decides ?? false;
-  // Deciding needs a Choice to land on, and a choice between them: one
-  // Choice is already where a Response leads without any judging.
-  const canDecide = step.choices.length >= 2;
 
   return (
     <div className="flex flex-col gap-2">
@@ -275,7 +270,6 @@ function PromptField({
             setStepPrompt(document, step.id, {
               label: event.target.value,
               required,
-              decides,
             }),
             { field: `prompt-label:${step.id}` },
           )
@@ -291,14 +285,12 @@ function PromptField({
             id={requiredFieldId}
             type="checkbox"
             className="size-4 accent-primary"
-            checked={decides || required}
-            disabled={isDeciding(step)}
+            checked={required}
             onChange={(event) =>
               onChange(
                 setStepPrompt(document, step.id, {
                   label: step.prompt?.label ?? "",
                   required: event.target.checked,
-                  decides,
                 }),
               )
             }
@@ -306,54 +298,6 @@ function PromptField({
           <Label htmlFor={requiredFieldId} className="font-normal">
             Required — participants must answer before choosing
           </Label>
-        </div>
-      ) : null}
-      {/*
-       * Always offered once there is a Prompt (ticket 49), so an Author who
-       * writes the question before the Choices still sees what a Prompt can
-       * do: off and unavailable until there are two Choices to pick between,
-       * with the reason beside it. Turned on and then left with too few (a
-       * Choice removed after the fact) it stays enabled, so it can be turned
-       * off, and the same reason says it is not deciding meanwhile.
-       */}
-      {step.prompt !== null ? (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <input
-              id={decidesFieldId}
-              type="checkbox"
-              className="peer size-4 accent-primary"
-              checked={decides}
-              disabled={!canDecide && !decides}
-              aria-describedby={canDecide ? undefined : decidesReasonId}
-              onChange={(event) =>
-                onChange(
-                  setStepPrompt(document, step.id, {
-                    label: step.prompt?.label ?? "",
-                    required,
-                    decides: event.target.checked,
-                  }),
-                )
-              }
-            />
-            <Label htmlFor={decidesFieldId} className="font-normal">
-              AI decides the next step from the response
-            </Label>
-          </div>
-          {canDecide ? null : (
-            <p id={decidesReasonId} className="text-muted-foreground text-xs">
-              Needs two or more choices.
-            </p>
-          )}
-          <p className="text-muted-foreground text-xs">
-            An AI judge reads the response and picks the choice it fits.
-            Participants choose for themselves when it&apos;s unsure or
-            unavailable.
-          </p>
-          <p className="text-muted-foreground text-xs">
-            Participants answer and press Continue; the choices appear only when
-            the judge is unsure or unavailable.
-          </p>
         </div>
       ) : null}
     </div>
@@ -365,42 +309,69 @@ export function StepPanel({
   step,
   order,
   problems,
-  choiceProblems,
   revision,
   focusTitle,
   markedChoiceId,
+  focusChoice = null,
+  onChoiceFocused,
   onChange,
   onSelectStep,
+  added,
+  onChoiceAdded,
   onContentChange,
   onContentRefused,
   onDeleteStep,
   onDuplicateStep,
   onHidePanel,
+  hideButton = true,
 }: {
   document: GraphDocument;
   step: Step;
   /** Step ids in the order the map lays the boxes out, for the Choice rows. */
   order: string[];
-  /** The live publish problems addressed to this Step. */
-  problems: PublishProblem[];
-  /** This Step's own Choices' live publish problems, keyed by Choice id. */
-  choiceProblems: Map<string, PublishProblem[]>;
+  /** The live publish problems, indexed by Step and by Choice. */
+  problems: ProblemIndex;
   /** Bumped each time the Draft was replaced from outside the editor. */
   revision: number;
   /** True when this Step was just created from a Choice and wants a name. */
   focusTitle: boolean;
   /** A Choice on this Step that is the one in hand on the map, if any. */
   markedChoiceId: string | null;
+  /** The Choice whose label field the keyboard is asked onto, if any. */
+  focusChoice?: ChoiceFocus | null;
+  /** That Choice's label field has the keyboard: the ask is answered. */
+  onChoiceFocused?: () => void;
   onChange: ApplyEdit;
   onSelectStep: SelectStep;
+  /** The Step the last "Add choice" here made, while it is still news. */
+  added: AddedStep | null;
+  /** An "Add choice" landed: the New step it made, or `null` for none. */
+  onChoiceAdded: (stepId: string | null) => void;
   onContentChange: (stepId: string, content: Content) => void;
   onContentRefused: (error: string) => void;
   onDeleteStep: (stepId: string) => void;
   onDuplicateStep: (stepId: string) => void;
   /** The panel put away, leaving the map the whole width. */
   onHidePanel: () => void;
+  /**
+   * Whether the panel carries its own "Hide panel". Not in a phone's sheet,
+   * whose Close is the way it goes away.
+   */
+  hideButton?: boolean;
 }) {
   const isStart = document.startStepId === step.id;
+  const stepProblems = problems.problemsForStep(step.id);
+  // Keyed by Choice id, the way `ChoiceList` reads it.
+  const choiceProblems = useMemo(
+    () =>
+      new Map(
+        step.choices.map((choiceEntry) => [
+          choiceEntry.id,
+          problems.problemsForChoice(step.id, choiceEntry.id),
+        ]),
+      ),
+    [problems, step],
+  );
 
   return (
     <section
@@ -409,11 +380,13 @@ export function StepPanel({
     >
       {/* Above the title field and out of the way at the panel's edge: a
           thing done to the panel rather than to the Step it is showing. */}
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" onClick={onHidePanel}>
-          Hide panel
-        </Button>
-      </div>
+      {hideButton ? (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onHidePanel}>
+            Hide panel
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="step-title">Step title</Label>
@@ -425,6 +398,9 @@ export function StepPanel({
           autoComplete="off"
           autoFocus={focusTitle}
           maxLength={200}
+          // A new Step's title is empty; this is what it is called until
+          // the Author names it, on the map and everywhere else (`stepName`).
+          placeholder="Untitled step"
           value={step.title}
           // Named as the field it is, so a title typed in one go comes back
           // in one undo rather than a letter at a time.
@@ -437,18 +413,21 @@ export function StepPanel({
         />
       </div>
 
-      {problems.length > 0 ? (
+      {stepProblems.length > 0 ? (
         <section
           aria-label="Step problems"
           className="flex flex-col gap-2 rounded-xl px-4 py-3 ring-1 ring-destructive/40"
         >
-          <h4 className="text-sm font-medium">Problems</h4>
+          {/* One level under the Editor tab's "Steps" (`h2`, in
+              `draft-editor.tsx`), as the panel's other headings are (ticket
+              78, axe `heading-order`). */}
+          <h3 className="text-sm font-medium">Problems</h3>
           <ul
             role="list"
             aria-label="Step problems list"
             className="flex list-disc flex-col gap-1 pl-5 text-sm text-destructive"
           >
-            {problems.map((problem) => (
+            {stepProblems.map((problem) => (
               <li key={`${problem.code}-${problem.choiceId ?? ""}`}>
                 {problem.message}
               </li>
@@ -463,6 +442,7 @@ export function StepPanel({
         resetKey={`${step.id}:${revision}`}
         content={step.content}
         history={false}
+        placeholder="Write what the participant reads…"
         onChange={(content) => onContentChange(step.id, content)}
         onRefused={onContentRefused}
       />
@@ -480,8 +460,12 @@ export function StepPanel({
         order={order}
         choiceProblems={choiceProblems}
         markedChoiceId={markedChoiceId}
+        focusChoice={focusChoice}
+        onChoiceFocused={onChoiceFocused}
         onChange={onChange}
         onSelectStep={onSelectStep}
+        added={added}
+        onChoiceAdded={onChoiceAdded}
       />
 
       {/* Only an Ending carries an Outcome; a Step a participant can walk on

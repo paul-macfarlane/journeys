@@ -110,3 +110,88 @@ describe("useAutosavedForm", () => {
     expect(surface().status).toBe("unsaved");
   });
 });
+
+/**
+ * A field typed into in the moment the server's values are adopted — after
+ * the adopt effect's reset, before the re-render that follows it — is still
+ * the form's. react-hook-form's `reset` forgets every registered field unless
+ * told to keep them (`keepFieldsRef`), and until the re-render registers them
+ * again an input event is dropped, then the re-registration writes the stored
+ * value back over what was typed (author-settings on CI, 2026-09-27: the
+ * GitHub link typed while the LinkedIn save's refresh landed was wiped).
+ */
+function TypedSurface({
+  values,
+  typeOnAdopt,
+}: {
+  values: Fields;
+  typeOnAdopt: string | null;
+}) {
+  const autosaved = useAutosavedForm<Fields>({
+    schema,
+    values,
+    submit: async () => ({ ok: true, id: "u1" }),
+    onSaved: () => {},
+  });
+  // Declared after the hook, so in the commit that hands it new values this
+  // runs straight after the adopt effect, before any re-render.
+  useEffect(() => {
+    if (typeOnAdopt === null) return;
+    const input = document.getElementById("typed-website") as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )!.set!.call(input, typeOnAdopt);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }, [values, typeOnAdopt]);
+  useEffect(() => {
+    expose(autosaved);
+  });
+  return (
+    <input
+      id="typed-website"
+      {...autosaved.form.register("website", {
+        onChange: () => autosaved.change("website"),
+      })}
+    />
+  );
+}
+
+describe("useAutosavedForm, typing while the server's values are adopted", () => {
+  it("keeps what was typed in the moment the adopt effect reset the form", () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const typedRoot = createRoot(container);
+    try {
+      act(() => {
+        typedRoot.render(
+          <TypedSurface
+            values={{ name: "Ada", website: "" }}
+            typeOnAdopt={null}
+          />,
+        );
+      });
+
+      // Another save's refresh hands the form the server's values, and the
+      // Author's keystroke lands in the same moment.
+      act(() => {
+        typedRoot.render(
+          <TypedSurface
+            values={{ name: "Grace", website: "" }}
+            typeOnAdopt="https://example.com"
+          />,
+        );
+      });
+
+      const input = document.getElementById(
+        "typed-website",
+      ) as HTMLInputElement;
+      expect(input.value).toBe("https://example.com");
+      expect(surface().form.getValues("website")).toBe("https://example.com");
+      expect(surface().status).toBe("unsaved");
+    } finally {
+      act(() => typedRoot.unmount());
+      container.remove();
+    }
+  });
+});

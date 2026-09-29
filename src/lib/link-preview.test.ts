@@ -130,6 +130,9 @@ describe("journeyLinkMetadata", () => {
         title: "Border Crossing",
         description: "Goal: cross the border.",
       },
+      // Link-only (ticket 42): reached only by the link an Author hands
+      // out, never crawled.
+      robots: { index: false },
     });
   });
 
@@ -165,6 +168,7 @@ describe("journeyLinkMetadata", () => {
         title: APP_NAME,
         description: APP_TAGLINE,
       },
+      robots: { index: false },
     };
 
     expect(journeyLinkMetadata({ kind: "unavailable" }, "abc")).toEqual(
@@ -212,17 +216,20 @@ describe("projectLinkMetadata", () => {
         title: "Refugee Health",
         description: "About these journeys Three cases.",
       },
+      robots: { index: false },
     });
   });
 
-  it("gives a Project with a blank description none", () => {
+  it("falls back to the app's own tagline for a Project with a blank description", () => {
+    // 68 finding 1: a link preview never goes blank.
     const metadata = projectLinkMetadata(
       { title: "Refugee Health", description: { type: "doc", content: [] } },
       "p1",
     );
 
-    expect(metadata.description).toBeUndefined();
-    expect(metadata.openGraph?.description).toBeUndefined();
+    expect(metadata.description).toBe(APP_TAGLINE);
+    expect(metadata.openGraph?.description).toBe(APP_TAGLINE);
+    expect(metadata.twitter?.description).toBe(APP_TAGLINE);
   });
 
   it("answers an unknown Project with the app's own metadata", () => {
@@ -257,6 +264,7 @@ describe("authorLinkMetadata", () => {
         title: "Ada Lovelace",
         description: "I write branching journeys. About care.",
       },
+      robots: { index: false },
     });
   });
 

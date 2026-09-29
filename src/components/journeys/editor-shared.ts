@@ -40,7 +40,11 @@ export type ApplyEdit = (next: GraphDocument, edit?: EditMeta) => void;
  * names it in the same breath. `markChoiceId` names the Choice whose row is
  * marked as the one in hand — an arrow clicked, or a Choice just drawn — and
  * moves no focus at all: the Author is working on the map, and the panel says
- * which Choice that is rather than reaching for the keyboard.
+ * which Choice that is rather than reaching for the keyboard. `focusChoice`
+ * is the exception, for an arrow taken in hand from the keyboard (Enter or
+ * Space on a focused arrow, ticket 88): that Author is already at the
+ * keyboard, so it moves onto the marked row's label field instead of being
+ * dropped on the page as the arrow is redrawn.
  *
  * The other two are about the map rather than the panel, and the view is the
  * Author's: `zoom` makes the Zoom-to-step move on the opened Step — for a
@@ -56,6 +60,7 @@ export type ApplyEdit = (next: GraphDocument, edit?: EditMeta) => void;
 export type SelectStepOptions = {
   focusTitle?: boolean;
   markChoiceId?: string;
+  focusChoice?: boolean;
   zoom?: boolean;
   keepView?: boolean;
   reveal?: boolean;
@@ -71,6 +76,38 @@ export type SelectStepOptions = {
 };
 
 export type SelectStep = (stepId: string, options?: SelectStepOptions) => void;
+
+/**
+ * An ask, from outside the panel, for the keyboard to go to one Choice's
+ * label field: a new object for every ask, so asking twice for the same
+ * Choice is still two asks.
+ */
+export type ChoiceFocus = { choiceId: string };
+
+/** One Choice, named the way the document names it. */
+export type CanvasArrow = { stepId: string; choiceId: string };
+
+/**
+ * What the map asks of the editor that is not an edit to the document: a
+ * Step opened (a box or an arrow clicked), the arrow in hand taken hold of or
+ * let go of, the panel put away or brought back, and the Draft's one undo and
+ * redo. Edits travel as `EditCommand`s (`@/lib/graph/edit`) instead.
+ */
+export type SelectCommand =
+  | { kind: "step"; stepId: string; options?: SelectStepOptions }
+  | { kind: "arrow"; arrow: CanvasArrow | null }
+  | { kind: "show-panel" }
+  | { kind: "hide-panel" }
+  | { kind: "undo" }
+  | { kind: "redo" };
+
+/**
+ * The Step the panel's last "Add choice" made with "New step", offered for
+ * editing under the Choices until the Author moves on. `announcement` counts
+ * the adds, so a second add that reads the same ("Added "Untitled step"")
+ * is still a change the live region announces.
+ */
+export type AddedStep = { stepId: string; announcement: number };
 
 /** "1 step", "44 steps": the count and the noun that agrees with it. */
 export function counted(count: number, noun: string): string {
@@ -101,10 +138,22 @@ export const SELECT_CLASS =
  *
  * `window.document`: the Draft is what `document` names in the modules that
  * ask this.
+ *
+ * The Step panel as a bottom sheet on a phone (ticket 53) is a dialog too,
+ * marked `data-step-sheet`, and it counts like any other unless the asker
+ * says `ignoreStepSheet`: undo and redo do, because an edit made in the
+ * sheet is one to undo in place; "Find step" and the map's delete keys do
+ * not, because what they act on is behind the sheet. A dialog opened over
+ * the sheet — a delete confirmation — still counts for everyone.
  */
-export function dialogIsOpen(): boolean {
-  return (
-    window.document.querySelector('[role="dialog"], [role="alertdialog"]') !==
-    null
+export function dialogIsOpen({
+  ignoreStepSheet = false,
+}: { ignoreStepSheet?: boolean } = {}): boolean {
+  const open = window.document.querySelectorAll(
+    '[role="dialog"], [role="alertdialog"]',
+  );
+  return Array.from(open).some(
+    (dialog) =>
+      !ignoreStepSheet || dialog.closest("[data-step-sheet]") === null,
   );
 }

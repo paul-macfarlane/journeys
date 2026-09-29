@@ -142,11 +142,14 @@ function OutcomeChart({
   return (
     <section aria-label="Runs by outcome" className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h3 className="font-medium">Runs by outcome</h3>
+        {/* The Analytics tab's own top heading — the tab has no other,
+            unlike the Editor tab's "Steps" (ticket 78, axe `heading-order`
+            skips from the page's `h1` otherwise). */}
+        <h2 className="font-medium">Runs by outcome</h2>
         <p className="text-muted-foreground text-sm">
           {starts === 0
             ? "No runs yet. Once participants walk this version, each outcome's share appears here."
-            : "Each run counts once: under the outcome of the ending it reached, under the ending's own title when it has no outcome, or as abandoned."}
+            : "Each run counts once: under the outcome of the latest ending it reached, under that ending's own title when it has no outcome, or as abandoned."}
         </p>
       </div>
 

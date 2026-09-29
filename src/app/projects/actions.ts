@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  failureResult,
   firstIssue,
-  staleResult,
   type ActionResult,
 } from "@/lib/action-result";
-import { isStale } from "@/db/guarded-write";
+import { projectForMember } from "@/db/access";
 import { addMemberByEmail, removeMember } from "@/db/members";
 import {
   createProject,
@@ -16,7 +16,6 @@ import {
   renameProject,
   setProjectTheme,
 } from "@/db/projects";
-import { sanitizeContent } from "@/lib/graph/content";
 import { requireSession } from "@/lib/session";
 import { addMemberSchema } from "@/lib/validation/member";
 import {
@@ -24,20 +23,30 @@ import {
   projectThemeSchema,
   renameProjectSchema,
 } from "@/lib/validation/project";
+import { notFound } from "@/lib/write-result";
 
 /**
  * Server actions behind the Project dialogs.
  *
  * Each one is a public endpoint, so each re-reads the session and re-parses
- * its input rather than trusting the form that called it. They return an
- * `ActionResult` the dialog can render inline.
+ * its input rather than trusting the form that called it, and resolves the
+ * Project through the membership seam (`projectForMember`) before the data
+ * layer is asked anything. They return an `ActionResult` the dialog can
+ * render inline.
  */
 
-export type ProjectActionResult = ActionResult;
+/** The Project list and the Project page, after a change both show. */
+function revalidateProjectPaths() {
+  revalidatePath("/projects");
+  revalidatePath("/projects/[projectId]", "page");
+}
+
+/** A non-Member, or no such Project: the same answer as the page's 404. */
+const noProject = () => failureResult(notFound(), { missing: "project" });
 
 export async function createProjectAction(
   input: unknown,
-): Promise<ProjectActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = createProjectSchema.safeParse(input);
@@ -59,7 +68,7 @@ export async function renameProjectAction(
   projectId: string,
   input: unknown,
   baseline: unknown,
-): Promise<ProjectActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = renameProjectSchema.safeParse(input);
@@ -71,57 +80,39 @@ export async function renameProjectAction(
     return { ok: false, error: firstIssue(previous.error.issues) };
   }
 
-  const renamed = await renameProject(
-    projectId,
-    parsed.data,
-    previous.data,
-    session.user.id,
-  );
-  // Not a Member (or no such Project): same answer as the page's 404.
-  if (!renamed) return { ok: false, error: "That project no longer exists" };
-  if (isStale(renamed)) return staleResult("project");
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) return noProject();
 
-  revalidatePath("/projects");
-  revalidatePath("/projects/[projectId]", "page");
-  return { ok: true, id: renamed.id };
+  const renamed = await renameProject(project, parsed.data, previous.data);
+  if (!renamed.ok) return failureResult(renamed, { missing: "project" });
+
+  revalidateProjectPaths();
+  return { ok: true, id: renamed.project.id };
 }
 
 /**
  * Replaces the Project's rich-text description. The editor already cleaned
- * what it sends, but the action is a public endpoint, so the content goes
- * through `sanitizeContent` again here — the same closed set a Step's text
- * is held to — before anything reaches storage. The baseline, the
- * description the Member edited from, is cleaned the same way and guards
- * the write (ticket 73). The public Project page is rendered on every
- * request, so it needs no revalidation.
+ * what it sends, but the action is a public endpoint, so the data layer
+ * cleans the content again (`editProjectDescription`, the one path that
+ * accepts a description) — and the baseline, the description the Member
+ * edited from, which guards the write (ticket 73). The public Project page
+ * is rendered on every request, so it needs no revalidation.
  */
 export async function editProjectDescriptionAction(
   projectId: string,
   input: unknown,
   baseline: unknown,
-): Promise<ProjectActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
-  const sanitized = sanitizeContent(input);
-  if (!sanitized.ok) {
-    return { ok: false, error: sanitized.error };
-  }
-  const previous = sanitizeContent(baseline);
-  if (!previous.ok) {
-    return { ok: false, error: previous.error };
-  }
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) return noProject();
 
-  const edited = await editProjectDescription(
-    projectId,
-    sanitized.content,
-    previous.content,
-    session.user.id,
-  );
-  if (!edited) return { ok: false, error: "That project no longer exists" };
-  if (isStale(edited)) return staleResult("project");
+  const edited = await editProjectDescription(project, input, baseline);
+  if (!edited.ok) return failureResult(edited, { missing: "project" });
 
   revalidatePath("/projects/[projectId]", "page");
-  return { ok: true, id: edited.id };
+  return { ok: true, id: edited.project.id };
 }
 
 /**
@@ -134,7 +125,7 @@ export async function setProjectThemeAction(
   projectId: string,
   input: unknown,
   baseline: unknown,
-): Promise<ProjectActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = projectThemeSchema.safeParse(input);
@@ -146,42 +137,40 @@ export async function setProjectThemeAction(
     return { ok: false, error: firstIssue(previous.error.issues) };
   }
 
-  const updated = await setProjectTheme(
-    projectId,
-    parsed.data,
-    previous.data,
-    session.user.id,
-  );
-  if (!updated) return { ok: false, error: "That project no longer exists" };
-  if (isStale(updated)) return staleResult("project");
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) return noProject();
+
+  const updated = await setProjectTheme(project, parsed.data, previous.data);
+  if (!updated.ok) return failureResult(updated, { missing: "project" });
 
   revalidatePath("/projects/[projectId]", "page");
-  return { ok: true, id: updated.id };
+  return { ok: true, id: updated.project.id };
 }
 
 export async function deleteProjectAction(
   projectId: string,
-): Promise<ProjectActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
-  const deleted = await deleteProject(projectId, session.user.id);
-  if (!deleted) return { ok: false, error: "That project no longer exists" };
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) return noProject();
 
-  revalidatePath("/projects");
-  revalidatePath("/projects/[projectId]", "page");
+  await deleteProject(project);
+
+  revalidateProjectPaths();
   return { ok: true, id: projectId };
 }
 
 const addMemberErrors = {
-  "no-project": "That project no longer exists",
-  "unknown-email": "No account has that email — they need to sign up first",
+  "unknown-email":
+    "No account has that email — they need to sign in once first.",
   "already-member": "Already a member of this project",
 } as const;
 
 export async function addMemberAction(
   projectId: string,
   input: unknown,
-): Promise<ProjectActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = addMemberSchema.safeParse(input);
@@ -189,22 +178,19 @@ export async function addMemberAction(
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
-  const result = await addMemberByEmail(
-    projectId,
-    parsed.data.email,
-    session.user.id,
-  );
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) return noProject();
+
+  const result = await addMemberByEmail(project, parsed.data.email);
   if (!result.ok) {
     return { ok: false, error: addMemberErrors[result.reason] };
   }
 
-  revalidatePath("/projects");
-  revalidatePath("/projects/[projectId]", "page");
+  revalidateProjectPaths();
   return { ok: true, id: result.userId };
 }
 
 const removeMemberErrors = {
-  "no-project": "That project no longer exists",
   "not-a-member": "That member has already been removed",
   "last-member": "A project must keep at least one member",
 } as const;
@@ -212,15 +198,19 @@ const removeMemberErrors = {
 export async function removeMemberAction(
   projectId: string,
   userId: string,
-): Promise<ProjectActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
-  const result = await removeMember(projectId, userId, session.user.id);
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) return noProject();
+
+  const result = await removeMember(project, userId);
   if (!result.ok) {
-    return { ok: false, error: removeMemberErrors[result.reason] };
+    return result.reason === "not-found"
+      ? noProject()
+      : { ok: false, error: removeMemberErrors[result.reason] };
   }
 
-  revalidatePath("/projects");
-  revalidatePath("/projects/[projectId]", "page");
+  revalidateProjectPaths();
   return { ok: true, id: userId };
 }

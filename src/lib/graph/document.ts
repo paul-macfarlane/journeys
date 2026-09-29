@@ -32,21 +32,14 @@ export const choiceSchema = z.object({
 /**
  * An optional question a participant may answer before choosing. `type` is a
  * discriminator reserved for later kinds of Prompt; free text is the only
- * accepted value today.
- *
- * `decides` (ticket 43): the Response is judged by an AI reader against the
- * Step's Choices, and a confident judgment advances the Run along it instead
- * of showing Choice buttons. Defaults to `false` so every document stored
- * before ticket 43 parses unchanged. `setStepPrompt` forces `required: true`
- * whenever `decides` is true — a Response nothing can judge is not a Prompt
- * worth showing Choices around — so `readResponse` in `prompt.ts` treats a
- * deciding Prompt as required independent of the stored `required` flag.
+ * accepted value today. Not `.strict()`, so a document stored with the
+ * retired `decides` key (ticket 87) still parses — zod drops the unknown key
+ * on read.
  */
 export const promptSchema = z.object({
   type: z.literal("free_text"),
   label: z.string(),
   required: z.boolean(),
-  decides: z.boolean().default(false),
 });
 
 /** An Author-defined label that groups Endings for analysis. */
@@ -172,9 +165,12 @@ export function isEnding(step: Step): boolean {
   return step.choices.length === 0;
 }
 
-/** What an Author calls the Step, falling back to its id when untitled. */
+/**
+ * What an Author calls the Step: its title, or "Untitled step" while the
+ * title is blank (a new Step starts with an empty title and that placeholder).
+ */
 export function stepName(step: Step): string {
-  return step.title.trim().length > 0 ? step.title : step.id;
+  return step.title.trim().length > 0 ? step.title : "Untitled step";
 }
 
 /**

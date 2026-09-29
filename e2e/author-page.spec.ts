@@ -5,7 +5,11 @@ import type { Content } from "@/lib/graph/content";
 import { linkPreviewPalette } from "@/lib/link-preview";
 
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
-import { publishableDocument, publishDocument } from "./setup/documents";
+import {
+  publishableDocument,
+  publishDocument,
+  setProjectDescription,
+} from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 import {
@@ -84,10 +88,7 @@ test("author-page", async ({ page, context, browser }) => {
       },
     ],
   };
-  await queryE2eDatabase(
-    'UPDATE "project" SET description_content = $1::jsonb WHERE id = $2',
-    [JSON.stringify(description), projectA],
-  );
+  await setProjectDescription(projectA, description);
   await queryE2eDatabase(
     'UPDATE "user" SET bio = $1, links = $2::jsonb, image = $3 WHERE id = $4',
     [
@@ -120,9 +121,14 @@ test("author-page", async ({ page, context, browser }) => {
     expect(offCard.status).toBe(200);
     expect(offCard.contentType).toContain("image/png");
 
-    await participant.goto(`/p/${projectA}`);
+    // Project A has no live Journey yet either (ticket 42, decision 4): the
+    // same 404 an unknown id gets, so there is no byline to check here.
+    const projectABeforePublish = await participant.goto(`/p/${projectA}`);
+    expect(projectABeforePublish?.status()).toBe(404);
     await expect(
-      participant.getByRole("heading", { name: titleA, level: 1 }),
+      participant.getByRole("heading", {
+        name: "This project isn't available",
+      }),
     ).toBeVisible();
     await expect(byLine).toHaveCount(0);
     await expect(participant.locator('a[href*="/authors/"]')).toHaveCount(0);
@@ -131,11 +137,31 @@ test("author-page", async ({ page, context, browser }) => {
     await queryE2eDatabase('UPDATE "user" SET "public" = true WHERE id = $1', [
       author.id,
     ]);
+
+    // The signed-in Author's own Settings page names the control by the
+    // words it starts with, "Copy link" (ticket 78's WCAG 2.5.3 choice),
+    // then whose link it is — already "Copy link to your Author page", not
+    // "participant", so ticket 79 item 9 is already satisfied here.
+    await page.goto("/projects/settings");
+    await expect(
+      page.getByRole("button", { name: "Copy link to your Author page" }),
+    ).toBeVisible();
+
     const onPage = await participant.goto(`/authors/${author.id}`);
     expect(onPage?.status()).toBe(200);
 
     await expect(
       participant.getByRole("heading", { name, level: 1 }),
+    ).toBeVisible();
+    // The frame's header: the wordmark as the way home, and "Dark mode"
+    // beside it, on every screen with one.
+    await expect(
+      participant.getByRole("banner").getByRole("link", { name: "Journeys" }),
+    ).toHaveAttribute("href", "/");
+    await expect(
+      participant
+        .getByRole("banner")
+        .getByRole("button", { name: "Dark mode" }),
     ).toBeVisible();
     await expect(participant.locator("main img")).toBeVisible();
     await expect(
@@ -232,8 +258,12 @@ test("author-page", async ({ page, context, browser }) => {
       fullPage: true,
     });
 
-    // The line is about Members, not Journeys: B has none live and still
-    // names its public Authors.
+    // The line is about Members, not the Journey listed beside it: B's own
+    // Journey (given one only so this page is live at all, ticket 42,
+    // decision 4) still names its public Authors.
+    await page.goto(`/projects/${projectB}`);
+    const journeyIdB = await createJourney(page, projectB, `Clinic ${suffix}`);
+    await publishDocument(journeyIdB, publishableDocument());
     await participant.goto(`/p/${projectB}`);
     await expect(
       participant.getByRole("heading", { name: titleB, level: 1 }),

@@ -13,6 +13,8 @@ import {
 } from "./setup/authoring";
 import {
   publishableDocument,
+  publishDocument,
+  setProjectDescription,
   START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
@@ -75,6 +77,13 @@ test("public-project-page", async ({ page, context, browser }) => {
   await page.goto("/projects");
   const projectId = await createProject(page, projectTitle);
   await page.goto(`/projects/${projectId}`);
+
+  // No live Journey yet (ticket 42, decision 4): the public page would be
+  // a 404, so the Author's own page offers no link to it, only the hint.
+  await expect(
+    page.getByText("Publish a journey to share this project."),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Public page" })).toHaveCount(0);
 
   // The description, written the way an Author writes a Step: a heading,
   // a bold run, and a list — the shared allowed set — and saved when the
@@ -181,6 +190,19 @@ test("public-project-page", async ({ page, context, browser }) => {
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   await expect(page.getByText("Published", { exact: true })).toBeVisible();
 
+  // Now that the Project has a live Journey, the Author's own page offers
+  // the link instead of the hint.
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByRole("link", { name: "Public page" })).toHaveAttribute(
+    "href",
+    `/p/${projectId}`,
+  );
+  await expect(
+    page.getByText("Publish a journey to share this project."),
+  ).toHaveCount(0);
+  // Back to the Journey page: the Unpublish flow below is driven there.
+  await page.goto(`/projects/${projectId}/journeys/${publishedId}`);
+
   // A Participant: no session, on a phone, holding only the link.
   const participantContext = await browser.newContext({
     baseURL: E2E_BASE_URL,
@@ -193,6 +215,19 @@ test("public-project-page", async ({ page, context, browser }) => {
     await expect(
       participant.getByRole("heading", { name: projectTitle, level: 1 }),
     ).toBeVisible();
+    // The frame's header: the wordmark as the way home, and "Dark mode"
+    // beside it, on every screen with one.
+    await expect(
+      participant.getByRole("banner").getByRole("link", { name: "Journeys" }),
+    ).toHaveAttribute("href", "/");
+    await expect(
+      participant
+        .getByRole("banner")
+        .getByRole("button", { name: "Dark mode" }),
+    ).toBeVisible();
+    // The description's own first heading always renders as h2, one level
+    // under the page's own `h1` (ticket 78, revised by ticket 92), whatever
+    // level it was written at.
     await expect(
       participant.getByRole("heading", {
         name: "About these journeys",
@@ -236,16 +271,17 @@ test("public-project-page", async ({ page, context, browser }) => {
     await page.getByRole("button", { name: "Unpublish journey" }).click();
     await expect(page.getByText("Unpublished", { exact: true })).toBeVisible();
 
-    await participant.goto(`/p/${projectId}`);
+    // With its one Journey unpublished, the Project has no live Journey at
+    // all — the same 404 an unknown id gets (ticket 42, decision 4), so the
+    // Project's own title is not what a stale link now shows.
+    const afterUnpublish = await participant.goto(`/p/${projectId}`);
+    expect(afterUnpublish?.status()).toBe(404);
     await expect(
-      participant.getByRole("heading", { name: projectTitle, level: 1 }),
+      participant.getByRole("heading", {
+        name: "This project isn't available",
+      }),
     ).toBeVisible();
-    await expect(
-      participant.getByRole("list", { name: "Journeys" }),
-    ).toHaveCount(0);
-    await expect(
-      participant.getByText("No journeys are available right now."),
-    ).toBeVisible();
+    await expect(participant.getByText(projectTitle)).toHaveCount(0);
     await expect(participant.getByText(publishedTitle)).toHaveCount(0);
 
     await participant.screenshot({
@@ -292,6 +328,15 @@ test("project-link-preview", async ({ page, context, browser }) => {
 
   await page.goto("/projects");
   const projectId = await createProject(page, projectTitle);
+  await page.goto(`/projects/${projectId}`);
+  // A live Journey (ticket 42, decision 4): a Project with none is a 404,
+  // so the preview this test proves needs one to preview at all.
+  const journeyId = await createJourney(
+    page,
+    projectId,
+    `Border Crossing ${suffix}`,
+  );
+  await publishDocument(journeyId, publishableDocument());
 
   // The description, Theme, and accent as the Settings tab stores them.
   const description: Content = {
@@ -311,9 +356,10 @@ test("project-link-preview", async ({ page, context, browser }) => {
     ],
   };
   const accent = "#ffcc00";
+  await setProjectDescription(projectId, description);
   await queryE2eDatabase(
-    'UPDATE "project" SET description_content = $1::jsonb, theme_preset = $2, theme_accent = $3 WHERE id = $4',
-    [JSON.stringify(description), "ember", accent, projectId],
+    'UPDATE "project" SET theme_preset = $1, theme_accent = $2 WHERE id = $3',
+    ["ember", accent, projectId],
   );
   const palette = linkPreviewPalette({ preset: "ember", accent });
 

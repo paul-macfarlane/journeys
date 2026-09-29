@@ -50,16 +50,12 @@ Staging URL: `https://journeys-mvp-staging.vercel.app` (renamed 2026-09-24 from 
 - [x] Set `BETTER_AUTH_URL` to `http://localhost:3000` locally and the production URL in Vercel Production.
 - [x] Set `BETTER_AUTH_URL` for **Preview** to the staging URL (see §9).
 
-## 6. Vercel AI Gateway key (the Judge, ticket 43)
+## 6. ~~Vercel AI Gateway key (the Judge, ticket 43)~~ — retired 2026-09-26
 
-Decided 2026-09-22 (Paul): every model call goes through the Vercel AI Gateway with a static key, not a provider key.
+The Judge was cut (ticket 87), so the app makes no model calls and reads no `AI_GATEWAY_API_KEY`.
 
-- [ ] In Vercel → `journeys` → Settings → AI Gateway, enable the gateway and create an API key.
-- [ ] Set `AI_GATEWAY_API_KEY` in Vercel (Production and Preview) and `.env.local`.
-- [ ] Optional: a budget alert in the same settings page; set the spend limit ticket 84 settles.
-- [ ] Without it, the Judge falls back and a deciding Prompt lets the Participant choose instead — everything else works.
-- [ ] Confirm the Vercel project runs on Fluid compute (the default; Settings → Functions), so a server action may wait the judge's full 20 s (ticket 49). A non-Fluid function is cut off at 10 s, before the judge's fallback, and a Participant would see an error page instead of the Choices.
-- Expected result: after ticket 43, a deciding Prompt advances a Run using the Judge.
+- [ ] Optional cleanup: delete `AI_GATEWAY_API_KEY` from Vercel (Production and Preview) and from `.env.local`. Nothing reads it any more, so leaving it in place is harmless.
+- [ ] Optional: revoke the gateway API key in Vercel → AI Gateway if nothing else uses it.
 
 ## 7. Local machine
 
@@ -133,3 +129,12 @@ Paul does this himself. `/privacy` and `/terms` are live on staging and producti
 
 - [x] Vercel → `journeys` → Settings → Advanced → turn on Skew Protection, so a tab opened before a deploy keeps loading its own build's assets. Done by Paul, 2026-09-26.
 - Expected result: the chunk-load reload (`ChunkLoadRecovery`, `error.tsx`, `global-error.tsx`) is rarely needed. Agents never change this setting.
+
+## 15. Firewall rate limit on the runner (ticket 87, which absorbed ticket 84's A3)
+
+A Run is created by every first Choice (`POST /j/<journey-id>`), and nothing in the app limits that. The cost is database growth and polluted Analytics. The limit belongs at the edge, so it is a Paul-owned setting rather than code. Agents never change cloud configuration.
+
+- [ ] Vercel → `journeys` → Firewall → Rules → add a **Rate Limit** rule: method `POST`, request path **matches the regex `^/j/[^/]+$`** (the Start screen only, where a Run is created; a Step's own `/j/<id>/<step>` form posts are left alone), **30 requests per 60 seconds per IP**, action **Deny** (429). Apply it to Production, and to Preview too so staging behaves the same.
+- Why only the Start: every Choice on a Step with a Prompt also posts, and Participants behind one address (a classroom) share an IP. Limiting only Run creation keeps their walks unaffected while still capping how fast Runs can be minted.
+- Expected result: a normal Participant (one Start per walk) is never affected, and a script creating Runs in a loop is refused after 30 in a minute.
+- Post-check: in the Firewall's live traffic view the rule shows as active. Optionally, send 31 quick `POST`s to a staging Journey's `/j/<id>` from one machine; the last one returns 429.

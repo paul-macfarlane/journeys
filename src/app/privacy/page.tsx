@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Privacy policy",
   description:
     "What Journeys stores about Authors and Participants, which cookies it sets, and how to reach us.",
+  alternates: { canonical: "/privacy" },
 };
 
 // Plain language, and only what the app actually does. Every claim here
@@ -119,18 +120,17 @@ export default function PrivacyPage() {
       <p>
         The application runs on Vercel and the database is hosted by Neon.
         Sign-in is handled through Google and Discord; each provider’s own
-        privacy policy covers what they do with your sign-in. When a step’s
-        question is set to decide the next step, the answer you type is sent,
-        with that step’s text, its question, and the labels of its choices, to
-        the Vercel AI Gateway, where a model picks the next step; it is used for
-        nothing else.
+        privacy policy covers what they do with your sign-in.
       </p>
 
       <h2>Deleting things</h2>
       <p>
         Deleting a journey removes its draft, every published version, and every
-        run. Deleting a project removes everything in it. To delete your account
-        and everything you own, email us at the address below and we will do it.
+        run. Deleting a project removes everything in it. You can delete your
+        account from your Settings page: projects where you are the only member
+        are deleted with everything in them, projects you share with other
+        members stay with them, and your account details, sessions, and sign-in
+        links go with it. It cannot be undone.
       </p>
 
       <h2>Changes</h2>

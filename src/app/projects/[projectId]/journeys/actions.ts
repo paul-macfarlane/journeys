@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  failureResult,
   firstIssue,
-  staleResult,
+  type ActionFailure,
   type ActionResult,
 } from "@/lib/action-result";
+import { journeyForMember, projectForMember } from "@/db/access";
 import { saveDraft } from "@/db/drafts";
-import { isStale } from "@/db/guarded-write";
 import {
   createJourney,
   deleteJourney,
@@ -16,11 +17,7 @@ import {
   setJourneyTheme,
   updateJourney,
 } from "@/db/journeys";
-import { getProjectForMember } from "@/db/projects";
 import { publishDraft, restoreVersion, unpublishJourney } from "@/db/versions";
-import { env } from "@/lib/env";
-import { isDeciding } from "@/lib/graph/prompt";
-import type { PublishProblem } from "@/lib/graph/validate";
 import { requireSession } from "@/lib/session";
 import {
   createJourneySchema,
@@ -29,27 +26,31 @@ import {
   moveDirectionSchema,
   updateJourneySchema,
 } from "@/lib/validation/journey";
+import { notFound } from "@/lib/write-result";
 
 /**
  * Server actions behind the Journey dialogs, mirroring
  * `@/app/projects/actions`.
  *
  * Each one is a public endpoint, so each re-reads the session and re-parses
- * its input rather than trusting the form that called it. They return an
- * `ActionResult` the dialog can render inline.
+ * its input rather than trusting the form that called it, and resolves the
+ * Journey (or Project) through the membership seam before the data layer is
+ * asked anything. They return an `ActionResult` the dialog can render
+ * inline.
  */
-
-export type JourneyActionResult = ActionResult;
 
 function revalidateJourneyPaths() {
   revalidatePath("/projects/[projectId]", "page");
   revalidatePath("/projects/[projectId]/journeys/[journeyId]", "page");
 }
 
+/** A non-Member, or no such Journey or Project: the page's 404, in words. */
+const noJourney = () => failureResult(notFound(), { missing: "journey" });
+
 export async function createJourneyAction(
   projectId: string,
   input: unknown,
-): Promise<JourneyActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = createJourneySchema.safeParse(input);
@@ -57,14 +58,12 @@ export async function createJourneyAction(
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
-  // Membership check: an Author who is not a Member of this Project cannot
-  // create a Journey inside it.
-  const project = await getProjectForMember(projectId, session.user.id);
-  if (!project) {
-    return { ok: false, error: "That project no longer exists" };
-  }
+  // An Author who is not a Member of this Project cannot create a Journey
+  // inside it: `createJourney` takes only a Project resolved for a Member.
+  const project = await projectForMember(projectId, session.user.id);
+  if (!project) return failureResult(notFound(), { missing: "project" });
 
-  const created = await createJourney(project.id, parsed.data);
+  const created = await createJourney(project, parsed.data);
   revalidateJourneyPaths();
   return { ok: true, id: created.id };
 }
@@ -79,7 +78,7 @@ export async function updateJourneyAction(
   journeyId: string,
   input: unknown,
   baseline: unknown,
-): Promise<JourneyActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = updateJourneySchema.safeParse(input);
@@ -91,20 +90,14 @@ export async function updateJourneyAction(
     return { ok: false, error: firstIssue(previous.error.issues) };
   }
 
-  const updated = await updateJourney(
-    projectId,
-    journeyId,
-    parsed.data,
-    previous.data,
-    session.user.id,
-  );
-  // Not a Member (or no such Journey/Project): same answer as the page's
-  // 404.
-  if (!updated) return { ok: false, error: "That journey no longer exists" };
-  if (isStale(updated)) return staleResult("journey");
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return noJourney();
+
+  const updated = await updateJourney(journey, parsed.data, previous.data);
+  if (!updated.ok) return failureResult(updated, { missing: "journey" });
 
   revalidateJourneyPaths();
-  return { ok: true, id: updated.id };
+  return { ok: true, id: updated.journey.id };
 }
 
 /**
@@ -120,7 +113,7 @@ export async function setJourneyThemeAction(
   journeyId: string,
   input: unknown,
   baseline: unknown,
-): Promise<JourneyActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = journeyThemeSchema.safeParse(input);
@@ -132,18 +125,14 @@ export async function setJourneyThemeAction(
     return { ok: false, error: firstIssue(previous.error.issues) };
   }
 
-  const updated = await setJourneyTheme(
-    projectId,
-    journeyId,
-    parsed.data,
-    previous.data,
-    session.user.id,
-  );
-  if (!updated) return { ok: false, error: "That journey no longer exists" };
-  if (isStale(updated)) return staleResult("journey");
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return noJourney();
+
+  const updated = await setJourneyTheme(journey, parsed.data, previous.data);
+  if (!updated.ok) return failureResult(updated, { missing: "journey" });
 
   revalidateJourneyPaths();
-  return { ok: true, id: updated.id };
+  return { ok: true, id: updated.journey.id };
 }
 
 /**
@@ -154,7 +143,7 @@ export async function moveJourneyAction(
   projectId: string,
   journeyId: string,
   input: unknown,
-): Promise<JourneyActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
   const parsed = moveDirectionSchema.safeParse(input);
@@ -162,13 +151,10 @@ export async function moveJourneyAction(
     return { ok: false, error: firstIssue(parsed.error.issues) };
   }
 
-  const moved = await moveJourney(
-    projectId,
-    journeyId,
-    parsed.data,
-    session.user.id,
-  );
-  if (!moved) return { ok: false, error: "That journey no longer exists" };
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return noJourney();
+
+  await moveJourney(journey, parsed.data);
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId };
@@ -177,11 +163,13 @@ export async function moveJourneyAction(
 export async function deleteJourneyAction(
   projectId: string,
   journeyId: string,
-): Promise<JourneyActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
-  const deleted = await deleteJourney(projectId, journeyId, session.user.id);
-  if (!deleted) return { ok: false, error: "That journey no longer exists" };
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return noJourney();
+
+  await deleteJourney(journey);
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId };
@@ -194,8 +182,7 @@ export async function deleteJourneyAction(
  * only saying no; a stale one says another Member saved first (ticket 73).
  */
 export type SaveDraftActionResult =
-  | { ok: true; id: string; version: number }
-  | { ok: false; error: string; stepId?: string; stale?: true };
+  { ok: true; id: string; version: number } | ActionFailure;
 
 /**
  * Stores a Journey's whole Draft document, guarded by `version`, the Draft
@@ -214,18 +201,13 @@ export async function saveDraftAction(
     return { ok: false, error: firstIssue(expected.error.issues) };
   }
 
-  const saved = await saveDraft(
-    projectId,
-    journeyId,
-    input,
-    expected.data,
-    session.user.id,
-  );
-  // Not a Member (or no such Journey/Project): same answer as the page's
-  // 404.
-  if (!saved) return { ok: false, error: "That journey no longer exists" };
-  if (isStale(saved)) return staleResult("draft");
-  if (!saved.ok) return { ok: false, error: saved.error, stepId: saved.stepId };
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return noJourney();
+
+  const saved = await saveDraft(journey, input, expected.data);
+  if (!saved.ok) {
+    return failureResult(saved, { missing: "journey", stale: "draft" });
+  }
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId, version: saved.version };
@@ -233,16 +215,13 @@ export async function saveDraftAction(
 
 /**
  * A refused publish carries every problem with the Draft, so an Author sees
- * the whole list rather than the first one.
+ * the whole list rather than the first one. A publish that went through
+ * carries the Draft version it published — the one it was guarded by, which
+ * is the version the editor's flush of a just-typed edit left — so the page
+ * can tell a later edit from the publish's own settling.
  */
 export type PublishJourneyActionResult =
-  | { ok: true; versionNumber: number; warning?: string }
-  | {
-      ok: false;
-      error: string;
-      problems?: PublishProblem[];
-      stale?: true;
-    };
+  { ok: true; versionNumber: number; draftVersion: number } | ActionFailure;
 
 /**
  * Publishes a Journey's Draft as its next Published Version. A Draft that
@@ -262,86 +241,55 @@ export async function publishJourneyAction(
     return { ok: false, error: firstIssue(expected.error.issues) };
   }
 
-  const published = await publishDraft(
-    projectId,
-    journeyId,
-    expected.data,
-    session.user.id,
-  );
-  // Not a Member (or no such Journey/Project): same answer as the page's
-  // 404.
-  if (!published) return { ok: false, error: "That journey no longer exists" };
-  if (isStale(published)) return staleResult("draft");
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return noJourney();
+
+  const published = await publishDraft(journey, expected.data);
   if (!published.ok) {
-    if ("reason" in published && published.reason === "unreadable") {
-      return {
-        ok: false,
-        error:
-          "This journey's draft can't be read. Restore it from a published version before publishing.",
-      };
-    }
-    if ("conflict" in published) {
-      return {
-        ok: false,
-        error:
-          "Another member published this journey just now. Reload to see their version, then publish again.",
-      };
-    }
-    return {
-      ok: false,
-      error: "This journey can't be published yet",
-      problems: published.problems,
-    };
+    return failureResult(published, { missing: "journey", stale: "draft" });
   }
 
   revalidateJourneyPaths();
 
-  // A deciding Prompt (ticket 43) with no gateway key still publishes — the
-  // runner falls back to the Choices — but the Author is told, once, here.
-  const decides = Object.values(published.document.steps).some(isDeciding);
-  if (decides && env.AI_GATEWAY_API_KEY === undefined) {
-    return {
-      ok: true,
-      versionNumber: published.versionNumber,
-      warning:
-        "This journey has a prompt that decides the next step, but no AI Gateway key is set. Participants will choose for themselves.",
-    };
-  }
-
-  return { ok: true, versionNumber: published.versionNumber };
+  return {
+    ok: true,
+    versionNumber: published.versionNumber,
+    draftVersion: expected.data,
+  };
 }
 
 /** Clears a Journey's live pointer. Every Published Version stays. */
 export async function unpublishJourneyAction(
   projectId: string,
   journeyId: string,
-): Promise<JourneyActionResult> {
+): Promise<ActionResult> {
   const session = await requireSession();
 
-  const unpublished = await unpublishJourney(
-    projectId,
-    journeyId,
-    session.user.id,
-  );
-  if (!unpublished) {
-    return { ok: false, error: "That journey no longer exists" };
-  }
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return noJourney();
+
+  await unpublishJourney(journey);
 
   revalidateJourneyPaths();
   return { ok: true, id: journeyId };
 }
 
+export type RestoreVersionActionResult =
+  { ok: true; id: string; draftVersion: number } | ActionFailure;
+
 /**
  * Replaces the Draft with a Published Version's document. The version is
  * untouched, and so is whatever participants are walking. Guarded by
  * `draftVersion`, the Draft version the page last read (ticket 73).
+ * Answers the Draft version the restore left, which the acknowledgement of
+ * it is cleared past.
  */
 export async function restoreVersionAction(
   projectId: string,
   journeyId: string,
   versionId: string,
   draftVersion: unknown,
-): Promise<JourneyActionResult> {
+): Promise<RestoreVersionActionResult> {
   const session = await requireSession();
 
   const expected = draftVersionSchema.safeParse(draftVersion);
@@ -349,25 +297,16 @@ export async function restoreVersionAction(
     return { ok: false, error: firstIssue(expected.error.issues) };
   }
 
-  const restored = await restoreVersion(
-    projectId,
-    journeyId,
-    versionId,
-    expected.data,
-    session.user.id,
-  );
-  // A version of another Journey answers like a Journey that isn't there.
-  if (!restored) return { ok: false, error: "That version no longer exists" };
-  if (isStale(restored)) return staleResult("draft");
-  // The version being restored fails the document contract (ticket 83):
-  // there is nothing in it to copy into the Draft.
-  if ("reason" in restored && restored.reason === "unreadable") {
-    return {
-      ok: false,
-      error: `Version ${restored.versionNumber} can't be read, so it can't be restored.`,
-    };
-  }
+  // A non-Member, and a version of another Journey, answer like a version
+  // that isn't there. A version that fails the document contract (ticket
+  // 83) is refused by name: there is nothing in it to copy into the Draft.
+  const nouns = { missing: "version", stale: "draft" } as const;
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) return failureResult(notFound(), nouns);
+
+  const restored = await restoreVersion(journey, versionId, expected.data);
+  if (!restored.ok) return failureResult(restored, nouns);
 
   revalidateJourneyPaths();
-  return { ok: true, id: journeyId };
+  return { ok: true, id: journeyId, draftVersion: restored.draftVersion };
 }

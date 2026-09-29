@@ -1,0 +1,10 @@
+# 87-AC-2: a stored Prompt with decides: true still parses, as a required Prompt with no decides key (commit f3ff381)
+$ pnpm exec vitest run src/lib/graph/document.test.ts -t decides --reporter verbose
+ ✓ src/lib/graph/document.test.ts > graphDocumentSchema > strips a stored Prompt's retired decides key, keeping required (ticket 87) 4ms
+ ✓ src/lib/graph/document.test.ts > stored documents without a decides key still parse (ticket 87) > large-journey fixture still parses 3ms
+ ✓ src/lib/graph/document.test.ts > stored documents without a decides key still parse (ticket 87) > legacy case-1.json still parses 1ms
+ ✓ src/lib/graph/document.test.ts > stored documents without a decides key still parse (ticket 87) > legacy case-2.json still parses 1ms
+ ✓ src/lib/graph/document.test.ts > stored documents without a decides key still parse (ticket 87) > legacy case-3.json still parses 0ms
+ Test Files  1 passed (1)
+      Tests  5 passed | 38 skipped (43)
+exit 0

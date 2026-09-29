@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -24,17 +25,36 @@ import { VersionList } from "@/components/journeys/version-list";
 import { buttonVariants } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
 import { UrlTabs } from "@/components/url-tabs";
-import { getAnalyticsForMember } from "@/db/analytics";
-import { getDraftForMember } from "@/db/drafts";
-import { getJourneyForMember } from "@/db/journeys";
-import { getProjectForMember } from "@/db/projects";
-import { listResponsesForMember } from "@/db/responses";
-import { getLiveVersion, listVersionsForMember } from "@/db/versions";
+import { journeyForMember } from "@/db/access";
+import { getAnalytics } from "@/db/analytics";
+import { getDraft } from "@/db/drafts";
+import { listResponses } from "@/db/responses";
+import { getLiveVersion, listVersions } from "@/db/versions";
 import { analyticsForVersion, chooseVersionId } from "@/lib/analytics";
-import { documentsEqual } from "@/lib/graph/document";
+import { draftPending } from "@/lib/publish-state";
 import { groupResponsesByStep } from "@/lib/response-list";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
+
+/**
+ * The tab title (ticket 78): the Journey's title, with the root layout's
+ * template appending "· Journeys". `requireSession` and `journeyForMember`
+ * are `cache()`d, so the page below pays no second query. A non-Member, an
+ * unknown Project, and an unknown Journey all take the same 404 as the page
+ * itself (ticket 60): metadata streams in after the page, so a title
+ * returned for a missing Journey would replace the not-found page's own.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string; journeyId: string }>;
+}): Promise<Metadata> {
+  const session = await requireSession();
+  const { projectId, journeyId } = await params;
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
+  if (!journey) notFound();
+  return { title: journey.title };
+}
 
 export default async function JourneyPage({
   params,
@@ -53,62 +73,39 @@ export default async function JourneyPage({
     searchParams,
   ]);
 
-  // Null for a non-Member, an unknown Project, and an unknown Journey
-  // alike, so all three get the same 404.
-  const journey = await getJourneyForMember(
-    projectId,
-    journeyId,
-    session.user.id,
-  );
+  // Membership, resolved once for the whole render (ticket 82): null for a
+  // non-Member, an unknown Project, and an unknown Journey alike, so all
+  // three get the same 404. Every read below takes this `MemberJourney`,
+  // and its Project — for the Theme the Journey inherits on its Settings
+  // tab — came back in the same query.
+  const journey = await journeyForMember(projectId, journeyId, session.user.id);
   if (!journey) notFound();
-
-  // The Project, for the Theme the Journey inherits on its Settings tab —
-  // the request-cached read the layout already made for the navbar.
-  const project = await getProjectForMember(projectId, session.user.id);
-  if (!project) notFound();
 
   // Every Journey has a Draft, created with it — a missing one is a Journey
   // that cannot be authored, so it gets the same 404 rather than a page with
   // a hole in it.
-  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
+  const stored = await getDraft(journey);
   if (!stored) notFound();
   // A Draft row that fails the document contract is not a 500 (ticket 73):
   // the page keeps its header and tabs, and the Editor tab says the Draft
   // cannot be read and offers a Restore in place of the editor.
   const draft = stored.kind === "ok" ? stored.document : null;
 
-  // Null only for a non-Member, which the check above already answered; an
-  // empty list is a Journey that has never been published.
-  const versions = await listVersionsForMember(
-    projectId,
-    journeyId,
-    session.user.id,
-  );
-  if (!versions) notFound();
+  // An empty list is a Journey that has never been published.
+  const versions = await listVersions(journey);
 
-  // Null only for a non-Member, already answered above; the rows are every
-  // Response any version of this Journey has recorded, arranged per Step.
-  const responses = await listResponsesForMember(
-    projectId,
-    journeyId,
-    session.user.id,
-  );
-  if (!responses) notFound();
+  // Every Response any version of this Journey has recorded, arranged per
+  // Step below.
+  const responses = await listResponses(journey);
 
   // The Analytics tab reads one Published Version: the one the address
   // names when it is this Journey's, else the live one, else the newest.
-  // Null only for a Journey never published; `getAnalyticsForMember` can
-  // otherwise only refuse a non-Member, already answered above.
+  // Null only for a Journey never published.
   const analyticsVersionId = chooseVersionId(versions, version);
   const analyticsSource =
     analyticsVersionId === null
       ? null
-      : await getAnalyticsForMember(
-          projectId,
-          journeyId,
-          analyticsVersionId,
-          session.user.id,
-        );
+      : await getAnalytics(journey, analyticsVersionId);
   const selectedAnalytics: SelectedVersionAnalytics | null =
     analyticsSource?.kind === "ok"
       ? {
@@ -134,21 +131,17 @@ export default async function JourneyPage({
 
   // Publish has nothing to do while participants already see exactly this:
   // the Draft, the title, and the description. An unpublished or
-  // never-published Journey always has something to publish.
-  const live = await getLiveVersion(projectId, journeyId, session.user.id);
+  // never-published Journey always has something to publish, and so does
+  // one whose Draft or live version cannot be read (see `draftPending`).
+  // `draftEditedAt` is when the Draft was last edited, for its row on the
+  // Versions tab.
+  const live = await getLiveVersion(journey);
   const liveOk = live?.kind === "ok" ? live : null;
-  const titleOrDescriptionPending =
-    liveOk === null ||
-    liveOk.title !== journey.title ||
-    liveOk.description !== journey.description;
-  // A Draft that cannot be read is never what participants see, and
-  // neither is a live version that cannot be (ticket 83); Publish stays on
-  // offer and refuses either with the reason.
-  const hasUnpublishedChanges =
-    titleOrDescriptionPending ||
-    draft === null ||
-    liveOk === null ||
-    !documentsEqual(draft, liveOk.document);
+  const { hasUnpublishedChanges, draftEditedAt } = draftPending({
+    journey,
+    draft: { document: draft, updatedAt: stored.updatedAt },
+    live,
+  });
   // Named on the Versions tab, above the list, while the Journey's live
   // pointer names a Published Version that cannot be read.
   const unreadableLiveVersion =
@@ -161,16 +154,6 @@ export default async function JourneyPage({
     responseDocument === null
       ? []
       : groupResponsesByStep(responseDocument, responses);
-
-  // When the Draft was last edited, for its row on the Versions tab: the
-  // document's own save, or the title's and description's when they are
-  // what is pending and were edited later. The Journey row's timestamp
-  // also moves on publish, unpublish, and a Theme change, so it counts
-  // only while the title or description differs from the live version.
-  const draftEditedAt =
-    titleOrDescriptionPending && journey.updatedAt > stored.updatedAt
-      ? journey.updatedAt
-      : stored.updatedAt;
 
   return (
     <>
@@ -191,6 +174,13 @@ export default async function JourneyPage({
           </div>
 
           <header className="flex flex-wrap items-start justify-between gap-4">
+            {/* The visible title is `JourneyTitleFields`' input
+                (`aria-label="Title"`), not a heading, so the page carries no
+                `h1` of its own without this: an `sr-only` one names the
+                Journey for a screen reader and for axe's
+                `page-has-heading-one` (ticket 78), with every heading below
+                it on each tab descending one level at a time from it. */}
+            <h1 className="sr-only">{journey.title}</h1>
             <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
               <JourneyTitleFields
                 projectId={projectId}
@@ -312,7 +302,7 @@ export default async function JourneyPage({
                     <JourneyThemeSettings
                       projectId={projectId}
                       journeyId={journey.id}
-                      projectTheme={project.theme}
+                      projectTheme={journey.project.theme}
                       theme={journey.theme}
                     />
                   </section>

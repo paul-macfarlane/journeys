@@ -15,20 +15,19 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32),
   BETTER_AUTH_URL: z.url(),
 
+  // Vercel's own System Environment Variables (ticket 42): set on every
+  // Vercel build and absent everywhere else (local, CI), so both are
+  // optional. `resolveMetadataBase` reads them to keep a preview
+  // deployment's metadata pointed at the production origin rather than at
+  // an address that may sit behind deployment protection.
+  VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
+  VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
+
   // Both providers are always enabled, so both client pairs are required.
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_CLIENT_SECRET: z.string().min(1),
-
-  // Optional: the Judge (deciding Prompts) falls back to letting the Participant
-  // choose when this is absent. .env.example tells a developer to leave it
-  // empty for that, so a blank value reads as absent rather than as a
-  // configuration error.
-  AI_GATEWAY_API_KEY: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().min(1).optional(),
-  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

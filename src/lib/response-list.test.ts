@@ -32,7 +32,7 @@ function step(
 }
 
 function prompt(label: string): Step["prompt"] {
-  return { type: "free_text", label, required: false, decides: false };
+  return { type: "free_text", label, required: false };
 }
 
 // Keyed out of walk order on purpose — Postgres reorders jsonb keys, so the
@@ -65,7 +65,7 @@ describe("groupResponsesByStep", () => {
       },
       {
         stepId: "end",
-        title: "end",
+        title: "Untitled step",
         promptLabel: "What would you change?",
         responses: [],
       },

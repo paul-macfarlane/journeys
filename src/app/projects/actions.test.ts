@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Content } from "@/lib/graph/content";
+import { invalid, notFound } from "@/lib/write-result";
 
 /**
- * Seam A for ticket 07's rich-text Project description. The cleaning rule
- * itself is tested in `src/lib/graph/content.test.ts`; what is proved here
- * is that the action puts every write through it — the editor is not the
- * only thing that can reach a server action — with the session, the cache,
- * and the database replaced by doubles.
+ * Seam A for the Project actions: who may write (the membership seam,
+ * ticket 82), what the data layer is asked, and what the dialog hears back,
+ * with the session, the cache, and the database replaced by doubles. The
+ * description's cleaning rule lives in the data layer since ticket 82 and
+ * is proved there (`src/db/projects.test.ts`).
  */
 
 const doubles = vi.hoisted(() => ({
   session: { user: { id: "author-1" } },
+  access: { projectForMember: vi.fn() },
   projects: {
     createProject: vi.fn(),
     deleteProject: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock("next/cache", () => ({ revalidatePath: doubles.revalidatePath }));
 vi.mock("@/lib/session", () => ({
   requireSession: vi.fn(async () => doubles.session),
 }));
+vi.mock("@/db/access", () => doubles.access);
 vi.mock("@/db/projects", () => doubles.projects);
 vi.mock("@/db/members", () => ({
   addMemberByEmail: vi.fn(),
@@ -46,10 +49,22 @@ const summary = {
   theme: { preset: "trail", accent: null },
 };
 
+/** The Project as the membership seam resolves it for the signed-in Author. */
+const memberProject = { ...summary, memberUserId: "author-1" };
+
+const NO_PROJECT = { ok: false, error: "That project no longer exists" };
+
+beforeEach(() => {
+  doubles.access.projectForMember.mockResolvedValue(memberProject);
+});
+
 describe("setProjectThemeAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    doubles.projects.setProjectTheme.mockResolvedValue(summary);
+    doubles.projects.setProjectTheme.mockResolvedValue({
+      ok: true,
+      project: summary,
+    });
   });
 
   it("stores the preset and accent for the signed-in Author and refreshes the Project page", async () => {
@@ -62,11 +77,14 @@ describe("setProjectThemeAction", () => {
     expect(result).toEqual({ ok: true, id: "project-1" });
     // The accent is stored lowercased, as the schema normalizes it; the
     // Theme it replaces goes along as the guard.
-    expect(doubles.projects.setProjectTheme).toHaveBeenCalledWith(
+    expect(doubles.access.projectForMember).toHaveBeenCalledWith(
       "project-1",
+      "author-1",
+    );
+    expect(doubles.projects.setProjectTheme).toHaveBeenCalledWith(
+      memberProject,
       { preset: "tide", accent: "#095b41" },
       { preset: "trail", accent: null },
-      "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith(
       "/projects/[projectId]",
@@ -82,10 +100,9 @@ describe("setProjectThemeAction", () => {
     );
 
     expect(doubles.projects.setProjectTheme).toHaveBeenCalledWith(
-      "project-1",
+      memberProject,
       { preset: "dusk", accent: null },
       { preset: "trail", accent: null },
-      "author-1",
     );
   });
 
@@ -116,8 +133,8 @@ describe("setProjectThemeAction", () => {
     expect(doubles.projects.setProjectTheme).not.toHaveBeenCalled();
   });
 
-  it("answers a non-Member like a Project that is not there", async () => {
-    doubles.projects.setProjectTheme.mockResolvedValue(null);
+  it("answers a non-Member like a Project that is not there, and writes nothing", async () => {
+    doubles.access.projectForMember.mockResolvedValue(null);
 
     const result = await setProjectThemeAction(
       "project-1",
@@ -125,10 +142,21 @@ describe("setProjectThemeAction", () => {
       { preset: "trail", accent: null },
     );
 
-    expect(result).toEqual({
-      ok: false,
-      error: "That project no longer exists",
-    });
+    expect(result).toEqual(NO_PROJECT);
+    expect(doubles.projects.setProjectTheme).not.toHaveBeenCalled();
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("answers a Project deleted since it was resolved like one that is not there", async () => {
+    doubles.projects.setProjectTheme.mockResolvedValue(notFound());
+
+    const result = await setProjectThemeAction(
+      "project-1",
+      { preset: "tide", accent: null },
+      { preset: "trail", accent: null },
+    );
+
+    expect(result).toEqual(NO_PROJECT);
     expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 
@@ -157,7 +185,10 @@ describe("setProjectThemeAction", () => {
 describe("editProjectDescriptionAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    doubles.projects.editProjectDescription.mockResolvedValue(summary);
+    doubles.projects.editProjectDescription.mockResolvedValue({
+      ok: true,
+      project: summary,
+    });
   });
 
   it("stores the description for the signed-in Author and refreshes the Project page", async () => {
@@ -183,10 +214,9 @@ describe("editProjectDescriptionAction", () => {
 
     expect(result).toEqual({ ok: true, id: "project-1" });
     expect(doubles.projects.editProjectDescription).toHaveBeenCalledWith(
-      "project-1",
+      memberProject,
       content,
       { type: "doc", content: [] },
-      "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith(
       "/projects/[projectId]",
@@ -194,55 +224,11 @@ describe("editProjectDescriptionAction", () => {
     );
   });
 
-  it("cleans the content with the shared allowed set before storing it", async () => {
-    await editProjectDescriptionAction(
-      "project-1",
-      {
-        type: "doc",
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              {
-                type: "text",
-                text: "Click",
-                marks: [
-                  { type: "link", attrs: { href: "javascript:alert(1)" } },
-                ],
-              },
-              { type: "text", text: " here", marks: [{ type: "code" }] },
-            ],
-          },
-          { type: "codeBlock", content: [{ type: "text", text: "rm -rf /" }] },
-          {
-            type: "image",
-            attrs: { src: "data:image/png;base64,AAAA", alt: "x" },
-          },
-        ],
-      },
-      { type: "doc", content: [] },
+  it("passes on the data layer's refusal of input that is not a document", async () => {
+    doubles.projects.editProjectDescription.mockResolvedValue(
+      invalid("Content must be a document with a list of blocks"),
     );
 
-    expect(doubles.projects.editProjectDescription).toHaveBeenCalledWith(
-      "project-1",
-      {
-        type: "doc",
-        content: [
-          {
-            type: "paragraph",
-            content: [
-              { type: "text", text: "Click" },
-              { type: "text", text: " here" },
-            ],
-          },
-        ],
-      },
-      { type: "doc", content: [] },
-      "author-1",
-    );
-  });
-
-  it("refuses input that is not a document without touching the database", async () => {
     const result = await editProjectDescriptionAction(
       "project-1",
       "<b>hi</b>",
@@ -253,11 +239,11 @@ describe("editProjectDescriptionAction", () => {
       ok: false,
       error: "Content must be a document with a list of blocks",
     });
-    expect(doubles.projects.editProjectDescription).not.toHaveBeenCalled();
+    expect(doubles.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("answers a non-Member the way the page's 404 does", async () => {
-    doubles.projects.editProjectDescription.mockResolvedValue(null);
+    doubles.access.projectForMember.mockResolvedValue(null);
 
     const result = await editProjectDescriptionAction(
       "project-1",
@@ -265,10 +251,8 @@ describe("editProjectDescriptionAction", () => {
       { type: "doc", content: [] },
     );
 
-    expect(result).toEqual({
-      ok: false,
-      error: "That project no longer exists",
-    });
+    expect(result).toEqual(NO_PROJECT);
+    expect(doubles.projects.editProjectDescription).not.toHaveBeenCalled();
   });
 
   it("answers a description another Member changed first as stale", async () => {
@@ -294,7 +278,10 @@ describe("renameProjectAction", () => {
   });
 
   it("renames the Project and refreshes both Project pages", async () => {
-    doubles.projects.renameProject.mockResolvedValue(summary);
+    doubles.projects.renameProject.mockResolvedValue({
+      ok: true,
+      project: summary,
+    });
 
     const result = await renameProjectAction(
       "project-1",
@@ -305,10 +292,9 @@ describe("renameProjectAction", () => {
     expect(result).toEqual({ ok: true, id: "project-1" });
     // Both the title and the baseline are what the schema stores: trimmed.
     expect(doubles.projects.renameProject).toHaveBeenCalledWith(
-      "project-1",
+      memberProject,
       { title: "Refugee Health" },
       { title: "Refugee" },
-      "author-1",
     );
     expect(doubles.revalidatePath).toHaveBeenCalledWith("/projects");
     expect(doubles.revalidatePath).toHaveBeenCalledWith(

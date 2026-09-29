@@ -9,7 +9,7 @@ import type {
 } from "@/lib/graph/document";
 import { graphDocumentSchema, isEnding } from "@/lib/graph/document";
 import { largeJourney } from "@/lib/graph/fixtures/large-journey";
-import { validateForPublish } from "@/lib/graph/validate";
+import { indexProblems, validateForPublish } from "@/lib/graph/validate";
 
 import allotmentDocument from "../../../scripts/seed/allotment/a-key-on-the-doormat.json";
 import case1Document from "../../../scripts/seed/journey-stories/case-1.json";
@@ -606,12 +606,62 @@ describe("the seeded demo Journey (ticket 58)", () => {
     ).not.toBe("");
   });
 
-  it("asks one deciding Prompt, on the Step with three Choices", () => {
-    const deciding = Object.values(document().steps).filter(
-      (step) => step.prompt?.decides,
+  it("asks one Prompt, on the Step with three Choices", () => {
+    const prompted = Object.values(document().steps).filter(
+      (step) => step.prompt !== null,
     );
-    expect(deciding.map((step) => step.title)).toEqual(["Blisters"]);
-    expect(deciding[0].choices).toHaveLength(3);
-    expect(deciding[0].prompt?.required).toBe(true);
+    expect(prompted.map((step) => step.title)).toEqual(["Blisters"]);
+    expect(prompted[0].choices).toHaveLength(3);
+    expect(prompted[0].prompt?.required).toBe(true);
+  });
+});
+
+describe("indexProblems", () => {
+  it("indexes validateForPublish problems by step and by choice, preserving order", () => {
+    const document = graph([
+      step("start", [choice("choice-dangling", "ghost")]),
+      // Tagged with an Outcome the document does not define, so this Step
+      // carries two problems of its own: nothing reaches it, and its tag
+      // names an Outcome that is gone.
+      step("orphan", [], {
+        title: "Orphan ending",
+        outcomeId: "outcome-renamed-away",
+      }),
+    ]);
+
+    const problems = validateForPublish(document);
+    expect(problems.map((problem) => problem.code)).toEqual([
+      "dangling-choice-target",
+      "unreachable-step",
+      "unknown-outcome",
+    ]);
+
+    const index = indexProblems(problems);
+
+    expect(index.problemsForStep("start")).toEqual([problems[0]]);
+    expect(index.problemsForStep("orphan")).toEqual([problems[1], problems[2]]);
+    expect(index.problemsForChoice("start", "choice-dangling")).toEqual([
+      problems[0],
+    ]);
+  });
+
+  it("drops missing-start problems, which have no address, and answers a miss with []", () => {
+    const document = graph(
+      [step("only", [choice("choice-dangling", "ghost")])],
+      { startStepId: "ghost-start" },
+    );
+
+    const problems = validateForPublish(document);
+    expect(problems.some((problem) => problem.code === "missing-start")).toBe(
+      true,
+    );
+
+    const index = indexProblems(problems);
+
+    expect(index.problemsForStep("only")).toEqual([problems[1]]);
+    // "ghost-start" names no Step in any problem — the missing-start problem
+    // itself carries no stepId — so the lookup for it, like any other miss,
+    // comes back empty rather than surfacing the address-less problem.
+    expect(index.problemsForStep("ghost-start")).toEqual([]);
   });
 });

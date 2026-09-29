@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { restoreVersionAction } from "@/app/projects/[projectId]/journeys/actions";
 import { useSettledDraftVersion } from "@/components/journeys/draft-version";
+import { useAcknowledgeRestore } from "@/components/journeys/publish-controls";
 import { StaleNotice } from "@/components/stale-notice";
 import {
   AlertDialog,
@@ -46,6 +47,7 @@ export function RestoreVersionDialog({
 }) {
   const router = useRouter();
   const settledDraftVersion = useSettledDraftVersion();
+  const acknowledgeRestore = useAcknowledgeRestore();
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -73,6 +75,9 @@ export function RestoreVersionDialog({
         return;
       }
 
+      // Acknowledged even when the version restored held exactly what the
+      // Draft already did, so nothing changed: the restore still happened.
+      acknowledgeRestore(versionNumber, result.draftVersion);
       setOpen(false);
       router.refresh();
     });

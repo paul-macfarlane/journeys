@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { JourneysMark } from "@/components/brand";
@@ -8,6 +9,16 @@ import { buttonVariants } from "@/components/ui/button";
 import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 import { getSession } from "@/lib/session";
 
+// The tagline in the root layout's own `description` is what a browser tab
+// or an unrelated page's link preview falls back to; the landing page's own
+// description (ticket 42) is written for a search result instead, and so
+// says what an Author does here rather than only what the app is.
+export const metadata: Metadata = {
+  description:
+    "Write branching, text-based journeys as a graph of steps and choices, publish an immutable version, and share it by link — participants walk it with no account.",
+  alternates: { canonical: "/" },
+};
+
 // The splash page (ticket 54): the recording of the canvas as the hero, six
 // feature cards, a way to play a seeded Journey without an account, and one
 // call to action. It deliberately lists no projects and no journeys:
@@ -15,12 +26,21 @@ import { getSession } from "@/lib/session";
 // fade is tw-animate-css's `animate-in`, which knows nothing of
 // `prefers-reduced-motion`; `motion-reduce:animate-none` is what turns it
 // off for visitors who asked for no motion (decision 8).
-export default async function LandingPage() {
-  const session = await getSession();
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string | string[] }>;
+}) {
+  const [session, { notice }] = await Promise.all([getSession(), searchParams]);
 
   return (
     <div className="flex flex-1 flex-col">
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-16 px-6 py-16 sm:gap-20 sm:py-20">
+        {notice === "account-deleted" ? (
+          <p role="status" className="text-muted-foreground text-sm">
+            Your account was deleted.
+          </p>
+        ) : null}
         <section className="animate-in fade-in flex flex-col gap-6 duration-700 motion-reduce:animate-none">
           {/* The mark is decorative here: the heading already says the name. */}
           <JourneysMark className="size-14 sm:size-16" />

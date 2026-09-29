@@ -51,6 +51,31 @@ test("signed-in visit to /projects shows the empty projects state", async ({
   });
 });
 
+/**
+ * Ticket 57: the empty Projects list points a first-time Author at "New
+ * project" and at the guide section for it, rather than saying nothing.
+ */
+test("empty-projects-list", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  await page.goto("/projects");
+
+  await expect(page.getByText("No projects yet")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Start with New project: a Project holds a set of related Journeys and everyone who writes them.",
+    ),
+  ).toBeVisible();
+  const link = page.getByRole("link", { name: "How Projects work" });
+  await expect(link).toHaveAttribute("href", "/guide#create-a-project");
+
+  await page.screenshot({
+    path: evidencePath("empty-projects-list", "empty-projects-list.png"),
+    fullPage: true,
+  });
+});
+
 test("signing out from the user menu lands on sign-in, and /projects redirects again", async ({
   page,
   context,

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AuthorSettings } from "@/components/author-settings";
+import { previewAccountDeletion } from "@/db/account";
 import { getAuthorSettings } from "@/db/users";
 import { requireSession } from "@/lib/session";
 
@@ -21,7 +22,10 @@ export const metadata: Metadata = {
  */
 export default async function SettingsPage() {
   const session = await requireSession();
-  const settings = await getAuthorSettings(session.user.id);
+  const [settings, accountDeletionPreview] = await Promise.all([
+    getAuthorSettings(session.user.id),
+    previewAccountDeletion(session.user.id),
+  ]);
   if (!settings) notFound();
 
   return (
@@ -38,7 +42,10 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
       </header>
 
-      <AuthorSettings settings={settings} />
+      <AuthorSettings
+        settings={settings}
+        accountDeletionPreview={accountDeletionPreview}
+      />
     </main>
   );
 }

@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import type { GraphDocument } from "@/lib/graph/document";
@@ -8,15 +10,17 @@ import {
   openFindStep,
   tagWithOutcome,
 } from "./setup/authoring";
-import { readDraft } from "./setup/documents";
+import { canvas, canvasNode } from "./setup/canvas";
+import { readDraft, readDraftRow } from "./setup/documents";
 import { E2E_BASE_URL } from "./setup/e2e-env";
 import {
   addChoiceToStep,
   expectSaved,
   renameStep,
+  seedDraft,
   startJourney,
 } from "./setup/editor";
-import { evidencePath } from "./setup/evidence";
+import { capturePath, evidencePath } from "./setup/evidence";
 import { cleanup, closePools } from "./setup/session";
 
 /**
@@ -100,23 +104,50 @@ async function retargetChoice(
   await expect(field).toHaveValue(title);
 }
 
-/** "Add choice" pointed at a Step that does not exist yet — the same motion. */
+/**
+ * The panel beside the map, on whichever Step the Author has open. Named
+ * exactly: the problems a Step carries are a region inside it. Its status
+ * line is found through it, never page-wide, where the Draft's save line is
+ * a status too.
+ */
+function stepPanel(page: Page) {
+  return page.getByRole("region", { name: "Step", exact: true });
+}
+
+/** "Add choice" in the panel, pointed at a Step that does not exist yet. */
+async function addChoiceToNewStepInPanel(
+  page: Page,
+  label: string,
+): Promise<void> {
+  const panel = stepPanel(page);
+  await panel.getByRole("button", { name: "Add choice", exact: true }).click();
+  await panel.getByLabel("Label", { exact: true }).fill(label);
+  await panel
+    .getByLabel("Target", { exact: true })
+    .selectOption({ label: "New step" });
+  await panel.getByRole("button", { name: "Add", exact: true }).click();
+}
+
+/**
+ * "Add choice" pointed at a Step that does not exist yet, and the new Step
+ * then opened and named. The panel stays on the Step the Choice was written
+ * on (ticket 79); the line under its Choices opens the new one, whose title
+ * is empty, reads "Untitled step" as its placeholder, and has the focus.
+ */
 async function addChoiceToNewStep(
   page: Page,
   label: string,
   title: string,
 ): Promise<void> {
-  await page.getByRole("button", { name: "Add choice", exact: true }).click();
-  await page.getByLabel("Label", { exact: true }).fill(label);
-  await page
-    .getByLabel("Target", { exact: true })
-    .selectOption({ label: "New step" });
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await addChoiceToNewStepInPanel(page, label);
+  await stepPanel(page)
+    .getByRole("button", { name: "Edit Untitled step", exact: true })
+    .click();
 
-  // The new Step is what the panel opens on, with its title field focused,
-  // so it can be named right away.
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
-  await expect(page.getByLabel("Step title")).toBeFocused();
+  const field = page.getByLabel("Step title");
+  await expect(field).toHaveValue("");
+  await expect(field).toHaveAttribute("placeholder", "Untitled step");
+  await expect(field).toBeFocused();
   await renameStep(page, title);
 }
 
@@ -353,12 +384,18 @@ test("step-editing-image-caption-alt-and-preview", async ({
     imageTools.getByRole("button", { name: "Remove" }),
   ).toBeVisible();
 
+  // The viewport, not the full page: Chromium takes a full-page capture
+  // (`captureBeyondViewport`) through a frame in which the window reports a
+  // 1×1 viewport. That frame matches the phone query, so the Step panel is
+  // moved into the bottom sheet and back, which remounts the editor and
+  // drops the image's selection and its toolbar before "Edit image" can be
+  // pressed. No Author's window is ever 1×1. The picture and its toolbar
+  // are in view, since they were just clicked.
   await page.screenshot({
     path: evidencePath(
       "step-editing-image-caption-alt-and-preview",
       "selected-image.png",
     ),
-    fullPage: true,
   });
 
   // Editing rewrites the selected image's caption and alt in place.
@@ -416,6 +453,10 @@ test("step-editing-image-caption-alt-and-preview", async ({
   await expect(page.locator("figcaption")).toHaveText(
     "Photo: Ada Lovelace, CC BY 4.0",
   );
+  // The Step's content opens with the editor's own Heading 2, and a
+  // document's first heading renders as h2 in Preview and the runner alike,
+  // whatever level it was written at (ticket 92): the Step's title is
+  // already the page's h1.
   await expect(
     page.getByRole("heading", { name: "The queue", level: 2 }),
   ).toBeVisible();
@@ -692,7 +733,7 @@ test("step-editing-choices-reorder-retarget", async ({ page }) => {
     .nth(1)
     .getByRole("option", { name: "New step…", exact: true })
     .click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toHaveValue("");
   await expect(page.getByLabel("Step title")).toBeFocused();
   // And it is a Step of the Draft like any other: "Find step" offers it.
   await openFindStep(page);
@@ -710,7 +751,7 @@ test("step-editing-choices-reorder-retarget", async ({ page }) => {
   // "not yet reached" list.
   await chooseStep(page, "Border post");
   await rows.nth(1).getByRole("button", { name: "Open", exact: true }).click();
-  await expect(page.getByLabel("Step title")).toHaveValue("Untitled step");
+  await expect(page.getByLabel("Step title")).toHaveValue("");
 
   await openFindStep(page);
   await expect(stepOption(page, "Turned back")).toBeVisible();
@@ -911,6 +952,204 @@ test("panel-choice-target-search", async ({ page }) => {
   });
 });
 
+test("panel-choice-target-enter", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
+
+  // A Start with two Choices, each on a Step of its own, so neither
+  // Choice's target is the first option its own field offers (ticket 89 —
+  // the walk retargeted "Wait your turn" exactly because it was).
+  await renameStep(page, "Border post");
+  await addChoiceToNewStep(page, "Wait your turn", "Waved through");
+  await chooseStep(page, "Border post");
+  await addChoiceToNewStep(page, "Find the clinic", "Clinic tent");
+  await chooseStep(page, "Border post");
+  await expectSaved(page);
+
+  const rows = page
+    .getByRole("list", { name: "Choices" })
+    .getByRole("listitem");
+  const firstRow = rows.nth(0);
+  const secondRow = rows.nth(1);
+  await expect(firstRow.getByLabel("Choice target")).toHaveValue(
+    "Waved through",
+  );
+  await expect(secondRow.getByLabel("Choice target")).toHaveValue(
+    "Clinic tent",
+  );
+
+  const stored = await readDraft(journeyId);
+  const borderPostId = stepIdByTitle(stored, "Border post");
+  const clinicTentId = stepIdByTitle(stored, "Clinic tent");
+  const waitYourTurnId = stored.steps[borderPostId].choices.find(
+    (choice) => choice.label === "Wait your turn",
+  )!.id;
+  const findTheClinicId = stored.steps[borderPostId].choices.find(
+    (choice) => choice.label === "Find the clinic",
+  )!.id;
+  const targetOf = (draft: GraphDocument, choiceId: string) =>
+    draft.steps[borderPostId].choices.find((choice) => choice.id === choiceId)
+      ?.targetStepId;
+
+  // Every Draft write is a server action: a POST carrying `next-action`.
+  // Counted from here on, so a press that wrote anything shows up here.
+  const writes: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && "next-action" in request.headers()) {
+      writes.push(request.url());
+    }
+  });
+  // The Draft's save status, read once and not retried: an edit turns it
+  // from "Saved" in the same render as the keypress that made it, so a
+  // reading straight after the press says whether that press edited.
+  const saveStatus = page
+    .getByRole("tabpanel", { name: "Editor" })
+    .getByRole("status", { name: "Draft save status" });
+  async function expectNoEdit(): Promise<void> {
+    expect(await saveStatus.textContent()).toBe("Saved");
+  }
+
+  const before = await readDraftRow(journeyId);
+
+  // Tab from the Choice's own label field onto its target field, by
+  // keyboard alone.
+  await secondRow.getByLabel("Choice label").focus();
+  await page.keyboard.press("Tab");
+  const targetField = secondRow.getByLabel("Choice target");
+  await expect(targetField).toBeFocused();
+
+  const listbox = secondRow.getByRole("listbox", { name: "Steps" });
+  await expect(listbox).toBeVisible();
+  const chosenOption = secondRow.getByRole("option", {
+    name: "Clinic tent",
+    exact: true,
+  });
+  await expect(chosenOption).toBeVisible();
+  const chosenOptionId = await chosenOption.getAttribute("id");
+  expect(chosenOptionId, "the chosen option has no id").not.toBeNull();
+  await expect(targetField).toHaveAttribute(
+    "aria-activedescendant",
+    chosenOptionId!,
+  );
+
+  await page.screenshot({
+    path: evidencePath("panel-choice-target-enter", "target-field.png"),
+    fullPage: true,
+  });
+
+  // Enter with nothing navigated and nothing typed: the list closes, the
+  // field still names the current target, and nothing is edited.
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Clinic tent");
+
+  // A character typed and taken back again leaves the field untouched:
+  // Enter still chooses nothing.
+  await targetField.selectText();
+  await page.keyboard.type("x");
+  await expect(listbox).toBeVisible();
+  await expect(targetField).toHaveValue("x");
+  await page.keyboard.press("Backspace");
+  await expect(targetField).toHaveValue("Clinic tent");
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Clinic tent");
+
+  // Nothing posted, and the Draft row as it was.
+  expect(writes).toEqual([]);
+  const afterNoop = await readDraftRow(journeyId);
+  expect(afterNoop.version).toBe(before.version);
+  const noopTarget = targetOf(await readDraft(journeyId), findTheClinicId);
+  expect(noopTarget).toBe(clinicTentId);
+
+  // ArrowDown then Enter still retargets: moving off the chosen option and
+  // choosing a different one behaves as before. It is also the check that
+  // the presses above left nothing pending behind the save's debounce: one
+  // write lands, the Draft moves on by exactly one, and "Find the clinic"
+  // still points where it did.
+  await firstRow.getByLabel("Choice target").click();
+  const firstListbox = firstRow.getByRole("listbox", { name: "Steps" });
+  await expect(firstListbox).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(firstListbox).toHaveCount(0);
+  await expect(firstRow.getByLabel("Choice target")).toHaveValue("Clinic tent");
+  await expectSaved(page);
+
+  const afterRow = await readDraftRow(journeyId);
+  expect(afterRow.version).toBe(before.version + 1);
+  const after = await readDraft(journeyId);
+  const retargeted = targetOf(after, waitYourTurnId);
+  expect(retargeted).toBe(clinicTentId);
+  expect(targetOf(after, findTheClinicId)).toBe(clinicTentId);
+
+  // A Choice whose target Step is gone: the list opens on its first option,
+  // since none is the one stored, and an untouched Enter still chooses
+  // nothing — the Choice keeps pointing at the missing Step.
+  const missingStepId = "missing-step";
+  after.steps[borderPostId].choices = after.steps[borderPostId].choices.map(
+    (choice) =>
+      choice.id === findTheClinicId
+        ? { ...choice, targetStepId: missingStepId }
+        : choice,
+  );
+  await seedDraft(page, journeyId, after);
+  await expect(page.getByLabel("Step title")).toHaveValue("Border post");
+  await expectSaved(page);
+  await expect(targetField).toHaveValue("Missing step");
+  const danglingBefore = await readDraftRow(journeyId);
+  writes.length = 0;
+
+  await secondRow.getByLabel("Choice label").focus();
+  await page.keyboard.press("Tab");
+  await expect(targetField).toBeFocused();
+  await expect(listbox).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expectNoEdit();
+  await expect(listbox).toHaveCount(0);
+  await expect(targetField).toHaveValue("Missing step");
+  expect(writes).toEqual([]);
+  const danglingAfter = await readDraftRow(journeyId);
+  expect(danglingAfter.version).toBe(danglingBefore.version);
+
+  // The same debounce check: one later edit, one write, and the dangling
+  // Choice still pointing at the missing Step.
+  await renameStep(page, "Border crossing");
+  await expectSaved(page);
+  expect((await readDraftRow(journeyId)).version).toBe(
+    danglingBefore.version + 1,
+  );
+  expect(targetOf(await readDraft(journeyId), findTheClinicId)).toBe(
+    missingStepId,
+  );
+
+  writeFileSync(
+    capturePath(
+      "panel-choice-target-enter",
+      "ac-1-choice-target-unchanged.txt",
+    ),
+    [
+      `Ticket 89: Enter on an untouched Choice-target field keeps the Choice's target.`,
+      ``,
+      `Step (source): ${borderPostId}`,
+      `Choice "Find the clinic" (${findTheClinicId}) target before Enter: ${clinicTentId}`,
+      `Draft row version before Enter: ${before.version}`,
+      `Choice "Find the clinic" (${findTheClinicId}) target after Enter, and after typing then clearing then Enter: ${noopTarget}`,
+      `Draft row version re-read after those presses: ${afterNoop.version}`,
+      `Draft writes (next-action POSTs) during those presses: 0`,
+      ``,
+      `ArrowDown then Enter still retargets:`,
+      `Choice "Wait your turn" (${waitYourTurnId}) target after ArrowDown+Enter: ${retargeted}`,
+      `Draft row version after retargeting: ${afterRow.version}`,
+      ``,
+      `Dangling target (Step ${missingStepId} not in the Draft), untouched Enter:`,
+      `Draft row version before Enter: ${danglingBefore.version}`,
+      `Draft row version re-read after Enter: ${danglingAfter.version}`,
+    ].join("\n"),
+  );
+});
+
 test("panel-outcomes-from-the-ending", async ({ page }) => {
   const { journeyId } = await startJourney(page, mintedAuthorIds);
 
@@ -963,9 +1202,15 @@ test("panel-outcomes-from-the-ending", async ({ page }) => {
       .getByRole("listbox", { name: "Outcomes" })
       .getByRole("option", { name: "Reached care", exact: true }),
   ).toContainText("2 endings");
+  // The viewport, not the full page: Chromium takes a full-page capture
+  // (`captureBeyondViewport`) through a frame in which the window reports a
+  // 1×1 viewport. That frame matches the phone query, so the Step panel is
+  // moved into the bottom sheet and back, which remounts the Outcome field.
+  // The list is then closed and the focus is on the page, not in the list,
+  // before Escape is pressed. No Author's window is ever 1×1. The open list
+  // is in view, since its field was just clicked.
   await page.screenshot({
     path: evidencePath("panel-outcomes-from-the-ending", "outcome-open.png"),
-    fullPage: true,
   });
 
   // Escape puts the list away and hands the focus back to the field.
@@ -1049,6 +1294,242 @@ test("panel-outcomes-from-the-ending", async ({ page }) => {
     path: evidencePath(
       "panel-outcomes-from-the-ending",
       "panel-outcomes-from-the-ending.png",
+    ),
+    fullPage: true,
+  });
+});
+
+test("step-editing-add-choice-stays-on-step", async ({ page }) => {
+  const { journeyId } = await startJourney(page, mintedAuthorIds);
+  await renameStep(page, "Border post");
+  const panel = stepPanel(page);
+  const title = page.getByLabel("Step title");
+
+  // A Choice to a New step leaves the panel on the Step it was written on,
+  // selects the new Step's box on the map, and says what it made.
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  await expect(title).toHaveValue("Border post");
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+  await expect(
+    panel.getByRole("button", { name: "Edit Untitled step", exact: true }),
+  ).toBeVisible();
+  // Two statuses in the Editor tabpanel now; the Draft's save line is still
+  // the one `expectSaved` finds, by its name.
+  await expectSaved(page);
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+  await expect(canvasNode(page, "Untitled step")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await expect(canvasNode(page, "Border post")).not.toHaveAttribute(
+    "aria-current",
+  );
+
+  // So a second "Add choice" lands on the same Step.
+  await addChoiceToNewStepInPanel(page, "Walk away");
+  await expect(title).toHaveValue("Border post");
+  await expect(
+    panel.getByRole("list", { name: "Choices" }).getByRole("listitem"),
+  ).toHaveCount(2);
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+
+  // From the top, so the sticky rows sit where they belong in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: evidencePath(
+      "step-editing-add-choice-stays-on-step",
+      "step-editing-add-choice-stays-on-step.png",
+    ),
+    fullPage: true,
+  });
+
+  // "Edit" opens the Step just made, its title empty and waiting.
+  await panel
+    .getByRole("button", { name: "Edit Untitled step", exact: true })
+    .click();
+  await expect(title).toHaveValue("");
+  await expect(title).toHaveAttribute("placeholder", "Untitled step");
+  await expect(title).toBeFocused();
+  // The line's live region stays, empty, so its next words are announced.
+  await expect(panel.getByRole("status")).toHaveText("");
+  await expect(canvasNode(page, "Border post")).not.toHaveAttribute(
+    "aria-current",
+  );
+  await renameStep(page, "Turned back");
+  await expect(canvasNode(page, "Turned back")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await expectSaved(page);
+
+  // Both Choices are the Start's; the one opened is the second made, and the
+  // first is still untitled, stored as an empty title.
+  const draft = await readDraft(journeyId);
+  const start = draft.steps[draft.startStepId];
+  expect(start.choices.map((choice) => choice.label)).toEqual([
+    "Wait your turn",
+    "Walk away",
+  ]);
+  expect(
+    start.choices.map((choice) => draft.steps[choice.targetStepId].title),
+  ).toEqual(["", "Turned back"]);
+
+  // An undo takes the add back, and the line naming what it made with it.
+  await addChoiceToNewStepInPanel(page, "Go back");
+  await expect(panel.getByRole("status")).toHaveText('Added "Untitled step"');
+  await canvas(page).getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(
+    panel.getByRole("button", { name: "Edit Untitled step", exact: true }),
+  ).toHaveCount(0);
+  await expect(panel.getByRole("status")).toHaveText("");
+});
+
+/** A grey picture of a known size, served for the image test's address. */
+const PLACEHOLDER_IMAGE = [
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240">',
+  '<rect width="400" height="240" fill="#d4d4d4" />',
+  "</svg>",
+].join("");
+
+type Rect = { x: number; y: number; width: number; height: number };
+
+function overlaps(a: Rect, b: Rect): boolean {
+  return (
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height
+  );
+}
+
+function within(inner: Rect, outer: Rect): boolean {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
+}
+
+/**
+ * Ticket 57: the hint a brand-new Draft carries above the map, gone as soon
+ * as the Journey grows past its one Step and no Choices.
+ */
+test("empty-draft-map", async ({ page }) => {
+  await startJourney(page, mintedAuthorIds);
+
+  const hint = page.getByText(
+    "Write the Start Step in the panel, then add a Choice to make the next Step.",
+  );
+  await expect(hint).toBeVisible();
+  const link = page.getByRole("link", { name: "How the canvas works" });
+  await expect(link).toHaveAttribute("href", "/guide#the-canvas");
+
+  await page.screenshot({
+    path: evidencePath("empty-draft-map", "empty-draft-map.png"),
+    fullPage: true,
+  });
+
+  // A Choice — the Draft's second Step — is what makes it go.
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  await expect(hint).toHaveCount(0);
+});
+
+/**
+ * Ticket 57: the Step content editor's placeholder and the Choice label
+ * input's, both shown only while their field is empty.
+ */
+test("editor-placeholders", async ({ page }) => {
+  await startJourney(page, mintedAuthorIds);
+
+  const surface = page.getByLabel("Step content");
+  await expect(surface).toHaveAttribute(
+    "aria-placeholder",
+    "Write what the participant reads…",
+  );
+  await expect(surface.locator("p.is-empty")).toHaveAttribute(
+    "data-placeholder",
+    "Write what the participant reads…",
+  );
+
+  await addChoiceToNewStepInPanel(page, "Wait your turn");
+  const labelField = stepPanel(page).getByLabel("Choice label");
+  // Cleared, so the placeholder is what the field shows.
+  await labelField.fill("");
+  await expect(labelField).toHaveValue("");
+  await expect(labelField).toHaveAttribute(
+    "placeholder",
+    "What the participant clicks",
+  );
+
+  // From the top, so the sticky rows do not cover the editor in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: evidencePath("editor-placeholders", "editor-placeholders.png"),
+    fullPage: true,
+  });
+});
+
+test("step-editing-image-tools-clear-of-text", async ({ page }) => {
+  // Stored images need an absolute http(s) address; this one is answered
+  // here, so the picture has a real size without the internet.
+  await page.route("https://example.com/doormat.svg", (route) =>
+    route.fulfill({ contentType: "image/svg+xml", body: PLACEHOLDER_IMAGE }),
+  );
+  await startJourney(page, mintedAuthorIds);
+  await renameStep(page, "Doorstep");
+
+  // A paragraph, then an image under it.
+  const surface = page.getByLabel("Step content");
+  await surface.click();
+  await page.keyboard.type("A key lies under the mat.");
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Image", exact: true }).click();
+  const imageDialog = page.getByRole("dialog");
+  await imageDialog
+    .getByLabel("Image URL")
+    .fill("https://example.com/doormat.svg");
+  await imageDialog
+    .getByLabel("Alt text", { exact: true })
+    .fill("A doormat on a step");
+  await imageDialog.getByRole("button", { name: "Insert image" }).click();
+  await expect(imageDialog).toBeHidden();
+
+  const paragraph = surface.locator("p", {
+    hasText: "A key lies under the mat.",
+  });
+  const picture = surface.locator("figure img");
+  await expect
+    .poll(() =>
+      picture.evaluate((element) => (element as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
+
+  // The image selected: its toolbar sits over the picture and nowhere near
+  // the paragraph above it.
+  await picture.click();
+  const tools = page.getByRole("toolbar", { name: "Image tools" });
+  await expect(tools.getByRole("button", { name: "Remove" })).toBeVisible();
+  await expect
+    .poll(async () => {
+      const [toolsBox, paragraphBox, pictureBox] = await Promise.all([
+        tools.boundingBox(),
+        paragraph.boundingBox(),
+        picture.boundingBox(),
+      ]);
+      if (!toolsBox || !paragraphBox || !pictureBox) return "not laid out";
+      if (overlaps(toolsBox, paragraphBox)) return "covers the paragraph";
+      if (!within(toolsBox, pictureBox)) return "outside the picture";
+      return "clear";
+    })
+    .toBe("clear");
+
+  // From the top, so the sticky rows do not cover the editor in the capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: evidencePath(
+      "step-editing-image-tools-clear-of-text",
+      "step-editing-image-tools-clear-of-text.png",
     ),
     fullPage: true,
   });

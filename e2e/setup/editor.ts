@@ -19,9 +19,12 @@ import { queryE2eDatabase, signInAs } from "./session";
  * editing specs goes through here first.
  */
 export async function expectSaved(page: Page): Promise<void> {
-  // The Draft's line, not the title form's above the tabs (ticket 46).
+  // The Draft's line, not the title form's above the tabs (ticket 46) nor
+  // the panel's "Added …" line under the Choices: found by its name.
   await expect(
-    page.getByRole("tabpanel", { name: "Editor" }).getByRole("status"),
+    page
+      .getByRole("tabpanel", { name: "Editor" })
+      .getByRole("status", { name: "Draft save status" }),
   ).toHaveText("Saved");
 }
 

@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { RunnerFrame } from "@/components/runner/runner-frame";
 import {
   choiceLinkClassName,
-  liveDecision,
   ResponseNotice,
   responseRefusal,
   StepView,
@@ -22,9 +21,10 @@ import { chooseFromStartAction, startOverAction } from "./actions";
  * Version's title and description, with the card `opengraph-image.tsx`
  * beside this file renders; a Journey that is not live reads as the site
  * root does. `getPublicJourney` is cached per request, so the page below
- * pays for no second query. No Journey at all is a 404 here too (ticket
- * 60): metadata streams in after the page, so a title returned for a
- * missing Journey would replace the not-found page's own.
+ * pays for no second query. No Journey at all, and one that is unpublished
+ * or taken down, are both a 404 here (ticket 60, widened by ticket 42,
+ * decision 4): metadata streams in after the page, so a title returned for
+ * either would replace the not-found page's own.
  */
 export async function generateMetadata({
   params,
@@ -33,7 +33,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { journeyId } = await params;
   const journey = await getPublicJourney(journeyId);
-  if (!journey) notFound();
+  if (!journey || journey.kind === "unavailable") notFound();
   return journeyLinkMetadata(journey, journeyId);
 }
 
@@ -60,36 +60,17 @@ export default async function JourneyStartPage({
   params: Promise<{ journeyId: string }>;
   searchParams: Promise<{
     notice?: string | string[];
-    decide?: string | string[];
-    response?: string | string[];
   }>;
 }) {
-  const [{ journeyId }, { notice, decide, response }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const [{ journeyId }, { notice }] = await Promise.all([params, searchParams]);
 
   const journey = await getPublicJourney(journeyId);
-  // No such Journey at all: a 404, the same answer an unknown id gets
-  // anywhere else. A Journey that exists but is not live gets the screen
-  // below instead — "never published" and "taken down" read the same, so a
-  // Participant learns nothing about a Journey they were not shown.
-  if (!journey) notFound();
-
-  if (journey.kind === "unavailable") {
-    return (
-      <RunnerFrame theme={journey.theme}>
-        <div className="flex flex-col gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            This journey isn&apos;t available
-          </h1>
-          <p className="text-muted-foreground">
-            It has been taken down or hasn&apos;t been published yet.
-          </p>
-        </div>
-      </RunnerFrame>
-    );
-  }
+  // No such Journey at all, and one that exists but is not live, are both a
+  // 404 (ticket 42, decision 4): "never published", "taken down", and
+  // "unknown id" all read the same way, so a Participant learns nothing
+  // about a Journey they were not shown. `not-found.tsx` beside this file
+  // renders the copy this screen used to show inline.
+  if (!journey || journey.kind === "unavailable") notFound();
 
   const cookieStore = await cookies();
   const runId = cookieStore.get(runCookieName(journeyId))?.value;
@@ -164,17 +145,6 @@ export default async function JourneyStartPage({
                 kind: "form",
                 action: chooseFromStartAction.bind(null, journeyId),
                 refusal: responseRefusal(notice),
-                // A deciding Prompt's answer (ticket 43): with no Run yet to
-                // hold the Response, it comes back in the address with the
-                // judge's pick, and the box shows it again — but only once
-                // the judge has actually been asked (`decide` present); a
-                // bare `?response=` on its own is never trusted back into
-                // the box (ticket 43 F6).
-                response:
-                  typeof decide === "string" && typeof response === "string"
-                    ? response
-                    : undefined,
-                decision: liveDecision(startStep, decide),
               }
         }
         startOver={null}

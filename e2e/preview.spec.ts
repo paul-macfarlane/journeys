@@ -32,13 +32,15 @@ test.afterAll(async () => {
 });
 
 test("preview", async ({ page, context }) => {
-  // Preview sits under the Author navbar (ticket 29), so the page has two
-  // banner landmarks; the frame's own header is the one without the App nav.
-  // The footer, though, is the frame's alone (ticket 34): the Author layout
-  // above it renders none, so there is exactly one contentinfo landmark.
-  const frameHeader = page
-    .getByRole("banner")
-    .filter({ hasNot: page.getByRole("navigation", { name: "App" }) });
+  // Preview sits under the Author navbar (ticket 29), whose header is the
+  // page's one banner landmark: the frame's own header is a region named
+  // "Journey" on Preview (ticket 78). The footer, though, is the frame's
+  // alone (ticket 34): the Author layout above it renders none, so there is
+  // exactly one contentinfo landmark.
+  const frameHeader = page.getByRole("region", {
+    name: "Journey",
+    exact: true,
+  });
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
 
@@ -61,6 +63,7 @@ test("preview", async ({ page, context }) => {
   // frame — title in the header, the Step's content and Choices — with only
   // the banner and its way back to the editor telling it apart.
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);
+  await expect(page).toHaveTitle(`Preview: ${journeyTitle} · Journeys`);
   const headerTitle = frameHeader.getByText(journeyTitle, { exact: true });
   await expect(headerTitle).toBeVisible();
   // The way out (ticket 69) points at Preview's own routes: the Project
@@ -92,6 +95,7 @@ test("preview", async ({ page, context }) => {
   await expect(page).toHaveURL(
     `${E2E_BASE_URL}${journeyPath}/preview/waved-through`,
   );
+  await expect(page).toHaveTitle(`Preview: ${journeyTitle} · Journeys`);
   await expect(
     page.getByRole("heading", { name: "Waved through" }),
   ).toBeVisible();
@@ -109,6 +113,16 @@ test("preview", async ({ page, context }) => {
     path: evidencePath("preview", "preview.png"),
     fullPage: true,
   });
+
+  // A Step the Draft does not have is the not-found page, titled as one:
+  // the Step screen's own title never lands over it (ticket 91).
+  const unknownStep = await page.goto(`${journeyPath}/preview/no-such-step`);
+  expect(unknownStep?.status()).toBe(404);
+  await expect(page).toHaveTitle("Page not found · Journeys");
+  await page.goBack();
+  await expect(page).toHaveURL(
+    `${E2E_BASE_URL}${journeyPath}/preview/waved-through`,
+  );
 
   await page.getByRole("link", { name: "Start over" }).click();
   await expect(page).toHaveURL(`${E2E_BASE_URL}${journeyPath}/preview`);

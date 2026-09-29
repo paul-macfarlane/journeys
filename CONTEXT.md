@@ -20,6 +20,10 @@ _Avoid_: Admin, editor, creator, user
 An anonymous person walking through a published journey. Never has an account.
 _Avoid_: User, player, reader, visitor
 
+**User**:
+Authors and participants together, and only when a sentence means both ("two kinds of users"). Never a synonym for either role.
+_Avoid_: People, person (for authors or participants)
+
 ## Journey structure
 
 **Step**:
@@ -78,16 +82,12 @@ _Avoid_: Undo, rewind
 
 ## Participation
 
-**Judge**:
-The AI reader that picks a choice for a deciding prompt's response. Sees only the step it is asked about, never an ending, an outcome, another step, or another participant's response; may find a response unclear; when it does, or has no answer, the participant chooses instead.
-_Avoid_: AI, judge model, evaluator
-
 **Preview**:
-An author walking the draft in the participant runner. Records no run.
+An author walking the draft or a published version in the participant runner. Records no run.
 _Avoid_: Test mode, dry run
 
 **Prompt**:
-An optional free-text question attached to a step that a participant may answer before choosing. A prompt may decide the next step: a deciding prompt is required, and its response is judged against the step's choices instead of the participant picking one directly.
+An optional free-text question attached to a step that a participant may answer before choosing.
 _Avoid_: Input, form, field, question
 
 **Response**:

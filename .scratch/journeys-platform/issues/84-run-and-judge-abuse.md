@@ -1,6 +1,6 @@
 # 84: Abuse limits on Runs and the Judge, and no Response in the address
 
-Status: needs-triage
+Status: wontfix
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
@@ -46,3 +46,7 @@ Acceptance criteria (completed after the decisions):
 Verification follows `docs/agents/testing.md` (`contract`), including migration compatibility. Never include participant Responses or real run data. Use `CONTEXT.md` vocabulary. Origin: ticket 72; ticket 15.
 
 ## Comments
+
+### 2026-09-26 — Claude (Opus 5.5), chunk 3
+
+`[SCOPE CHANGE]` Closed as `wontfix`, superseded by ticket 87. At the start of chunk 3, Paul cut the Judge ("it adds more complexity and risk than value"). A1 and A2 go away with it. A3 (unlimited Run creation) is covered by a Paul-owned Vercel Firewall rate-limit rule on `POST /j/*`, which ticket 87 lists in `human-prerequisites.md`. No in-app limiter is built. The two decisions this ticket asked for were answered first (a short-lived cookie; Firewall plus Gateway spend limit; 20 calls per Run and 4000 characters). They were never built and lapse with the Judge.

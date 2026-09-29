@@ -1,8 +1,8 @@
 # 42: SEO
 
-Status: ready-for-agent
+Status: done
 Blocked by: None
-Owner:
+Owner: Claude (Fable 5.1), chunk 5
 Parent: `.scratch/journeys-platform/spec.md`
 Priority: see `.scratch/journeys-platform/backlog.md`. Run after 44 only if the rename happens first; it does not wait for it.
 Route: contract (public routes change status; see the 2026-09-26 comment)
@@ -47,3 +47,73 @@ Verification and evidence follow `docs/agents/testing.md` ("Proportional verific
 5. Sign-in's "terms of service and privacy policy below" links both pages (64 finding 11).
 
 Acceptance adds: e2e for the 404s (status and copy) and the sign-in links; a unit test on the `metadataBase` fallback. Route becomes `contract` (public routes change status). Run after 44 only if the rename happens first; it is not waiting for it.
+
+### 2026-09-27 — Claude (Fable 5.1), chunk 5
+
+`[EXECUTION PLAN]` Chunk 5 is 42 → 78 (backlog rows 11 and 12), one branch `feat/chunk-5-public-pages-and-accessibility`, one PR to `staging`. The chunk's route is `contract` (this ticket's), so the contract chain, one full `pnpm test:e2e`, and two reviewers run once at the end. Three deliverables:
+
+- **D1 (this ticket, 42)** — one worker (Sonnet) in worktree `journeys-d1`, e2e on port 3142 over `journeys_e2e_d1`.
+- **D2 (78, items 1–4 and ACs 1–3)** — one worker (Sonnet) in worktree `journeys-d2`, e2e on port 3178 over `journeys_e2e_d2`, in parallel with D1: the predicted file sets are disjoint (D1: `layout.tsx`, `env.ts`, `link-preview.ts`, `robots.ts`, `sitemap.ts`, the `/j`, `/p`, `/sign-in`, `/authors` pages, `runner-frame.tsx`, the seed, `e2e/seo.spec.ts`; D2: the Author Project and Journey pages, `draft-editor.tsx`, `step-panel.tsx`, `globals.css`, `runner/rich-text.tsx`, `rich-text/extensions.ts`, `e2e/accessibility.spec.ts`). Re-checked at closeout.
+- **D3 (78, item 5, the walk)** — after D1 and D2 are integrated, one worker (Opus) on the chunk branch.
+
+Resolved decisions for D1 (the 2026-09-26 `[SCOPE CHANGE]` applied as written; the orchestrator took the recommended option where the ticket left one open, each queued for Paul):
+
+1. **Indexable set:** `/`, `/about`, `/guide`, `/privacy`, `/terms` — the two prose pages that arrived after the 2026-09-22 decision join the three it named, since they are the same kind of page. Each carries `alternates.canonical`; `sitemap.ts` lists the five with `lastModified` fixed at build time. `robots.ts` allows `/` and disallows `/sign-in`, `/projects`, and `/api`, with the sitemap named.
+2. **`noindex`:** `/sign-in` (page metadata), everything under `/projects` (the `(list)` and `[projectId]` layouts' metadata), and the three link-only public pages `/j/*`, `/p/*`, `/authors/*` through the `Metadata` that `src/lib/link-preview.ts` builds, so the unit tests read it. `/authors/*` is treated as `/p/*`: it post-dates the decision and discovery there is link-only too. The link-only pages stay crawlable (no robots disallow) so link previews still resolve.
+3. **`metadataBase`:** a pure `resolveMetadataBase` in `src/lib/metadata-base.ts` returns `https://<VERCEL_PROJECT_PRODUCTION_URL>` when `VERCEL_ENV` is set and is not `production` and that variable is set, and `BETTER_AUTH_URL` otherwise (production, local, CI). "Protected alias" is read as "any non-production Vercel deployment", since protection itself is not visible to the app. `env.ts` gains the two optional variables; `robots.ts` and `sitemap.ts` build their absolute URLs from the same function. Unit test on the four cases.
+4. **404s:** `/j/[journeyId]` calls `notFound()` for `unavailable` as well as `null`, in `generateMetadata` and the page; a segment `not-found.tsx` beside it renders the existing copy ("This journey isn't available" / "It has been taken down or hasn't been published yet.") in a `RunnerFrame` in the app's own `trail` Theme (a segment not-found has no params, so the Journey's Theme cannot be read there). `/p/[projectId]` does the same when the Project has no live Journey, with its segment `not-found.tsx` reading "This project isn't available" / "It has no published journeys right now, or the link is wrong." The unknown-id case renders the same screens, so a link says nothing about whether the row exists. The live-Journey list read is `cache()`d so `generateMetadata` and the page share it.
+5. **Blank Project description:** `projectLinkMetadata` falls back to `APP_TAGLINE` when the preview is empty; a Journey's `description` is a required string already.
+6. **Seed:** every seed Project gets a `descriptionContent` document, written on insert and on conflict (the seed is the source of truth, 68 finding 1), and every seed Journey an explicit `position` in the listed order.
+7. **Header:** `RunnerFrame` takes a `home` variant of its sticky header — the wordmark linking to `/` at the left, the "Dark mode" button at the right — rendered by the public Project page and the Author page. The runner is unchanged.
+8. **Sign-in:** "By signing in you agree to the [terms of service] and [privacy policy]." with the two links; "below" goes.
+9. **Specs:** `landing` asserts the canonical link; `sign-in` asserts `noindex` and the two links (tests `sign-in-links`); a new `e2e/seo.spec.ts` holds `seo-robots-and-sitemap` and `seo-public-404s` (unknown and never-published Journey, Project with no live Journey: status 404 and copy; the Author's own unpublished Journey still previews). Existing assertions on the unavailable copy in `runner`, `public-project`, and `unreadable-version` are updated to expect 404.
+
+Verification map (route `contract`): AC-1 (robots, sitemap, noindex) → `seo-robots-and-sitemap` and `sign-in-links` screenshots plus the unit tests; the 404s → `seo-public-404s`; `metadataBase` → `src/lib/metadata-base.test.ts` in the chain; the blank-description fallback → `src/lib/link-preview.test.ts`; the seed → `pnpm seed:journey-stories` against the e2e database in the chain capture (`test-results/42-ac-seed.txt`); AC "Lighthouse" is dropped by the scope change; AC-3 → the chunk's full run in `test-results/chunk-5-commands.txt`. Run surface: local; the deployed check is Paul's staging smoke after merge.
+
+`[AI CODE REVIEW]` Two fresh reviewers (Opus) read the whole chunk diff (`10ad77a..9dfaa81`), one for correctness and spec, one for coding standards; the orchestrator adjudicated from the cited hunks. Fixed in c8554e3 (one worker, Sonnet):
+- Correctness and spec:
+  - F1: the Author's "Public page" link and its copy button led to the new 404 for a Project with no live Journey. They now show only once one is live, with "Publish a journey to share this project." before that.
+  - F2: `/p/<id>/opengraph-image` still drew the Project's title and description while the page 404'd. It now draws the brand card, and a live Project with no description gets the site tagline.
+  - F4 and F5: the home header is asserted on the live public pages, and an Author's Preview of a Draft-only Journey is asserted to stay 200.
+  - F6: the production origin is used only when `VERCEL_ENV` is `preview` and the production URL is non-empty. `VERCEL_ENV` is an enum; unit cases added for `development` and an empty URL.
+  - F8: comments fixed.
+- Coding standards: doc comments moved onto what they document (`sitemap.ts`, `metadata-base.ts`); an unused export dropped; stale "unavailable screen" comments rewritten, and the now-unread `theme` dropped from `PublicJourney`'s `unavailable` variant; `robots.ts` doc corrected.
+- Rejected: F11 (the sitemap's root `<loc>` ends in `/`, the canonical does not; cosmetic, the two are the same URL) and CS-15 (a shared constant for the five paths; a comment ties `INDEXABLE_PATHS` to the pages instead).
+- Noted, not changed:
+  - F7: staging's link previews point at production, as decision 3 intends, so staging-only ids show the brand card.
+  - F9: a Run resumed after its Journey was taken down links in its header to a Project page that may now 404.
+
+`[CLOSEOUT]` PR https://github.com/paul-macfarlane/journeys/pull/111 (chunk 5, with ticket 78).
+- **Worker:** D1, one worker (Sonnet, worktree `journeys-d1`, commit eb50da2), in parallel with 78's D2. Orchestrator fixes before merge: the `metadata-base.ts` doc rewritten, and `test-results/42-ac-seed.txt` sanitized (the seed author's email, the worktree path, the dotenv line). Review fixes by a second worker (Sonnet, c8554e3).
+- **Verified** at 745a9c6 (the chain ran at 1d803b1; 745a9c6 adds only evidence) on local `next start` over docker Postgres 18.
+- **Verdicts:**
+  - AC-1 PASS:
+    - `test-results/seo-robots-and-sitemap/` (both files and their policy) and `test-results/sign-in-links/` (sign-in `noindex` and the two links);
+    - the `/projects/<id>` `noindex` assertion in `seo-public-404s`;
+    - the link-only pages' `noindex` in `src/lib/link-preview.test.ts`.
+  - Scope items:
+    - 404s PASS: `test-results/seo-public-404s/`, plus `runner` and `not-found`.
+    - `metadataBase` fallback PASS: `src/lib/metadata-base.test.ts`, 6 cases.
+    - Blank description PASS: `link-preview.test.ts` and the card check in `seo-public-404s`.
+    - Seed PASS: `test-results/42-ac-seed.txt`.
+    - Header PASS: `public-project-page` and `author-page`.
+    - Sign-in links PASS: `sign-in-links`.
+  - AC-2 (Lighthouse): dropped by the 2026-09-26 `[SCOPE CHANGE]`.
+  - AC-3 PASS: `test-results/chunk-5-commands.txt`, full suite 133 passed, 0 flaky.
+- **Command chain:**
+  1. `eslint --ignore-pattern '.claude/**'`
+  2. `format:check`
+  3. `typecheck`
+  4. `db:migrate`
+  5. `DB_INTEGRATION_URL=… pnpm test` (674)
+  6. `build`
+  7. `E2E_EVIDENCE=<the chunk's names> pnpm test:e2e:prebuilt`
+- **Run surface:** local. The deployed check is Paul's staging smoke after merge. There is no migration and no new required variable (`VERCEL_ENV` and `VERCEL_PROJECT_PRODUCTION_URL` are Vercel's own).
+- **Decisions taken on Paul's behalf**, in the execution plan, open to change: `/about` and `/guide` indexable; `/authors` treated as `/p`; the preview-origin rule; the Project-404 copy.
+- **Parallel-run check:** no file conflict was predicted and none happened. D1 and D2 merged with no conflict and share no file. `e2e/public-project.spec.ts` was later touched by D3 and R1, which ran after, in sequence.
+
+`[SCOPE CHANGE]` 2026-09-27, CI on PR #111. `seo-robots-and-sitemap` failed on CI: the `Sitemap:` line named `http://localhost:3000` while the suite served on 3100.
+- **Cause:** `robots.ts` and `sitemap.ts` were static, so Next baked their absolute URLs at build time from the build's `BETTER_AUTH_URL`. CI builds for one origin and serves on another. The local chain built and served on the same port, which hid it. A Vercel build promoted between deployments would carry the same stale origin.
+- **Fix:** both routes are `force-dynamic`, so they resolve per request like the pages whose canonical URLs they must match. `lastModified` now means when this deployment started serving.
+- **Verified:** reproduced as CI runs it (build with origin 3000, serve on 3105): `seo`, `landing`, and `sign-in` passed 7 of 7. The full suite is the PR's CI run.
+- **Also:** staging's PR #110 (tickets 93–95) was merged in; the backlog's Awaiting table keeps both sides' rows.

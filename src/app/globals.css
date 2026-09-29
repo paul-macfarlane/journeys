@@ -457,4 +457,80 @@
   --xy-node-color: var(--foreground);
   --xy-node-background-color: var(--card);
   --xy-node-border: 1px solid var(--border);
+  /* React Flow's own attribution box takes the map's own background
+     (ticket 78) rather than its default translucent white, which read as a
+     stale light box over the map in the dark theme. */
+  --xy-attribution-background-color: var(--background);
+}
+
+/* An arrow holding the keyboard (ticket 88): its line in the page's focus
+   ring colour, heavier than the arrow in hand (`SELECTED_STROKE_WIDTH`), at
+   full strength even when it is one of the dimmed ones. `--ring` follows
+   the scheme, so the mark reads in light and dark. `!important` because a
+   marked or selected arrow carries its stroke inline. React Flow's own
+   focus rule only swaps in the selected colour, which is the one an arrow
+   in hand already has. */
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--ring) !important;
+  stroke-width: 4px !important;
+}
+.react-flow__edge:focus-visible [data-emphasis-group] {
+  opacity: 1;
+}
+/* An arrow with a problem keeps its red while it holds the keyboard: the
+   heavier line alone says where the keyboard is. */
+.react-flow__edge[data-problems]:not([data-problems="0"]):focus-visible
+  .react-flow__edge-path {
+  stroke: var(--destructive) !important;
+}
+
+/* The attribution link itself has no variable to win with — React Flow's
+   own stylesheet hardcodes `color: #999`, 4.24:1 against the box above at
+   10px, short of WCAG's 4.5:1 in either scheme.
+   `.react-flow .react-flow__attribution a` is more specific than React
+   Flow's own `.react-flow__attribution a`, so it wins regardless of which
+   stylesheet Next.js orders after the other (ticket 35's trap, here for a
+   hardcoded property rather than a variable). The link stays — React
+   Flow's licence asks for the attribution — just legible: the map's own
+   foreground, which already reads at contrast against its own background
+   everywhere else on the page. */
+.react-flow .react-flow__attribution a {
+  color: var(--foreground);
+}
+
+/* The Step content editor's placeholder (ticket 57): a decoration puts
+   `is-empty` and `data-placeholder` on the first block while the document is
+   empty (`@/lib/rich-text/placeholder.ts`), never on the stored content
+   itself. Whatever that block is — a paragraph, a heading (the hint in its
+   size), a list or a quote (the hint at the start of its first line, beside
+   the bullet or inside the rule) — so a direct child of the surface, not
+   only a `p`. `float: left; height: 0` keeps the empty block's own height
+   (and the caret's position in it) exactly what it would be without the
+   pseudo-element. */
+.ProseMirror > .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+/* Reduced motion (ticket 78's walk). The dialogs, menus, tooltips, and
+   sheets animate in and out through `tw-animate-css`, and the buttons and
+   fields ease their colors, none of it with a `motion-reduce:` variant of
+   its own: a reader who has asked for less motion gets every one of them
+   finished at once instead. Near zero rather than none, so Base UI still
+   sees each exit animation end and unmounts the popup behind it. Unlayered
+   and important, so it outranks every layered utility's own normal
+   declaration. The map's pan-and-zoom moves are React Flow's, not CSS:
+   `mapMoveDuration()` in `@/lib/reduced-motion` answers for those. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -2,13 +2,14 @@ import { expect, test } from "@playwright/test";
 
 import { PLAY_JOURNEY_HREF, PLAY_JOURNEY_LABEL } from "@/lib/demo";
 
+import { E2E_BASE_URL } from "./setup/e2e-env";
 import { evidencePath } from "./setup/evidence";
 
 const FEATURE_HEADINGS = [
   "Publish immutable versions",
   "Anonymous runs, no account",
   "Analytics on the graph",
-  "Prompts with an AI-decided choice",
+  "Prompts, read by the members",
   "Themes",
   "Rich text with images and credits",
 ];
@@ -29,6 +30,17 @@ test("landing page explains the product and offers a single sign-in link while s
   await expect(
     page.getByRole("heading", { name: "Journeys", level: 1 }),
   ).toBeVisible();
+
+  // Ticket 42: the canonical link and a description distinct from the
+  // tagline in the root layout's own metadata.
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    E2E_BASE_URL,
+  );
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "Write branching, text-based journeys as a graph of steps and choices, publish an immutable version, and share it by link — participants walk it with no account.",
+  );
 
   // The hero: the recording of the canvas (ticket 38's block, asserted in
   // detail by the test below).

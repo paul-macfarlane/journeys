@@ -16,17 +16,16 @@ import {
   type NodeTypes,
   useReactFlow,
 } from "@xyflow/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type FocusEvent } from "react";
 
 import {
-  arrowPoints,
   handleOffset,
-  labelPoint,
   NODE_BOX_CLASS,
-  smoothPath,
   sourceSide,
   targetSide,
   useCanvasColorMode,
+  WHOLE_MAP_FIT,
+  WHOLE_MAP_MAX_ZOOM,
 } from "@/components/journeys/canvas-shared";
 import { DirectionControl } from "@/components/journeys/direction-control";
 import { choiceLabel, counted } from "@/components/journeys/editor-shared";
@@ -43,11 +42,13 @@ import {
   type GraphDocument,
   type LayoutDirection,
 } from "@/lib/graph/document";
+import { arrowPoints, labelPoint, smoothPath } from "@/lib/graph/geometry";
 import {
   EDGE_LABEL_HEIGHT,
   EDGE_LABEL_MAX_WIDTH,
   layoutGraph,
 } from "@/lib/graph/layout";
+import { mapMoveDuration } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
 
 import "@xyflow/react/dist/style.css";
@@ -55,8 +56,8 @@ import "@xyflow/react/dist/style.css";
 /**
  * A Published Version as a map with the numbers on it: one box per Step,
  * one arrow per Choice, laid out by the same `layoutGraph` as the editor's
- * Canvas and drawn with the same geometry (`canvas-shared.ts`), so the shape
- * an Author reads the numbers off is exactly the shape they built.
+ * Canvas and drawn with the same geometry (`@/lib/graph/geometry`), so the
+ * shape an Author reads the numbers off is exactly the shape they built.
  *
  * Every arrow carries its Choice's take-rate — the share of visits to its
  * Step that went this way — and how many times it was walked, and is drawn
@@ -64,11 +65,14 @@ import "@xyflow/react/dist/style.css";
  * a single number is read. Every Ending carries how many Runs ended on it;
  * every other box carries how many Runs stopped on it and went no further.
  *
- * Read-only: nothing here opens, drags, connects, or selects. It pans, zooms,
+ * Read-only: nothing here opens, drags, connects, or edits. It pans, zooms,
  * and fits to view like the editor's map, and that is all it does — except
- * turn. Which way it runs is the reader's to choose, from the same control
- * the editor's map has in the same place, the row across the top of the
- * frame: a Published Version is immutable, so turning the map is a way of
+ * turn, and, on a Published Version's own view (`VersionMap`, ticket 94),
+ * select: there the map carries no numbers at all — no figure on a box, only
+ * the Choice on an arrow, every arrow the same weight — and each box is a
+ * button that picks the Step the view's panel shows. Which way it runs is
+ * the reader's to choose, from the same control the editor's map has in
+ * the same place, the row across the top of the frame: a Published Version is immutable, so turning the map is a way of
  * reading it and not an edit, and the browser keeps the choice for every
  * version and every Journey it reads — as it keeps whether the editor's
  * panel is put away — with the version's own direction until it has chosen.
@@ -79,10 +83,14 @@ type AnalyticsNodeData = {
   isStart: boolean;
   isEnding: boolean;
   outcomeLabel: string | null;
-  /** "3 runs" on an Ending, "1 abandoned" anywhere else. */
-  figure: string;
+  /** "3 runs" on an Ending, "1 abandoned" anywhere else; null with no counts. */
+  figure: string | null;
   sourceAnchors: string[];
   direction: LayoutDirection;
+  stepId: string;
+  /** True only when the map selects (the version view). */
+  selectable: boolean;
+  selected: boolean;
 };
 
 type AnalyticsFlowNode = Node<AnalyticsNodeData, "step">;
@@ -93,8 +101,8 @@ type AnalyticsEdgeData = {
   labelAt: Point;
   direction: LayoutDirection;
   label: string;
-  share: number | null;
-  traversals: number;
+  /** Null on a map with no counts: the arrow carries its Choice alone. */
+  figures: { share: number | null; traversals: number } | null;
 };
 
 type AnalyticsFlowEdge = Edge<AnalyticsEdgeData, "choice">;
@@ -139,21 +147,27 @@ function AnalyticsEdge({
     { x: targetX, y: targetY },
   );
   const middle = labelPoint(isLoop, data?.labelAt, points);
-  const share = data?.share ?? null;
-  const figure = `${formatShare(share)} · ${counted(data?.traversals ?? 0, "time")}`;
+  const figures = data?.figures ?? null;
+  const chipHeight = figures === null ? EDGE_LABEL_HEIGHT : CHIP_HEIGHT;
 
   return (
     <g>
       <BaseEdge
         path={smoothPath(points)}
         markerEnd={markerEnd}
-        style={{ strokeWidth: strokeWidth(share) }}
+        // With no counts every arrow is drawn the same, at React Flow's own
+        // weight: a thin line would read as "never taken".
+        style={
+          figures === null
+            ? undefined
+            : { strokeWidth: strokeWidth(figures.share) }
+        }
       />
       <foreignObject
         x={middle.x - EDGE_LABEL_MAX_WIDTH / 2}
-        y={middle.y - CHIP_HEIGHT / 2}
+        y={middle.y - chipHeight / 2}
         width={EDGE_LABEL_MAX_WIDTH}
-        height={CHIP_HEIGHT}
+        height={chipHeight}
         className="pointer-events-none overflow-visible"
       >
         <div className="flex h-full w-full items-center justify-center">
@@ -162,9 +176,11 @@ function AnalyticsEdge({
             className="flex max-w-full flex-col items-center rounded bg-background px-1.5 py-0.5 text-xs ring-1 ring-foreground/10"
           >
             <span className="max-w-full truncate">{data?.label}</span>
-            <span className="font-medium tabular-nums" data-edge-figure="">
-              {figure}
-            </span>
+            {figures !== null ? (
+              <span className="font-medium tabular-nums" data-edge-figure="">
+                {`${formatShare(figures.share)} · ${counted(figures.traversals, "time")}`}
+              </span>
+            ) : null}
           </span>
         </div>
       </foreignObject>
@@ -177,7 +193,50 @@ function AnalyticsEdge({
  * leads to a Step that exists: the layout never holds the editor's
  * "missing step" placeholder here, and there is one kind of box.
  */
-function AnalyticsNode({ data }: NodeProps<AnalyticsFlowNode>) {
+function AnalyticsNode({
+  data,
+  positionAbsoluteX,
+  positionAbsoluteY,
+  width,
+  height,
+}: NodeProps<AnalyticsFlowNode>) {
+  const { getZoom, setCenter } = useReactFlow();
+
+  // Tabbing onto a box the map has panned out of sight: the browser brings
+  // a focused element into view by scrolling whatever clips it — here the
+  // flow's own containers, which React Flow never expects to be scrolled,
+  // so the map would sit offset from where it thinks it is. Undo that, and
+  // pan the map instead, at the zoom the Member chose.
+  function revealOnFocus(event: FocusEvent<HTMLButtonElement>) {
+    const box = event.currentTarget;
+    const flow = box.closest<HTMLElement>(".react-flow");
+    if (flow === null) return;
+    for (
+      let element = box.parentElement;
+      element !== null;
+      element = element.parentElement
+    ) {
+      if (element.scrollTop !== 0) element.scrollTop = 0;
+      if (element.scrollLeft !== 0) element.scrollLeft = 0;
+      if (element === flow) break;
+    }
+
+    const boxRect = box.getBoundingClientRect();
+    const frame = flow.getBoundingClientRect();
+    const inside =
+      boxRect.left >= frame.left &&
+      boxRect.right <= frame.right &&
+      boxRect.top >= frame.top &&
+      boxRect.bottom <= frame.bottom;
+    if (inside) return;
+
+    void setCenter(
+      positionAbsoluteX + (width ?? 0) / 2,
+      positionAbsoluteY + (height ?? 0) / 2,
+      { zoom: getZoom(), duration: mapMoveDuration() },
+    );
+  }
+
   return (
     <>
       <Handle
@@ -187,36 +246,46 @@ function AnalyticsNode({ data }: NodeProps<AnalyticsFlowNode>) {
         isConnectable={false}
       />
 
-      {/* A group named by the Step, holding its badges and its figure, so
-          the box reads to assistive technology as "Waved through, Ending,
-          3 runs" — and to a spec as the same thing. */}
-      <div
-        role="group"
-        aria-label={data.title}
-        className={cn(
-          NODE_BOX_CLASS,
-          data.isStart ? "ring-2 ring-primary" : "ring-2 ring-foreground/15",
-        )}
-      >
-        <p className="truncate text-sm font-medium">{data.title}</p>
-
-        <div className="flex items-center gap-1 overflow-hidden">
-          {data.isStart ? <Badge>Start</Badge> : null}
-          {data.isEnding ? <Badge>Ending</Badge> : null}
-          {data.isEnding ? (
-            <span className="truncate text-xs text-muted-foreground">
-              {data.outcomeLabel ?? "No outcome"}
-            </span>
-          ) : null}
-        </div>
-
-        <p
-          data-step-figure=""
-          className="truncate text-xs font-medium tabular-nums"
+      {data.selectable ? (
+        // On the version view the box is a toggle button named by its Step,
+        // pressed while its Step is the one the panel shows: a tab stop, so
+        // the map is walked from the keyboard as well as by pointer. Its
+        // click — a pointer's, or Enter's and Space's — reaches the map's
+        // `onNodeClick`, which selects; React Flow lets a box take pointer
+        // events at all only while the map has that handler. Focus pans a
+        // box out of sight into view (`revealOnFocus`).
+        <button
+          type="button"
+          onFocus={revealOnFocus}
+          aria-label={data.title}
+          aria-pressed={data.selected}
+          className={cn(
+            NODE_BOX_CLASS,
+            "nopan cursor-pointer outline-offset-2 hover:bg-muted focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ring",
+            data.selected
+              ? "bg-muted ring-[3px] ring-foreground"
+              : data.isStart
+                ? "ring-2 ring-primary"
+                : "ring-2 ring-foreground/15",
+          )}
         >
-          {data.figure}
-        </p>
-      </div>
+          <AnalyticsNodeBody data={data} />
+        </button>
+      ) : (
+        // A group named by the Step, holding its badges and its figure, so
+        // the box reads to assistive technology as "Waved through, Ending,
+        // 3 runs" — and to a spec as the same thing.
+        <div
+          role="group"
+          aria-label={data.title}
+          className={cn(
+            NODE_BOX_CLASS,
+            data.isStart ? "ring-2 ring-primary" : "ring-2 ring-foreground/15",
+          )}
+        >
+          <AnalyticsNodeBody data={data} />
+        </div>
+      )}
 
       {data.sourceAnchors.map((choiceId, index) => {
         const offset = handleOffset(index, data.sourceAnchors.length);
@@ -231,6 +300,34 @@ function AnalyticsNode({ data }: NodeProps<AnalyticsFlowNode>) {
           />
         );
       })}
+    </>
+  );
+}
+
+/** What a box says: its title, its badges, and — with counts — its figure. */
+function AnalyticsNodeBody({ data }: { data: AnalyticsNodeData }) {
+  return (
+    <>
+      <span className="block truncate text-sm font-medium">{data.title}</span>
+
+      <span className="flex items-center gap-1 overflow-hidden">
+        {data.isStart ? <Badge>Start</Badge> : null}
+        {data.isEnding ? <Badge>Ending</Badge> : null}
+        {data.isEnding ? (
+          <span className="truncate text-xs text-muted-foreground">
+            {data.outcomeLabel ?? "No outcome"}
+          </span>
+        ) : null}
+      </span>
+
+      {data.figure !== null ? (
+        <span
+          data-step-figure=""
+          className="block truncate text-xs font-medium tabular-nums"
+        >
+          {data.figure}
+        </span>
+      ) : null}
     </>
   );
 }
@@ -257,10 +354,14 @@ function AnalyticsFlow({
   document,
   analytics,
   direction,
+  selectedStepId,
+  onSelectStep,
 }: {
   document: GraphDocument;
-  analytics: VersionAnalytics;
+  analytics: VersionAnalytics | null;
   direction: LayoutDirection;
+  selectedStepId: string | null;
+  onSelectStep: ((stepId: string) => void) | null;
 }) {
   const { nodes, edges } = useMemo(() => {
     // Laid out the way this browser reads it, not the way the version was
@@ -289,24 +390,34 @@ function AnalyticsFlow({
           node.outcomeId !== null
             ? (document.outcomes[node.outcomeId]?.label ?? null)
             : null,
-        figure: figureFor(node.isEnding, analytics.steps[node.stepId]),
+        figure:
+          analytics === null
+            ? null
+            : figureFor(node.isEnding, analytics.steps[node.stepId]),
         sourceAnchors: node.sourceAnchors,
         direction: layout.direction,
+        stepId: node.stepId,
+        selectable: onSelectStep !== null,
+        selected: node.stepId === selectedStepId,
       },
     }));
 
     const flowEdges: AnalyticsFlowEdge[] = layout.edges.map((edge) => {
       const label = choiceLabel(edge.label);
-      const stat = analytics.choices[edge.choiceId];
-      const share = stat?.share ?? null;
-      const traversals = stat?.traversals ?? 0;
+      const stat = analytics?.choices[edge.choiceId];
+      const figures =
+        analytics === null
+          ? null
+          : { share: stat?.share ?? null, traversals: stat?.traversals ?? 0 };
+      const route = `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}`;
 
       // What a spec reads off an arrow.
-      const domAttributes: EdgeMarks = {
-        "data-choice-id": edge.choiceId,
-        "data-share": share === null ? "" : String(share),
-        "data-traversals": String(traversals),
-      };
+      const domAttributes: EdgeMarks = { "data-choice-id": edge.choiceId };
+      if (figures !== null) {
+        domAttributes["data-share"] =
+          figures.share === null ? "" : String(figures.share);
+        domAttributes["data-traversals"] = String(figures.traversals);
+      }
 
       return {
         id: edge.id,
@@ -317,22 +428,24 @@ function AnalyticsFlow({
         type: "choice",
         selectable: false,
         focusable: false,
-        ariaLabel: `${label}: ${titleById.get(edge.source) ?? ""} → ${titleById.get(edge.target) ?? ""}, ${formatShare(share)}, ${counted(traversals, "time")}`,
+        ariaLabel:
+          figures === null
+            ? route
+            : `${route}, ${formatShare(figures.share)}, ${counted(figures.traversals, "time")}`,
         markerEnd: { type: MarkerType.ArrowClosed },
         data: {
           points: edge.points,
           labelAt: edge.labelAt,
           direction: layout.direction,
           label,
-          share,
-          traversals,
+          figures,
         },
         domAttributes,
       };
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [analytics, direction, document]);
+  }, [analytics, direction, document, onSelectStep, selectedStepId]);
 
   // Turning the map a quarter puts every box somewhere else, so wherever the
   // Member had panned and zoomed to is about a map that no longer exists:
@@ -342,7 +455,7 @@ function AnalyticsFlow({
   useEffect(() => {
     if (lastDirection.current === direction) return;
     lastDirection.current = direction;
-    void fitView({ duration: 200 });
+    void fitView({ maxZoom: WHOLE_MAP_MAX_ZOOM, duration: mapMoveDuration() });
   }, [direction, fitView]);
 
   const colorMode = useCanvasColorMode();
@@ -359,12 +472,21 @@ function AnalyticsFlow({
       nodesFocusable={false}
       edgesFocusable={false}
       elementsSelectable={false}
+      // Space is React Flow's key for panning by drag; where the boxes are
+      // buttons it has to press the focused one instead.
+      panActivationKeyCode={onSelectStep === null ? undefined : null}
+      onNodeClick={
+        onSelectStep === null
+          ? undefined
+          : (_event, node) => onSelectStep(node.data.stepId)
+      }
       fitView
+      fitViewOptions={WHOLE_MAP_FIT}
       // As the editor's map: low enough that a real-sized Journey fits.
       minZoom={0.05}
     >
       <Background />
-      <Controls showInteractive={false} />
+      <Controls showInteractive={false} fitViewOptions={WHOLE_MAP_FIT} />
     </ReactFlow>
   );
 }
@@ -372,9 +494,19 @@ function AnalyticsFlow({
 export function AnalyticsCanvas({
   document,
   analytics,
+  label = "Analytics map",
+  selectedStepId = null,
+  onSelectStep = null,
 }: {
   document: GraphDocument;
-  analytics: VersionAnalytics;
+  /** The Runs' numbers to draw on it; null for a map with none (`VersionMap`). */
+  analytics: VersionAnalytics | null;
+  /** The frame's accessible name. */
+  label?: string;
+  /** With `onSelectStep`: the Step whose box is marked selected. */
+  selectedStepId?: string | null;
+  /** When given, every box is a button that selects its Step. */
+  onSelectStep?: ((stepId: string) => void) | null;
 }) {
   // Which way this browser has turned the map, if it has. Until it has
   // chosen — and, on the render the server sent, until the page is the
@@ -386,7 +518,7 @@ export function AnalyticsCanvas({
 
   return (
     <section
-      aria-label="Analytics map"
+      aria-label={label}
       // The editor's frame, and its reason: most of the viewport on a tall
       // screen, never less than a map's worth. The row of controls takes
       // its share and the map's height is what is left.
@@ -415,9 +547,35 @@ export function AnalyticsCanvas({
             document={document}
             analytics={analytics}
             direction={direction}
+            selectedStepId={selectedStepId}
+            onSelectStep={onSelectStep}
           />
         </ReactFlowProvider>
       </div>
     </section>
+  );
+}
+
+/**
+ * A Published Version's map on its own view (ticket 94): the Analytics map
+ * with no numbers on it, whose boxes select the Step the view's panel shows.
+ */
+export function VersionMap({
+  document,
+  selectedStepId,
+  onSelectStep,
+}: {
+  document: GraphDocument;
+  selectedStepId: string;
+  onSelectStep: (stepId: string) => void;
+}) {
+  return (
+    <AnalyticsCanvas
+      document={document}
+      analytics={null}
+      label="Version map"
+      selectedStepId={selectedStepId}
+      onSelectStep={onSelectStep}
+    />
   );
 }

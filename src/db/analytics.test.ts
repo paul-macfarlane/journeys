@@ -7,14 +7,21 @@ import { createDraftDocument } from "@/lib/graph/document";
 import { toAnalyticsSource } from "./analytics";
 
 /**
- * Ticket 83: `getAnalyticsForMember`'s Published Version row is read with
+ * Ticket 83: `getAnalytics`' Published Version row is read with
  * `safeParse`. A version whose document fails the contract answers
  * `unreadable` (its id and version number), never a throw — the Analytics
  * tab names it in a banner and the Draft and other versions keep working.
  */
 describe("toAnalyticsSource", () => {
   const document = createDraftDocument();
-  const runs = [{ versionId: "version-1", path: ["start"] }];
+  const runs = [
+    {
+      versionId: "version-1",
+      path: ["start"],
+      completedAt: null,
+      endingStepId: null,
+    },
+  ];
 
   it("reads a version whose document satisfies the contract", () => {
     expect(

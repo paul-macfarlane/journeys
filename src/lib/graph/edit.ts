@@ -23,10 +23,13 @@ export { stepName };
  * editor never has to guard a stale selection before calling one of these.
  */
 
-/** A new, empty Step: one blank paragraph, no Choices, not an Ending's tag. */
+/**
+ * A new, empty Step: an empty title (read as "Untitled step"), one blank
+ * paragraph, no Choices, not an Ending's tag.
+ */
 export function addStep(
   document: GraphDocument,
-  title = "Untitled step",
+  title = "",
 ): { document: GraphDocument; stepId: string } {
   const stepId = crypto.randomUUID();
   const step: Step = {
@@ -63,10 +66,10 @@ function suffixedTitle(title: string): string {
 }
 
 /**
- * Copies a Step: its content, Prompt, and Outcome tag carry over and the name
- * the Author knows it by gains `COPY_SUFFIX` — `stepName`, so a Step with a
- * blank title yields `"<id> copy"` rather than a copy called `" copy"`, which
- * is what the panel and the map would then show. It starts with no Choices —
+ * Copies a Step: its content, Prompt, and Outcome tag carry over and the title
+ * gains `COPY_SUFFIX`; a Step with a blank title gives a copy with a blank
+ * title too, which the panel and the map read as "Untitled step" like any
+ * other untitled Step. It starts with no Choices —
  * an Author builds
  * outward from the copy the way they would from any new Step, rather than
  * inheriting where the original led. `position` is left `null`, like every
@@ -86,7 +89,8 @@ export function duplicateStep(
   const newStepId = crypto.randomUUID();
   const step: Step = {
     id: newStepId,
-    title: suffixedTitle(stepName(original)),
+    title:
+      original.title.trim().length > 0 ? suffixedTitle(original.title) : "",
     content: structuredClone(original.content),
     choices: [],
     // Cloned like the content: a Prompt is an object, and two Steps sharing
@@ -128,13 +132,6 @@ export function updateStep(
  * panel's one field means both "ask this" and "ask nothing". The label is
  * otherwise kept as typed — trimming it under an Author's cursor would move
  * the cursor — and the runner shows it as it is.
- *
- * A deciding Prompt (ticket 43) is always required: the panel disables its
- * own "Required" checkbox while the Prompt decides, and this is the one
- * place that forces the stored flag to agree, whatever `prompt.required`
- * says on the way in. Only while it genuinely decides (`isDeciding`: two or
- * more Choices) — a stale `decides` on a Step left with one Choice forces
- * nothing, so the Author can still untick "Required" there.
  */
 export function setStepPrompt(
   document: GraphDocument,
@@ -148,13 +145,7 @@ export function setStepPrompt(
   const next =
     prompt.label.trim().length === 0
       ? null
-      : {
-          type: "free_text" as const,
-          ...prompt,
-          required:
-            prompt.required ||
-            (prompt.decides && document.steps[stepId].choices.length >= 2),
-        };
+      : { type: "free_text" as const, ...prompt };
   return updateStep(document, stepId, { prompt: next });
 }
 
@@ -571,4 +562,123 @@ export function endingCountsByOutcome(
   }
 
   return counts;
+}
+
+/**
+ * The edits the map asks for, in the document's own words: one value per
+ * move, so the canvas hands the editor a single `onEdit(command)` rather than
+ * a callback per move. `add-next-step` and `connect-choice` make their Choice
+ * with an empty label — what the Choice says is the next thing the Author
+ * writes, on the Step it leaves. Undo and redo are not edits: they move the
+ * history, and travel beside these rather than among them.
+ */
+export type EditCommand =
+  | { kind: "add-step" }
+  | { kind: "add-next-step"; stepId: string }
+  | { kind: "duplicate-step"; stepId: string }
+  | { kind: "set-start"; stepId: string }
+  | { kind: "delete-step"; stepId: string }
+  | { kind: "connect-choice"; stepId: string; targetStepId: string }
+  | {
+      kind: "retarget-choice";
+      stepId: string;
+      choiceId: string;
+      targetStepId: string;
+    }
+  | {
+      kind: "remove-choices";
+      choices: Array<{ stepId: string; choiceId: string }>;
+    }
+  | { kind: "set-layout-direction"; direction: LayoutDirection };
+
+/**
+ * What a command made of the document: the document it became, the Step it
+ * created (add-step, add-next-step, duplicate-step), and the Choice it
+ * created (connect-choice). An edit that refused, or changed nothing, hands
+ * back the very document it was given with neither; `refused` tells the two
+ * apart. It is true only where the edit itself said no — the Start deleted
+ * while it is the Start, a Step or Choice made from a Step that is not
+ * there — and false for an edit that simply had nothing to change, such as
+ * making the Start the Start or deleting a Step already gone.
+ */
+export type EditOutcome = {
+  document: GraphDocument;
+  stepId: string | null;
+  choiceId: string | null;
+  refused: boolean;
+};
+
+/** One `EditCommand` run through the edit it names. Pure, like every edit here. */
+export function runEditCommand(
+  document: GraphDocument,
+  command: EditCommand,
+): EditOutcome {
+  const unchanged: EditOutcome = {
+    document,
+    stepId: null,
+    choiceId: null,
+    refused: false,
+  };
+  const refused: EditOutcome = { ...unchanged, refused: true };
+  const changed = (
+    next: GraphDocument,
+    created: { stepId?: string; choiceId?: string } = {},
+  ): EditOutcome =>
+    next === document
+      ? unchanged
+      : {
+          document: next,
+          stepId: created.stepId ?? null,
+          choiceId: created.choiceId ?? null,
+          refused: false,
+        };
+
+  switch (command.kind) {
+    case "add-step": {
+      const created = addStep(document);
+      return changed(created.document, { stepId: created.stepId });
+    }
+    case "add-next-step": {
+      const created = addChoiceToNewStep(document, command.stepId, {
+        label: "",
+      });
+      if (created.choiceId === "") return refused;
+      return changed(created.document, { stepId: created.stepId });
+    }
+    case "duplicate-step": {
+      const created = duplicateStep(document, command.stepId);
+      if (created.stepId === "") return refused;
+      return changed(created.document, { stepId: created.stepId });
+    }
+    case "set-start":
+      return changed(setStart(document, command.stepId));
+    case "delete-step": {
+      const result = deleteStep(document, command.stepId);
+      if (!result.ok) return refused;
+      return changed(result.document);
+    }
+    case "connect-choice": {
+      const created = addChoice(document, command.stepId, {
+        label: "",
+        targetStepId: command.targetStepId,
+      });
+      if (created.choiceId === "") return refused;
+      return changed(created.document, { choiceId: created.choiceId });
+    }
+    case "retarget-choice":
+      return changed(
+        updateChoice(document, command.stepId, command.choiceId, {
+          targetStepId: command.targetStepId,
+        }),
+      );
+    case "remove-choices": {
+      let next = document;
+      for (const choice of command.choices) {
+        next = removeChoice(next, choice.stepId, choice.choiceId);
+      }
+      return changed(next);
+    }
+    case "set-layout-direction":
+      return changed(setLayoutDirection(document, command.direction));
+  }
 }

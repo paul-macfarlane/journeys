@@ -36,7 +36,10 @@ export function ResponseList({ groups }: { groups: StepResponses[] }) {
           className="flex flex-col gap-3 rounded-xl px-4 py-4 ring-1 ring-foreground/10"
         >
           <div className="flex flex-col gap-1">
-            <h3 className="font-medium">{group.title}</h3>
+            {/* The Responses tab's own top heading, one per Step, each a
+                sibling rather than nested under another (ticket 78, axe
+                `heading-order` skips from the page's `h1` otherwise). */}
+            <h2 className="font-medium">{group.title}</h2>
             <p className="text-muted-foreground text-sm">
               {group.promptLabel ?? "This step no longer asks a prompt."}
             </p>

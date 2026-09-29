@@ -1,30 +1,27 @@
-import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-import { RunnerFrame } from "@/components/runner/runner-frame";
-import {
-  choiceLinkClassName,
-  previewDecision,
-  ResponseNotice,
-  responseRefusal,
-  StepView,
-} from "@/components/runner/step-view";
-import { getDraftForMember } from "@/db/drafts";
-import { getJourneyForMember } from "@/db/journeys";
-import { getProjectForMember } from "@/db/projects";
-import { hasStep, isEnding } from "@/lib/graph/document";
-import { requireSession } from "@/lib/session";
-import { effectiveTheme } from "@/lib/theme";
-
+import { PreviewStepScreen } from "../../_preview/screens";
+import { draftPreviewMetadata, loadDraftPreview } from "../../_preview/source";
 import { previewChooseAction } from "../actions";
 
 /**
- * Preview's per-Step screen: one Step of the Draft, walked exactly the way a
- * Participant would walk it, in the participant runner's own frame, but
- * recording nothing. A Step with a Prompt offers its textbox and posts to
- * Preview's own action, which reads the answer by the runner's rule and
- * stores none of it; `notice` carries that action's one-line answer back.
- * Member-only, same as every other Journey page — a non-Member and an
- * unknown Step both 404.
+ * The tab title (ticket 91): "Preview: <Journey title>", with the root
+ * layout's template appending "· Journeys" — the same title on every Step
+ * screen as on Preview's start screen.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string; journeyId: string; stepId: string }>;
+}): Promise<Metadata> {
+  const { projectId, journeyId, stepId } = await params;
+  return draftPreviewMetadata({ projectId, journeyId, stepId });
+}
+
+/**
+ * The Draft's Preview, per-Step screen (`PreviewStepScreen`). Member-only,
+ * same as every other Journey page — a non-Member and an unknown Step both
+ * 404.
  */
 export default async function PreviewStepPage({
   params,
@@ -33,105 +30,22 @@ export default async function PreviewStepPage({
   params: Promise<{ projectId: string; journeyId: string; stepId: string }>;
   searchParams: Promise<{
     notice?: string | string[];
-    decide?: string | string[];
-    confidence?: string | string[];
-    response?: string | string[];
   }>;
 }) {
-  const session = await requireSession();
-  const [
-    { projectId, journeyId, stepId },
-    { notice, decide, confidence, response },
-  ] = await Promise.all([params, searchParams]);
-
-  const journey = await getJourneyForMember(
-    projectId,
-    journeyId,
-    session.user.id,
-  );
-  if (!journey) notFound();
-
-  const stored = await getDraftForMember(projectId, journeyId, session.user.id);
-  if (!stored) notFound();
-  // A Draft that cannot be read has nothing to preview: the Journey page
-  // says so and offers a Restore (ticket 73).
-  if (stored.kind === "unreadable") {
-    redirect(`/projects/${projectId}/journeys/${journeyId}`);
-  }
-  const draft = stored.document;
-
-  if (!hasStep(draft, stepId)) notFound();
-  const step = draft.steps[stepId];
-
-  // The Theme a Participant will see, as on Preview's first screen.
-  const project = await getProjectForMember(projectId, session.user.id);
-  if (!project) notFound();
-  const theme = effectiveTheme(project.theme, journey.theme);
-
-  const journeyHref = `/projects/${projectId}/journeys/${journeyId}`;
+  const [{ projectId, journeyId, stepId }, { notice }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+  const preview = await loadDraftPreview({ projectId, journeyId });
 
   return (
-    <RunnerFrame
-      title={journey.title}
-      // The description belongs to the Start Step alone, as in the runner.
-      description={
-        stepId === draft.startStepId
-          ? journey.description || undefined
-          : undefined
+    <PreviewStepScreen
+      preview={preview}
+      stepId={stepId}
+      notice={notice}
+      actionFor={(target) =>
+        previewChooseAction.bind(null, projectId, journeyId, target)
       }
-      preview={{ editorHref: journeyHref }}
-      // The way out (ticket 69), pointed at Preview's own routes: the
-      // Author's Project page, and the first screen wherever the Step does
-      // not offer "Start over" itself — an Ending does, below its Outcome.
-      project={{ title: project.title, href: `/projects/${projectId}` }}
-      startOver={
-        isEnding(step) ? undefined : { href: `${journeyHref}/preview` }
-      }
-      theme={theme}
-    >
-      <ResponseNotice notice={notice} />
-
-      <StepView
-        step={step}
-        document={draft}
-        choices={
-          step.prompt !== null
-            ? {
-                kind: "form",
-                action: previewChooseAction.bind(
-                  null,
-                  projectId,
-                  journeyId,
-                  stepId,
-                ),
-                refusal: responseRefusal(notice),
-                // Preview stores nothing, so a deciding Prompt's Response
-                // travels back in the address with the judge's pick and
-                // probability (ticket 43) — but only once the judge has
-                // actually been asked (`decide` present); a bare
-                // `?response=` on its own is never trusted back into the
-                // box (ticket 43 F6).
-                response:
-                  typeof decide === "string" && typeof response === "string"
-                    ? response
-                    : undefined,
-                decision: previewDecision(step, decide, confidence),
-              }
-            : {
-                kind: "links",
-                href: (targetStepId) =>
-                  `${journeyHref}/preview/${targetStepId}`,
-              }
-        }
-        // Preview records nothing, so starting over is just a link back to
-        // its first screen — the runner posts a server action here instead,
-        // because starting over there drops the Run cookie.
-        startOver={
-          <a href={`${journeyHref}/preview`} className={choiceLinkClassName}>
-            Start over
-          </a>
-        }
-      />
-    </RunnerFrame>
+    />
   );
 }

@@ -6,7 +6,7 @@ import {
   type Page,
 } from "@playwright/test";
 
-import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME } from "@/lib/brand";
 import { graphDocumentSchema, type GraphDocument } from "@/lib/graph/document";
 import { linkPreviewPalette } from "@/lib/link-preview";
 
@@ -15,16 +15,14 @@ import { MAX_PATH_LENGTH } from "@/lib/graph/run";
 import caseTwoJson from "../scripts/seed/journey-stories/case-2.json";
 import caseThreeJson from "../scripts/seed/journey-stories/case-3.json";
 import { createJourney, createProject, uniqueSuffix } from "./setup/authoring";
+import { axeViolations } from "./setup/axe";
 import {
-  DECIDING_PROMPT,
-  decidingDocument,
   loopDocument,
   promptDocument,
   publishDocument,
   QUEUE_PROMPT,
   QUEUE_STEP_ID,
   QUEUE_STEP_TITLE,
-  readResponses,
   readRuns,
   runnerDocument,
   START_STEP_ID,
@@ -46,7 +44,6 @@ import {
   signInAs,
 } from "./setup/session";
 import { promptBox } from "./setup/runner";
-import { holdServerAction } from "./setup/server-action";
 
 /**
  * Seam B for ticket 06: an anonymous Participant walking a published Journey
@@ -382,138 +379,6 @@ test("runner-required-prompt-refusal", async ({ page, context, browser }) => {
   }
 });
 
-test("runner-deciding-prompt", async ({ page, context, browser }) => {
-  const author = await signInAs(context);
-  mintedAuthorIds.push(author.id);
-
-  const suffix = uniqueSuffix();
-
-  await page.goto("/projects");
-  const projectId = await createProject(page, `Refugee Health ${suffix}`);
-  await page.goto(`/projects/${projectId}`);
-  const journeyId = await createJourney(
-    page,
-    projectId,
-    `Border Crossing ${suffix}`,
-  );
-
-  // The queue Step's Prompt decides; the server has no gateway key, so the
-  // judge never answers and the runner falls back to the Choices.
-  await writeDraftDocument(journeyId, decidingDocument());
-  const versionId = await publishDocument(journeyId, decidingDocument());
-
-  const participantContext = await browser.newContext({
-    baseURL: E2E_BASE_URL,
-  });
-  try {
-    const participant = await participantContext.newPage();
-
-    await participant.goto(`/j/${journeyId}`);
-    await participant.getByRole("button", { name: "Wait your turn" }).click();
-    await expect(
-      participant.getByRole("heading", { name: QUEUE_STEP_TITLE }),
-    ).toBeVisible();
-
-    // The deciding form: the textbox and one Continue, and no Choices yet.
-    const decidingBox = promptBox(participant, DECIDING_PROMPT);
-    await expect(decidingBox).toBeVisible();
-    await expect(decidingBox).toHaveAttribute("aria-required", "true");
-    await expect(
-      participant.getByRole("button", { name: "Continue" }),
-    ).toBeVisible();
-    await expect(
-      participant.getByRole("list", { name: "Choices" }),
-    ).toHaveCount(0);
-    await expect(
-      participant.getByRole("button", { name: "Show your papers" }),
-    ).toHaveCount(0);
-
-    await participant.screenshot({
-      path: evidencePath("runner-deciding-prompt", "deciding-form.png"),
-      fullPage: true,
-    });
-
-    const response = "I keep my eyes down and hold out my papers.";
-    await decidingBox.fill(response);
-
-    // While the judge runs, the button reads "Deciding…" and is disabled
-    // (ticket 49). The judge here answers at once (no key), so the action's
-    // own POST — the one with a `next-action` header — is held until the
-    // pending button has been read, then released, the way "Saving…" is
-    // proved on the Journey page. Before React has hydrated the form would
-    // post as a plain document request with no pending state to read, so
-    // the click waits for React's fiber on the button — the one sign that
-    // the island is running.
-    await participant.waitForFunction(() =>
-      Array.from(document.querySelectorAll("button")).some(
-        (button) =>
-          button.textContent === "Continue" &&
-          Object.keys(button).some((key) => key.startsWith("__reactFiber")),
-      ),
-    );
-    const judge = await holdServerAction(
-      participant,
-      `/j/${journeyId}/${QUEUE_STEP_ID}`,
-    );
-    await participant.getByRole("button", { name: "Continue" }).click();
-    await judge.request;
-    const deciding = participant.getByRole("button", { name: "Deciding…" });
-    await expect(deciding).toBeVisible();
-    await expect(deciding).toBeDisabled();
-    await participant.screenshot({
-      path: evidencePath("runner-deciding-prompt", "deciding.png"),
-      fullPage: true,
-    });
-    await judge.release();
-
-    // No key, so no pick: every Choice offered, none marked.
-    await expect(
-      participant.getByRole("heading", { name: "Choose for yourself" }),
-    ).toBeVisible();
-    await expect(
-      participant.getByRole("button", { name: "Show your papers" }),
-    ).toBeVisible();
-    await expect(
-      participant.getByRole("button", { name: "Leave the queue" }),
-    ).toBeVisible();
-    await expect(participant.locator("[data-suggested]")).toHaveCount(0);
-    await expect(
-      participant
-        .getByRole("status")
-        .filter({ hasText: "Choose the step that fits your response." }),
-    ).toBeVisible();
-    await expect(decidingBox).toHaveValue(response);
-
-    // The judge moved nothing: the Run still stands on the queue Step.
-    expect((await readRuns(versionId))[0].path).toEqual([
-      START_STEP_ID,
-      QUEUE_STEP_ID,
-    ]);
-
-    await participant.screenshot({
-      path: evidencePath("runner-deciding-prompt", "fallback.png"),
-      fullPage: true,
-    });
-
-    // A pressed Choice goes on as any other, and the Response is kept.
-    await participant.getByRole("button", { name: "Show your papers" }).click();
-    await expect(
-      participant.getByRole("heading", { name: "Waved through" }),
-    ).toBeVisible();
-    expect((await readRuns(versionId))[0].path).toEqual([
-      START_STEP_ID,
-      QUEUE_STEP_ID,
-      "waved-through",
-    ]);
-    const responses = await readResponses(versionId);
-    expect(responses.map(({ step_id, text }) => ({ step_id, text }))).toEqual([
-      { step_id: QUEUE_STEP_ID, text: response },
-    ]);
-  } finally {
-    await participantContext.close();
-  }
-});
-
 test("runner-back-and-choose-again", async ({ page, context, browser }) => {
   const author = await signInAs(context);
   mintedAuthorIds.push(author.id);
@@ -584,7 +449,11 @@ test("runner-back-and-choose-again", async ({ page, context, browser }) => {
     const afterBrowserBack = await readRuns(versionId);
     expect(afterBrowserBack[0].backtrack_count).toBe(1);
     expect(afterBrowserBack[0].ended_at).toBeNull();
-    expect(afterBrowserBack[0].outcome_id).toBeNull();
+    // Ticket 75: the Run's Completion and the Ending it reached survive the
+    // backtrack, even though it is no longer resting on that Ending.
+    expect(afterBrowserBack[0].completed_at).not.toBeNull();
+    expect(afterBrowserBack[0].outcome_id).toBe("reached-care");
+    expect(afterBrowserBack[0].ending_step_id).toBe("waved-through");
 
     // The in-app Back control does exactly the same thing.
     await participant.getByRole("link", { name: "← Back" }).click();
@@ -1203,11 +1072,14 @@ test("runner-unavailable-and-unknown", async ({ page, context, browser }) => {
   try {
     const participant = await participantContext.newPage();
 
-    // Never published: the Journey exists, but not for a Participant.
+    // Never published: the Journey exists, but not for a Participant — the
+    // same 404 an unknown id gets (ticket 42, decision 4).
     const neverPublished = await participant.goto(`/j/${journeyId}`);
-    expect(neverPublished?.status()).toBe(200);
+    expect(neverPublished?.status()).toBe(404);
     await expect(
-      participant.getByText("This journey isn't available"),
+      participant.getByRole("heading", {
+        name: "This journey isn't available",
+      }),
     ).toBeVisible();
     await participant.screenshot({
       path: evidencePath(
@@ -1218,25 +1090,33 @@ test("runner-unavailable-and-unknown", async ({ page, context, browser }) => {
     });
 
     // Published and then taken down reads exactly the same way, and a step
-    // URL opened without a Run lands on that screen rather than 404ing.
+    // URL opened without a Run lands there too rather than resuming.
     await publishDocument(journeyId, runnerDocument());
     await queryE2eDatabase(
       'UPDATE "journey" SET live_version_id = NULL WHERE id = $1',
       [journeyId],
     );
 
-    await participant.goto(`/j/${journeyId}`);
+    const takenDown = await participant.goto(`/j/${journeyId}`);
+    expect(takenDown?.status()).toBe(404);
     await expect(
-      participant.getByText("This journey isn't available"),
+      participant.getByRole("heading", {
+        name: "This journey isn't available",
+      }),
     ).toBeVisible();
 
-    await participant.goto(`/j/${journeyId}/${START_STEP_ID}`);
+    const stepWithoutRun = await participant.goto(
+      `/j/${journeyId}/${START_STEP_ID}`,
+    );
+    expect(stepWithoutRun?.status()).toBe(404);
     await expect(participant).toHaveURL(`${E2E_BASE_URL}/j/${journeyId}`);
     await expect(
-      participant.getByText("This journey isn't available"),
+      participant.getByRole("heading", {
+        name: "This journey isn't available",
+      }),
     ).toBeVisible();
 
-    // An id that names no Journey at all is a 404, not an "unavailable".
+    // An id that names no Journey at all reads and answers exactly the same.
     const unknown = await participant.goto(
       "/j/00000000-0000-4000-8000-000000000000",
     );
@@ -1405,25 +1285,26 @@ test("journey-link-preview", async ({ page, context, browser }) => {
       `${E2E_BASE_URL}/j/${journeyId}`,
     );
 
-    // Taken down: the page and its card read exactly as the site root does,
-    // and exactly as an id that names no Journey at all.
+    // Taken down: the page is now the app's own 404 (ticket 42, decision
+    // 4), the same one an id that names no Journey at all gets; its card —
+    // served by its own route, independent of the page — still reads as
+    // the site root's own.
     await queryE2eDatabase(
       'UPDATE "journey" SET live_version_id = NULL WHERE id = $1',
       [journeyId],
     );
     const unavailablePage = await participant.goto(`/j/${journeyId}`);
-    await expect(participant).toHaveTitle(APP_NAME);
+    expect(unavailablePage?.status()).toBe(404);
     const unavailableTitle = await participant.title();
-    const unavailableOgTitle = await metaContent(participant, "og:title");
-    const unavailableOgDescription = await metaContent(
-      participant,
-      "og:description",
-    );
-    expect(unavailableOgTitle).toBe(APP_NAME);
-    expect(unavailableOgDescription).toBe(APP_TAGLINE);
-    const unavailableImageUrl = await metaContent(participant, "og:image");
+    await expect(
+      participant.getByRole("heading", {
+        name: "This journey isn't available",
+      }),
+    ).toBeVisible();
+
+    const unavailableImageUrl = `/j/${journeyId}/opengraph-image`;
     const unavailable = await readPng(
-      await participant.request.get(unavailableImageUrl!),
+      await participant.request.get(unavailableImageUrl),
     );
     expect(unavailable.status).toBe(200);
     expect(unavailable.contentType).toContain("image/png");
@@ -1446,12 +1327,9 @@ test("journey-link-preview", async ({ page, context, browser }) => {
       capturePath("journey-link-preview", "ac-2-unavailable-journey.txt"),
       Buffer.from(
         [
-          `# Ticket 37, criterion 2: an unavailable or unknown Journey previews as the site root does.`,
+          `# Ticket 37/42: an unavailable or unknown Journey answers 404, and its card reads as the site root's own.`,
           `GET /j/<unpublished> -> ${unavailablePage?.status()}`,
           `  <title>: ${unavailableTitle}`,
-          `  og:title: ${unavailableOgTitle}`,
-          `  og:description: ${unavailableOgDescription}`,
-          `  og:image: ${unavailableImageUrl!.replace(journeyId, "<unpublished>")}`,
           `GET /j/<unpublished>/opengraph-image -> ${unavailable.status} ${unavailable.contentType} ${unavailable.width}x${unavailable.height} cache-control: ${unavailable.cacheControl}`,
           `  differs from the live card: ${!unavailable.bytes.equals(live.bytes)}`,
           `GET /j/${UNKNOWN_JOURNEY_ID} -> ${unknownPage?.status()}`,
@@ -1578,6 +1456,54 @@ test("runner-way-out", async ({ page, context, browser }) => {
     await expect(
       participant.getByRole("heading", { name: projectTitle }),
     ).toBeVisible();
+  } finally {
+    await participantContext.close();
+  }
+});
+
+/**
+ * Ticket 79 item 1 stores a new Step's title empty; a Participant reaching
+ * one that was published unnamed reads the name an Author sees for it,
+ * "Untitled step", as the page's heading — never an empty `h1`.
+ */
+test("runner-untitled-step-heading", async ({ page, context, browser }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Untitled ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyId = await createJourney(page, projectId, `Untitled ${suffix}`);
+  const document = runnerDocument();
+  document.steps[QUEUE_STEP_ID].title = "";
+  await writeDraftDocument(journeyId, document);
+  await publishDocument(journeyId, document);
+
+  const participantContext = await browser.newContext({
+    baseURL: E2E_BASE_URL,
+  });
+  try {
+    const participant = await participantContext.newPage();
+    await participant.goto(`/j/${journeyId}`);
+    await expect(participant.locator("h1")).toHaveText(START_STEP_TITLE);
+
+    await participant.getByRole("button", { name: "Wait your turn" }).click();
+    await expect(participant.locator("h1")).toHaveCount(1);
+    await expect(participant.locator("h1")).toHaveText("Untitled step");
+
+    const emptyHeadings = (await axeViolations(participant)).filter(
+      (violation) => violation.startsWith("empty-heading"),
+    );
+    expect(emptyHeadings).toEqual([]);
+
+    await participant.screenshot({
+      path: evidencePath(
+        "runner-untitled-step-heading",
+        "runner-untitled-step-heading.png",
+      ),
+      fullPage: true,
+    });
   } finally {
     await participantContext.close();
   }

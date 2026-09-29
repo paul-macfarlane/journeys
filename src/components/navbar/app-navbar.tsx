@@ -1,12 +1,11 @@
 import Link from "next/link";
 
 import { Wordmark } from "@/components/brand";
+import { NavbarHeader } from "@/components/navbar/navbar-header";
 import { ProjectSwitcher } from "@/components/navbar/project-switcher";
 import { UserMenu } from "@/components/navbar/user-menu";
-import {
-  getProjectForMember,
-  listRecentProjectsForAuthor,
-} from "@/db/projects";
+import { projectForMember } from "@/db/access";
+import { listRecentProjectsForAuthor } from "@/db/projects";
 import { SWITCHER_LIMIT, switcherProjects } from "@/lib/navbar";
 import { requireSession } from "@/lib/session";
 
@@ -30,6 +29,9 @@ import { requireSession } from "@/lib/session";
  * from tablet width up (`UrlTabs`' `sticky`), so the row's `top-14` is this
  * bar's `h-14`. `globals.css` keys the document's `scroll-padding-top` off
  * the two `data-slot`s, so focus and anchored jumps land below both rows.
+ *
+ * Both menus portal their popups into this header (`NavbarHeader`, ticket
+ * 90), so an open menu sits inside the banner landmark.
  */
 export async function AppNavbar({ projectId }: { projectId?: string }) {
   const session = await requireSession();
@@ -38,14 +40,14 @@ export async function AppNavbar({ projectId }: { projectId?: string }) {
   // renders, labelled as it is anywhere outside a Project.
   const [recent, current] = await Promise.all([
     listRecentProjectsForAuthor(session.user.id, SWITCHER_LIMIT),
-    projectId ? getProjectForMember(projectId, session.user.id) : null,
+    projectId ? projectForMember(projectId, session.user.id) : null,
   ]);
   const currentProject = current
     ? { id: current.id, title: current.title }
     : null;
 
   return (
-    <header
+    <NavbarHeader
       data-slot="app-navbar"
       className="sticky top-0 z-40 border-b bg-background"
     >
@@ -67,6 +69,6 @@ export async function AppNavbar({ projectId }: { projectId?: string }) {
           }}
         />
       </div>
-    </header>
+    </NavbarHeader>
   );
 }
