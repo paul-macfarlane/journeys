@@ -104,8 +104,13 @@ export function RunnerFrame({
   title?: string;
   /** Shown beneath the header — the Start Step passes it, nothing else does. */
   description?: string;
-  /** Present on Preview: the banner that says so, and the way back. */
-  preview?: { editorHref: string };
+  /**
+   * Present on Preview: the banner that says so, and the way back. `label`
+   * overrides the link text, "Back to editor" by default — a Version's
+   * Preview (ticket 94) says "Back to Version <n>" instead, since its way
+   * back is that Version's own view, not the editor.
+   */
+  preview?: { editorHref: string; label?: string };
   /** The Project the Journey belongs to, linked above the Journey's title. */
   project?: { title: string; href: string };
   /** The header's "Start over"; omitted where the screen already offers one. */
@@ -144,7 +149,7 @@ export function RunnerFrame({
               href={preview.editorHref}
               className="hover:text-foreground underline underline-offset-4"
             >
-              Back to editor
+              {preview.label ?? "Back to editor"}
             </a>
           </div>
         </section>

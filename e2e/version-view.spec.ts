@@ -10,10 +10,14 @@ import {
 } from "./setup/authoring";
 import { expectNoViolations } from "./setup/axe";
 import {
+  promptDocument,
   publishableDocument,
   publishDocument,
   publishRawDocument,
+  QUEUE_PROMPT,
+  QUEUE_STEP_TITLE,
   readDraft,
+  START_PROMPT,
   START_STEP_TITLE,
   writeDraftDocument,
 } from "./setup/documents";
@@ -105,7 +109,7 @@ test("version-view", async ({ page, context }) => {
     .getByRole("list", { name: "Versions" })
     .getByRole("listitem")
     .filter({ has: page.getByText("Version 1", { exact: true }) });
-  await versionOne.getByRole("link", { name: "View" }).click();
+  await versionOne.getByRole("link", { name: "View", exact: true }).click();
   await expect(page).toHaveURL(viewPath(projectId, journeyId, 1));
 
   const main = page.getByRole("main");
@@ -114,6 +118,16 @@ test("version-view", async ({ page, context }) => {
       level: 1,
       name: `Version 1: ${journeyTitle}`,
     }),
+  ).toBeVisible();
+
+  // The Preview link (ticket 94, D2) beside Restore, and the sentence
+  // naming which Theme it wears — the journey's current one, since a
+  // Published Version snapshots none of its own.
+  await expect(
+    main.getByRole("link", { name: "Preview", exact: true }),
+  ).toHaveAttribute("href", `${viewPath(projectId, journeyId, 1)}/preview`);
+  await expect(
+    main.getByText(/Preview uses the journey.s current theme\./),
   ).toBeVisible();
 
   // Version 1's Steps on its map.
@@ -225,6 +239,123 @@ test("version-view-restore", async ({ page, context }) => {
   });
 });
 
+/** Version 2's Start text, for `version-preview`'s "nothing of Version 2" check. */
+const PREVIEW_V2_START_TEXT =
+  "The queue has grown since the rain began, and the questions have too.";
+const PREVIEW_V2_ENDING_TITLE = "Sent home";
+
+/**
+ * `promptDocument()` with its Start rewritten and an Ending renamed — the
+ * Prompt-bearing counterpart to `versionTwoDocument()`, so Version 1's
+ * Preview can walk a Prompt the way a Participant would.
+ */
+function versionTwoPromptDocument(): GraphDocument {
+  const document = promptDocument();
+  document.steps.start.content = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: PREVIEW_V2_START_TEXT }],
+      },
+    ],
+  };
+  document.steps["turned-back"].title = PREVIEW_V2_ENDING_TITLE;
+  return document;
+}
+
+test("version-preview", async ({ page, context }) => {
+  const author = await signInAs(context);
+  mintedAuthorIds.push(author.id);
+
+  const suffix = uniqueSuffix();
+  await page.goto("/projects");
+  const projectId = await createProject(page, `Refugee Health ${suffix}`);
+  await page.goto(`/projects/${projectId}`);
+  const journeyTitle = `Border Crossing ${suffix}`;
+  const journeyId = await createJourney(page, projectId, journeyTitle);
+
+  // Two Versions, Prompts included, so Preview of the older one can walk a
+  // Prompt exactly as a Participant would — and never confuse it with the
+  // newer one's words.
+  await publishDocument(journeyId, promptDocument());
+  await publishDocument(journeyId, versionTwoPromptDocument());
+
+  const runsBefore = await queryE2eDatabase(
+    'SELECT r.id FROM "run" r JOIN "published_version" v ON v.id = r.version_id WHERE v.journey_id = $1',
+    [journeyId],
+  );
+
+  // From the Versions tab, Version 1's row: Preview.
+  await page.goto(`/projects/${projectId}/journeys/${journeyId}`);
+  await openTab(page, "Versions");
+  const versionOne = page
+    .getByRole("list", { name: "Versions" })
+    .getByRole("listitem")
+    .filter({ has: page.getByText("Version 1", { exact: true }) });
+  await versionOne.getByRole("link", { name: "Preview", exact: true }).click();
+
+  const previewPath = `/projects/${projectId}/journeys/${journeyId}/versions/1/preview`;
+  await expect(page).toHaveURL(previewPath);
+  await expect(page.getByText("Preview — nothing is recorded.")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Back to Version 1" }),
+  ).toHaveAttribute(
+    "href",
+    `/projects/${projectId}/journeys/${journeyId}/versions/1`,
+  );
+
+  // Version 1's Start Step, not Version 2's.
+  await expect(
+    page.getByRole("heading", { name: START_STEP_TITLE }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("The queue has not moved in an hour."),
+  ).toBeVisible();
+  await expect(page.getByText(PREVIEW_V2_START_TEXT)).toHaveCount(0);
+  await expect(page.getByText(PREVIEW_V2_ENDING_TITLE)).toHaveCount(0);
+
+  // The Start's optional Prompt, answered, then on to the middle Step —
+  // Choices are that same form's buttons while a Prompt sits above them.
+  await page.getByRole("textbox", { name: START_PROMPT }).fill("Tired.");
+  await page.getByRole("button", { name: "Wait your turn" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: QUEUE_STEP_TITLE }),
+  ).toBeVisible();
+  await page
+    .getByRole("textbox", { name: QUEUE_PROMPT })
+    .fill("Whether the line will ever move.");
+  await page.getByRole("button", { name: "Show your papers" }).click();
+
+  // An Ending, with its own Outcome.
+  await expect(
+    page.getByRole("heading", { name: "Waved through" }),
+  ).toBeVisible();
+  await expect(page.getByText("Outcome: Reached care")).toBeVisible();
+
+  await page.screenshot({
+    path: evidencePath("version-preview", "version-preview.png"),
+    fullPage: true,
+  });
+
+  // Preview records nothing: no new Run, and so no new Response either.
+  const runsAfter = await queryE2eDatabase(
+    'SELECT r.id FROM "run" r JOIN "published_version" v ON v.id = r.version_id WHERE v.journey_id = $1',
+    [journeyId],
+  );
+  expect(runsAfter).toHaveLength(runsBefore.length);
+
+  const responseRows = await queryE2eDatabase(
+    `SELECT r.run_id FROM "response" r
+     JOIN "run" ON "run".id = r.run_id
+     JOIN "published_version" v ON v.id = "run".version_id
+     WHERE v.journey_id = $1`,
+    [journeyId],
+  );
+  expect(responseRows).toHaveLength(0);
+});
+
 test("version-view-not-member", async ({ page, context, browser }) => {
   const { projectId, journeyId } = await journeyWithTwoVersions(page, context);
 
@@ -242,6 +373,17 @@ test("version-view-not-member", async ({ page, context, browser }) => {
         .getByRole("main")
         .getByRole("heading", { name: "Page not found", level: 1 }),
     ).toBeVisible();
+
+    // Preview of that same Version is a non-Member's just as much: its
+    // start screen and a Step of it alike.
+    const previewResponse = await outsiderPage.goto(
+      `${viewPath(projectId, journeyId, 1)}/preview`,
+    );
+    expect(previewResponse?.status()).toBe(404);
+    const previewStepResponse = await outsiderPage.goto(
+      `${viewPath(projectId, journeyId, 1)}/preview/waved-through`,
+    );
+    expect(previewStepResponse?.status()).toBe(404);
 
     await outsiderPage.screenshot({
       path: evidencePath(
@@ -262,6 +404,13 @@ test("version-view-not-member", async ({ page, context, browser }) => {
     );
     expect(response?.status(), `versions/${segment}`).toBe(404);
   }
+
+  // The Member gets a Version's Preview too, but not a Step it does not
+  // have: Version 1 is `publishableDocument()`, which has no such Step.
+  const missingStepResponse = await page.goto(
+    `${viewPath(projectId, journeyId, 1)}/preview/no-such-step`,
+  );
+  expect(missingStepResponse?.status()).toBe(404);
 });
 
 test("version-view-unreadable", async ({ page, context }) => {
@@ -289,6 +438,16 @@ test("version-view-unreadable", async ({ page, context }) => {
   await expect(page.getByRole("region", { name: "Version map" })).toHaveCount(
     0,
   );
+
+  // Its Preview is the same story: 200, and the same "can't be read"
+  // naming, never a crash or a redirect loop (ticket 94, D2).
+  const previewResponse = await page.goto(
+    `${viewPath(projectId, journeyId, 2)}/preview`,
+  );
+  expect(previewResponse?.status()).toBe(200);
+  await expect(
+    page.getByRole("region", { name: "Version 2 can't be read" }),
+  ).toBeVisible();
 
   await page.screenshot({
     path: evidencePath(

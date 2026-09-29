@@ -123,6 +123,14 @@ export function VersionList({
                 >
                   View
                 </Link>
+                <Link
+                  href={`/projects/${projectId}/journeys/${journeyId}/versions/${version.versionNumber}/preview`}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                  )}
+                >
+                  Preview
+                </Link>
                 <RestoreVersionDialog
                   projectId={projectId}
                   journeyId={journeyId}

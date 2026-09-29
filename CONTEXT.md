@@ -83,7 +83,7 @@ _Avoid_: Undo, rewind
 ## Participation
 
 **Preview**:
-An author walking the draft in the participant runner. Records no run.
+An author walking the draft or a published version in the participant runner. Records no run.
 _Avoid_: Test mode, dry run
 
 **Prompt**:

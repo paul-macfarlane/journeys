@@ -13,12 +13,14 @@ import { VersionView } from "@/components/journeys/version-view";
 import { LocalTime } from "@/components/local-time";
 import { SiteFooter } from "@/components/site-footer";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { journeyForMember } from "@/db/access";
 import { getDraft } from "@/db/drafts";
 import { getLiveVersion, getVersionByNumber } from "@/db/versions";
 import { draftPending } from "@/lib/publish-state";
 import { requireSession } from "@/lib/session";
 import { parseVersionNumber } from "@/lib/version-number";
+import { cn } from "@/lib/utils";
 
 type Params = Promise<{
   projectId: string;
@@ -131,15 +133,27 @@ export default async function VersionPage({ params }: { params: Params }) {
             </div>
 
             {version.kind === "ok" ? (
-              // The row a Preview of this Version will join (ticket 94, D2).
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <RestoreVersionDialog
-                  projectId={projectId}
-                  journeyId={journey.id}
-                  versionId={version.id}
-                  versionNumber={version.versionNumber}
-                />
-                <PublishAcknowledgement journeyId={journey.id} />
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Link
+                    href={`/projects/${projectId}/journeys/${journey.id}/versions/${version.versionNumber}/preview`}
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                    )}
+                  >
+                    Preview
+                  </Link>
+                  <RestoreVersionDialog
+                    projectId={projectId}
+                    journeyId={journey.id}
+                    versionId={version.id}
+                    versionNumber={version.versionNumber}
+                  />
+                  <PublishAcknowledgement journeyId={journey.id} />
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Preview uses the journey&rsquo;s current theme.
+                </p>
               </div>
             ) : null}
           </header>
