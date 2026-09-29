@@ -26,9 +26,9 @@ This ticket was written while the Judge still existed. Ticket 87 (PR #106, 2026-
 - **Reference, not a base:** commits `04d1b5a` ("Rewrite with AI for one Step", `src/lib/ai/authoring.ts`, `rewrite-step-dialog.tsx`, the `aiAuthoring` prop threaded through `DraftEditor`) and `2b44c83` (re-feeding the rich-text surface after a rewrite). No branch or remote ref holds them. They survive only as objects in Paul's main checkout, so check with `git cat-file -t 04d1b5a` before relying on them. Reuse what fits. That work replaced the whole content; this ticket must not. Since then, ticket 86 (PR #113) split the canvas, the Draft editor, and the layout module, so the prop threading will land in different files.
 - Ticket 43's lessons still apply to any gateway call: set `maxRetries: 0` and an explicit timeout, and treat a timeout or failure as "no suggestions" with a message. A failed call never blocks editing.
 
-## Decision to settle at the chunk's start (Paul)
+## How AI editing is limited (Paul, 2026-09-28, settled)
 
-**How AI editing is limited.** Recommended: a Member-only server action, a cap on input length (4000 characters, the cap Paul picked for the Judge in ticket 84), a per-Author in-memory limit (the old `decisionAllowed` shape, a few seconds per Author), and a spend limit set on the gateway (Paul's). No new table. Why this is enough: a caller must be signed in through Google or Discord and be a Member, so nobody can mint new keys for free the way ticket 84's A2 could, and the gateway spend limit bounds the cost across server instances. The alternative is a durable per-Author counter in Postgres, which means a migration and a deploy-window check. Take the recommendation unless Paul says otherwise, and record which way it went in the first record.
+Four limits: a Member-only server action, a cap on input length (4000 characters, the cap Paul picked for the Judge in ticket 84), a per-Author in-memory limit (the old `decisionAllowed` shape, one request per Author every few seconds, with the window in a named constant), and a spend limit Paul sets on the gateway. No new table. Why this is enough: a caller must be signed in through Google or Discord and be a Member, so nobody can mint new keys for free the way ticket 84's A2 could, and the gateway spend limit bounds the cost across server instances. A durable per-Author counter in Postgres was the alternative. It was not chosen because it needs a migration and a deploy-window check.
 
 ## What to build
 
@@ -53,3 +53,7 @@ Verification follows `docs/agents/testing.md` (`contract`). Use `CONTEXT.md` voc
 ### 2026-09-28 — Claude (Opus 5.5)
 
 Refreshed at Paul's request ("we can fix 80") when he re-ordered the backlog to 94 → 93 → 80. The product decisions are unchanged. The ticket had pointed at the Judge's `src/lib/ai/rate-limit.ts` and at "as with deciding Prompts", and both went away with ticket 87. It now says what to add back, where the old code can be read, and which limit decision is still open.
+
+### 2026-09-28 — Claude (Opus 5.5)
+
+Paul agreed to the recommended limit ("I agree with your recommendations"): Member-only, a 4000-character cap, a per-Author in-memory limit, and a gateway spend limit. The section above now records it as settled, so chunk 8 has no open decisions left.
