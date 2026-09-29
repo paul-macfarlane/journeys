@@ -96,6 +96,11 @@ test("guide", async ({ page }) => {
   // Ticket 93 items 3 and 5: "choice" only ever means a Choice, and an
   // Author is a user, not a person.
   const authors = page.locator("section#for-authors");
+  // Item 2: a Step is text and images, not "text-based".
+  await expect(page.getByRole("main")).toContainText(
+    "one screen holding text and images",
+  );
+  await expect(page.getByRole("main")).not.toContainText("text-based");
   await expect(authors).not.toContainText("The choice is remembered");
   await expect(authors).toContainText(
     "Your browser remembers whether the panel is hidden; it isn’t saved on the Journey.",

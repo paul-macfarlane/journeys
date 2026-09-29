@@ -53,7 +53,7 @@ export default function AboutPage() {
         of steps and choices on a visual canvas, sees its whole shape at once,
         and publishes an immutable version that participants walk from a link
         without an account. Analytics are drawn on the graph itself, so you see
-        which paths Participants took. A step can pose an open question whose
+        which paths participants took. A step can pose an open question whose
         answers are kept for the project’s members to read. Steps carry rich
         text with images and credits, and each journey can have its own theme.
         Projects have members, authors can keep a public page, and every

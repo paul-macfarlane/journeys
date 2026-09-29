@@ -965,7 +965,7 @@ async function captureStills(
     await participant.close();
   }
 
-  // themes: a Participant's view of the same Journey, at its Start Step,
+  // themes: a Participant's view of the themes Journey, at its Start Step,
   // wearing Dusk instead of the Project's Theme — the one still where a
   // different Theme appears. The versions still above already published
   // this Journey twice (both sources point `themes.journeyId` at the same
@@ -981,12 +981,12 @@ async function captureStills(
   }>('SELECT theme_preset FROM "journey" WHERE id = $1', [
     source.themes.journeyId,
   ]);
-  await queryE2eDatabase(
-    'UPDATE "journey" SET theme_preset = $2 WHERE id = $1',
-    [source.themes.journeyId, "dusk"],
-  );
   const themesParticipant = await newContext(browser, scheme, null);
   try {
+    await queryE2eDatabase(
+      'UPDATE "journey" SET theme_preset = $2 WHERE id = $1',
+      [source.themes.journeyId, "dusk"],
+    );
     const themesPage = await themesParticipant.newPage();
     await themesPage.goto(`/j/${source.themes.journeyId}`);
     await expectScheme(themesPage, scheme);

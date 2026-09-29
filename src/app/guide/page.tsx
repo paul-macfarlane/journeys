@@ -107,8 +107,8 @@ export default function GuidePage() {
         <p>
           Go to <Link href="/sign-in">Sign in</Link> and pick Google or Discord.
           Journeys never sees a password; the provider tells it your name, email
-          address, and picture, and you can change the name and picture later in
-          Settings.
+          address, and picture, and you can change the name and picture later
+          from Settings in your account menu.
         </p>
 
         <Stage id="create-a-project" />
@@ -289,9 +289,10 @@ export default function GuidePage() {
 
         <Stage id="your-author-page" />
         <p>
-          From Settings you can turn on your Author page, a public page with
-          your name, picture, bio, and links, together with the Projects you
-          belong to that have a live Journey. It is off until you turn it on.
+          From Settings in your account menu you can turn on your Author page, a
+          public page with your name, picture, bio, and links, together with the
+          Projects you belong to that have a live Journey. It is off until you
+          turn it on.
         </p>
       </Section>
 

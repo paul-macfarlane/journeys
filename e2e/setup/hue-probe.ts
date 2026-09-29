@@ -29,12 +29,16 @@ export async function purpleShare(
     if (!context) throw new Error("no 2d context");
     context.drawImage(image, 0, 0);
 
+    // One readback for the whole image, then indexed: a readback per
+    // sampled pixel is tens of thousands of GPU round trips.
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
     const step = 4;
     let sampled = 0;
     let purple = 0;
     for (let y = 0; y < canvas.height; y += step) {
       for (let x = 0; x < canvas.width; x += step) {
-        const [r, g, b] = context.getImageData(x, y, 1, 1).data;
+        const at = (y * canvas.width + x) * 4;
+        const [r, g, b] = [data[at], data[at + 1], data[at + 2]];
         const rn = r / 255;
         const gn = g / 255;
         const bn = b / 255;

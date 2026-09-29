@@ -71,8 +71,8 @@ export function Wordmark({
 /**
  * The two legal pages, as a labelled navigation so a spec (and a screen
  * reader) can find them on any footer. Plain anchors, never `next/link`:
- * the runner frame carries no client bundle and the pages are static, so a
- * whole-document navigation costs nothing anywhere this renders. `FooterLink`
+ * the pages are static, so a whole-document navigation costs nothing
+ * anywhere this renders. `FooterLink`
  * (ticket 93) is the one small client island that marks whichever of these
  * is the current page.
  */
