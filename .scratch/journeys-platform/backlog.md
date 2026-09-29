@@ -2,7 +2,7 @@
 
 The single source of truth for **what to work on next**. The order below is Paul's. Tickets hold the what and the why. The spec's `[SCOPE CHANGE]` records hold the reasons for a re-order. This file holds only the order and each ticket's current status. Maintenance rules are in `docs/agents/issue-tracker.md` ("Priority").
 
-Last re-ordered: 2026-09-27, tickets 88–92 placed as chunk 9, run before chunk 8 (Paul). Before that, 2026-09-26: chunk 3 re-formed when Paul cut the Judge (87 replaces 84 and 76); before that, grouped into chunks (Paul). Direction: polish, bug fixes, stability, and a clean technical design, with no feature bloat and no AI authoring. Ticket 72's proposed order, with three moves: 83 joins 81 and 73, 76 runs before 75, and 57 runs before 86 and 53.
+Last re-ordered: 2026-09-28, 94 then 93 placed ahead of chunk 8 as chunks 10 and 11 (Paul: "94, then 93, then 80"). Before that, 2026-09-27: tickets 88–92 placed as chunk 9, run before chunk 8 (Paul). Before that, 2026-09-26: chunk 3 re-formed when Paul cut the Judge (87 replaces 84 and 76); before that, grouped into chunks (Paul). Direction: polish, bug fixes, stability, and a clean technical design, with no feature bloat and no AI authoring. Ticket 72's proposed order, with three moves: 83 joins 81 and 73, 76 runs before 75, and 57 runs before 86 and 53.
 
 ## Ordered
 
@@ -32,16 +32,15 @@ Work top to bottom, **one chunk per thread**, each chunk one pull request. Chunk
 | 19 | 9 | [90 Navbar menus under axe](issues/90-navbar-menus-axe.md) | polish | done | PR #115 |
 | 20 | 9 | [91 Preview page title](issues/91-preview-title.md) | polish | done | PR #115 |
 | 21 | 9 | [92 Heading order in rendered rich text](issues/92-rich-text-heading-order.md) | polish | done | PR #115 |
-| 22 | **8 AI editing** (contract) | [80 AI editing](issues/80-ai-editing.md) | contract | ready-for-agent | Reach goal |
+| 22 | **10 Older Published Versions** (contract) | [94 Look at an older Published Version before restoring it](issues/94-view-a-published-version.md) | contract | ready-for-agent | Placed 2026-09-28 (Paul); route and canvas decisions settled at the chunk's start |
+| 23 | **11 Public pages copy** (polish) | [93 Home, guide, and legal pages: stills, copy, and the footer](issues/93-public-pages-copy-and-stills.md) | polish | ready-for-agent | Placed 2026-09-28 (Paul) |
+| 24 | **8 AI editing** (contract) | [80 AI editing](issues/80-ai-editing.md) | contract | ready-for-agent | Reach goal; refreshed 2026-09-28 after the Judge cut; limit decided 2026-09-28 (Paul) |
 
 ## Awaiting a place in the order
 
 New tickets land here until Paul places them.
 
-| Ticket | Route | Status | Note |
-|---|---|---|---|
-| [93 Home, guide, and legal pages: stills, copy, and the footer](issues/93-public-pages-copy-and-stills.md) | polish | needs-triage | Paul's 2026-09-27 read of `/`, `/guide`, `/privacy`, `/terms`; after chunk 5 (same files) |
-| [94 Look at an older Published Version before restoring it](issues/94-view-a-published-version.md) | contract | needs-triage | Read-only map and Preview per Version |
+None right now.
 
 ## Parked
 

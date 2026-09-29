@@ -1,6 +1,6 @@
 # 93: Home, guide, and legal pages: stills, copy, and the footer
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: 42, 78
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`

@@ -1,6 +1,6 @@
 # 94: Look at an older Published Version before restoring it
 
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: None
 Owner:
 Parent: `.scratch/journeys-platform/spec.md`
